@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NRL Top-Down Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+  body {
+    margin: 0;
+    background: #0a5c2b;
+    overflow: hidden;
+    touch-action: none;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #0f7a3d;
+  }
+
+  /* UI */
+  .ui {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .button {
+    position: absolute;
+    left: 16px;
+    width: 120px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font: bold 16px sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  #restartBtn { bottom: 96px; }
+  #fendBtn { bottom: 24px; height: 64px; font-size: 18px; }
+
+  /* Joystick */
+  #joystickBase {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    pointer-events: auto;
+  }
+
+  #joystickStick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 48px;
+    height: 48px;
+    margin-left: -24px;
+    margin-top: -24px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div class="ui">
+  <div id="restartBtn" class="button">Restart (R)</div>
+  <div id="fendBtn" class="button">FEND</div>
+
+  <div id="joystickBase">
+    <div id="joystickStick"></div>
+  </div>
+</div>
+
+<script>
+/* =====================
+   CANVAS & RESIZE
+====================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// Virtual field for scaling
+const FIELD_W = 600;
+const FIELD_H = 800;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas(); // initial
+
+/* =====================
+   JOYSTICK STATE
+====================== */
+let joyActive = false;
+let joyCenter = { x: 0, y: 0 };
+
+/* =====================
+   INPUT STATE
+====================== */
+const input = { dx:0, dy:0, fend:false };
+const keys = {};
+window.addEventListener("keydown", e => { keys[e.code]=true; if(e.code==="KeyR") resetGame(); });
+window.addEventListener("keyup", e => keys[e.code]=false);
+
+/* =====================
+   SETTINGS
+====================== */
+const PLAYER_SPEED = 2.5;
+const DEFENDER_SPEED = 1.2;
+const FEND_RADIUS = 60;
+const FEND_COOLDOWN_MAX = 70;
+const FEND_WAVE_DURATION = 20;
+
+/* =====================
+   GAME STATE
+====================== */
+let win = false;
+let defendersActive = false;
+
+/* =====================
+   BALL / RUCK
+====================== */
+const tackledPlayer = { x: FIELD_W/2, y: 70*6 };
+const ball = { x: tackledPlayer.x, y: tackledPlayer.y, r:9, rolled:false };
+
+/* =====================
+   PLAYER
+====================== */
+const player = {
+  x: FIELD_W/2,
+  y: tackledPlayer.y+20*6,
+  r: 9,
+  speed: PLAYER_SPEED,
+  hasBall: false,
+  fendCooldown: 0,
+  fendWave: 0,
+  tackleMessage: 0
+};
+
+/* =====================
+   ATTACKERS
+====================== */
+const attackers = [];
+function setupAttackers() {
+  attackers.length = 0;
+  for (let i=0;i<5;i++) attackers.push({x:FIELD_W/2-80-i*25, y:74*6});
+  for (let i=0;i<6;i++) attackers.push({x:FIELD_W/2+80+i*25, y:74*6});
+}
+
+/* =====================
+   DEFENDERS
+====================== */
+const defenders = [];
+function addDefender(x,y,isMarker=false){ defenders.push({x,y,r:9,speed:DEFENDER_SPEED,stunned:0,isMarker}); }
+function setupDefenders(){
+  defenders.length = 0;
+  addDefender(tackledPlayer.x-16,tackledPlayer.y-6,true);
+  addDefender(tackledPlayer.x+16,tackledPlayer.y-6,true);
+  for(let i=0;i<8;i++){ if(i===2||i===3) continue; addDefender(FIELD_W/2-140+i*40,tackledPlayer.y-10*6); }
+  addDefender(FIELD_W/2-60,tackledPlayer.y-30*6);
+  addDefender(FIELD_W/2+60,tackledPlayer.y-30*6);
+  addDefender(FIELD_W/2,5*6);
+}
+
+/* =====================
+   RESET
+====================== */
+function resetGame(){
+  win = false; defendersActive = false;
+  player.x = FIELD_W/2; player.y = tackledPlayer.y+20*6; player.hasBall=false; player.fendCooldown=0; player.tackleMessage=0;
+  ball.x = tackledPlayer.x; ball.y = tackledPlayer.y; ball.rolled=false;
+  setupAttackers();
+  setupDefenders();
+}
+
+/* =====================
+   UPDATE
+====================== */
+function update(){
+  if(win) return;
+
+const scaleX = canvas.width / FIELD_W;
+const scaleY = canvas.height / FIELD_H;
+
+  // Keyboard fallback
+  if(!joyActive){
+    input.dx = (keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);
+    input.dy = (keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
+  }
+  input.fend = keys.Space || input.fend;
+
+  const len = Math.hypot(input.dx,input.dy);
+  if(len){ player.x += (input.dx/len)*player.speed; player.y += (input.dy/len)*player.speed; }
+
+  if(!ball.rolled){ ball.y += 0.35; if(ball.y>=tackledPlayer.y+10) ball.rolled=true; }
+
+  if(!player.hasBall && ball.rolled && Math.hypot(player.x-ball.x,player.y-ball.y)<16){
+    player.hasBall=true; defendersActive=true;
+  }
+
+  if(input.fend && player.hasBall && player.fendCooldown<=0){
+    player.fendCooldown = FEND_COOLDOWN_MAX;
+    player.fendWave = FEND_WAVE_DURATION;
+    defenders.forEach(d=>{
+      if(d.isMarker) return;
+      const dx=d.x-player.x, dy=d.y-player.y, dist=Math.hypot(dx,dy);
+      const effectiveFend = FEND_RADIUS * scaleX; // or maybe average of X and Y
+      if(dist<effectiveFend){ const a=Math.atan2(dy,dx); d.x+=Math.cos(a)*FEND_RADIUS; d.y+=Math.sin(a)*FEND_RADIUS; d.stunned=40; }
+    });
+  }
+  input.fend = false;
+
+  if(player.fendCooldown>0) player.fendCooldown--;
+  if(player.fendWave>0) player.fendWave--;
+
+  if(defendersActive){
+    defenders.forEach(d=>{
+      if(d.isMarker||d.stunned>0){ if(d.stunned>0)d.stunned--; return; }
+      const a=Math.atan2(player.y-d.y,player.x-d.x);
+      d.x+=Math.cos(a)*d.speed; d.y+=Math.sin(a)*d.speed;
+    });
+  }
+
+  if(player.hasBall && player.fendCooldown<=50){
+    for(const d of defenders){ if(d.isMarker) continue;
+      const effectivePlayerR = player.r * scaleX;
+      const effectiveDefenderR = d.r * scaleX;
+      if(Math.hypot((player.x - d.x) * scaleX, (player.y - d.y) * scaleY) <= effectivePlayerR + effectiveDefenderR - 1){
+        player.hasBall=false; defendersActive=false; player.tackleMessage=50; setTimeout(resetGame,200); return;
+      }}
+  }
+
+  if(player.hasBall && player.y<5*6) win=true;
+}
+
+/* =====================
+   DRAW
+====================== */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const scaleX = canvas.width / FIELD_W;
+  const scaleY = canvas.height / FIELD_H;
+
+  function drawCircle(obj, color, radius){
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.arc(obj.x*scaleX, obj.y*scaleY, radius*scaleX, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawStrokeCircle(obj, radius, style, width){
+    ctx.strokeStyle=style;
+    ctx.lineWidth=width;
+    ctx.beginPath();
+    ctx.arc(obj.x*scaleX, obj.y*scaleY, radius*scaleX, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Field lines
+  ctx.strokeStyle="#fff"; ctx.lineWidth=2;
+  const labels=[40,30,20,10]; const spacing=tackledPlayer.y/5*scaleY;
+  labels.forEach((l,i)=>{
+    const y = tackledPlayer.y*scaleY - i*spacing;
+    ctx.beginPath();
+    ctx.moveTo(0,y); ctx.lineTo(canvas.width,y);
+    ctx.stroke();
+    ctx.fillText(l,5,y-4);
+    ctx.fillText(l,canvas.width-25,y-4);
+  });
+
+  ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,5*6*scaleY); ctx.lineTo(canvas.width,5*6*scaleY); ctx.stroke();
+
+  // Ball
+  if(!player.hasBall) drawCircle(ball,"#ffd700",ball.r);
+
+  // Attackers
+  attackers.forEach(a=>drawCircle(a,"#800000",8));
+
+  // Defenders
+  defenders.forEach(d=>drawCircle(d,"#6a0dad",d.r));
+
+  // Fend radius always visible
+  drawStrokeCircle(player,FEND_RADIUS,"rgba(255,255,255,0.15)",1);
+
+  // Fend wave
+  if(player.fendWave>0){
+    const t = 1 - player.fendWave/FEND_WAVE_DURATION;
+    drawStrokeCircle(player, FEND_RADIUS*t, `rgba(255,255,255,${0.4*(1-t)})`,2);
+  }
+
+  // Player
+  drawCircle(player,"#ff3333",player.r);
+
+  // Tackle message
+  if(player.tackleMessage>0){
+    ctx.fillStyle="#fff"; ctx.font=`${24*scaleX}px sans-serif`;
+    ctx.fillText("TACKLED!",canvas.width/2-60*scaleX,canvas.height/2);
+    player.tackleMessage--;
+  }
+
+  // Fend cooldown bar
+  const barW = 200*scaleX, barH = 10*scaleY;
+  const bx = canvas.width/2 - barW/2;
+  const by = canvas.height - 20*scaleY;
+  ctx.strokeStyle="#fff"; ctx.strokeRect(bx,by,barW,barH);
+  ctx.fillStyle="#fff"; 
+  ctx.fillRect(bx,by,barW*(1-player.fendCooldown/FEND_COOLDOWN_MAX),barH);
+
+  // Win message
+  if(win){ ctx.fillStyle="#fff"; ctx.font=`${20*scaleX}px sans-serif`; ctx.fillText("TRY! 🏉",canvas.width/2-30*scaleX,canvas.height/2); }
+}
+
+/* =====================
+   LOOP
+====================== */
+resetGame();
+(function loop(){ update(); draw(); requestAnimationFrame(loop); })();
+
+/* =====================
+   TOUCH / JOYSTICK
+====================== */
+const joyBase=document.getElementById("joystickBase");
+const joyStick=document.getElementById("joystickStick");
+
+function joyStart(e){ joyActive=true; const r=joyBase.getBoundingClientRect(); joyCenter={x:r.left+r.width/2,y:r.top+r.height/2}; }
+function joyMove(e){ if(!joyActive) return; const t=e.touches?e.touches[0]:e; const dx=t.clientX-joyCenter.x, dy=t.clientY-joyCenter.y; const dist=Math.min(40,Math.hypot(dx,dy)); const a=Math.atan2(dy,dx); const ox=Math.cos(a)*dist, oy=Math.sin(a)*dist; joyStick.style.transform=`translate(${ox}px,${oy}px)`; input.dx=ox/40; input.dy=oy/40; }
+function joyEnd(){ joyActive=false; joyStick.style.transform="translate(0,0)"; input.dx=0; input.dy=0; }
+
+["mousedown","touchstart"].forEach(ev=>joyBase.addEventListener(ev,joyStart));
+["mousemove","touchmove"].forEach(ev=>window.addEventListener(ev,joyMove));
+["mouseup","touchend","touchcancel"].forEach(ev=>window.addEventListener(ev,joyEnd));
+
+// Buttons
+const fendBtn=document.getElementById("fendBtn");
+fendBtn.addEventListener("mousedown",()=>input.fend=true);
+fendBtn.addEventListener("touchstart",e=>{e.preventDefault(); input.fend=true;});
+
+document.getElementById("restartBtn").addEventListener("click",resetGame);
+</script>
+</body>
+</html>
