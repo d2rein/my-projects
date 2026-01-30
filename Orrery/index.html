@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live Orrery with Moons</title>
+<style>
+  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
+  canvas { display: block; margin: 0 auto; background: #000; }
+  #controls { text-align: center; margin: 10px; }
+  button { margin: 0 5px; padding: 5px 10px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { padding: 4px 6px; border: 1px solid #444; }
+  th { background: #111; color: #fff; }
+  td.num, th.num { text-align: right; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  Current Time: <span id="currentTime"></span><br>
+  Current Local Time: <span id="localTime"></span><br>
+  Days since J2000: <span id="daysSinceJ2000"></span><br>
+  <button data-speed="1">1×</button>
+  <button data-speed="3600">3600×</button>
+  <button data-speed="86400">86400×</button>
+  <button data-speed="1000000">1,000,000×</button>
+  <button data-speed="reset">Reset</button>
+</div>
+
+<br>
+Observer longitude:
+<input id="observerLon" type="number" value="153" step="1" style="width:60px">
+°
+<br>
+Time Zone (hours from GMT): 
+<input id="timeZoneOffset" type="number" value="0" step="1" style="width:50px"> <br><br>
+
+<label>
+<input type="checkbox" id="showVisibilityLines" checked>
+Show Visibility & Horizon Lines
+</label>
+
+<canvas id="orreryCanvas" width="1200" height="800"></canvas>
+
+<div id="orbitTableContainer">
+  <h3>Planet Orbital Data</h3>
+  <table id="orbitTable">
+    <thead><tr id="orbitTableHead"></tr></thead>
+    <tbody id="orbitTableBody"></tbody>
+  </table>
+
+  <h3>Moon Orbital Data</h3>
+  <table id="moonTable">
+    <thead><tr id="moonTableHead"></tr></thead>
+    <tbody id="moonTableBody"></tbody>
+  </table>
+</div>
+
+<script>
+// ------------------- CONSTANTS -------------------
+const AU = 149597870.7; // km
+const JD_J2000 = 2451545.0;
+const MU = 1.32712440018e11; // km^3/s^2
+// ------------------- EARTH ROTATION -------------------
+const EARTH_ROT_RATE = 2 * Math.PI * 1.00273790935; // rad/day
+
+
+// ------------------- PLANETS -------------------
+const planets = [
+  { name:"Mercury", a:0.38709927*AU, e:0.20563593, i:7.00498, Omega:48.33077, omega:29.12703, M0:174.79253, epoch_jd:JD_J2000 },
+  { name:"Venus",   a:0.72333566*AU, e:0.00677672, i:3.39468, Omega:76.67984, omega:54.92262, M0:50.37663, epoch_jd:JD_J2000 },
+  { name:"Earth",   a:1.0*AU,        e:0.01671022, i:0.00005, Omega:348.73936, omega:102.93735, M0:357.51716, epoch_jd:JD_J2000 },
+  { name:"Mars",    a:1.52371034*AU, e:0.0933941,  i:1.84969, Omega:49.55954, omega:286.49683, M0:19.3902, epoch_jd:JD_J2000 },
+  { name:"Jupiter", a:5.202887*AU,   e:0.04838624, i:1.3044,  Omega:100.47391, omega:-85.74543, M0:19.66796, epoch_jd:JD_J2000 },
+  { name:"Saturn",  a:9.53667594*AU, e:0.05386179, i:2.48599, Omega:113.66242, omega:-21.06355, M0:-42.64463, epoch_jd:JD_J2000 },
+  { name:"Uranus",  a:19.18916464*AU,e:0.04725744, i:0.77264, Omega:74.01693, omega:96.93735, M0:142.28383, epoch_jd:JD_J2000 },
+  { name:"Neptune", a:30.06992276*AU,e:0.00859048, i:1.77004, Omega:131.78423, omega:-86.81946, M0:-100.08479, epoch_jd:JD_J2000 }
+];
+planets.forEach(p => p.path = precomputeOrbit(p));
+
+// ------------------- MOONS -------------------
+let moons = [
+  {
+    "name": "Moon",
+    "target": "301",
+    "center": "399",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 384468.2473034434,
+    "EC": 0.03734811627474723,
+    "IN_deg": 5.181172365263922,
+    "OM_deg": 338.9687234402554,
+    "W_deg": 93.7784131708599,
+    "MA_deg": 270.4763861989066,
+    "N_deg_per_sec": 0.0001526706049434192,
+    "QR_km": 370109.0824992061,
+    "AD_km": 398827.4121076807,
+    "Tp_jd": 2461069.2868528976,
+    "TA_deg": 266.1990699678877,
+    "PR_sec": 2358017.773843356,
+    "x_km": 359191.5374977114,
+    "y_km": -138267.1174250724,
+    "z_km": -13.65932977675402
+  },
+  {
+    "name": "Phobos",
+    "target": "401",
+    "center": "499",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 9379.121104553748,
+    "EC": 0.01540209609732912,
+    "IN_deg": 27.27952452805805,
+    "OM_deg": 80.85733662926995,
+    "W_deg": 167.5465994801912,
+    "MA_deg": 309.4312889545382,
+    "N_deg_per_sec": 0.01305404839012988,
+    "QR_km": 9234.662979992925,
+    "AD_km": 9523.57922911457,
+    "Tp_jd": 2461062.5448355936,
+    "TA_deg": 308.0513304278616,
+    "PR_sec": 27577.65171701023,
+    "x_km": -7988.414660087385,
+    "y_km": -2779.221353129637,
+    "z_km": 3839.451663404253
+  },
+  {
+    "name": "Deimos",
+    "target": "402",
+    "center": "499",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 23459.87921678523,
+    "EC": 0.0002388636894163713,
+    "IN_deg": 24.16263321666372,
+    "OM_deg": 81.26007549762927,
+    "W_deg": 36.50859240014033,
+    "MA_deg": 171.0619494036929,
+    "N_deg_per_sec": 0.003299892352539442,
+    "QR_km": 23454.27550348224,
+    "AD_km": 23465.48293008822,
+    "Tp_jd": 2461061.9000156787,
+    "TA_deg": 171.0662008036804,
+    "PR_sec": 109094.4678007333,
+    "x_km": 6634.991591025047,
+    "y_km": -22064.30493171737,
+    "z_km": -4446.237920440994
+  },
+  {
+    "name": "Io",
+    "target": "501",
+    "center": "599",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 422030.3519468489,
+    "EC": 0.004302666600274158,
+    "IN_deg": 2.208017411359021,
+    "OM_deg": 338.4927085558683,
+    "W_deg": 238.7396976116978,
+    "MA_deg": 67.10582226102575,
+    "N_deg_per_sec": 0.00235224493655109,
+    "QR_km": 420214.4960472252,
+    "AD_km": 423846.2078464725,
+    "Tp_jd": 2461062.169809999,
+    "TA_deg": 67.56097903180235,
+    "PR_sec": 153045.2864011005,
+    "x_km": 107672.5075913025,
+    "y_km": -407130.1215080696,
+    "z_km": -13082.4163367635
+  },
+  {
+    "name": "Europa",
+    "target": "502",
+    "center": "599",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 671314.6109870928,
+    "EC": 0.009244383491027304,
+    "IN_deg": 2.145432833550062,
+    "OM_deg": 325.9339289106626,
+    "W_deg": 61.28837304715088,
+    "MA_deg": 219.5153227570941,
+    "N_deg_per_sec": 0.001172476633163369,
+    "QR_km": 665108.7212799982,
+    "AD_km": 677520.5006941875,
+    "Tp_jd": 2461063.8867910155,
+    "TA_deg": 218.8472613142667,
+    "PR_sec": 307042.3664041061,
+    "x_km": -273993.4144034198,
+    "y_km": -617618.0039914562,
+    "z_km": -24916.48712344145
+  },
+  {
+    "name": "Ganymede",
+    "target": "503",
+    "center": "599",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 1070837.299415582,
+    "EC": 0.002124788193757144,
+    "IN_deg": 2.339342422184286,
+    "OM_deg": 339.2182605971857,
+    "W_deg": 344.8154413296687,
+    "MA_deg": 353.7702399544221,
+    "N_deg_per_sec": 0.0005819954219698449,
+    "QR_km": 1068561.996964349,
+    "AD_km": 1073112.601866815,
+    "Tp_jd": 2461062.6238905005,
+    "TA_deg": 353.7437483079067,
+    "PR_sec": 618561.5666555068,
+    "x_km": 791438.5780242675,
+    "y_km": -717791.3015966302,
+    "z_km": -15943.74880749223
+  },
+  {
+    "name": "Callisto",
+    "target": "504",
+    "center": "599",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 1882693.251504204,
+    "EC": 0.00714514215970027,
+    "IN_deg": 1.951726553867617,
+    "OM_deg": 336.7009649098716,
+    "W_deg": 32.18304788795783,
+    "MA_deg": 172.9892961053413,
+    "N_deg_per_sec": 0.0002496495643614549,
+    "QR_km": 1869241.140579098,
+    "AD_km": 1896145.362429309,
+    "Tp_jd": 2461054.479994308,
+    "TA_deg": 173.0883527904189,
+    "PR_sec": 1442021.342680071,
+    "x_km": -1894737.147358064,
+    "y_km": -64825.84274038037,
+    "z_km": -27567.28935622745
+  },
+  {
+    "name": "Mimas",
+    "target": "601",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 186000.2516011285,
+    "EC": 0.01743084595023874,
+    "IN_deg": 29.5395613064945,
+    "OM_deg": 168.4605006871972,
+    "W_deg": 275.7400562546385,
+    "MA_deg": 155.456344867306,
+    "N_deg_per_sec": 0.004398966717068278,
+    "QR_km": 182758.1098687636,
+    "AD_km": 189242.3933334935,
+    "Tp_jd": 2461062.090980481,
+    "TA_deg": 156.2698848262728,
+    "PR_sec": 81837.40027019902,
+    "x_km": -88459.48295107207,
+    "y_km": -141524.7678538233,
+    "z_km": 88606.73568363818
+  },
+  {
+    "name": "Enceladus",
+    "target": "602",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 238415.6957238717,
+    "EC": 0.006095923455934486,
+    "IN_deg": 28.05181585847781,
+    "OM_deg": 169.5140631551312,
+    "W_deg": 114.2201793002142,
+    "MA_deg": 18.72347625137304,
+    "N_deg_per_sec": 0.003031228921000092,
+    "QR_km": 236962.3318920456,
+    "AD_km": 239869.0595556978,
+    "Tp_jd": 2461062.428508566,
+    "TA_deg": 18.94933768691711,
+    "PR_sec": 118763.7124685474,
+    "x_km": 131697.7176740053,
+    "y_km": -179538.1080220405,
+    "z_km": 81300.79612729009
+  },
+  {
+    "name": "Tethys",
+    "target": "603",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 294971.9531301789,
+    "EC": 0.001160726655358078,
+    "IN_deg": 27.26315026629367,
+    "OM_deg": 171.153175107179,
+    "W_deg": 356.1750415851699,
+    "MA_deg": 0.2405896104554612,
+    "N_deg_per_sec": 0.002202673411492486,
+    "QR_km": 294629.5713215976,
+    "AD_km": 295314.3349387601,
+    "Tp_jd": 2461062.498735808,
+    "TA_deg": 0.2411489378402308,
+    "PR_sec": 163437.7561928581,
+    "x_km": -288037.3138184389,
+    "y_km": 61399.67317118665,
+    "z_km": -8436.353636614422
+  },
+  {
+    "name": "Dione",
+    "target": "604",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 377667.4549418096,
+    "EC": 0.002690847819285507,
+    "IN_deg": 28.02454407177319,
+    "OM_deg": 169.5310876722989,
+    "W_deg": 262.8581853662957,
+    "MA_deg": 37.80760322515763,
+    "N_deg_per_sec": 0.001520397110051124,
+    "QR_km": 376651.2092942644,
+    "AD_km": 378683.7005893548,
+    "Tp_jd": 2461062.2121883505,
+    "TA_deg": 37.99712774851295,
+    "PR_sec": 236780.2448584599,
+    "x_km": -138173.7525759686,
+    "y_km": 315957.3757218732,
+    "z_km": -152008.598039466
+  },
+  {
+    "name": "Rhea",
+    "target": "605",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 527263.7363665854,
+    "EC": 0.0008273783285389935,
+    "IN_deg": 28.24509156660694,
+    "OM_deg": 170.0296423469719,
+    "W_deg": 191.559290020486,
+    "MA_deg": 110.2166250357689,
+    "N_deg_per_sec": 0.0009216796235749495,
+    "QR_km": 526827.4897776911,
+    "AD_km": 527699.9829554796,
+    "Tp_jd": 2461061.1159449015,
+    "TA_deg": 110.3055627713234,
+    "PR_sec": 390591.2540451486,
+    "x_km": -205906.5409215742,
+    "y_km": 436844.3816256016,
+    "z_km": -211980.806598213
+  },
+  {
+    "name": "Titan",
+    "target": "606",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 1221968.879268703,
+    "EC": 0.02871868154830429,
+    "IN_deg": 27.70879027667363,
+    "OM_deg": 169.0776798382959,
+    "W_deg": 178.1507322203949,
+    "MA_deg": 106.2206540955394,
+    "N_deg_per_sec": 0.0002612655405837111,
+    "QR_km": 1186875.544163047,
+    "AD_km": 1257062.214374359,
+    "Tp_jd": 2461057.7944207033,
+    "TA_deg": 109.3476355986098,
+    "PR_sec": 1377908.465064698,
+    "x_km": -166715.4112205691,
+    "y_km": 1092200.972710195,
+    "z_km": -546650.014973446
+  },
+  {
+    "name": "Hyperion",
+    "target": "607",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 1478349.557441395,
+    "EC": 0.09407257399472359,
+    "IN_deg": 27.05291684250001,
+    "OM_deg": 169.4925540224231,
+    "W_deg": 81.69653109851951,
+    "MA_deg": 290.0811165939048,
+    "N_deg_per_sec": 0.0001963158017248969,
+    "QR_km": 1339277.409308923,
+    "AD_km": 1617421.705573868,
+    "Tp_jd": 2461066.622166064,
+    "TA_deg": 279.5905127742203,
+    "PR_sec": 1833780.046419689,
+    "x_km": -1423369.208572811,
+    "y_km": 234646.5846601153,
+    "z_km": 14737.71095726818
+  },
+  {
+    "name": "Iapetus",
+    "target": "608",
+    "center": "699",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 3560600.556954138,
+    "EC": 0.02870999858778043,
+    "IN_deg": 16.99515502400103,
+    "OM_deg": 138.8845686990019,
+    "W_deg": 232.7766655008012,
+    "MA_deg": 195.6123060194347,
+    "N_deg_per_sec": 5.252145708167495e-05,
+    "QR_km": 3458375.719992335,
+    "AD_km": 3662825.393915941,
+    "Tp_jd": 2461098.725867535,
+    "TA_deg": 194.756549383101,
+    "PR_sec": 6854341.444491383,
+    "x_km": -3180028.615145098,
+    "y_km": -1516797.227972469,
+    "z_km": 988388.6728099533
+  },
+  {
+    "name": "Miranda",
+    "target": "701",
+    "center": "799",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 190945.4592660073,
+    "EC": 0.0004188457284675934,
+    "IN_deg": 97.71541933340164,
+    "OM_deg": 167.6646872142009,
+    "W_deg": 226.5658653949964,
+    "MA_deg": 49.82470875204485,
+    "N_deg_per_sec": 0.001652909785759118,
+    "QR_km": 190865.4825760234,
+    "AD_km": 191025.4359559912,
+    "Tp_jd": 2461062.1511153392,
+    "TA_deg": 49.86139379214573,
+    "PR_sec": 217797.7304639562,
+    "x_km": -26316.24054246023,
+    "y_km": -20313.93479372718,
+    "z_km": -187976.792014921
+  },
+  {
+    "name": "Ariel",
+    "target": "702",
+    "center": "799",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 265979.7903853635,
+    "EC": 0.003250652870835606,
+    "IN_deg": 97.71167411009398,
+    "OM_deg": 167.7242739249768,
+    "W_deg": 58.74392743785851,
+    "MA_deg": 41.95307237785419,
+    "N_deg_per_sec": 0.0010054032121399,
+    "QR_km": 265115.182416163,
+    "AD_km": 266844.398354564,
+    "Tp_jd": 2461062.01704156,
+    "TA_deg": 42.20284887405005,
+    "PR_sec": 358065.2972390807,
+    "x_km": 56667.35756508419,
+    "y_km": 23444.9764036695,
+    "z_km": 258153.8758877758
+  },
+  {
+    "name": "Umbriel",
+    "target": "703",
+    "center": "799",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 436285.0703860091,
+    "EC": 0.002277096541230938,
+    "IN_deg": 97.7632678975853,
+    "OM_deg": 167.6424170645562,
+    "W_deg": 246.4064180503373,
+    "MA_deg": 112.1559105485547,
+    "N_deg_per_sec": 0.0004785891506962509,
+    "QR_km": 435291.6071612423,
+    "AD_km": 437278.5336107758,
+    "Tp_jd": 2461059.7876509745,
+    "TA_deg": 112.3973194851661,
+    "PR_sec": 752210.9506165623,
+    "x_km": -426715.224193277,
+    "y_km": 92227.6674705066,
+    "z_km": -9032.719951978583
+  },
+  {
+    "name": "Titania",
+    "target": "704",
+    "center": "799",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 583596.7960371204,
+    "EC": 0.0009041045374328612,
+    "IN_deg": 97.90555061177767,
+    "OM_deg": 167.7095932257054,
+    "W_deg": 151.1568075244702,
+    "MA_deg": 169.3875740802021,
+    "N_deg_per_sec": 0.0003093489928833777,
+    "QR_km": 583069.163525792,
+    "AD_km": 584124.4285484488,
+    "Tp_jd": 2461056.1624835553,
+    "TA_deg": 169.4066328587152,
+    "PR_sec": 1163734.191097617,
+    "x_km": -451652.9579065412,
+    "y_km": 46166.44223936643,
+    "z_km": -367517.4674081398
+  },
+  {
+    "name": "Oberon",
+    "target": "705",
+    "center": "799",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 129874.5025341654,
+    "EC": 0.001377816050273708,
+    "IN_deg": 99.10041775502633,
+    "OM_deg": 163.3931080087751,
+    "W_deg": 55.29404648874399,
+    "MA_deg": 45.64943778797473,
+    "N_deg_per_sec": 0.002946621376036511,
+    "QR_km": 129695.5593600525,
+    "AD_km": 130053.4457082783,
+    "Tp_jd": 2461062.320692954,
+    "TA_deg": 45.76247437026289,
+    "PR_sec": 122173.823528096,
+    "x_km": 29601.45290595751,
+    "y_km": 12189.18304854529,
+    "z_km": 125738.3025062938
+  },
+  {
+    "name": "Triton",
+    "target": "801",
+    "center": "899",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 354765.0160127838,
+    "EC": 3.032173145356909e-05,
+    "IN_deg": 129.1403348883897,
+    "OM_deg": 222.6709312131464,
+    "W_deg": 267.8344236311149,
+    "MA_deg": 348.250217409432,
+    "N_deg_per_sec": 0.0007089724616322024,
+    "QR_km": 354754.2589232391,
+    "AD_km": 354775.7731023285,
+    "Tp_jd": 2461062.6918168357,
+    "TA_deg": 348.2495098195059,
+    "PR_sec": 507777.127437651,
+    "x_km": 210052.4049732252,
+    "y_km": -101985.3140380773,
+    "z_km": -267072.5127068839
+  },
+  {
+    "name": "Nereid",
+    "target": "802",
+    "center": "899",
+    "epoch_jd": "2461062.500000000",
+    "A_km": 5502122.974189081,
+    "EC": 0.745257403455071,
+    "IN_deg": 5.041376820464899,
+    "OM_deg": 319.386465557683,
+    "W_deg": 296.6404954124331,
+    "MA_deg": 11.09958060326755,
+    "N_deg_per_sec": 1.16064586792195e-05,
+    "QR_km": 1401625.092954433,
+    "AD_km": 9602620.85542373,
+    "Tp_jd": 2461051.431389699,
+    "TA_deg": 81.58948306691666,
+    "PR_sec": 31017212.91133818,
+    "x_km": 2037828.6458713,
+    "y_km": -841990.2202622326,
+    "z_km": 60636.62155794277
+  }
+];
+
+// Convert moon data
+moons = moons.map(m => ({
+  ...m,
+  a: m.A_km,
+  e: m.EC,
+  i: m.IN_deg,
+  Omega: m.OM_deg,
+  omega: m.W_deg,
+  M0: m.MA_deg,
+  n: m.N_deg_per_sec * 86400,
+  epoch_jd: parseFloat(m.epoch_jd)
+}));
+
+/* ================= MOON SCALE (pixels) ================= */
+const MOON_SCALE = {
+  Earth:   10,
+  Mars:    10,
+  Jupiter: 20,
+  Saturn:  20,
+  Uranus:  20,
+  Neptune: 20
+};
+
+
+// ------------------- CANVAS -------------------
+const canvas = document.getElementById("orreryCanvas");
+const ctx = canvas.getContext("2d");
+const inset = { x:0, y:0, w:260, h:260 };
+let cx, cy;
+
+function resizeCanvas(){
+  const controlsH = document.getElementById("controls").offsetHeight;
+  const tableH = document.getElementById("orbitTableContainer").offsetHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - controlsH - tableH;
+  cx = canvas.width/2;
+  cy = canvas.height/2;
+  inset.x = canvas.width - inset.w - 20;
+  inset.y = 20;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// ------------------- TIME -------------------
+let currentJD = Date.now()/86400000 + 2440587.5;
+const BASE_SPEED = 1/86400;
+let timeSpeed = BASE_SPEED;
+document.querySelectorAll("#controls button").forEach(btn=>{
+  btn.onclick = ()=>{
+    const s = btn.dataset.speed;
+    if(s==="reset"){ currentJD = Date.now()/86400000 + 2440587.5; timeSpeed = BASE_SPEED; }
+    else timeSpeed = BASE_SPEED * parseFloat(s);
+  };
+});
+
+  // Time
+function updateTimeDisplays() {
+  const dateUTC = new Date((currentJD - 2440587.5) * 86400000);
+
+  // Current UTC
+  document.getElementById("currentTime").textContent = dateUTC.toISOString().replace("T"," ").split(".")[0] + " UTC";
+
+  // Local time
+  const tzOffset = parseFloat(document.getElementById("timeZoneOffset").value) || 0;
+  const dateLocal = new Date(dateUTC.getTime() + tzOffset * 3600 * 1000);
+  document.getElementById("localTime").textContent = dateLocal.toISOString().replace("T"," ").split(".")[0] + ` (GMT${tzOffset >= 0 ? "+" : ""}${tzOffset})`;
+
+  // Days since J2000
+  const daysSince = currentJD - JD_J2000;
+  document.getElementById("daysSinceJ2000").textContent = daysSince.toFixed(5);
+}
+
+// ------------------- ORBIT FUNCTIONS -------------------
+function orbitPos(obj,jd){
+  const a = obj.a;
+  const e = obj.e || 0;
+  const M0 = obj.M0 || 0;
+  const n = obj.n || Math.sqrt(MU/(a**3))*180/Math.PI*86400;
+  const dJ = jd - (obj.epoch_jd || JD_J2000);
+  const M = (M0 + n*dJ) % 360;
+  let E = M*Math.PI/180;
+  for(let i=0;i<8;i++) E = M*Math.PI/180 + e*Math.sin(E);
+  const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  const r = a*(1-e*e)/(1+e*Math.cos(nu));
+  // --- ROTATION INTO ECLIPTIC FRAME ---
+  const Ω = (obj.Omega || 0) * Math.PI / 180;
+  const ω = (obj.omega || 0) * Math.PI / 180;
+  const i = (obj.i || 0) * Math.PI / 180;
+
+  const θ = ω + nu;
+
+  const cosΩ = Math.cos(Ω), sinΩ = Math.sin(Ω);
+  const cosθ = Math.cos(θ), sinθ = Math.sin(θ);
+  const cosi = Math.cos(i), sini = Math.sin(i);
+
+  const x = r * (cosΩ * cosθ - sinΩ * sinθ * cosi);
+  const y = r * (sinΩ * cosθ + cosΩ * sinθ * cosi);
+  const z = r * (sinθ * sini);
+
+return { x, y, z, r, nu: nu*180/Math.PI, M, E:E*180/Math.PI };
+}
+
+function precomputeOrbit(p, steps=360){
+  const pts=[];
+  for(let t=0;t<=steps;t++){
+    const nu=t*Math.PI/180;
+    const r=p.a*(1-p.e*p.e)/(1+p.e*Math.cos(nu));
+    pts.push({x:r*Math.cos(nu), y:r*Math.sin(nu)});
+  }
+  return pts;
+}
+
+// ------------------- HORIZONS CENTER → PLANET MAPPING -------------------
+const horizonParentMap = {
+  "199": "Mercury",
+  "299": "Venus",
+  "399": "Earth",
+  "301": "Earth",    // Moon’s center is Earth
+  "499": "Mars",
+  "401": "Mars",     // Phobos
+  "402": "Mars",     // Deimos
+  "599": "Jupiter",
+  "501": "Jupiter",  // Io
+  "502": "Jupiter",  // Europa
+  "503": "Jupiter",  // Ganymede
+  "504": "Jupiter",  // Callisto
+  "699": "Saturn",
+  "601": "Saturn",   // Mimas
+  "602": "Saturn",   // Enceladus
+  "603": "Saturn",   // Tethys
+  "604": "Saturn",   // Dione
+  "605": "Saturn",   // Rhea
+  "606": "Saturn",   // Titan
+  "607": "Saturn",   // Hyperion
+  "608": "Saturn",   // Iapetus
+  "799": "Uranus",
+  "701": "Uranus",   // Miranda
+  "702": "Uranus",   // Ariel
+  "703": "Uranus",   // Umbriel
+  "704": "Uranus",   // Titania
+  "705": "Uranus",   // Oberon
+  "899": "Neptune",
+  "801": "Neptune",  // Triton
+  "802": "Neptune"   // Nereid
+};
+
+// Assign moons to planet objects
+moons.forEach(m=>{
+  const planetName = horizonParentMap[m.center];
+  if(!planetName){
+    console.warn(`Moon ${m.name} has unknown center ${m.center}`);
+    return;
+  }
+  const parent = planets.find(p => p.name === planetName);
+  if(!parent){
+    console.warn(`Planet ${planetName} not found for moon ${m.name}`);
+    return;
+  }
+  m.parent = parent; // store planet object
+});
+
+
+// planetocentric moon position
+function moonPosAroundPlanet(moon, jd){
+  const a = moon.a;
+  const e = moon.e || 0;
+  const M0 = moon.M0 || 0;
+  const n = moon.n || Math.sqrt(MU/(a**3))*180/Math.PI*86400;
+  const dJ = jd - (moon.epoch_jd || JD_J2000);
+  const M = (M0 + n*dJ) % 360;
+
+  let E = M*Math.PI/180;
+  for(let i=0;i<8;i++) E = M*Math.PI/180 + e*Math.sin(E);
+
+  const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  const r = a*(1-e*e)/(1+e*Math.cos(nu));
+
+   // --- ROTATION INTO ECLIPTIC FRAME ---
+  const Ω = (moon.Omega || 0) * Math.PI / 180;
+  const ω = (moon.omega || 0) * Math.PI / 180;
+  const i = (moon.i || 0) * Math.PI / 180;
+
+  const θ = ω + nu;
+
+  const cosΩ = Math.cos(Ω), sinΩ = Math.sin(Ω);
+  const cosθ = Math.cos(θ), sinθ = Math.sin(θ);
+  const cosi = Math.cos(i), sini = Math.sin(i);
+
+  const x = r * (cosΩ * cosθ - sinΩ * sinθ * cosi);
+  const y = r * (sinΩ * cosθ + cosΩ * sinθ * cosi);
+  const z = r * (sinθ * sini);
+  return { x, y, z, r, nu: nu*180/Math.PI, M, E:E*180/Math.PI };
+}
+
+// ------------------- TABLE SETUP -------------------
+const TABLE_COLS=[
+  { key:"a", label:"a", unit:"AU", dec:3 }, { key:"e", label:"e", dec:3 },
+  { key:"i", label:"i", unit:"deg", dec:2 }, { key:"Omega", label:"Ω", unit:"deg", dec:2 },
+  { key:"omega", label:"ω", unit:"deg", dec:2 }, { key:"M0", label:"M₀", unit:"deg", dec:2 },
+  { key:"n", label:"n", unit:"deg/day", dec:3 }, { key:"M", label:"M", unit:"deg", dec:2 },
+  { key:"E", label:"E", unit:"deg", dec:2 }, { key:"r", label:"r", unit:"AU", dec:3 },
+  { key:"nu", label:"ν", unit:"deg", dec:2 }, { key:"x", label:"x", unit:"AU", dec:2 },
+  { key:"y", label:"y", unit:"AU", dec:2 }
+];
+
+const orbitHead = document.getElementById("orbitTableHead");
+orbitHead.innerHTML = "<th>Name</th>" + TABLE_COLS.map(c => `<th>${c.label}</th>`).join("") + "<th>CX</th><th>CY</th>";
+
+const moonHead = document.getElementById("moonTableHead");
+moonHead.innerHTML = "<th>Name</th><th>Parent</th>" + TABLE_COLS.map(c => `<th>${c.label}</th>`).join("") + "<th>X km</th><th>Y km</th><th>CX</th><th>CY</th>";
+
+// Planet table
+const planetTable = document.getElementById("orbitTableBody");
+const planetRows = {};
+planets.forEach(p=>{
+  const tr=document.createElement("tr");
+  const tdName=document.createElement("td"); tdName.textContent=p.name; tr.appendChild(tdName);
+  const cells=TABLE_COLS.map(c=>{ const td=document.createElement("td"); td.className="num"; tr.appendChild(td); return td; });
+  const tdCX=document.createElement("td"); tdCX.className="num"; tr.appendChild(tdCX);
+  const tdCY=document.createElement("td"); tdCY.className="num"; tr.appendChild(tdCY);
+  planetTable.appendChild(tr);
+  planetRows[p.name]={ cells, tdCX, tdCY };
+});
+
+// Moon table
+const moonTable=document.getElementById("moonTableBody");
+moons.forEach(m=>{
+  const tr=document.createElement("tr");
+  const tdName=document.createElement("td"); tdName.textContent=m.name; tr.appendChild(tdName);
+  const tdParent = document.createElement("td"); 
+  tdParent.textContent = m.parent.name; tr.appendChild(tdParent);
+  const cells=TABLE_COLS.map(c=>{ const td=document.createElement("td"); td.className="num"; tr.appendChild(td); return td; });
+  const tdXkm=document.createElement("td"); tdXkm.className="num"; tr.appendChild(tdXkm);
+  const tdYkm=document.createElement("td"); tdYkm.className="num"; tr.appendChild(tdYkm);
+  const tdCX=document.createElement("td"); tdCX.className="num"; tr.appendChild(tdCX);
+  const tdCY=document.createElement("td"); tdCY.className="num"; tr.appendChild(tdCY);
+  moonTable.appendChild(tr);
+  m.rowCells = { cells, tdXkm, tdYkm, tdCX, tdCY, parent: m.parent };
+
+});
+
+
+// ------------------- TABLE UPDATE -------------------
+function updateTables(scale){
+  planets.forEach(p=>{
+    const d=orbitPos(p,currentJD);
+    const row=planetRows[p.name];
+    TABLE_COLS.forEach((c,i)=>{
+      let v=d[c.key]!==undefined?d[c.key]:p[c.key];
+      if(["a","r","x","y"].includes(c.key)) v/=AU;
+      row.cells[i].textContent=v.toFixed(c.dec);
+    });
+    row.tdCX.textContent=(cx+d.x*scale).toFixed(1);
+    row.tdCY.textContent=(cy-d.y*scale).toFixed(1);
+  });
+
+  moons.forEach(m=>{
+    if(!m.parent) return;
+    const p = m.parent;
+    const moonRel=moonPosAroundPlanet(m,currentJD);
+    const moonAbs = {x: p.x + moonRel.x, y: p.y + moonRel.y };    
+    TABLE_COLS.forEach((c,i)=>{
+      let v=moonRel[c.key]!==undefined?moonRel[c.key]:m[c.key];
+      if(["a","r","x","y"].includes(c.key)) v/=AU;
+      m.rowCells.cells[i].textContent=v.toFixed(c.dec);
+    });
+    m.rowCells.tdXkm.textContent=moonAbs.x.toFixed(0);
+    m.rowCells.tdYkm.textContent=moonAbs.y.toFixed(0);
+    m.rowCells.tdCX.textContent=(cx+moonAbs.x*scale).toFixed(1);
+    m.rowCells.tdCY.textContent=(cy-moonAbs.y*scale).toFixed(1);
+  });
+}
+
+
+// ------------------- PHYSICS -------------------
+let lastPhys = performance.now();
+function physics(now){
+  const dt=(now-lastPhys)/1000; lastPhys=now;
+  currentJD += dt*timeSpeed;
+
+  updateTimeDisplays();
+  
+  requestAnimationFrame(physics);
+}
+requestAnimationFrame(physics);
+
+/* ================= DRAW MOON ================= */
+const maxMoonDist = {};
+moons.forEach(m => {
+  const p = m.parent;
+  if (!p) return;
+
+  const rel = moonPosAroundPlanet(m, currentJD);
+  const r = Math.hypot(rel.x, rel.y);
+
+  maxMoonDist[p.name] = Math.max(maxMoonDist[p.name] || 0, r);
+});
+
+
+function drawMoon(moonPos, planetPos, planetName, scale, cxRef, cyRef){
+  const vx = moonPos.x - planetPos.x;
+  const vy = moonPos.y - planetPos.y;
+  const r  = Math.hypot(vx, vy);
+  if (!r) return;
+
+  const rMax = maxMoonDist[planetName];
+  if (!rMax) return;
+
+  const MAX_PIXEL_RADIUS = MOON_SCALE[planetName] || 40;
+
+  const s  = (r / rMax) * MAX_PIXEL_RADIUS;
+  const dx = (vx / r) * s;
+  const dy = (vy / r) * s;
+
+  ctx.fillStyle = "#0ff";
+  ctx.beginPath();
+  ctx.arc(
+    cxRef + planetPos.x * scale + dx,
+    cyRef - planetPos.y * scale - dy,
+    2, 0, Math.PI * 2
+  );
+  ctx.fill();
+}
+//VISIBILITY CONE BLOCK
+function drawVisibilityCone(cxRef, cyRef, scale, jd, maxAU = 10){
+    const show = document.getElementById("showVisibilityLines").checked;
+    if(!show) return; // skip drawing if unchecked
+
+    const earth = planets.find(p => p.name === "Earth");
+    if (!earth) return;
+
+  // Earth heliocentric position
+  const e = orbitPos(earth, jd);
+
+  // Earth → Sun direction
+  const sunDir = Math.atan2(-e.y, -e.x);
+
+  // Observer longitude
+  const obsLonDeg = parseFloat(document.getElementById("observerLon").value || 0);
+  const obsLonRad = obsLonDeg * Math.PI / 180;
+
+  // Earth rotation since J2000
+  const dDays = jd - JD_J2000;
+  const thetaRot = EARTH_ROT_RATE * dDays;
+
+  // Local zenith direction
+  const zenith = sunDir + obsLonRad + thetaRot;
+
+  // Canvas anchor (Earth, not Sun)
+  const ex = cxRef + e.x * scale;
+  const ey = cyRef - e.y * scale;
+
+  const L = maxAU * AU * scale;
+  const halfCone = 60 * Math.PI / 180; // 120° total
+
+  // -------- Horizon line (perpendicular to zenith) --------
+  const hx = Math.cos(zenith + Math.PI / 2);
+  const hy = Math.sin(zenith + Math.PI / 2);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.setLineDash([5,5]);
+  ctx.beginPath();
+  ctx.moveTo(ex - hx * L, ey + hy * L);
+  ctx.lineTo(ex + hx * L, ey - hy * L);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // -------- Visibility cone --------
+  ctx.strokeStyle = "rgba(0,255,255,0.4)";
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(
+    ex + Math.cos(zenith - halfCone) * L,
+    ey - Math.sin(zenith - halfCone) * L
+  );
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(
+    ex + Math.cos(zenith + halfCone) * L,
+    ey - Math.sin(zenith + halfCone) * L
+  );
+  ctx.stroke();
+}
+
+
+// ------------------- RENDER -------------------
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const maxOrbit=Math.max(...planets.map(p=>p.a*(1+p.e)));
+  const scale=(Math.min(canvas.width,canvas.height)/2-50)/maxOrbit;
+
+  // Sun
+  ctx.fillStyle="#ff0"; ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
+
+  // Visibility cone & horizon (Earth observer)
+  drawVisibilityCone(cx, cy, scale, currentJD, 10);
+
+
+  //Planets
+  const planetData={};
+  planets.forEach(p=>{
+    ctx.strokeStyle="rgba(255,255,255,0.05)"; ctx.beginPath();
+    p.path.forEach((pt,i)=>{ const x=cx+pt.x*scale, y=cy-pt.y*scale; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+
+    const d=orbitPos(p,currentJD); planetData[p.name]={...d,...p};
+    p.x = d.x; p.y = d.y;
+    const px=cx+d.x*scale, py=cy-d.y*scale;
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2); ctx.fill();
+    ctx.fillText(p.name,px+5,py-5);
+  });
+
+// ------------------- DRAW MOONS ON MAIN CANVAS -------------------
+moons.forEach(m => {
+    const parent = m.parent;
+    if(!parent) return;
+
+  // Moon relative to planet
+  const moonRel = moonPosAroundPlanet(m, currentJD);
+
+  // Absolute moon position
+  const moonAbs = {
+    x: parent.x + moonRel.x,
+    y: parent.y + moonRel.y
+  };
+
+  drawMoon(moonAbs, parent, parent.name, scale, cx, cy);
+});
+
+  // Update planet table
+planets.forEach(p=>{
+  const d = orbitPos(p,currentJD);
+  const row = planetRows[p.name];
+  TABLE_COLS.forEach((c,i)=>{
+    let v = d[c.key]!==undefined ? d[c.key] : p[c.key];
+    if(["a","r","x","y"].includes(c.key)) v /= AU;
+    row.cells[i].textContent = Number(v).toFixed(c.dec);
+  });
+  row.tdCX.textContent = (cx + d.x*scale).toFixed(1);
+  row.tdCY.textContent = (cy - d.y*scale).toFixed(1);
+});
+
+
+// Update moon table
+moons.forEach(m=>{
+  if(!m.rowCells.parent) return;
+  const parent = m.rowCells.parent;
+
+  const moonRel = moonPosAroundPlanet(m,currentJD);
+  const moonAbs = { x: parent.x + moonRel.x, y: parent.y + moonRel.y };
+
+  // TABLE_COLS
+  TABLE_COLS.forEach((c,i)=>{
+    let v = moonRel[c.key]!==undefined ? moonRel[c.key] : m[c.key];
+    if(["a","r","x","y"].includes(c.key)) v /= AU;
+    m.rowCells.cells[i].textContent = Number(v).toFixed(c.dec);
+  });
+
+  // km cells
+  m.rowCells.tdXkm.textContent = moonAbs.x.toFixed(0);
+  m.rowCells.tdYkm.textContent = moonAbs.y.toFixed(0);
+
+  // canvas cells
+// Compute exact canvas position of the moon
+const vx = moonAbs.x - parent.x;
+const vy = moonAbs.y - parent.y;
+const r = Math.hypot(vx, vy);
+
+let moonCx = cx + parent.x * scale;
+let moonCy = cy - parent.y * scale;
+
+if (r !== 0) {
+    const s = MOON_SCALE[parent.name] || 20;
+    const dx = (vx / r) * s;
+    const dy = (vy / r) * s;
+    moonCx += dx;
+    moonCy -= dy;
+}
+
+// Now set the canvas cells
+m.rowCells.tdCX.textContent = moonCx.toFixed(1);
+m.rowCells.tdCY.textContent = moonCy.toFixed(1);
+});
+
+  // Inset
+  ctx.save(); 
+  ctx.translate(inset.x,inset.y);
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,inset.w,inset.h);
+  ctx.fillStyle="#ff0"; ctx.beginPath(); ctx.arc(inset.w/2,inset.h/2,4,0,Math.PI*2); ctx.fill();
+
+  const inner = planets.slice(0,4);
+  const maxInner = Math.max(...inner.map(p=>p.a*(1+p.e)));
+  const s2 = (Math.min(inset.w,inset.h)/2-10)/maxInner;
+
+  // Inner planets
+  inner.forEach(p=>{
+    if(!p.path) p.path = precomputeOrbit(p);
+    ctx.strokeStyle="rgba(255,255,255,0.15)";
+    ctx.beginPath();
+    p.path.forEach((pt,i)=>{
+      const x=inset.w/2 + pt.x*s2;
+      const y=inset.h/2 - pt.y*s2;
+      i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+    });
+    ctx.stroke();
+
+    const d=orbitPos(p,currentJD);
+    const px = inset.w/2 + d.x*s2;
+    const py = inset.h/2 - d.y*s2;
+    ctx.fillStyle="#fff";
+    ctx.beginPath();
+    ctx.arc(px,py,3,0,Math.PI*2); ctx.fill();
+    ctx.fillText(p.name, px+3, py-3);
+  });
+
+  drawVisibilityCone(
+  inset.w / 2,
+  inset.h / 2,
+  s2,
+  currentJD,
+  1.5   // AU limit for inset
+);
+
+
+// Draw moons (inset)
+moons.forEach(m=>{
+    const parent = m.parent;
+    if(!parent) return;
+
+
+  // Moon relative to planet
+  const moonRel = moonPosAroundPlanet(m, currentJD);
+
+  // Absolute moon position
+  const moonAbs = {
+    x: parent.x + moonRel.x,
+    y: parent.y + moonRel.y
+  };
+
+  drawMoon(moonAbs, parent, parent.name, s2, inset.w/2, inset.h/2);
+});
+
+
+  ctx.restore();
+
+  requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>

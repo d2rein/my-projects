@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ match_name }} Scoreboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+
+
+<style>
+    /* GLOBAL LOOK */
+    body {
+        background: #000;
+        font-family: Arial, sans-serif;
+        margin: 18px;
+        color: #fff;
+        text-transform: uppercase;
+    }
+
+    /* ===============================
+       SPACING TUNING KNOBS
+       =============================== */
+    :root {
+        --cell-pad-x: 2px;   /* left / right */
+        --cell-pad-y: 1px;   /* top / bottom */
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 6px;
+        color: #fff;
+    }
+
+    .meta {
+        text-align: center;
+        margin-bottom: 18px;
+        color: #fff;
+    }
+
+    /* GRID LAYOUT */
+    .container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        align-items: start;
+    }
+
+    /* SCOREBOARD TABLE BASE */
+    .scoreboard {
+    width: 1000px; /* fixed width to match colgroup sum */
+    table-layout: fixed;
+    }
+
+    .scoreboard th,
+    .scoreboard td {
+        background: #0a0a0a;
+        border: 0.1px solid #000;
+        padding: var(--cell-pad-y) var(--cell-pad-x);
+        text-align: left;
+        vertical-align: middle;   /* tighter visual rhythm */
+        word-break: break-word;
+        font-size: 13px;
+        line-height: 1;         /* IMPORTANT for cramped look */
+    }
+
+    /* COLUMN HEADINGS (tall, skinny, yellow-orange, bigger) */
+    .scoreboard th {
+        background: #000;
+        font-weight: 300;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 24px;
+        color: #ffcc33;
+        letter-spacing: 0.03em;
+    }
+
+    /**********************************************
+     *  COLOUR RULES
+     **********************************************/
+
+    /* WHITE TEXT — names */
+    .player-name {
+        color: #fff !important;
+    }
+
+    /* WHITE TEXT — runs + bcode */
+    .team-name,
+    .runs,
+    .bcode,
+    .small {
+        color: #fff !important;
+        text-align: right !important;
+    }
+
+    /* YELLOW/ORANGE TEXT — overs, maidens, wickets, balls, player numbers */
+    .metric,
+    .player-num {
+        color: #ffcc33 !important;
+        font-weight: bold;
+        text-align: right !important;
+    }
+
+    /* SIDE XIs (kept intact even if unused) */
+    .xi {
+        border: 1px solid #444;
+        padding: 8px;
+        background: #111;
+        color: #fff;
+    }
+
+    .xi h3 {
+        margin: 0 0 6px 0;
+        font-size: 16px;
+        text-align: center;
+        color: #ffcc33;
+        font-family: "Arial Narrow", "Helvetica Neue Condensed", sans-serif;
+    }
+
+    .xi table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .xi th,
+    .xi td {
+        border: 1px solid #555;
+        padding: 4px 6px;
+    }
+
+    /* “1st Innings”, “2nd Innings”, “Wickets”, “Sundries”, “Totals” */
+    /*td.label-heading {
+        font-weight: 300;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 18px;
+        color: #ffcc33;
+        letter-spacing: 0.03em;
+    }/*
+
+    /* FIRST COLUMN BASE */
+td.label {
+    text-align: left;
+    color: #ffcc33;   /* default label colour */
+}
+
+/* TEAM NAMES — white */
+td.team-label {
+    text-align: center;
+    color: #fff !important;
+}
+
+/* INNINGS LABELS — superscript + justified */
+td.innings-label {
+    text-align: justify;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+}
+
+/* Superscripts tuned for broadcast look */
+td.innings-label sup {
+    font-size: 60%;
+    vertical-align: super;
+    line-height: 0;
+}
+
+/* TOTAL LABELS — match headings */
+td.total-label {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 24px;
+    color: #ffcc33;
+    letter-spacing: 0.03em;
+}
+
+
+    /* Responsive */
+    @media (max-width: 980px) {
+        .container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .muted { color: #888; font-size: 13px; }
+    .placeholder { color: #666; }
+
+    /* Everything bold (as requested earlier) */
+    .scoreboard,
+    .scoreboard * {
+        font-weight: bold;
+    }
+</style>
+
+</head>
+<body>
+    <h1>{{ match_name }}</h1>
+    <div class="meta">
+        <span>Status: {{ status }}</span> — <span>Last updated: {{ updated_time }}</span>
+    </div>
+
+    <div class="container">
+        <!-- MAIN SCOREBOARD -->
+        <div>
+            <table class="scoreboard">
+<thead>
+  <tr>
+    <th style="width:100px;">SUMMARY</th>
+    <th style="width:110px;"></th>
+
+    <th style="width:15px;">#</th>
+    <th style="width:154px;">BOWLERS</th>
+    <th style="width:22px;">O</th>
+    <th style="width:22px;">M</th>
+    <th style="width:50px;">Wkts</th>
+    <th style="width:50px;">Runs</th>
+
+    <th style="width:15px;">#</th>
+    <th style="width:154px;">BATTERS</th>
+    <th style="width:55px;">OUT B</th>
+    <th style="width:50px;">RUNS</th>
+    <th style="width:50px;">Balls</th>
+    <th style="width:110px;">FALL of WKTS</th>
+  </tr>
+</thead>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Build the summary rows we want down the left column.
+                       We'll display 13 rows (you can increase if you want), safe-guarded. #}
+                    {% set rows = 13 %}
+                    {% set summary_safe = summary or [] %}
+                    {% set sb0 = summary_safe[0] if summary_safe|length > 0 else None %}
+                    {% set sb1 = summary_safe[1] if summary_safe|length > 1 else None %}
+                    {% set sb2 = summary_safe[2] if summary_safe|length > 2 else None %}
+                    {% set sb3 = summary_safe[3] if summary_safe|length > 3 else None %}
+
+                    {% set team0_innings = team_innings_map[teams[0]] %}
+                    {% set team1_innings = team_innings_map[teams[1]] %}
+
+                    {% set left_labels = [
+                        teams[0] if teams|length>0 else "Team 1",
+                        "1st Innings",
+                        "2nd Innings",
+                        teams[1] if teams|length>1 else "Team 2",
+                        "1st Innings",
+                        "2nd Innings",
+                        ""
+                        "WICKETS",
+                        current_batters[0].name if current_batters|length>0 else "",
+                        current_batters[1].name if current_batters|length>1 else "",
+                        "SUNDRIES",
+                        "TOTAL",
+                        "LEAD"
+                    ] %}
+
+                    {% set left_scores = [
+                        "",
+                        (team0_innings[0].w ~ '/' ~ team0_innings[0].r ~ ' (' ~ team0_innings[0].o ~ ' ov)') if team0_innings|length>0 else "",
+                        (team0_innings[1].w ~ '/' ~ team0_innings[1].r ~ ' (' ~ team0_innings[1].o ~ ' ov)') if team0_innings|length>1 else "",
+                         "",
+                        (team1_innings[0].w ~ '/' ~ team1_innings[0].r ~ ' (' ~ team1_innings[0].o ~ ' ov)') if team1_innings|length>0 else "",
+                        (team1_innings[1].w ~ '/' ~ team1_innings[1].r ~ ' (' ~ team1_innings[1].o ~ ' ov)') if team1_innings|length>1 else "",
+                        (curr_wkts if curr_wkts is not none else ""),
+                        (current_batters[0].runs ~ ' off ' ~ current_batters[0].balls) if current_batters|length>0 else "",
+                        (current_batters[1].runs ~ ' off ' ~ current_batters[1].balls) if current_batters|length>1 else "",
+                        curr_extras if curr_extras is not none else "",
+                        (curr_wkts ~ '/' ~ curr_runs ~ ' (' ~ curr_overs ~ ' ov)') if curr_runs is not none else "",
+                        lead_text,
+                    ] %}
+
+                    {# iterate rows; for bowlers/batters use curr_bowl and curr_bat lists (safely) #}
+                    {% for i in range(rows) %}
+                        <tr>
+                            <td
+  class="
+    label
+    {% if i in [0,3] %} team-label{% endif %}
+    {% if i in [1,2,4,5] %} innings-label{% endif %}
+    {% if i in [6,9,10] %} total-label{% endif %}
+  "
+>
+{% if i in [1,2,3,4,5,6] %}
+    {{ left_labels[i]
+       |replace('1st','1<sup>st</sup>')
+       |replace('2nd','2<sup>nd</sup>')
+       |safe
+    }}
+{% else %}
+    {{ left_labels[i] if i < left_labels|length else "" }}
+{% endif %}
+</td>
+                            <td class="small">{{ left_scores[i] if i < left_scores|length else "" }}</td>
+
+                            {# Bowler columns #}
+                            <td class="player-num">{{ curr_bowl[i].num if curr_bowl|length > i else "" }}</td>
+                            <td class="player-name">{{ curr_bowl[i].display_name if curr_bowl|length > i else "" }}</td>
+                            <td class="metric">{{ curr_bowl[i].overs if curr_bowl|length > i else "" }}</td>
+                            <td class="metric">{{ curr_bowl[i].mdns if curr_bowl|length > i else "" }}</td>
+                            <td class="metric">{{ curr_bowl[i].wkts if curr_bowl|length > i else "" }}</td>
+                            <td class="runs">{{ curr_bowl[i].runs if curr_bowl|length > i else "" }}</td>
+
+                            {# Batter columns #}
+                            <td class="player-num">{{ curr_bat[i].num if curr_bat|length > i else "" }}</td>
+                            <td class="player-name">{{ curr_bat[i].display_name if curr_bat|length > i else "" }}</td>
+                            <!-- <td class="small">{{ curr_bat[i].dismissal if curr_bat|length > i else "" }}</td> -->
+                            <td class="bcode">{{ curr_bat[i].bcode if curr_bat|length > i else "" }}</td>
+                            <td class="runs">{{ curr_bat[i].runs if curr_bat|length > i else "" }}</td>
+                            <td class="metric">{{ curr_bat[i].balls if curr_bat|length > i else "" }}</td>
+                            <td></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    
+        <!-- SIDE: Playing XIs -->
+        <!--  
+        <div class="side">
+            <div class="xi">
+                <h3>{{ teams[0] if teams|length>0 else "Home Team" }} — Playing XI</h3>
+                <table>
+                    <thead>
+                        <tr><th style="width:8%;">#</th><th>Name</th><th style="width:38%;">Role</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(11) %}
+                            {% set p = home_team[i] if home_team|length > i else None %}
+                            <tr>
+                                <td class="nowrap">{{ i+1 }}</td>
+                                <td>{{ p.name if p is not none else ('-' ) }}</td>
+                                <td class="small">{{ p.role if p is not none else '' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="xi">
+                <h3>{{ teams[1] if teams|length>1 else "Away Team" }} — Playing XI</h3>
+                <table>
+                    <thead>
+                        <tr><th style="width:8%;">#</th><th>Name</th><th style="width:38%;">Role</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(11) %}
+                            {% set p = away_team[i] if away_team|length > i else None %}
+                            <tr>
+                                <td class="nowrap">{{ i+1 }}</td>
+                                <td>{{ p.name if p is not none else ('-' ) }}</td>
+                                <td class="small">{{ p.role if p is not none else '' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <p class="muted" style="margin-top:12px;">Data source: local JSON / optional API. If players are missing, you can edit <code>match_config.json</code> to set the Playing XI.</p>
+     -->
+</body>
+</html>
