@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D&D Dice Console</title>
+
+<style>
+body {
+  margin: 0;
+  background: #111;
+  color: #eee;
+  font-family: system-ui, sans-serif;
+}
+
+.container {
+  max-width: 480px;
+  margin: auto;
+  padding: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+}
+
+th, td {
+  padding: 4px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
+
+th {
+  font-weight: 600;
+  color: #bbb;
+}
+
+.roll-name {
+  text-align: left;
+  font-weight: 600;
+}
+
+.formula {
+  font-size: 0.7em;
+  color: #888;
+}
+
+input[type="number"] {
+  width: 48px;
+}
+
+.roll-btn {
+  width: 100%;
+  height: 100%;
+  font-size: 0.9em;
+  background: #222;
+  color: #fff;
+  border: 1px solid #444;
+}
+
+.output {
+  text-align: left;
+  padding: 6px;
+  font-size: 0.75em;
+  color: #ddd;
+}
+
+.output.placeholder {
+  color: #666;
+}
+
+.history {
+  margin-top: 10px;
+  font-size: 0.75em;
+  color: #aaa;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<table>
+  <thead>
+    <tr>
+      <th>Roll</th>
+      <th>LVL</th>
+      <th>MOD</th>
+      <th>Adv</th>
+      <th>Dis</th>
+      <th>Crit</th>
+      <th>Curse</th>
+      <th>ROLL</th>
+    </tr>
+  </thead>
+  <tbody id="rollBody"></tbody>
+</table>
+
+<div id="history" class="history"></div>
+</div>
+
+<script>
+const CURSE_DAMAGE = 3;
+const CURSE_DAMAGE_TYPE = "psychic";
+const STORAGE_KEY = "dnd_modifiers_v1";
+const savedMods = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+
+const rolls = [
+  {
+    id: "initiative",
+    label: "Initiative",
+    formula: "1 D20 + MOD",
+    hasLevel: false,
+    damage: false,
+    allowAdv: true,
+    defaultMod: 2,
+    dice: () => [{ dice: "1d20", type: "init" }]
+  },
+  {
+    id: "attack_battleaxe",
+    label: "Attack – Battle Axe",
+    formula: "1 D20 + MOD",
+    hasLevel: false,
+    damage: false,
+    allowAdv: true,
+    defaultMod: 9,
+    dice: () => [{ dice: "1d20", type: "attack" }]
+  },
+  {
+    id: "damage_battleaxe",
+    label: "Damage – Battle Axe",
+    formula: "1 D8 + 1 D4 + MOD",
+    hasLevel: false,
+    damage: true,
+    allowAdv: false,
+    defaultMod: 7,
+    modDamageType: "slashing",
+    dice: () => [
+      { dice: "1d8", type: "slashing" },
+      { dice: "1d4", type: "L/T" }
+    ]
+  },
+  {
+    id: "teleport_battleaxe",
+    label: "Teleport – Battle Axe",
+    formula: "1 D8 + 1 D4 + 2×LVL D6 + MOD",
+    hasLevel: true,
+    damage: true,
+    allowAdv: false,
+    defaultMod: 7,
+    modDamageType: "slashing",
+    dice: lvl => [
+      { dice: "1d8", type: "slashing" },
+      { dice: "1d4", type: "L/T" },
+      { dice: `${2 * lvl}d6`, type: "AOE L/T" }
+    ]
+  },
+  {
+    id: "smite_battleaxe",
+    label: "Smite – Battle Axe",
+    formula: "1 D8 + 1 D4 + 1+LVL D8 + MOD",
+    hasLevel: true,
+    damage: true,
+    allowAdv: false,
+    defaultMod: 7,
+    modDamageType: "slashing",
+    dice: lvl => [
+      { dice: "1d8", type: "slashing" },
+      { dice: "1d4", type: "L/T" },
+      { dice: `${1+lvl}d8`, type: "RAD" }
+    ]
+  },
+  {
+    id: "smite_standalone",
+    label: "Smite",
+    formula: "1+LVL D8",
+    hasLevel: true,
+    damage: true,
+    allowAdv: false,
+    defaultMod: 0,
+    modDamageType: "slashing",
+    dice: lvl => [
+      { dice: `${1+lvl}d8`, type: "RAD" }
+    ]
+  },
+  {
+    id: "fire_breath",
+    label: "Fire Breath/Hellish Rebule",
+    formula: "1+LVL D10",
+    hasLevel: true,
+    damage: true,
+    allowAdv: false,
+    defaultMod: 0,
+    modDamageType: "slashing",
+    dice: lvl => [
+      { dice: `${1+lvl}d10`, type: "Fire" }
+    ]
+  }
+];
+
+function rollDice(expr) {
+  const [count, size] = expr.split("d").map(Number);
+  const rolls = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * size));
+  return { rolls, max: count * size };
+}
+
+const history = [];
+
+function performRoll(cfg, state) {
+  let allRolls = [];
+  let breakdown = {};
+  let total = 0;
+  let critBonus = 0;
+
+  // Attack / Initiative (d20 logic)
+  if (!cfg.damage) {
+    const d20a = rollDice("1d20").rolls[0];
+    let chosen = d20a;
+    let detail = `${d20a}`;
+
+    if (state.adv || state.dis) {
+      const d20b = rollDice("1d20").rolls[0];
+      chosen = state.adv ? Math.max(d20a, d20b) : Math.min(d20a, d20b);
+      detail = `${state.adv ? "max" : "min"}(${d20a},${d20b})`;
+    }
+
+    total = chosen + state.mod;
+    return {
+      text: `${detail} + MOD(${state.mod}) = ${total}`
+    };
+  }
+
+  // Damage rolls
+  cfg.dice(state.lvl).forEach(d => {
+    const r = rollDice(d.dice);
+    const sum = r.rolls.reduce((a,b)=>a+b,0);
+
+    allRolls.push(...r.rolls);
+    breakdown[d.type] = (breakdown[d.type] || 0) + sum;
+    total += sum;
+
+    if (state.crit) critBonus += r.max;
+  });
+
+if (cfg.modDamageType && state.mod !== 0) {
+  breakdown[cfg.modDamageType] =
+    (breakdown[cfg.modDamageType] || 0) + state.mod;
+  total += state.mod;
+}
+
+ if (state.curse) {
+  breakdown[CURSE_DAMAGE_TYPE] =
+    (breakdown[CURSE_DAMAGE_TYPE] || 0) + CURSE_DAMAGE;
+  total += CURSE_DAMAGE;
+}
+  total += critBonus;
+
+  return {
+    text:
+  `${allRolls.join(" + ")}` +
+  (cfg.modDamageType ? ` + MOD(${state.mod})` : "") +
+  (state.curse ? ` + ${CURSE_DAMAGE_TYPE}(${CURSE_DAMAGE})` : "") +
+  (state.crit ? ` + Crit(${critBonus})` : "") +
+  ` = ${total} — ` +
+  Object.entries(breakdown).map(([k,v])=>`${k}: ${v}`).join(" | ")  };
+}
+
+function render() {
+  const body = document.getElementById("rollBody");
+  body.innerHTML = "";
+
+  rolls.forEach(cfg => {
+    const modValue = savedMods[cfg.id] ?? cfg.defaultMod;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="roll-name">
+        ${cfg.label}
+        <div class="formula">${cfg.formula}</div>
+      </td>
+      <td><select ${cfg.hasLevel ? "" : "disabled"}>
+        ${[1,2,3,4,5].map(l=>`<option>${l}</option>`).join("")}
+      </select></td>
+      <td><input type="number" value="${modValue}" class="mod"></td>
+      <td><input type="checkbox" class="adv" ${cfg.allowAdv ? "" : "disabled"}></td>
+      <td><input type="checkbox" class="dis" ${cfg.allowAdv ? "" : "disabled"}></td>
+      <td><input type="checkbox" class="crit" ${cfg.damage ? "" : "disabled"}></td>
+      <td><input type="checkbox" class="curse" ${cfg.damage ? "" : "disabled"}></td>
+      <td><button class="roll-btn">ROLL</button></td>
+    `;
+
+    const outputRow = document.createElement("tr");
+    const outputCell = document.createElement("td");
+    outputCell.colSpan = 8;
+    outputCell.className = "output placeholder";
+    outputCell.textContent = "\u00A0";
+    outputRow.appendChild(outputCell);
+
+    const modInput = row.querySelector(".mod");
+    modInput.onchange = () => {
+      savedMods[cfg.id] = Number(modInput.value);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedMods));
+    };
+
+    // Adv / Dis mutual exclusion
+    const adv = row.querySelector(".adv");
+    const dis = row.querySelector(".dis");
+    adv.onchange = () => { if (adv.checked) dis.checked = false; };
+    dis.onchange = () => { if (dis.checked) adv.checked = false; };
+
+    row.querySelector(".roll-btn").onclick = () => {
+      const result = performRoll(cfg, {
+        lvl: Number(row.querySelector("select").value),
+        mod: Number(modInput.value),
+        adv: adv.checked,
+        dis: dis.checked,
+        crit: row.querySelector(".crit").checked,
+        curse: row.querySelector(".curse").checked
+      });
+
+      outputCell.classList.remove("placeholder");
+      outputCell.textContent = result.text;
+
+      history.unshift(`${cfg.label}: ${result.text}`);
+      history.splice(6);
+      document.getElementById("history").innerHTML =
+        "<strong>History</strong><br>" + history.join("<br>");
+    };
+
+    body.appendChild(row);
+    body.appendChild(outputRow);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
