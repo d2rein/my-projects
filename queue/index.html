@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Podcast Queue Builder</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; }
+    h1 { margin-bottom: 10px; }
+    h2 { margin-top: 30px; }
+    .episode { margin-bottom: 6px; }
+    .feed-name { color: #666; font-size: 0.9em; }
+    .small { font-size: 0.85em; color: #777; }
+    button { padding: 8px 14px; font-size: 14px; cursor: pointer; }
+    #message { margin: 15px 0; font-weight: bold; }
+    hr { margin: 40px 0; }
+  </style>
+</head>
+<body>
+
+<h1>Podcast Queue Builder</h1>
+<p id="message"></p>
+
+<form id="queue-form">
+
+  <h2>1. Mark listened episodes</h2>
+  <div id="listened-section"></div>
+
+  <h2>2. Selective podcasts: approve new episodes</h2>
+  <div id="selective-section"></div>
+
+  <h2>3. Backup episodes (optional)</h2>
+  <div id="backup-section"></div>
+
+  <h2>4. Build and publish next queue</h2>
+  <p class="small">
+    This will remove listened episodes, add approved ones,
+    fill up to 50 items, and regenerate the RSS feed.
+  </p>
+
+  <button type="submit">Update Queue & Publish RSS</button>
+</form>
+
+<h2>Current queue preview</h2>
+<ol id="queue-preview"></ol>
+
+<hr>
+
+<p class="small">
+  Your podcatcher should subscribe to:<br>
+  <code>https://my-projects-cqs.pages.dev/feed.xml</code>
+</p>
+
+<script>
+const API_BASE = "/api";
+
+async function loadState() {
+  const res = await fetch(`${API_BASE}/state`);
+  const data = await res.json();
+  renderState(data);
+}
+
+function renderState(data) {
+  const queue = data.queue || [];
+  const selective = data.selective_candidates || [];
+  const backup = data.backup_candidates || [];
+
+  const listenedDiv = document.getElementById("listened-section");
+  listenedDiv.innerHTML = "";
+
+  if (queue.length) {
+    const p = document.createElement("p");
+    p.className = "small";
+    p.textContent = "Select the last episode you finished. All above it will be marked as listened.";
+    listenedDiv.appendChild(p);
+
+    queue.forEach((ep, idx) => {
+      const div = document.createElement("div");
+      div.className = "episode";
+      div.innerHTML = `
+        <label>
+          <input type="radio" name="last_listened_index" value="${idx}">
+          ${idx + 1}. ${ep.title}
+          <span class="feed-name">(${ep.feed_name})</span>
+        </label>`;
+      listenedDiv.appendChild(div);
+    });
+
+    const noneDiv = document.createElement("div");
+    noneDiv.className = "episode";
+    noneDiv.innerHTML = `
+      <label>
+        <input type="radio" name="last_listened_index" value="-1" checked>
+        I haven't listened to any of these yet
+      </label>`;
+    listenedDiv.appendChild(noneDiv);
+
+  } else {
+    listenedDiv.innerHTML =
+      '<p>No episodes in current queue.</p>' +
+      '<input type="hidden" name="last_listened_index" value="-1">';
+  }
+
+  const selDiv = document.getElementById("selective-section");
+  selDiv.innerHTML = "";
+
+  if (selective.length) {
+    const p = document.createElement("p");
+    p.className = "small";
+    p.textContent = "Tick the episodes you want to include in the next queue.";
+    selDiv.appendChild(p);
+
+    selective.forEach((ep) => {
+      const div = document.createElement("div");
+      div.className = "episode";
+      div.innerHTML = `
+        <label>
+          <input type="checkbox" name="approve_selective" value="${ep.id}">
+          ${ep.title}
+          <span class="feed-name">(${ep.feed_name})</span>
+        </label>`;
+      selDiv.appendChild(div);
+    });
+
+  } else {
+    selDiv.innerHTML = "<p>No new selective episodes.</p>";
+  }
+
+  const backupDiv = document.getElementById("backup-section");
+  backupDiv.innerHTML = "";
+
+  if (backup.length) {
+    const p = document.createElement("p");
+    p.className = "small";
+    p.textContent = "Random older episodes from feeds with backup_pool enabled.";
+    backupDiv.appendChild(p);
+
+    backup.forEach((ep) => {
+      const div = document.createElement("div");
+      div.className = "episode";
+      div.innerHTML = `
+        <label>
+          <input type="checkbox" name="approve_selective" value="${ep.id}">
+          ${ep.title}
+          <span class="feed-name">(${ep.feed_name})</span>
+        </label>`;
+      backupDiv.appendChild(div);
+    });
+
+  } else {
+    backupDiv.innerHTML = "<p>No backup episodes available.</p>";
+  }
+
+  const preview = document.getElementById("queue-preview");
+  preview.innerHTML = "";
+
+  queue.forEach((ep) => {
+    const li = document.createElement("li");
+    li.innerHTML = `${ep.title} <span class="feed-name">(${ep.feed_name})</span>`;
+    preview.appendChild(li);
+  });
+}
+
+document.getElementById("queue-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const fd = new FormData(e.target);
+
+  const res = await fetch(`${API_BASE}/update`, {
+    method: "POST",
+    body: fd
+  });
+
+  const msg = document.getElementById("message");
+
+  if (res.ok) {
+    msg.textContent = "Queue updated and RSS regenerated.";
+    await loadState();
+  } else {
+    msg.textContent = "Error updating queue.";
+  }
+});
+
+loadState();
+</script>
+
+</body>
+</html>

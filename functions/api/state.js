@@ -1,21 +1,20 @@
+import { loadJSON, getSelectiveCandidates, getBackupCandidates, MAX_QUEUE_SIZE } from "../_lib/podcast.js";
+
 export async function onRequestGet(context) {
   const { env } = context;
 
-  const stateRaw = await env.PODCAST_KV.get("state.json");
-  const queueRaw = await env.PODCAST_KV.get("queue.json");
+  const state = await loadJSON(env, "state.json", { listened_guids: [], added_guids: [] });
+  const queue = await loadJSON(env, "queue.json", []);
 
-  const state = stateRaw
-    ? JSON.parse(stateRaw)
-    : { listened_guids: [], added_guids: [] };
-
-  const queue = queueRaw ? JSON.parse(queueRaw) : [];
+  const selective = await getSelectiveCandidates(state);
+  const backup = await getBackupCandidates(state);
 
   return new Response(
     JSON.stringify({
       queue,
-      selective_candidates: [],
-      backup_candidates: [],
-      max_size: 50
+      selective_candidates: selective,
+      backup_candidates: backup,
+      max_size: MAX_QUEUE_SIZE
     }),
     { headers: { "Content-Type": "application/json" } }
   );
