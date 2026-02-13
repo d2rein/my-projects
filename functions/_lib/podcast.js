@@ -10,23 +10,23 @@ export const FEEDS = [
     batch_size: 2,
     start_at: 90,
   },
-  {
-    name: "High Priority Show",
-    url: "https://example.com/highpriority/feed.xml",
-    type: "high_priority",
-    backup_pool: true,
-  },
-  {
-    name: "Low Priority Show",
-    url: "https://example.com/lowpriority/feed.xml",
-    type: "low_priority",
-    backup_pool: true,
-  },
-  {
-    name: "Selective Show",
-    url: "https://example.com/selective/feed.xml",
-    type: "selective",
-  },
+//  {
+//    name: "High Priority Show",
+//    url: "https://example.com/highpriority/feed.xml",
+//    type: "high_priority",
+//    backup_pool: true,
+//  },
+//  {
+//    name: "Low Priority Show",
+//    url: "https://example.com/lowpriority/feed.xml",
+//    type: "low_priority",
+//    backup_pool: true,
+//  },
+//  {
+//    name: "Selective Show",
+//    url: "https://example.com/selective/feed.xml",
+//    type: "selective",
+//  },
   {
     name: "The Rest is History",
     url: "https://feeds.megaphone.fm/GLT4787413333",
