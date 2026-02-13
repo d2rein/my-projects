@@ -4,8 +4,8 @@
 export const FEEDS = [
   // EXAMPLES — replace these URLs with your real podcast RSS URLs
   {
-    name: "Backcatalog Show",
-    url: "https://example.com/backcatalog/feed.xml",
+    name: "History of Rome",
+    url: "https://historyofrome.libsyn.com/rss",
     type: "backcatalog",
     batch_size: 2,
     start_at: 90,
@@ -25,6 +25,11 @@ export const FEEDS = [
   {
     name: "Selective Show",
     url: "https://example.com/selective/feed.xml",
+    type: "selective",
+  },
+  {
+    name: "The Rest is History",
+    url: "https://feeds.megaphone.fm/GLT4787413333",
     type: "selective",
   },
 ];
