@@ -28,6 +28,31 @@ export const FEEDS = [
 //    type: "selective",
 //  },
   {
+    name: "Outside",
+    url: "https://www.outsideonline.com/rss/all/rss.xml",
+    type: "selective",
+  },
+  {
+    name: "Overdue",
+    url: "https://www.omnycontent.com/d/playlist/77bedd50-a734-42aa-9c08-ad86013ca0f9/e7707767-fd61-4887-b6ee-ad88014933e3/b9defaac-c62e-4810-bc36-ad88014933fb/podcast.rss",
+    type: "high_priority",
+    backup_pool: true,
+  },
+   
+  {
+    name: "99PI",
+    url: "https://feeds.simplecast.com/BqbsxVfO",
+    type: "high_priority",
+    backup_pool: true,
+  },
+  {
+    name: "If Books Could Kill",
+    url: "https://rss.buzzsprout.com/2040953.rss",
+    type: "high_priority",
+    backup_pool: true,
+  },
+
+  {
     name: "The Rest is History",
     url: "https://feeds.megaphone.fm/GLT4787413333",
     type: "selective",
