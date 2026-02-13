@@ -1,16 +1,22 @@
 export async function onRequestGet(context) {
   const { env } = context;
 
-  // Try reading a test key
-  let value = await env.PODCAST_KV.get("test");
+  const stateRaw = await env.PODCAST_KV.get("state.json");
+  const queueRaw = await env.PODCAST_KV.get("queue.json");
 
-  if (!value) {
-    value = "KV is working";
-    await env.PODCAST_KV.put("test", value);
-  }
+  const state = stateRaw
+    ? JSON.parse(stateRaw)
+    : { listened_guids: [], added_guids: [] };
+
+  const queue = queueRaw ? JSON.parse(queueRaw) : [];
 
   return new Response(
-    JSON.stringify({ kv_value: value }),
+    JSON.stringify({
+      queue,
+      selective_candidates: [],
+      backup_candidates: [],
+      max_size: 50
+    }),
     { headers: { "Content-Type": "application/json" } }
   );
 }
