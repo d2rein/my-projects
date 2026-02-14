@@ -213,140 +213,121 @@ export async function getBackupCandidates(state) {
 
 // ---------- QUEUE BUILDING ----------
 export async function buildNewQueue(env, state, existingQueue, approvedIds) {
-  let queue = existingQueue.slice();
-  let lastSpacerFeed = null;
+  let queue = [];
+  let lastFeed = null;
 
   const addEpisode = (ep) => {
-    if (!state.added_guids.includes(ep.id)) state.added_guids.push(ep.id);
+    if (!state.added_guids.includes(ep.id)) {
+      state.added_guids.push(ep.id);
+    }
     queue.push(ep);
-    lastSpacerFeed = ep.feed_url;
+    lastFeed = ep.feed_url;
   };
 
-  // 1) Approved selective + backup (ids are feedUrl::entryId)
-  const allEntriesById = {};
-
-  // Fetch each feed once; build lookup map
+  // ---------------------------
+  // 1️⃣ FETCH ALL FEEDS ONCE
+  // ---------------------------
+  const feedCache = {};
   for (const feedCfg of FEEDS) {
-    const entries = await fetchFeedItems(feedCfg.url);
-    for (const e of entries) {
-      const id = `${feedCfg.url}::${e.id}`;
-      allEntriesById[id] = { feedCfg, entry: e };
-    }
+    feedCache[feedCfg.url] = await fetchFeedItems(feedCfg.url);
   }
 
-  for (const id of approvedIds) {
-    const hit = allEntriesById[id];
-    if (!hit) continue;
-    addEpisode(makeEpisode(hit.feedCfg, hit.entry));
-  }
+  // ---------------------------
+  // 2️⃣ BUILD POOLS
+  // ---------------------------
 
-  async function nextBackcatalog() {
-    const eps = [];
-    for (const feedCfg of FEEDS) {
-      if (feedCfg.type !== "backcatalog") continue;
+  const backcatalogPool = [];
+  const highPriorityPool = [];
+  const selectivePool = [];
+  const backupPool = [];
 
-      let entries = await fetchFeedItems(feedCfg.url);
-
-      // sort oldest -> newest
-      entries.sort((a, b) => entryPubDate(a) - entryPubDate(b));
-
-      if (feedCfg.start_at) entries = entries.slice(feedCfg.start_at);
-
-      let count = 0;
-      for (const e of entries) {
-        const id = `${feedCfg.url}::${e.id}`;
-        if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
-        eps.push(makeEpisode(feedCfg, e));
-        count++;
-        if (count >= (feedCfg.batch_size || 2)) break;
-      }
-    }
-    return eps;
-  }
-
-  async function nextFromType(feedType) {
-    const eps = [];
-    for (const feedCfg of FEEDS) {
-      if (feedCfg.type !== feedType) continue;
-
-      const entries = await fetchFeedItems(feedCfg.url);
-      entries.sort((a, b) => entryPubDate(b) - entryPubDate(a)); // newest first
-
-      for (const e of entries) {
-        const id = `${feedCfg.url}::${e.id}`;
-        if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
-        eps.push(makeEpisode(feedCfg, e));
-        break;
-      }
-    }
-    return eps;
-  }
-
-  function addSpacer(candidates) {
-    if (!candidates.length) return false;
-
-    for (const ep of candidates) {
-      if (ep.feed_url !== lastSpacerFeed) {
-        addEpisode(ep);
-        return true;
-      }
-    }
-    addEpisode(candidates[0]);
-    return true;
-  }
-
-  while (queue.length < MAX_QUEUE_SIZE) {
-
-  // ----- 2x BACKCATALOG -----
-  const backBatch = await nextBackcatalog();
-  for (const ep of backBatch.slice(0, 2)) {
-    if (queue.length >= MAX_QUEUE_SIZE) break;
-    addEpisode(ep);
-  }
-
-  if (queue.length >= MAX_QUEUE_SIZE) break;
-
-  // ----- 2x OTHER -----
-for (let i = 0; i < 2; i++) {
-  if (queue.length >= MAX_QUEUE_SIZE) break;
-
-  let candidates = [];
-
-  // 1️⃣ Collect ALL high priority episodes
   for (const feedCfg of FEEDS) {
-    if (feedCfg.type !== "high_priority") continue;
+    const entries = feedCache[feedCfg.url];
 
-    const entries = await fetchFeedItems(feedCfg.url);
     for (const e of entries) {
       const id = `${feedCfg.url}::${e.id}`;
       if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
-      candidates.push(makeEpisode(feedCfg, e));
+
+      const episode = makeEpisode(feedCfg, e);
+
+      if (feedCfg.type === "backcatalog") {
+        backcatalogPool.push(episode);
+      }
+
+      if (feedCfg.type === "high_priority") {
+        highPriorityPool.push(episode);
+      }
+
+      if (feedCfg.type === "selective") {
+        selectivePool.push(episode);
+      }
+
+      if (feedCfg.backup_pool) {
+        backupPool.push(episode);
+      }
     }
   }
 
-  // Sort newest first globally
-  candidates.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
+  // Sort pools
+  backcatalogPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate)); // oldest first
+  highPriorityPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate)); // newest first
+  selectivePool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
+  backupPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
 
-  // If no high priority left, try selective
-  if (!candidates.length) {
-    const selective = await getSelectiveCandidates(state);
-    candidates = selective.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
+  // ---------------------------
+  // 3️⃣ BUILD QUEUE
+  // Pattern: 2 backcat, 2 others
+  // ---------------------------
+
+  while (queue.length < MAX_QUEUE_SIZE) {
+
+    // --- 2x BACKCATALOG ---
+    for (let i = 0; i < 2; i++) {
+      if (!backcatalogPool.length) break;
+      if (queue.length >= MAX_QUEUE_SIZE) break;
+
+      const next = backcatalogPool.shift();
+      if (next.feed_url !== lastFeed) {
+        addEpisode(next);
+      }
+    }
+
+    if (queue.length >= MAX_QUEUE_SIZE) break;
+
+    // --- 2x OTHER ---
+    for (let i = 0; i < 2; i++) {
+      if (queue.length >= MAX_QUEUE_SIZE) break;
+
+      let sourcePool =
+        highPriorityPool.length ? highPriorityPool :
+        selectivePool.length ? selectivePool :
+        backupPool.length ? backupPool :
+        [];
+
+      if (!sourcePool.length) break;
+
+      // prevent same-feed adjacency
+      let next = sourcePool.find(ep => ep.feed_url !== lastFeed);
+      if (!next) next = sourcePool[0];
+
+      // remove from pool
+      const idx = sourcePool.indexOf(next);
+      sourcePool.splice(idx, 1);
+
+      addEpisode(next);
+    }
+
+    if (!backcatalogPool.length &&
+        !highPriorityPool.length &&
+        !selectivePool.length &&
+        !backupPool.length) {
+      break;
+    }
   }
 
-  // If still none, try backup
-  if (!candidates.length) {
-    const backup = await getBackupCandidates(state);
-    candidates = backup.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
-  }
-
-  if (!candidates.length) break;
-
-  const valid = candidates.find(ep => ep.feed_url !== lastSpacerFeed);
-  addEpisode(valid || candidates[0]);
+  return queue.slice(0, MAX_QUEUE_SIZE);
 }
-  }
-  return queue;
-}
+
 
 // ---------- RSS ----------
 function escapeXml(s) {
