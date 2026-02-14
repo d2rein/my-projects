@@ -301,48 +301,50 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   const backBatch = await nextBackcatalog();
   for (const ep of backBatch.slice(0, 2)) {
     if (queue.length >= MAX_QUEUE_SIZE) break;
-    if (ep.feed_url === lastSpacerFeed) continue;
     addEpisode(ep);
   }
 
   if (queue.length >= MAX_QUEUE_SIZE) break;
 
   // ----- 2x OTHER -----
-  for (let i = 0; i < 2; i++) {
-    if (queue.length >= MAX_QUEUE_SIZE) break;
+for (let i = 0; i < 2; i++) {
+  if (queue.length >= MAX_QUEUE_SIZE) break;
 
-    let candidates = [];
+  let candidates = [];
 
-    // 1️⃣ High priority first
-    const hp = await nextFromType("high_priority");
-    candidates = hp;
+  // 1️⃣ Collect ALL high priority episodes
+  for (const feedCfg of FEEDS) {
+    if (feedCfg.type !== "high_priority") continue;
 
-    // 2️⃣ If none available, try selective
-    if (!candidates.length) {
-      const selective = await getSelectiveCandidates(state);
-      candidates = selective;
-    }
-
-    // 3️⃣ If still none, try filler (backup_pool)
-    if (!candidates.length) {
-      const backup = await getBackupCandidates(state);
-      candidates = backup;
-    }
-
-    if (!candidates.length) break;
-
-    // Enforce no same feed twice in a row
-    const valid = candidates.find(ep => ep.feed_url !== lastSpacerFeed);
-
-    if (valid) {
-      addEpisode(valid);
-    } else {
-      addEpisode(candidates[0]);
+    const entries = await fetchFeedItems(feedCfg.url);
+    for (const e of entries) {
+      const id = `${feedCfg.url}::${e.id}`;
+      if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
+      candidates.push(makeEpisode(feedCfg, e));
     }
   }
 
-  if (!backBatch.length) break; // stop if no more backcatalog available
+  // Sort newest first globally
+  candidates.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
+
+  // If no high priority left, try selective
+  if (!candidates.length) {
+    const selective = await getSelectiveCandidates(state);
+    candidates = selective.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
+  }
+
+  // If still none, try backup
+  if (!candidates.length) {
+    const backup = await getBackupCandidates(state);
+    candidates = backup.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
+  }
+
+  if (!candidates.length) break;
+
+  const valid = candidates.find(ep => ep.feed_url !== lastSpacerFeed);
+  addEpisode(valid || candidates[0]);
 }
+  }
   return queue;
 }
 
