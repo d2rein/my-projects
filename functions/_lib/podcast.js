@@ -71,6 +71,9 @@ export const FEEDS = [
 
 export const MAX_QUEUE_SIZE = 50;
 export const BACKUP_COUNT = 10;
+// Only allow high/low priority episodes after this date
+const PRIORITY_CUTOFF = new Date("2026-02-01");
+
 
 // ---------- KV HELPERS ----------
 export async function loadJSON(env, key, fallback) {
@@ -242,31 +245,51 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   const backupPool = [];
 
   for (const feedCfg of FEEDS) {
-    const entries = feedCache[feedCfg.url];
+  const entries = feedCache[feedCfg.url];
 
-    for (const e of entries) {
-      const id = `${feedCfg.url}::${e.id}`;
-      if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
+  if (feedCfg.type === "backcatalog") {
+    let processed = entries
+      .sort((a, b) => entryPubDate(a) - entryPubDate(b));
 
-      const episode = makeEpisode(feedCfg, e);
+    if (feedCfg.start_at) {
+      processed = processed.slice(feedCfg.start_at);
+    }
 
-      if (feedCfg.type === "backcatalog") {
-        backcatalogPool.push(episode);
-      }
+    for (const e2 of processed) {
+      const id2 = `${feedCfg.url}::${e2.id}`;
+      if (state.added_guids.includes(id2) || state.listened_guids.includes(id2)) continue;
+      backcatalogPool.push(makeEpisode(feedCfg, e2));
+    }
 
-      if (feedCfg.type === "high_priority") {
+    continue;
+  }
+
+  for (const e of entries) {
+    const id = `${feedCfg.url}::${e.id}`;
+    if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
+
+    const episode = makeEpisode(feedCfg, e);
+    const pub = new Date(episode.pubdate);
+
+    if (feedCfg.type === "high_priority") {
+      if (pub >= PRIORITY_CUTOFF) {
         highPriorityPool.push(episode);
       }
+      continue;
+    }
 
-      if (feedCfg.type === "selective") {
-        selectivePool.push(episode);
-      }
+    if (feedCfg.type === "selective") {
+      selectivePool.push(episode);
+      continue;
+    }
 
-      if (feedCfg.backup_pool) {
+    if (feedCfg.backup_pool) {
+      if (pub >= PRIORITY_CUTOFF) {
         backupPool.push(episode);
       }
     }
   }
+}
 
   // Sort pools
   backcatalogPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate)); // oldest first
@@ -286,10 +309,13 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
       if (!backcatalogPool.length) break;
       if (queue.length >= MAX_QUEUE_SIZE) break;
 
-      const next = backcatalogPool.shift();
-      if (next.feed_url !== lastFeed) {
-        addEpisode(next);
-      }
+      let next = backcatalogPool.find(ep => ep.feed_url !== lastFeed);
+      if (!next) next = backcatalogPool[0];
+
+      const idx = backcatalogPool.indexOf(next);
+      backcatalogPool.splice(idx, 1);
+
+      addEpisode(next);
     }
 
     if (queue.length >= MAX_QUEUE_SIZE) break;
@@ -324,7 +350,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
       break;
     }
   }
-
+  
   return queue.slice(0, MAX_QUEUE_SIZE);
 }
 
