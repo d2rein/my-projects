@@ -29,7 +29,7 @@ export const FEEDS = [
 //  },
   {
     name: "Outside",
-    url: "https://www.outsideonline.com/rss/all/rss.xml",
+    url: "https://feeds.megaphone.fm/POM5001301518",
     type: "selective",
   },
   {
@@ -296,27 +296,52 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   }
 
   while (queue.length < MAX_QUEUE_SIZE) {
-    let addedAny = false;
 
-    const back = await nextBackcatalog();
-    for (const ep of back) {
-      if (queue.length >= MAX_QUEUE_SIZE) break;
-      addEpisode(ep);
-      addedAny = true;
-    }
+  // ----- 2x BACKCATALOG -----
+  const backBatch = await nextBackcatalog();
+  for (const ep of backBatch.slice(0, 2)) {
     if (queue.length >= MAX_QUEUE_SIZE) break;
-
-    const hp = await nextFromType("high_priority");
-    if (addSpacer(hp)) addedAny = true;
-    if (queue.length >= MAX_QUEUE_SIZE) break;
-
-    const lp = await nextFromType("low_priority");
-    if (addSpacer(lp)) addedAny = true;
-
-    if (!addedAny) break;
+    if (ep.feed_url === lastSpacerFeed) continue;
+    addEpisode(ep);
   }
 
-  return queue;
+  if (queue.length >= MAX_QUEUE_SIZE) break;
+
+  // ----- 2x OTHER -----
+  for (let i = 0; i < 2; i++) {
+    if (queue.length >= MAX_QUEUE_SIZE) break;
+
+    let candidates = [];
+
+    // 1️⃣ High priority first
+    const hp = await nextFromType("high_priority");
+    candidates = hp;
+
+    // 2️⃣ If none available, try selective
+    if (!candidates.length) {
+      const selective = await getSelectiveCandidates(state);
+      candidates = selective;
+    }
+
+    // 3️⃣ If still none, try filler (backup_pool)
+    if (!candidates.length) {
+      const backup = await getBackupCandidates(state);
+      candidates = backup;
+    }
+
+    if (!candidates.length) break;
+
+    // Enforce no same feed twice in a row
+    const valid = candidates.find(ep => ep.feed_url !== lastSpacerFeed);
+
+    if (valid) {
+      addEpisode(valid);
+    } else {
+      addEpisode(candidates[0]);
+    }
+  }
+
+  if (!backBatch.length) break; // stop if no more backcatalog available
 }
 
 // ---------- RSS ----------
