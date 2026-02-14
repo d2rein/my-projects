@@ -343,6 +343,8 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
 
   if (!backBatch.length) break; // stop if no more backcatalog available
 }
+  return queue;
+}
 
 // ---------- RSS ----------
 function escapeXml(s) {
