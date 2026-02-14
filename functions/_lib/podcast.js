@@ -220,137 +220,165 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   let lastFeed = null;
 
   const addEpisode = (ep) => {
-    if (!state.added_guids.includes(ep.id)) {
-      state.added_guids.push(ep.id);
-    }
+    if (!state.added_guids.includes(ep.id)) state.added_guids.push(ep.id);
     queue.push(ep);
     lastFeed = ep.feed_url;
   };
 
   // ---------------------------
-  // 1️⃣ FETCH ALL FEEDS ONCE
+  // 1) Fetch all feeds once
   // ---------------------------
   const feedCache = {};
   for (const feedCfg of FEEDS) {
     feedCache[feedCfg.url] = await fetchFeedItems(feedCfg.url);
   }
 
-  // ---------------------------
-  // 2️⃣ BUILD POOLS
-  // ---------------------------
+  // Build a lookup for "feedUrl::entryId" -> episode object
+  const episodeById = {};
+  for (const feedCfg of FEEDS) {
+    const entries = feedCache[feedCfg.url] || [];
+    for (const e of entries) {
+      const ep = makeEpisode(feedCfg, e);
+      episodeById[ep.id] = ep;
+    }
+  }
 
+  // ---------------------------
+  // 2) Pools
+  // ---------------------------
   const backcatalogPool = [];
   const highPriorityPool = [];
-  const selectivePool = [];
+  const approvedOtherPool = []; // approved selectives + low_priority (equal priority)
   const backupPool = [];
 
   for (const feedCfg of FEEDS) {
-  const entries = feedCache[feedCfg.url];
+    const entries = feedCache[feedCfg.url] || [];
 
-  if (feedCfg.type === "backcatalog") {
-    let processed = entries
-      .sort((a, b) => entryPubDate(a) - entryPubDate(b));
+    // BACKCATALOG: build from oldest -> newest, applying start_at once
+    if (feedCfg.type === "backcatalog") {
+      let processed = entries.slice().sort((a, b) => entryPubDate(a) - entryPubDate(b));
+      if (feedCfg.start_at) processed = processed.slice(feedCfg.start_at);
 
-    if (feedCfg.start_at) {
-      processed = processed.slice(feedCfg.start_at);
+      for (const e of processed) {
+        const ep = makeEpisode(feedCfg, e);
+        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+        backcatalogPool.push(ep);
+      }
+      continue;
     }
 
-    for (const e2 of processed) {
-      const id2 = `${feedCfg.url}::${e2.id}`;
-      if (state.added_guids.includes(id2) || state.listened_guids.includes(id2)) continue;
-      backcatalogPool.push(makeEpisode(feedCfg, e2));
-    }
-
-    continue;
-  }
-
-  for (const e of entries) {
-    const id = `${feedCfg.url}::${e.id}`;
-    if (state.added_guids.includes(id) || state.listened_guids.includes(id)) continue;
-
-    const episode = makeEpisode(feedCfg, e);
-    const pub = new Date(episode.pubdate);
-
+    // HIGH PRIORITY: include all (newest-first later), but apply cutoff
     if (feedCfg.type === "high_priority") {
-      if (pub >= PRIORITY_CUTOFF) {
-        highPriorityPool.push(episode);
+      for (const e of entries) {
+        const ep = makeEpisode(feedCfg, e);
+        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+
+        const pub = new Date(ep.pubdate);
+        if (pub >= PRIORITY_CUTOFF) highPriorityPool.push(ep);
       }
-      continue;
     }
 
-    if (feedCfg.type === "selective") {
-      selectivePool.push(episode);
-      continue;
+    // LOW PRIORITY (if you add any later): treat as "approvedOtherPool" BUT cutoff applies
+    if (feedCfg.type === "low_priority") {
+      for (const e of entries) {
+        const ep = makeEpisode(feedCfg, e);
+        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+
+        const pub = new Date(ep.pubdate);
+        if (pub >= PRIORITY_CUTOFF) approvedOtherPool.push(ep);
+      }
     }
 
+    // BACKUP filler pool (optional): cutoff applies (matches your earlier intent)
     if (feedCfg.backup_pool) {
-      if (pub >= PRIORITY_CUTOFF) {
-        backupPool.push(episode);
+      for (const e of entries) {
+        const ep = makeEpisode(feedCfg, e);
+        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+
+        const pub = new Date(ep.pubdate);
+        if (pub >= PRIORITY_CUTOFF) backupPool.push(ep);
       }
     }
   }
-}
 
-  // Sort pools
-  backcatalogPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate)); // oldest first
-  highPriorityPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate)); // newest first
-  selectivePool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
+  // APPROVED IDS: only these selectives get into "others"
+  // (and they join low_priority at equal priority)
+  for (const id of (approvedIds || [])) {
+    const ep = episodeById[id];
+    if (!ep) continue;
+    if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+
+    // Only allow approved selectives + approved low_priority here
+    // (high_priority should never come from approvals)
+    const feedCfg = FEEDS.find(f => f.url === ep.feed_url);
+    if (!feedCfg) continue;
+
+    if (feedCfg.type === "selective" || feedCfg.type === "low_priority") {
+      approvedOtherPool.push(ep);
+    }
+  }
+
+  // ---------------------------
+  // 3) Sort pools
+  // ---------------------------
+  // backcatalog oldest first
+  backcatalogPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
+
+  // others newest first generally
+  highPriorityPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
+  approvedOtherPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
   backupPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
 
   // ---------------------------
-  // 3️⃣ BUILD QUEUE
-  // Pattern: 2 backcat, 2 others
+  // 4) Build queue: 2 backcatalog, 2 others repeating
   // ---------------------------
+  const takeFromPoolNoAdj = (pool) => {
+    if (!pool.length) return null;
+
+    // enforce "no two from same podcast in a row" for OTHERS
+    let pickIdx = pool.findIndex(ep => ep.feed_url !== lastFeed);
+    if (pickIdx === -1) pickIdx = 0;
+
+    const [ep] = pool.splice(pickIdx, 1);
+    return ep;
+  };
 
   while (queue.length < MAX_QUEUE_SIZE) {
-
     // --- 2x BACKCATALOG ---
     for (let i = 0; i < 2; i++) {
-      if (!backcatalogPool.length) break;
       if (queue.length >= MAX_QUEUE_SIZE) break;
+      if (!backcatalogPool.length) break;
 
-      let next = backcatalogPool.find(ep => ep.feed_url !== lastFeed);
-      if (!next) next = backcatalogPool[0];
-
-      const idx = backcatalogPool.indexOf(next);
-      backcatalogPool.splice(idx, 1);
-
-      addEpisode(next);
+      // IMPORTANT: do NOT enforce adjacency here (you *want* 2 in a row)
+      const ep = backcatalogPool.shift();
+      addEpisode(ep);
     }
 
     if (queue.length >= MAX_QUEUE_SIZE) break;
 
-    // --- 2x OTHER ---
+    // --- 2x OTHERS ---
     for (let i = 0; i < 2; i++) {
       if (queue.length >= MAX_QUEUE_SIZE) break;
 
-      let sourcePool =
-        highPriorityPool.length ? highPriorityPool :
-        selectivePool.length ? selectivePool :
-        backupPool.length ? backupPool :
-        [];
+      let ep =
+        takeFromPoolNoAdj(highPriorityPool) ||
+        takeFromPoolNoAdj(approvedOtherPool) ||
+        takeFromPoolNoAdj(backupPool);
 
-      if (!sourcePool.length) break;
-
-      // prevent same-feed adjacency
-      let next = sourcePool.find(ep => ep.feed_url !== lastFeed);
-      if (!next) next = sourcePool[0];
-
-      // remove from pool
-      const idx = sourcePool.indexOf(next);
-      sourcePool.splice(idx, 1);
-
-      addEpisode(next);
+      if (!ep) break;
+      addEpisode(ep);
     }
 
-    if (!backcatalogPool.length &&
-        !highPriorityPool.length &&
-        !selectivePool.length &&
-        !backupPool.length) {
+    if (
+      !backcatalogPool.length &&
+      !highPriorityPool.length &&
+      !approvedOtherPool.length &&
+      !backupPool.length
+    ) {
       break;
     }
   }
-  
+
   return queue.slice(0, MAX_QUEUE_SIZE);
 }
 
