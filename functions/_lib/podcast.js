@@ -324,10 +324,10 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   // backcatalog oldest first
   backcatalogPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
 
-  // others newest first generally
-  highPriorityPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
-  approvedOtherPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
-  backupPool.sort((a, b) => b.pubdate.localeCompare(a.pubdate));
+  // All priority types now oldest first
+  highPriorityPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
+  selectivePool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
+  backupPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
 
   // ---------------------------
   // 4) Build queue: 2 backcatalog, 2 others repeating
