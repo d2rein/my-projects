@@ -8,7 +8,7 @@ export const FEEDS = [
     url: "https://historyofrome.libsyn.com/rss",
     type: "backcatalog",
     batch_size: 2,
-    start_at: 90,
+    start_at: 111,
   },
 //  {
 //    name: "High Priority Show",
@@ -33,12 +33,22 @@ export const FEEDS = [
     type: "selective",
   },
   {
+    name: "Explorers Podcast",
+    url: "https://feeds.megaphone.fm/ADL4434397541",
+    type: "selective",
+  },
+  {
     name: "Overdue",
     url: "https://www.omnycontent.com/d/playlist/77bedd50-a734-42aa-9c08-ad86013ca0f9/e7707767-fd61-4887-b6ee-ad88014933e3/b9defaac-c62e-4810-bc36-ad88014933fb/podcast.rss",
     type: "high_priority",
     backup_pool: true,
   },
-   
+  {
+    name: "Age of Napoleon",
+    url: "https://feeds.megaphone.fm/ADL5280986787",
+    type: "high_priority",
+    backup_pool: true,
+  },
   {
     name: "99PI",
     url: "https://feeds.simplecast.com/BqbsxVfO",
@@ -103,28 +113,41 @@ function getEnclosureUrl(rawItem) {
 }
 
 export async function fetchFeedItems(url) {
-  const res = await fetch(url, { headers: { "User-Agent": "CustomPodcastQueue/1.0" } });
-  if (!res.ok) throw new Error(`Failed to fetch feed: ${url} (${res.status})`);
-  const text = await res.text();
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "CustomPodcastQueue/1.0" }
+    });
 
-  const itemMatches = text.match(/<item>([\s\S]*?)<\/item>/gi) || [];
+    if (!res.ok) {
+      console.error("Feed returned non-200:", url, res.status);
+      return [];
+    }
 
-  return itemMatches.map((rawItem) => {
-    const guid = getTag(rawItem, "guid");
-    const link = getTag(rawItem, "link");
-    const title = getTag(rawItem, "title") || "Untitled";
-    const pubDate = getTag(rawItem, "pubDate");
-    const enclosure = getEnclosureUrl(rawItem);
+    const text = await res.text();
+    const itemMatches = text.match(/<item>([\s\S]*?)<\/item>/gi) || [];
 
-    return {
-      id: guid || link || title,
-      title,
-      link,
-      published: pubDate,
-      audio: enclosure || link,
-    };
-  });
+    return itemMatches.map((rawItem) => {
+      const guid = getTag(rawItem, "guid");
+      const link = getTag(rawItem, "link");
+      const title = getTag(rawItem, "title") || "Untitled";
+      const pubDate = getTag(rawItem, "pubDate");
+      const enclosure = getEnclosureUrl(rawItem);
+
+      return {
+        id: guid || link || title,
+        title,
+        link,
+        published: pubDate,
+        audio: enclosure || link,
+      };
+    });
+
+  } catch (err) {
+    console.error("Feed crashed:", url, err);
+    return [];
+  }
 }
+
 
 export function entryPubDate(entry) {
   if (entry.published) {
@@ -167,7 +190,7 @@ export async function getSelectiveCandidates(state) {
     }
   }
   out.sort((a, b) => (a.pubdate < b.pubdate ? 1 : -1));
-  return out;
+  return out.slice(0, 50);
 }
 
 export async function getBackupCandidates(state) {
