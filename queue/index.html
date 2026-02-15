@@ -78,12 +78,30 @@ function renderState(data) {
       div.className = "episode";
       div.innerHTML = `
         <label>
-          <input type="radio" name="last_listened_index" value="${idx}">
+          <input type="checkbox" class="listen-checkbox" data-index="${idx}" name="listened_ids" value="${ep.id}">
           ${idx + 1}. ${ep.title}
           <span class="feed-name">(${ep.feed_name})</span>
         </label>`;
       listenedDiv.appendChild(div);
     });
+
+    // Auto-select all above when clicking a listened checkbox
+    document.addEventListener("change", function (e) {
+      if (!e.target.classList.contains("listen-checkbox")) return;
+
+      const clickedIndex = parseInt(e.target.dataset.index, 10);
+      const allBoxes = document.querySelectorAll(".listen-checkbox");
+
+      if (e.target.checked) {
+        allBoxes.forEach(box => {
+          const idx = parseInt(box.dataset.index, 10);
+          if (idx <= clickedIndex) {
+            box.checked = true;
+          }
+        });
+      }
+    });
+
 
     const noneDiv = document.createElement("div");
     noneDiv.className = "episode";
@@ -101,29 +119,58 @@ function renderState(data) {
   }
 
   const selDiv = document.getElementById("selective-section");
-  selDiv.innerHTML = "";
+selDiv.innerHTML = "";
 
-  if (selective.length) {
-    const p = document.createElement("p");
-    p.className = "small";
-    p.textContent = "Tick the episodes you want to include in the next queue.";
-    selDiv.appendChild(p);
+if (selective.length) {
 
-    selective.forEach((ep) => {
-      const div = document.createElement("div");
-      div.className = "episode";
-      div.innerHTML = `
-        <label>
-          <input type="checkbox" name="approve_selective" value="${ep.id}">
-          ${ep.title}
-          <span class="feed-name">(${ep.feed_name})</span>
-        </label>`;
-      selDiv.appendChild(div);
-    });
+  const grouped = {};
+  selective.forEach(ep => {
+    if (!grouped[ep.feed_name]) grouped[ep.feed_name] = [];
+    grouped[ep.feed_name].push(ep);
+  });
 
-  } else {
-    selDiv.innerHTML = "<p>No new selective episodes.</p>";
-  }
+  Object.keys(grouped).forEach(feedName => {
+
+    const header = document.createElement("h3");
+    header.textContent = feedName;
+    selDiv.appendChild(header);
+
+    const table = document.createElement("table");
+    table.style.width = "100%";
+    table.style.borderCollapse = "collapse";
+    table.style.marginBottom = "15px";
+
+    table.innerHTML = `
+      <tr>
+        <th style="text-align:left;">Approve</th>
+        <th style="text-align:left;">Title</th>
+        <th style="text-align:left;">Release Date</th>
+      </tr>
+    `;
+
+    grouped[feedName]
+      .sort((a, b) => new Date(a.pubdate) - new Date(b.pubdate)) // oldest first
+      .forEach(ep => {
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>
+            <input type="checkbox" name="approve_selective" value="${ep.id}">
+          </td>
+          <td>${ep.title}</td>
+          <td class="small">${new Date(ep.pubdate).toLocaleDateString()}</td>
+        `;
+
+        table.appendChild(tr);
+      });
+
+    selDiv.appendChild(table);
+  });
+
+} else {
+  selDiv.innerHTML = "<p>No new selective episodes.</p>";
+}
 
   const backupDiv = document.getElementById("backup-section");
   backupDiv.innerHTML = "";
