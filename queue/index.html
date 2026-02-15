@@ -149,7 +149,7 @@ if (selective.length) {
     `;
 
     grouped[feedName]
-      .sort((a, b) => new Date(a.pubdate) - new Date(b.pubdate)) // oldest first
+      .sort((a, b) => new Date(b.pubdate) - new Date(a.pubdate)) // newest first
       .forEach(ep => {
 
         const tr = document.createElement("tr");

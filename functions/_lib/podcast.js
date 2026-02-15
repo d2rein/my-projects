@@ -326,7 +326,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
 
   // All priority types now oldest first
   highPriorityPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
-  selectivePool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
+  approvedOtherPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
   backupPool.sort((a, b) => a.pubdate.localeCompare(b.pubdate));
 
   // ---------------------------

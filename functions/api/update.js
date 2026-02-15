@@ -4,18 +4,20 @@ export async function onRequestPost(context) {
   const { request, env } = context;
 
   const formData = await request.formData();
-  const lastIdx = parseInt(formData.get("last_listened_index") || "-1", 10);
+  const listenedIds = formData.getAll("listened_ids") || [];
 
   let state = await loadJSON(env, "state.json", { listened_guids: [], added_guids: [] });
   let queue = await loadJSON(env, "queue.json", []);
 
   // Remove listened episodes
-  if (queue.length && lastIdx >= 0) {
-    const listened = queue.slice(0, lastIdx + 1);
-    const remaining = queue.slice(lastIdx + 1);
+  if (queue.length && listenedIds.length) {
+    const listened = queue.filter(ep => listenedIds.includes(ep.id));
+    const remaining = queue.filter(ep => !listenedIds.includes(ep.id));
 
     for (const ep of listened) {
-      if (!state.listened_guids.includes(ep.id)) state.listened_guids.push(ep.id);
+      if (!state.listened_guids.includes(ep.id)) {
+        state.listened_guids.push(ep.id);
+      }
     }
 
     queue = remaining;
