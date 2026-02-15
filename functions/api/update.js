@@ -20,11 +20,19 @@ export async function onRequestPost(context) {
       }
     }
 
+    // Remove remaining (unlistened) episodes from added_guids
+    for (const ep of remaining) {
+      const idx = state.added_guids.indexOf(ep.id);
+      if (idx !== -1) {
+        state.added_guids.splice(idx, 1);
+      }
+    }
+    
     queue = remaining;
   }
 
   const approvedIds = formData.getAll("approve_selective") || [];
-  const newQueue = await buildNewQueue(env, state, queue, approvedIds);
+  const newQueue = await buildNewQueue(env, state, [], approvedIds);
 
   await saveJSON(env, "state.json", state);
   await saveJSON(env, "queue.json", newQueue);
