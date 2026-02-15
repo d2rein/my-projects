@@ -8,7 +8,7 @@ export const FEEDS = [
     url: "https://historyofrome.libsyn.com/rss",
     type: "backcatalog",
     batch_size: 2,
-    start_at: 111,
+    start_at: 120,
   },
 //  {
 //    name: "High Priority Show",
@@ -220,10 +220,12 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   let lastFeed = null;
 
   const addEpisode = (ep) => {
-    if (!state.added_guids.includes(ep.id)) state.added_guids.push(ep.id);
-    queue.push(ep);
-    lastFeed = ep.feed_url;
-  };
+  if (seenIds.has(ep.id)) return;
+  seenIds.add(ep.id);
+  queue.push(ep);
+  lastFeed = ep.feed_url;
+};
+
 
   // ---------------------------
   // 1) Fetch all feeds once
@@ -261,7 +263,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
 
       for (const e of processed) {
         const ep = makeEpisode(feedCfg, e);
-        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+        if (state.listened_guids.includes(ep.id)) continue;
         backcatalogPool.push(ep);
       }
       continue;
@@ -271,7 +273,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
     if (feedCfg.type === "high_priority") {
       for (const e of entries) {
         const ep = makeEpisode(feedCfg, e);
-        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+        if (state.listened_guids.includes(ep.id)) continue;
 
         const pub = new Date(ep.pubdate);
         if (pub >= PRIORITY_CUTOFF) highPriorityPool.push(ep);
@@ -282,7 +284,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
     if (feedCfg.type === "low_priority") {
       for (const e of entries) {
         const ep = makeEpisode(feedCfg, e);
-        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+        if (state.listened_guids.includes(ep.id)) continue;
 
         const pub = new Date(ep.pubdate);
         if (pub >= PRIORITY_CUTOFF) approvedOtherPool.push(ep);
@@ -293,7 +295,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
     if (feedCfg.backup_pool) {
       for (const e of entries) {
         const ep = makeEpisode(feedCfg, e);
-        if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+        if (state.listened_guids.includes(ep.id)) continue;
 
         const pub = new Date(ep.pubdate);
         if (pub >= PRIORITY_CUTOFF) backupPool.push(ep);
@@ -306,7 +308,7 @@ export async function buildNewQueue(env, state, existingQueue, approvedIds) {
   for (const id of (approvedIds || [])) {
     const ep = episodeById[id];
     if (!ep) continue;
-    if (state.added_guids.includes(ep.id) || state.listened_guids.includes(ep.id)) continue;
+    if (state.listened_guids.includes(ep.id)) continue;
 
     // Only allow approved selectives + approved low_priority here
     // (high_priority should never come from approvals)
