@@ -216,6 +216,7 @@ export async function getBackupCandidates(state) {
 
 // ---------- QUEUE BUILDING ----------
 export async function buildNewQueue(env, state, existingQueue, approvedIds) {
+  const seenIds = new Set();
   let queue = [];
   let lastFeed = null;
 
