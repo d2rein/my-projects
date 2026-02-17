@@ -136,7 +136,7 @@ const rolls = [
     hasLevel: false,
     damage: false,
     allowAdv: true,
-    defaultMod: 9,
+    defaultMod: 10,
     dice: () => [{ dice: "1d20", type: "attack" }]
   },
   {
@@ -208,6 +208,29 @@ const rolls = [
     dice: lvl => [
       { dice: `${1+lvl}d10`, type: "Fire" }
     ]
+  },
+  {
+    id: "attack_spell",
+    label: "Attack – Spell",
+    formula: "1 D20 + MOD",
+    hasLevel: false,
+    damage: false,
+    allowAdv: true,
+    defaultMod: 7,
+    dice: () => [{ dice: "1d20", type: "attack" }]
+  },
+  {
+    id: "guiding_bolt",
+    label: "Guiding Bolt",
+    formula: "3+LVL D6",
+    hasLevel: true,
+    damage: true,
+    allowAdv: false,
+    defaultMod: 0,
+    modDamageType: "radiant",
+    dice: lvl => [
+      { dice: `${3+lvl}d6`, type: "radiant" }
+    ]
   }
 ];
 
@@ -252,7 +275,11 @@ function performRoll(cfg, state) {
     breakdown[d.type] = (breakdown[d.type] || 0) + sum;
     total += sum;
 
-    if (state.crit) critBonus += r.max;
+    if (state.crit) {
+      breakdown[d.type] = (breakdown[d.type] || 0) + r.max;
+      total += r.max;
+      critBonus += r.max;
+    }
   });
 
 if (cfg.modDamageType && state.mod !== 0) {
@@ -266,7 +293,7 @@ if (cfg.modDamageType && state.mod !== 0) {
     (breakdown[CURSE_DAMAGE_TYPE] || 0) + CURSE_DAMAGE;
   total += CURSE_DAMAGE;
 }
-  total += critBonus;
+
 
   return {
     text:
