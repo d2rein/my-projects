@@ -176,6 +176,7 @@
   .btn.bad{ background:#3a1414; border-color:#6b2222; }
   .btn.small{ padding:8px 10px; border-radius:10px; font-size:0.9em; }
 
+  
   .seg{
     display:flex;
     background:#151515;
@@ -183,6 +184,11 @@
     border-radius:14px;
     overflow:hidden;
   }
+  .abilitySeg{
+  flex:0 0 auto;
+  min-width:auto;
+  width:auto;
+}
   .seg button{
     flex:1;
     padding:8px 8px;
@@ -220,6 +226,13 @@
   .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
   .pips{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+  .pips.grid4{
   display:grid;
   grid-template-columns: repeat(4, 18px);
   gap:6px;
@@ -248,6 +261,7 @@
     gap:10px;
     padding:6px 0;
     border-bottom:1px solid #242424;
+    min-height:40px;
   }
   .kv:last-child{ border-bottom:0; }
   .kv .k{ color:var(--muted); }
@@ -425,7 +439,16 @@
 .topStats .mono{
   font-size:0.9em;
 }
+#btnFalseLife{
+  padding:2px 2px;
+  font-size:0.7em;
+  line-height:1.05;
+}
 
+#btnFalseLife .tiny{
+  font-size:0.7em;
+  opacity:0.85;
+}
 
 </style>
 </head>
@@ -510,7 +533,7 @@
       <!-- Ability Roller -->
       <div class="card" style="margin-bottom:10px;">
         <div class="row" style="justify-content:space-between;">
-          <div class="seg" style="flex:1; min-width:220px;">
+          <div class="seg abilitySeg">
             <button id="modeCheck" class="active">Check</button>
             <button id="modeSave">Save</button>
           </div>
@@ -568,34 +591,34 @@
     <div>
       <div class="kv">
         <div class="k">Breath Weapon</div>
-        <div class="v"><span class="pips good" id="featBreath"></span></div>
+        <div class="v"><span class="pips grid4 good" id="featBreath"></span></div>
       </div>
 
       <div class="kv">
         <div class="k">Axe Charge</div>
-        <div class="v"><span class="pips" id="featAxe"></span></div>
+        <div class="v"><span class="pips grid4" id="featAxe"></span></div>
       </div>
 
       <div class="kv">
         <div class="k">Divine Sense</div>
-        <div class="v"><span class="pips" id="featDivine"></span></div>
+        <div class="v"><span class="pips grid4" id="featDivine"></span></div>
       </div>
     </div>
 
     <div>
       <div class="kv">
         <div class="k">Fly</div>
-        <div class="v"><span class="pips" id="featFly"></span></div>
+        <div class="v"><span class="pips grid4" id="featFly"></span></div>
       </div>
 
       <div class="kv">
         <div class="k">Curse</div>
-        <div class="v"><span class="pips" id="featCurse"></span></div>
+        <div class="v"><span class="pips grid4" id="featCurse"></span></div>
       </div>
 
       <div class="kv">
         <div class="k">Inspiring Smite / Peerless Athlete</div>
-        <div class="v"><span class="pips" id="featSharedPoolA"></span></div>
+        <div class="v"><span class="pips grid4" id="featSharedPoolA"></span></div>
       </div>
     </div>
 
