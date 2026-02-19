@@ -1,4 +1,4 @@
-const CACHE_NAME = "dnd-dice-v1";
+const CACHE_NAME = "dnd-dice-v1.01";
 
 self.addEventListener("install", event => {
   event.waitUntil(
