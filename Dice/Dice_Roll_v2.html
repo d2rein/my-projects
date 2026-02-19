@@ -243,6 +243,8 @@
   display:grid;
   grid-template-columns: repeat(4, 18px);
   gap:4px;
+  min-height: 36px;
+  align-content: start;
 }
 
   .pip{
@@ -263,13 +265,13 @@
   }
 
   .kv{
-    display:flex;
-    justify-content:space-between;
-    gap:6px;
-    padding:6px 0;
-    border-bottom:1px solid #242424;
-    min-height:40px;
-  }
+  display:flex;
+  justify-content:space-between;
+  gap:6px;
+  padding:4px 0;
+  border-bottom:1px solid #242424;
+}
+
   .kv:last-child{ border-bottom:0; }
   .kv .k{ color:var(--muted); }
   .kv .v{ font-weight:750; }
@@ -494,7 +496,7 @@
       </table>
 
       <div id="history1" class="history"></div>
-      <div class="tiny muted" style="text-align:right;">v1.1.02</div>
+      <div class="tiny muted" style="text-align:right;">v1.1.03</div>
     </div>
   </div>
 
