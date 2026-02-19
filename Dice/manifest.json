@@ -1,7 +1,7 @@
 {
   "name": "D&D Dice Console",
   "short_name": "Dice",
-  "start_url": "/Dice/",
+  "start_url": "/Dice/Dice_Roll_v2.html",
   "scope": "/Dice/",
   "display": "standalone",
   "background_color": "#111111",
