@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>D&D Dice Console</title>
+
+<style>
+  :root{
+    --bg:#111;
+    --panel:#1b1b1b;
+    --panel2:#222;
+    --muted:#9aa0a6;
+    --text:#eee;
+    --line:#2b2b2b;
+    --accent:#4aa3ff;
+    --good:#38d16a;
+    --warn:#ffcc66;
+    --bad:#ff6b6b;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  }
+
+  /* --- Swipe pages --- */
+  .viewport{
+    display:flex;
+    width:100vw;
+    height:100vh;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+  }
+  .page{
+    flex:0 0 100vw;
+    height:100vh;
+    overflow-y:auto;
+    scroll-snap-align:start;
+    padding:10px;
+  }
+  @media (min-width: 950px){
+    .page{ flex:0 0 50vw; }
+  }
+
+  /* --- Page 1 (your existing table styling, lightly modernized) --- */
+  .container{
+    max-width:520px;
+    margin:auto;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.82em;
+    background:transparent;
+  }
+  th, td{
+    padding:2px;
+    text-align:center;
+    border-bottom:1px solid #222;
+  }
+  th{
+    font-weight:650;
+    color:#b8b8b8;
+    letter-spacing:.02em;
+  }
+  .roll-name{
+    text-align:left;
+    font-weight:650;
+  }
+  .formula{
+    font-size:0.72em;
+    color:#888;
+  }
+  input[type="number"]{
+    width:42px;
+    background:#141414;
+    color:#eee;
+    border:1px solid #2a2a2a;
+    border-radius:10px;
+    padding:4px 6px;
+    outline:none;
+  }
+
+  /* Remove number spinners (no arrows) */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+  input[type="number"]{ -moz-appearance:textfield; }
+
+  td:last-child{ padding:0; }
+  .roll-btn{
+    width:100%;
+    height:100%;
+    padding:10px 8px;
+    font-size:0.95em;
+    background:#222;
+    color:#fff;
+    border:1px solid #333;
+    border-radius:12px;
+  }
+  .roll-btn:active{ transform:scale(0.99); }
+
+  .output{
+    text-align:left;
+    padding:8px;
+    font-size:0.78em;
+    color:#ddd;
+  }
+  .output.placeholder{ color:#666; }
+  .history{
+    margin-top:10px;
+    font-size:0.78em;
+    color:#aaa;
+    background:rgba(255,255,255,0.02);
+    border:1px solid #222;
+    border-radius:12px;
+    padding:10px;
+  }
+
+  /* --- Page 2 (character UI) --- */
+  .card{
+    background:var(--panel);
+    border:1px solid #242424;
+    border-radius:var(--radius);
+    padding:10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+  .grid{
+    display:grid;
+    gap:10px;
+  }
+  .grid2{ grid-template-columns: 1fr 1fr; }
+  .grid3{ grid-template-columns: 1fr 1fr 1fr; }
+  .row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .pill{
+    background:var(--panel2);
+    border:1px solid #2a2a2a;
+    border-radius:999px;
+    padding:6px 10px;
+    display:inline-flex;
+    gap:8px;
+    align-items:center;
+    font-size:0.9em;
+    color:#e8e8e8;
+    white-space:nowrap;
+  }
+  .pips.split4{
+  display:grid;
+  grid-template-columns: repeat(4, 18px);
+  gap:6px;
+}
+  .pill .label{ color:var(--muted); font-size:0.85em; }
+  .btn{
+    background:#2a2a2a;
+    border:1px solid #3a3a3a;
+    color:#fff;
+    border-radius:12px;
+    padding:10px 12px;
+    font-weight:650;
+    cursor:pointer;
+  }
+  .btn:active{ transform:scale(0.99); }
+  .btn.primary{ background:#1f3b55; border-color:#2b4f73; }
+  .btn.good{ background:#12351f; border-color:#1d5a33; }
+  .btn.warn{ background:#3b2c12; border-color:#6a4b1d; }
+  .btn.bad{ background:#3a1414; border-color:#6b2222; }
+  .btn.small{ padding:8px 10px; border-radius:10px; font-size:0.9em; }
+
+  .seg{
+    display:flex;
+    background:#151515;
+    border:1px solid #2a2a2a;
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .seg button{
+    flex:1;
+    padding:10px 12px;
+    background:transparent;
+    border:0;
+    color:#cfcfcf;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .seg button.active{
+    background:#232323;
+    color:#fff;
+  }
+
+  .statBig{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .statBig .title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    color:#ddd;
+    font-weight:800;
+    letter-spacing:.02em;
+  }
+  .statBig .val{
+    font-size:1.1em;
+    font-weight:800;
+  }
+  .muted{ color:var(--muted); }
+  .tiny{ font-size:0.78em; }
+  .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  .pips{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .pip{
+    width:18px;
+    height:18px;
+    border-radius:999px;
+    border:1px solid #3a3a3a;
+    background:#151515;
+    cursor:pointer;
+  }
+  .pip.on{
+    background:rgba(74,163,255,0.35);
+    border-color:#3c7bb6;
+  }
+  .pip.good.on{
+    background:rgba(56,209,106,0.35);
+    border-color:#2f8b4f;
+  }
+
+  .kv{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:6px 0;
+    border-bottom:1px solid #242424;
+  }
+  .kv:last-child{ border-bottom:0; }
+  .kv .k{ color:var(--muted); }
+  .kv .v{ font-weight:750; }
+
+  .inputWide{
+    flex:1;
+    min-width:120px;
+    width:100%;
+    background:#141414;
+    color:#eee;
+    border:1px solid #2a2a2a;
+    border-radius:12px;
+    padding:10px 12px;
+    outline:none;
+    font-size:1em;
+  }
+
+  /* Modal */
+  .modalBack{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    padding:12px;
+    z-index:999;
+  }
+  .modalBack.show{ display:flex; }
+  .modal{
+    width:min(560px, 100%);
+    max-height:80vh;
+    overflow:auto;
+    background:#151515;
+    border:1px solid #2a2a2a;
+    border-radius:18px;
+    padding:12px;
+  }
+  .modalHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .modalTitle{
+    font-weight:900;
+    letter-spacing:.02em;
+  }
+  .modalSection{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid #242424;
+  }
+  .modalSection h4{
+    margin:0 0 8px 0;
+    color:#ddd;
+  }
+  .opt{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:10px 10px;
+    border:1px solid #242424;
+    border-radius:14px;
+    background:#1b1b1b;
+    cursor:pointer;
+    margin-bottom:8px;
+  }
+  .opt:active{ transform:scale(0.995); }
+  .opt .name{ font-weight:800; }
+  .opt .right{ display:flex; gap:8px; align-items:center; }
+  .badge{
+    padding:3px 8px;
+    border-radius:999px;
+    border:1px solid #2f8b4f;
+    background:rgba(56,209,106,0.12);
+    color:#bff0cf;
+    font-size:0.75em;
+    font-weight:800;
+  }
+
+</style>
+</head>
+
+<body>
+
+<div class="viewport">
+
+  <!-- ==================== PAGE 1: Dice Console ==================== -->
+  <div class="page">
+    <div class="container">
+      <table>
+        <thead>
+          <tr>
+            <th>Roll</th>
+            <th>LVL</th>
+            <th>MOD</th>
+            <th>Adv</th>
+            <th>Dis</th>
+            <th>Crit</th>
+            <th>Curse</th>
+            <th style="padding:2px;">ROLL</th>
+          </tr>
+        </thead>
+        <tbody id="rollBody"></tbody>
+      </table>
+
+      <div id="history1" class="history"></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 2: Character ==================== -->
+  <div class="page">
+    <div class="container">
+
+      <!-- Top combat bar + quick controls -->
+      <div class="card" style="margin-bottom:10px;">
+        <div class="row" style="justify-content:space-between;">
+          <div class="pill"><span class="label">HP</span><span class="mono" id="hpText"></span></div>
+          <div class="pill"><span class="label">THP</span><span class="mono" id="thpText"></span></div>
+          <div class="pill"><span class="label">AC</span><span class="mono" id="acText"></span></div>
+          <div class="pill"><span class="label">Init</span><span class="mono" id="initText"></span></div>
+          <div class="pill"><span class="label">Speed</span><span class="mono" id="speedText"></span></div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <input id="dmgInput" class="inputWide" style="max-width:120px;" type="number" inputmode="numeric" placeholder="Amt" />
+          <button class="btn bad" id="btnDamage">Damage</button>
+          <button class="btn good" id="btnHeal">Heal HP</button>
+          <button class="btn warn" id="btnAddTHP">Add THP</button>
+        </div>
+        
+        <div class="row" style="margin-top:10px;">
+          <input id="layInput" class="inputWide" style="max-width:120px;" type="number" inputmode="numeric" placeholder="Lay Amt" />
+          <label class="pill" style="gap:6px;">
+            <input type="checkbox" id="layOnMe" checked />
+            <span class="label">On Me</span>
+          </label>
+          <button class="btn warn" id="btnLayUse">Use Lay Hands</button>
+        </div>
+
+    <div class="row" style="margin-top:10px;">
+          <button class="btn good" id="btnShortRest">Short Rest</button>
+          <button class="btn primary" id="btnLongRest">Long Rest</button>
+          <div class="pill"><span class="label">Lay Hands</span><span class="mono" id="layText"></span></div>
+        </div>
+      </div>
+
+      <!-- Ability Roller -->
+      <div class="card" style="margin-bottom:10px;">
+        <div class="row" style="justify-content:space-between;">
+          <div class="seg" style="flex:1; min-width:220px;">
+            <button id="modeCheck" class="active">Check</button>
+            <button id="modeSave">Save</button>
+          </div>
+
+          <div class="row" style="margin-left:auto;">
+            <label class="pill" style="gap:6px;">
+              <input type="checkbox" id="abilAdv" /> <span class="label">Adv</span>
+            </label>
+            <label class="pill" style="gap:6px;">
+              <input type="checkbox" id="abilDis" /> <span class="label">Dis</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="btnChoose">Choose ability</button>
+          <div class="pill" style="flex:1; justify-content:space-between;">
+            <span class="label" id="chosenLabel">Check</span>
+            <span class="mono" id="chosenName">—</span>
+            <span class="mono" id="chosenMod">+0</span>
+          </div>
+          <button class="btn primary" id="btnAbilityRoll">Roll</button>
+        </div>
+
+        <div class="tiny muted" style="margin-top:8px;">
+          Latest: <span id="chosenDisplay" class="mono">—</span>
+        </div>
+      </div>
+
+      <!-- Spell Slots -->
+      <div class="grid grid2" style="margin-bottom:10px;">
+        <div class="card">
+          <div style="font-weight:900; margin-bottom:8px;">Paladin Spell Slots <span class="muted tiny">(Long Rest)</span></div>
+          <div class="kv"><div class="k">Lvl 1</div><div class="v"><span class="pips" id="palL1"></span></div></div>
+          <div class="kv"><div class="k">Lvl 2</div><div class="v"><span class="pips" id="palL2"></span></div></div>
+          <div class="kv"><div class="k muted">Lvl 3</div><div class="v muted">—</div></div>
+          <div class="kv"><div class="k muted">Lvl 4</div><div class="v muted">—</div></div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:900; margin-bottom:8px;">Warlock Spell Slots <span class="muted tiny">(Short Rest)</span></div>
+          <div class="kv"><div class="k muted">Lvl 1</div><div class="v muted">—</div></div>
+          <div class="kv"><div class="k">Lvl 2</div><div class="v"><span class="pips" id="wlL2"></span></div></div>
+          <div class="kv"><div class="k muted">Lvl 3</div><div class="v muted">—</div></div>
+          <div class="kv"><div class="k muted">Lvl 4</div><div class="v muted">—</div></div>
+        </div>
+      </div>
+
+      <!-- Features / Resources -->
+      <div class="card" style="margin-bottom:10px;">
+  <div style="font-weight:900; margin-bottom:8px;">Abilities / Uses</div>
+
+  <div class="grid grid2">
+
+    <div>
+      <div class="kv">
+        <div class="k">Breath Weapon</div>
+        <div class="v"><span class="pips good" id="featBreath"></span></div>
+      </div>
+
+      <div class="kv">
+        <div class="k">Axe Charge</div>
+        <div class="v"><span class="pips split4" id="featAxe"></span></div>
+      </div>
+
+      <div class="kv">
+        <div class="k">Divine Sense</div>
+        <div class="v"><span class="pips" id="featDivine"></span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="kv">
+        <div class="k">Fly</div>
+        <div class="v"><span class="pips" id="featFly"></span></div>
+      </div>
+
+      <div class="kv">
+        <div class="k">Curse</div>
+        <div class="v"><span class="pips" id="featCurse"></span></div>
+      </div>
+
+      <div class="kv">
+        <div class="k">Inspiring Smite / Peerless Athlete</div>
+        <div class="v"><span class="pips" id="featSharedPoolA"></span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+      <!-- Hit Dice -->
+      <div class="card" style="margin-bottom:10px;">
+        <div style="font-weight:900; margin-bottom:8px;">Hit Dice <span class="muted tiny">(tap to heal: die + CON)</span></div>
+
+        <div class="kv">
+          <div class="k">D10</div>
+          <div class="v"><span class="pips" id="hdD10"></span></div>
+        </div>
+
+        <div class="kv">
+          <div class="k">D8</div>
+          <div class="v"><span class="pips" id="hdD8"></span></div>
+        </div>
+
+        <div class="tiny muted" style="margin-top:8px;">
+          Long rest restores half total hit dice (rounded down), minimum 1.
+        </div>
+      </div>
+
+      <div id="history2" class="history"></div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Ability picker modal -->
+<div id="modalBack" class="modalBack">
+  <div class="modal">
+    <div class="modalHeader">
+      <div class="modalTitle" id="modalTitle">Choose</div>
+      <button class="btn small" id="btnCloseModal">Close</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ==============================
+   Shared Utilities + Persistence
+============================== */
+const STORAGE_KEY = "dnd_modifiers_v1";
+const CHAR_KEY = "dnd_character_state_v1";
+const HIST_KEY = "dnd_history_v1";
+
+const savedMods = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+let history = JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); // array of strings
+
+function pushHistory(line){
+  history.unshift(line);
+  history = history.slice(0, 10);
+  localStorage.setItem(HIST_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory(){
+  const html = "<strong>History</strong><br>" + (history.length ? history.join("<br>") : "<span class='muted'>—</span>");
+  const h1 = document.getElementById("history1");
+  const h2 = document.getElementById("history2");
+  if (h1) h1.innerHTML = html;
+  if (h2) h2.innerHTML = html;
+}
+
+/* Dice roller */
+function rollDice(expr) {
+  const [count, size] = expr.split("d").map(Number);
+  const rolls = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * size));
+  return { rolls, max: count * size };
+}
+function fmtMod(n){ return (n>=0?`+${n}`:`${n}`); }
+
+/* ==============================
+   PAGE 1: Your existing dice console
+============================== */
+const CURSE_DAMAGE = 4;
+const CURSE_DAMAGE_TYPE = "psychic";
+
+const rolls = [
+  { id:"initiative", label:"Initiative", formula:"1 D20 + MOD", hasLevel:false, damage:false, allowAdv:true, defaultMod:2,
+    dice:()=>[{dice:"1d20", type:"init"}] },
+  { id:"attack_battleaxe", label:"Attack – Battle Axe", formula:"1 D20 + MOD", hasLevel:false, damage:false, allowAdv:true, defaultMod:10,
+    dice:()=>[{dice:"1d20", type:"attack"}] },
+  { id:"damage_battleaxe", label:"Damage – Battle Axe", formula:"1 D8 + 1 D4 + MOD", hasLevel:false, damage:true, allowAdv:false, defaultMod:7,
+    modDamageType:"slashing",
+    dice:()=>[{dice:"1d8",type:"slashing"},{dice:"1d4",type:"L/T"}] },
+  { id:"teleport_battleaxe", label:"Teleport – Battle Axe", formula:"1 D8 + 1 D4 + 2×LVL D6 + MOD", hasLevel:true, damage:true, allowAdv:false, defaultMod:7,
+    modDamageType:"slashing",
+    dice:lvl=>[{dice:"1d8",type:"slashing"},{dice:"1d4",type:"L/T"},{dice:`${2*lvl}d6`,type:"AOE L/T"}] },
+  { id:"smite_battleaxe", label:"Smite – Battle Axe", formula:"1 D8 + 1 D4 + 1+LVL D8 + MOD", hasLevel:true, damage:true, allowAdv:false, defaultMod:7,
+    modDamageType:"slashing",
+    dice:lvl=>[{dice:"1d8",type:"slashing"},{dice:"1d4",type:"L/T"},{dice:`${1+lvl}d8`,type:"RAD"}] },
+  { id:"smite_standalone", label:"Smite", formula:"1+LVL D8", hasLevel:true, damage:true, allowAdv:false, defaultMod:0,
+    modDamageType:"slashing",
+    dice:lvl=>[{dice:`${1+lvl}d8`,type:"RAD"}] },
+  { id:"fire_breath", label:"Fire Breath/Hellish Rebule", formula:"1+LVL D10", hasLevel:true, damage:true, allowAdv:false, defaultMod:0,
+    modDamageType:"slashing",
+    dice:lvl=>[{dice:`${1+lvl}d10`,type:"Fire"}] },
+  { id:"attack_spell", label:"Attack – Spell", formula:"1 D20 + MOD", hasLevel:false, damage:false, allowAdv:true, defaultMod:7,
+    dice:()=>[{dice:"1d20",type:"attack"}] },
+  { id:"guiding_bolt", label:"Guiding Bolt", formula:"3+LVL D6", hasLevel:true, damage:true, allowAdv:false, defaultMod:0,
+    modDamageType:"radiant",
+    dice:lvl=>[{dice:`${3+lvl}d6`,type:"radiant"}] },
+];
+
+function performRoll(cfg, state) {
+  let allRolls = [];
+  let breakdown = {};
+  let total = 0;
+  let critBonus = 0;
+
+  // Attack / Initiative (d20 logic)
+  if (!cfg.damage) {
+    const d20a = rollDice("1d20").rolls[0];
+    let chosen = d20a;
+    let detail = `${d20a}`;
+
+    if (state.adv || state.dis) {
+      const d20b = rollDice("1d20").rolls[0];
+      chosen = state.adv ? Math.max(d20a, d20b) : Math.min(d20a, d20b);
+      detail = `${state.adv ? "max" : "min"}(${d20a},${d20b})`;
+    }
+
+    total = chosen + state.mod;
+    return { text: `${detail} + MOD(${state.mod}) = ${total}` };
+  }
+
+  // Damage rolls (crit bonus properly attributed per type)
+  cfg.dice(state.lvl).forEach(d => {
+    const r = rollDice(d.dice);
+    const sum = r.rolls.reduce((a,b)=>a+b,0);
+
+    allRolls.push(...r.rolls);
+    breakdown[d.type] = (breakdown[d.type] || 0) + sum;
+    total += sum;
+
+    if (state.crit) {
+      breakdown[d.type] = (breakdown[d.type] || 0) + r.max;
+      total += r.max;
+      critBonus += r.max;
+    }
+  });
+
+  if (cfg.modDamageType && state.mod !== 0) {
+    breakdown[cfg.modDamageType] = (breakdown[cfg.modDamageType] || 0) + state.mod;
+    total += state.mod;
+  }
+
+  if (state.curse) {
+    breakdown[CURSE_DAMAGE_TYPE] = (breakdown[CURSE_DAMAGE_TYPE] || 0) + CURSE_DAMAGE;
+    total += CURSE_DAMAGE;
+  }
+
+  return {
+    text:
+      `${allRolls.join(" + ")}` +
+      (cfg.modDamageType ? ` + MOD(${state.mod})` : "") +
+      (state.curse ? ` + ${CURSE_DAMAGE_TYPE}(${CURSE_DAMAGE})` : "") +
+      (state.crit ? ` + Crit(${critBonus})` : "") +
+      ` = ${total} — ` +
+      Object.entries(breakdown).map(([k,v])=>`${k}: ${v}`).join(" | ")
+  };
+}
+
+function renderRollTable() {
+  const body = document.getElementById("rollBody");
+  body.innerHTML = "";
+
+  rolls.forEach(cfg => {
+    const modValue = savedMods[cfg.id] ?? cfg.defaultMod;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="roll-name">
+        ${cfg.label}
+        <div class="formula">${cfg.formula}</div>
+      </td>
+      <td><select ${cfg.hasLevel ? "" : "disabled"}>
+        ${[1,2,3,4,5].map(l=>`<option>${l}</option>`).join("")}
+      </select></td>
+      <td><input type="number" value="${modValue}" class="mod"></td>
+      <td><input type="checkbox" class="adv" ${cfg.allowAdv ? "" : "disabled"}></td>
+      <td><input type="checkbox" class="dis" ${cfg.allowAdv ? "" : "disabled"}></td>
+      <td><input type="checkbox" class="crit" ${cfg.damage ? "" : "disabled"}></td>
+      <td><input type="checkbox" class="curse" ${cfg.damage ? "" : "disabled"}></td>
+      <td><button class="roll-btn">ROLL</button></td>
+    `;
+
+    const outputRow = document.createElement("tr");
+    const outputCell = document.createElement("td");
+    outputCell.colSpan = 8;
+    outputCell.className = "output placeholder";
+    outputCell.textContent = "\u00A0";
+    outputRow.appendChild(outputCell);
+
+    const modInput = row.querySelector(".mod");
+    modInput.onchange = () => {
+      savedMods[cfg.id] = Number(modInput.value);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedMods));
+    };
+
+    // Adv / Dis mutual exclusion
+    const adv = row.querySelector(".adv");
+    const dis = row.querySelector(".dis");
+    adv.onchange = () => { if (adv.checked) dis.checked = false; };
+    dis.onchange = () => { if (dis.checked) adv.checked = false; };
+
+    row.querySelector(".roll-btn").onclick = () => {
+      const result = performRoll(cfg, {
+        lvl: Number(row.querySelector("select").value),
+        mod: Number(modInput.value),
+        adv: adv.checked,
+        dis: dis.checked,
+        crit: row.querySelector(".crit").checked,
+        curse: row.querySelector(".curse").checked
+      });
+
+      outputCell.classList.remove("placeholder");
+      outputCell.textContent = result.text;
+
+      pushHistory(`${cfg.label}: ${result.text}`);
+    };
+
+    body.appendChild(row);
+    body.appendChild(outputRow);
+  });
+}
+
+/* ==============================
+   PAGE 2: Character state + actions
+============================== */
+const DEFAULT_CHAR = {
+  // quick stats
+  speed: 30,
+  ac: 23,
+  initiative: 2,
+
+  // hp
+  maxHp: 88,
+  hp: 88,
+  thp: 7,         // defaults to 7, but editable via Add THP
+  layMax: 45,
+  lay: 45,
+
+  // ability mods (from your sheet)
+  abilMod: { STR:5, DEX:2, CON:2, INT:1, WIS:0, CHA:3 },
+
+  // saves (your sheet)
+  saves: { STR:5, DEX:2, CON:2, INT:1, WIS:4, CHA:7 },
+
+  // skills (your sheet)
+  skills: {
+    "Athletics": { abil:"STR", mod:9, prof:true },
+    "Acrobatics": { abil:"DEX", mod:2, prof:false },
+    "Sleight of Hand": { abil:"DEX", mod:2, prof:false },
+    "Stealth": { abil:"DEX", mod:2, prof:false },
+
+    "Arcana": { abil:"INT", mod:1, prof:false },
+    "History": { abil:"INT", mod:1, prof:false },
+    "Investigation": { abil:"INT", mod:1, prof:false },
+    "Nature": { abil:"INT", mod:1, prof:false },
+    "Religion": { abil:"INT", mod:1, prof:false },
+
+    "Animal Handling": { abil:"WIS", mod:0, prof:false },
+    "Insight": { abil:"WIS", mod:4, prof:true },
+    "Medicine": { abil:"WIS", mod:0, prof:false },
+    "Perception": { abil:"WIS", mod:4, prof:true },
+    "Survival": { abil:"WIS", mod:0, prof:false },
+
+    "Deception": { abil:"CHA", mod:3, prof:false },
+    "Intimidation": { abil:"CHA", mod:7, prof:true },
+    "Performance": { abil:"CHA", mod:3, prof:false },
+    "Persuasion": { abil:"CHA", mod:7, prof:true },
+  },
+
+  // spell slots (pips are "available"; toggling spends/restores)
+  slots: {
+    paladin: { L1:{max:4, cur:4}, L2:{max:2, cur:2} },      // long rest
+    warlock: { L2:{max:2, cur:2} }                          // short rest
+  },
+
+  // features / uses
+  features: {
+    breath: { max:4, cur:4, recharge:"long" },
+    axe:    { max:8, cur:8, recharge:"long" },
+    divine: { max:4, cur:4, recharge:"long" },
+    fly:    { max:1, cur:1, recharge:"long" },
+    curse:  { max:1, cur:1, recharge:"short" },
+
+    // shared pool: inspiring smite + peerless athlete
+    sharedSmiteAthlete: { max:1, cur:1, recharge:"short" },
+  },
+
+  // hit dice
+  hitDice: {
+    d10: { max:5, cur:5 },
+    d8:  { max:4, cur:4 },
+  }
+};
+
+let charState = loadChar();
+
+function loadChar(){
+  const raw = localStorage.getItem(CHAR_KEY);
+  if (!raw) return structuredClone(DEFAULT_CHAR);
+  try{
+    const parsed = JSON.parse(raw);
+
+    // merge shallowly with defaults (keeps new keys if you add later)
+    const merged = structuredClone(DEFAULT_CHAR);
+    Object.assign(merged, parsed);
+
+    // deep merge for known nested objects
+    merged.abilMod = Object.assign({}, DEFAULT_CHAR.abilMod, parsed.abilMod || {});
+    merged.saves = Object.assign({}, DEFAULT_CHAR.saves, parsed.saves || {});
+    merged.skills = Object.assign({}, DEFAULT_CHAR.skills, parsed.skills || {});
+    merged.slots = Object.assign({}, DEFAULT_CHAR.slots, parsed.slots || {});
+    merged.slots.paladin = Object.assign({}, DEFAULT_CHAR.slots.paladin, (parsed.slots||{}).paladin || {});
+    merged.slots.warlock = Object.assign({}, DEFAULT_CHAR.slots.warlock, (parsed.slots||{}).warlock || {});
+    merged.features = Object.assign({}, DEFAULT_CHAR.features, parsed.features || {});
+    merged.hitDice = Object.assign({}, DEFAULT_CHAR.hitDice, parsed.hitDice || {});
+    return merged;
+  }catch{
+    return structuredClone(DEFAULT_CHAR);
+  }
+}
+function saveChar(){
+  localStorage.setItem(CHAR_KEY, JSON.stringify(charState));
+  renderCharacter();
+}
+
+/* ==============================
+   Ability roller UI (Page 2)
+============================== */
+let abilityMode = "check"; // "check" | "save"
+let chosen = null; // { kind:"skill"|"save", name, mod, abil }
+
+const modalBack = document.getElementById("modalBack");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+
+function openModal(){
+  modalBack.classList.add("show");
+}
+function closeModal(){
+  modalBack.classList.remove("show");
+}
+
+document.getElementById("btnCloseModal").onclick = closeModal;
+modalBack.addEventListener("click", (e)=>{ if (e.target === modalBack) closeModal(); });
+
+function setMode(newMode){
+  abilityMode = newMode;
+  document.getElementById("modeCheck").classList.toggle("active", newMode==="check");
+  document.getElementById("modeSave").classList.toggle("active", newMode==="save");
+
+  document.getElementById("chosenLabel").textContent = (newMode==="check") ? "Check" : "Save";
+  chosen = null;
+  renderChosen();
+}
+
+document.getElementById("modeCheck").onclick = ()=> setMode("check");
+document.getElementById("modeSave").onclick  = ()=> setMode("save");
+
+// Adv/Dis mutual exclusion for ability roller
+const abilAdv = document.getElementById("abilAdv");
+const abilDis = document.getElementById("abilDis");
+abilAdv.onchange = ()=>{ if (abilAdv.checked) abilDis.checked = false; };
+abilDis.onchange = ()=>{ if (abilDis.checked) abilAdv.checked = false; };
+
+function renderChosen(){
+  const nameEl = document.getElementById("chosenName");
+  const modEl  = document.getElementById("chosenMod");
+  const dispEl = document.getElementById("chosenDisplay");
+
+  if (!chosen){
+    nameEl.textContent = "—";
+    modEl.textContent = "+0";
+    dispEl.textContent = "—";
+    return;
+  }
+  nameEl.textContent = chosen.name;
+  modEl.textContent  = fmtMod(chosen.mod);
+  dispEl.textContent = `${abilityMode==="check"?"Check":"Save"} — ${chosen.name} (${fmtMod(chosen.mod)})`;
+}
+
+function buildModalOptions(){
+  modalBody.innerHTML = "";
+  modalTitle.textContent = (abilityMode==="check") ? "Choose Ability Check" : "Choose Saving Throw";
+
+  const order = ["STR","DEX","CON","INT","WIS","CHA"];
+
+  if (abilityMode === "save"){
+    // one option per ability save
+    order.forEach(ab=>{
+      const opt = document.createElement("div");
+      opt.className = "opt";
+      opt.innerHTML = `
+        <div class="name">${ab} Save</div>
+        <div class="right">
+          <div class="mono">${fmtMod(charState.saves[ab] ?? 0)}</div>
+        </div>
+      `;
+      opt.onclick = ()=>{
+        chosen = { kind:"save", name:`${ab} Save`, mod:(charState.saves[ab] ?? 0), abil:ab };
+        renderChosen();
+        closeModal();
+      };
+      modalBody.appendChild(opt);
+    });
+
+    return;
+  }
+
+  // checks: show skills grouped by ability headings + include a generic "<ABILITY> Check"
+  const skillsByAbil = {};
+  for (const [skill, info] of Object.entries(charState.skills)){
+    const ab = info.abil;
+    (skillsByAbil[ab] ||= []).push({ skill, ...info });
+  }
+  order.forEach(ab=>{
+    const section = document.createElement("div");
+    section.className = "modalSection";
+    section.innerHTML = `<h4>${ab} <span class="muted tiny">(${fmtMod(charState.abilMod[ab] ?? 0)})</span></h4>`;
+
+    // Generic ability check option
+    const baseOpt = document.createElement("div");
+    baseOpt.className = "opt";
+    baseOpt.innerHTML = `
+      <div>
+        <div class="name">${ab} Check</div>
+        <div class="tiny muted">Ability check (no skill)</div>
+      </div>
+      <div class="right">
+        <div class="mono">${fmtMod(charState.abilMod[ab] ?? 0)}</div>
+      </div>
+    `;
+    baseOpt.onclick = ()=>{
+      chosen = { kind:"check", name:`${ab} Check`, mod:(charState.abilMod[ab] ?? 0), abil:ab };
+      renderChosen();
+      closeModal();
+    };
+    section.appendChild(baseOpt);
+
+    // Skill options
+    const list = (skillsByAbil[ab] || []).sort((a,b)=>a.skill.localeCompare(b.skill));
+    list.forEach(item=>{
+      const opt = document.createElement("div");
+      opt.className = "opt";
+      opt.innerHTML = `
+        <div>
+          <div class="name">${item.skill}</div>
+          <div class="tiny muted">${ab} skill</div>
+        </div>
+        <div class="right">
+          ${item.prof ? `<span class="badge">Prof</span>` : ``}
+          <div class="mono">${fmtMod(item.mod)}</div>
+        </div>
+      `;
+      opt.onclick = ()=>{
+        chosen = { kind:"skill", name:item.skill, mod:item.mod, abil:ab };
+        renderChosen();
+        closeModal();
+      };
+      section.appendChild(opt);
+    });
+
+    modalBody.appendChild(section);
+  });
+}
+
+document.getElementById("btnChoose").onclick = ()=>{
+  buildModalOptions();
+  openModal();
+};
+
+document.getElementById("btnAbilityRoll").onclick = ()=>{
+  if (!chosen){
+    pushHistory(`Ability Roll: (no selection)`);
+    return;
+  }
+  const d20a = rollDice("1d20").rolls[0];
+  let chosenD20 = d20a;
+  let detail = `${d20a}`;
+
+  if (abilAdv.checked || abilDis.checked){
+    const d20b = rollDice("1d20").rolls[0];
+    chosenD20 = abilAdv.checked ? Math.max(d20a, d20b) : Math.min(d20a, d20b);
+    detail = `${abilAdv.checked ? "max" : "min"}(${d20a},${d20b})`;
+  }
+
+  const total = chosenD20 + chosen.mod;
+  const label = `${abilityMode==="check" ? "Check" : "Save"} — ${chosen.name}`;
+  const line = `${label}: ${detail} + MOD(${chosen.mod}) = ${total}`;
+  pushHistory(line);
+
+  // Update selected display
+  document.getElementById("chosenDisplay").textContent = line;
+
+};
+
+/* ==============================
+   HP / THP / rests / slots / features / hit dice
+============================== */
+function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+
+function applyDamage(amount){
+  amount = Math.max(0, amount|0);
+  if (!amount) return;
+  let thp = charState.thp|0;
+  let hp  = charState.hp|0;
+
+  const absorbed = Math.min(thp, amount);
+  thp -= absorbed;
+  amount -= absorbed;
+
+  hp = clamp(hp - amount, 0, charState.maxHp|0);
+
+  charState.thp = thp;
+  charState.hp = hp;
+  saveChar();
+
+  pushHistory(`Damage: -${absorbed} THP, -${amount} HP → HP ${hp}/${charState.maxHp}, THP ${thp}`);
+}
+
+function healHp(amount){
+  amount = Math.max(0, amount|0);
+  if (!amount) return;
+  const before = charState.hp|0;
+  charState.hp = clamp(before + amount, 0, charState.maxHp|0);
+  saveChar();
+  pushHistory(`Heal HP: +${amount} → HP ${charState.hp}/${charState.maxHp}`);
+}
+
+function addThp(amount){
+  amount = Math.max(0, amount|0);
+  if (!amount) return;
+
+  const before = charState.thp|0;
+  charState.thp = Math.max(before, amount);
+
+  saveChar();
+  pushHistory(`THP set to ${charState.thp} (was ${before})`);
+}
+
+
+function shortRest(){
+  // Restore warlock slots (L2)
+  const wl = charState.slots.warlock;
+  if (wl?.L2) wl.L2.cur = wl.L2.max;
+
+  // Restore short-rest features
+  charState.features.curse.cur = charState.features.curse.max;
+  charState.features.sharedSmiteAthlete.cur = charState.features.sharedSmiteAthlete.max;
+
+  charState.thp = Math.max(charState.thp, 7);
+
+  saveChar();
+  pushHistory(`Short Rest: warlock slots restored; short-rest abilities restored.`);
+}
+
+function longRest(){
+  // HP full
+  charState.hp = charState.maxHp|0;
+  charState.thp = Math.max(charState.thp, 7);
+  charState.lay = charState.layMax;
+
+
+  // Restore paladin slots
+  const pal = charState.slots.paladin;
+  if (pal?.L1) pal.L1.cur = pal.L1.max;
+  if (pal?.L2) pal.L2.cur = pal.L2.max;
+
+  // Long rest also restores short-rest stuff
+  const f = charState.features;
+  f.breath.cur = f.breath.max;
+  f.axe.cur = f.axe.max;
+  f.divine.cur = f.divine.max;
+  f.fly.cur = f.fly.max;
+  f.curse.cur = f.curse.max;
+  f.sharedSmiteAthlete.cur = f.sharedSmiteAthlete.max;
+
+  // Restore hit dice: half total, rounded down, min 1
+  const total = (charState.hitDice.d10.max|0) + (charState.hitDice.d8.max|0);
+  let regain = Math.floor(total / 2);
+  regain = Math.max(1, regain);
+
+  // Add back to pools up to max: prioritize d10 then d8
+  let needD10 = (charState.hitDice.d10.max|0) - (charState.hitDice.d10.cur|0);
+  let addD10 = Math.min(needD10, regain);
+  charState.hitDice.d10.cur += addD10;
+  regain -= addD10;
+
+  let needD8 = (charState.hitDice.d8.max|0) - (charState.hitDice.d8.cur|0);
+  let addD8 = Math.min(needD8, regain);
+  charState.hitDice.d8.cur += addD8;
+  regain -= addD8;
+
+  saveChar();
+  pushHistory(`Long Rest: HP full; paladin slots restored; long/short abilities restored; hit dice regained (d10 +${addD10}, d8 +${addD8}).`);
+}
+
+function getAmtAndClear(){
+  const el = document.getElementById("dmgInput");
+  const amt = Number(el.value || 0);
+  el.value = "";
+  return amt;
+}
+
+document.getElementById("btnDamage").onclick = ()=>{
+  applyDamage(getAmtAndClear());
+};
+document.getElementById("btnHeal").onclick = ()=>{
+  healHp(getAmtAndClear());
+};
+document.getElementById("btnAddTHP").onclick = ()=>{
+  addThp(getAmtAndClear());
+};
+
+document.getElementById("btnShortRest").onclick = shortRest;
+document.getElementById("btnLongRest").onclick  = longRest;
+
+document.getElementById("btnLayUse").onclick = ()=>{
+  const input = document.getElementById("layInput");
+  let amt = Number(input.value || 0);
+  input.value = "";
+  amt = Math.max(0, amt|0);
+
+  if (!amt) return;
+
+  const usable = Math.min(amt, charState.lay);
+  charState.lay -= usable;
+
+  if (document.getElementById("layOnMe").checked){
+    charState.hp = clamp(charState.hp + usable, 0, charState.maxHp);
+    pushHistory(`Lay Hands: ${usable} → HP ${charState.hp}/${charState.maxHp}`);
+  } else {
+    pushHistory(`Lay Hands: ${usable} used (not on self)`);
+  }
+
+  saveChar();
+};
+
+function spendHitDie(type){
+  const hd = charState.hitDice[type];
+  if (!hd || hd.cur <= 0){
+    pushHistory(`Hit Dice: no ${type.toUpperCase()} remaining`);
+    return;
+  }
+  hd.cur -= 1;
+
+  const die = type === "d10" ? "1d10" : "1d8";
+  const r = rollDice(die).rolls[0];
+  const con = charState.abilMod.CON ?? 0;
+  const heal = Math.max(0, r + con);
+
+  const before = charState.hp|0;
+  charState.hp = clamp(before + heal, 0, charState.maxHp|0);
+
+  saveChar();
+  pushHistory(`Hit Die ${die}: rolled ${r} + CON(${con}) = ${heal} → HP ${charState.hp}/${charState.maxHp}`);
+}
+
+/* Pips rendering helpers */
+function renderPips(el, cur, max, {onClass="on", extraClass=""} = {}){
+  el.innerHTML = "";
+  for (let i=0;i<max;i++){
+    const d = document.createElement("div");
+    d.className = `pip ${extraClass} ${(i < cur) ? onClass : ""}`.trim();
+    el.appendChild(d);
+  }
+}
+
+function bindPipsToggle(el, obj){
+  // Toggle from rightmost available first: tap a filled pip -> spend 1; tap an empty pip -> restore 1 (from left)
+  el.onclick = (e)=>{
+    const pips = Array.from(el.children);
+    const idx = pips.indexOf(e.target);
+    if (idx === -1) return;
+
+    // If tapped within current filled range -> spend down to idx
+    if (idx < obj.cur){
+      obj.cur = idx; // makes pips [0..idx-1] filled
+    }else{
+      // tapped empty -> restore up to idx+1
+      obj.cur = Math.min(obj.max, idx+1);
+    }
+    saveChar();
+  };
+}
+
+function bindPipsSpendOnly(el, obj){
+  // For features/hit dice style: tap a filled pip spends 1, tap empty does nothing.
+  el.onclick = (e)=>{
+    const pips = Array.from(el.children);
+    const idx = pips.indexOf(e.target);
+    if (idx === -1) return;
+    if (idx < obj.cur){
+      obj.cur = Math.max(0, obj.cur - 1);
+      saveChar();
+    }
+  };
+}
+function bindSharedPool(el, obj, label){
+  el.onclick = (e)=>{
+    const pips = Array.from(el.children);
+    const idx = pips.indexOf(e.target);
+    if (idx === -1) return;
+
+    // spend if filled; restore if empty
+    if (idx < obj.cur){
+      obj.cur = idx;
+      saveChar();
+      pushHistory(`${label}: spent 1 (pool now ${obj.cur}/${obj.max})`);
+    }else{
+      obj.cur = Math.min(obj.max, idx+1);
+      saveChar();
+      pushHistory(`${label}: restored (pool now ${obj.cur}/${obj.max})`);
+    }
+  };
+}
+
+/* Render character UI */
+function renderCharacter(){
+  // quick stat pills
+  document.getElementById("hpText").textContent = `${charState.hp}/${charState.maxHp}`;
+  document.getElementById("thpText").textContent = `${charState.thp}`;
+  document.getElementById("acText").textContent = `${charState.ac}`;
+  document.getElementById("initText").textContent = `${fmtMod(charState.initiative)}`;
+  document.getElementById("speedText").textContent = `${charState.speed}`;
+  document.getElementById("layText").textContent = `${charState.lay}/${charState.layMax}`;
+
+  // slots
+  const palL1 = document.getElementById("palL1");
+  const palL2 = document.getElementById("palL2");
+  const wlL2  = document.getElementById("wlL2");
+
+  renderPips(palL1, charState.slots.paladin.L1.cur, charState.slots.paladin.L1.max);
+  renderPips(palL2, charState.slots.paladin.L2.cur, charState.slots.paladin.L2.max);
+  renderPips(wlL2,  charState.slots.warlock.L2.cur,  charState.slots.warlock.L2.max);
+
+  bindPipsToggle(palL1, charState.slots.paladin.L1);
+  bindPipsToggle(palL2, charState.slots.paladin.L2);
+  bindPipsToggle(wlL2,  charState.slots.warlock.L2);
+
+  // features
+  renderPips(document.getElementById("featBreath"), charState.features.breath.cur, charState.features.breath.max, {extraClass:"good"});
+  renderPips(document.getElementById("featAxe"),    charState.features.axe.cur,    charState.features.axe.max);
+  renderPips(document.getElementById("featDivine"), charState.features.divine.cur, charState.features.divine.max);
+  renderPips(document.getElementById("featFly"),    charState.features.fly.cur,    charState.features.fly.max);
+  renderPips(document.getElementById("featCurse"),  charState.features.curse.cur,  charState.features.curse.max);
+
+  // shared pool displayed twice (same underlying resource)
+  renderPips(document.getElementById("featSharedPoolA"), charState.features.sharedSmiteAthlete.cur, charState.features.sharedSmiteAthlete.max);
+  
+  // spending behaviour:
+  bindPipsToggle(document.getElementById("featBreath"), charState.features.breath);
+  bindPipsToggle(document.getElementById("featAxe"),    charState.features.axe);
+  bindPipsToggle(document.getElementById("featDivine"), charState.features.divine);
+  bindPipsToggle(document.getElementById("featFly"),    charState.features.fly);
+  bindPipsToggle(document.getElementById("featCurse"),  charState.features.curse);
+
+
+  bindSharedPool(document.getElementById("featSharedPoolA"), charState.features.sharedSmiteAthlete, "Inspiring Smite");
+
+  // hit dice
+  const hd10 = document.getElementById("hdD10");
+  const hd8  = document.getElementById("hdD8");
+  renderPips(hd10, charState.hitDice.d10.cur, charState.hitDice.d10.max);
+  renderPips(hd8,  charState.hitDice.d8.cur,  charState.hitDice.d8.max);
+
+  // Tap a filled pip to spend 1 and heal
+  hd10.onclick = (e)=>{
+    const pips = Array.from(hd10.children);
+    const idx = pips.indexOf(e.target);
+    if (idx === -1) return;
+    if (idx < charState.hitDice.d10.cur) spendHitDie("d10");
+  };
+  hd8.onclick = (e)=>{
+    const pips = Array.from(hd8.children);
+    const idx = pips.indexOf(e.target);
+    if (idx === -1) return;
+    if (idx < charState.hitDice.d8.cur) spendHitDie("d8");
+  };
+
+  renderChosen();
+}
+
+/* ==============================
+   Boot
+============================== */
+renderRollTable();
+renderHistory();
+renderCharacter();
+</script>
+</body>
+</html>
