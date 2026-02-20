@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NRL ELO Ratings</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .container { max-width: none; width: 100%; table-layout: fixed; margin: 0; padding: 10px; }
+        header { background: #1a1a2e; color: white; padding: 20px 0; margin-bottom: 30px; text-align: center; }
+        h1 { font-size: 2em; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #ddd; }
+        .tab { padding: 10px 20px; background: none; border: none; cursor: pointer; font-size: 16px; 
+               color: #666; border-bottom: 3px solid transparent; }
+        .tab.active { color: #1a1a2e; border-bottom-color: #1a1a2e; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+        td { white-space: nowrap; line-height: 1.0; }
+        #games td { overflow: hidden; text-overflow: ellipsis; }
+        th { background: #f8f8f8; font-weight: 600; }
+        .col-narrow {width: 60px;max-width: 80px;text-align: center; }
+        .col-medium {width: 110px; max-width: 120px; text-align: center; }
+        .col-wide {width: auto; }
+        .rank { width: 40px; height: 40px; line-height: 40px; text-align: center; border-radius: 50%; 
+                background: #1a1a2e; color: white; font-weight: bold; display: inline-block; }
+        .btn { padding: 10px 20px; background: #1a1a2e; color: white; border: none; border-radius: 4px; 
+               cursor: pointer; font-size: 16px; }
+        .btn:hover { background: #2a2a3e; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; 
+                        font-size: 14px; margin-top: 5px; }
+        label { display: block; margin: 15px 0 5px; font-weight: 500; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .message { padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        /* ===== Season Matrix Styling ===== */
+        .matrix-table {table-layout: auto; width: 100%;font-size: 11px;}
+        .matrix-table th {text-align: center;font-weight: 600;}
+        .matrix-team {min-width: 180px;font-weight: 600;}
+        .matrix-rank {text-align: center;width: 50px;}
+        .matrix-elo {text-align: right;width: 60px;}
+        .round-col {text-align: center;min-width: 45px;font-size: 10px;}
+
+        /* Completed results */
+        .win { background: #c8e6c9; }
+        .loss { background: #ffcdd2; }
+        .draw { background: #ffe0b2; }
+        .bye { background: #fff9c4; }
+
+        /* Projected (fainter) */
+        .pred-win { background: rgba(76,175,80,0.25); }
+        .pred-loss { background: rgba(244,67,54,0.25); }
+
+        /* Current round divider */
+        .current-round-divider {border-right: 3px solid #222;        }
+
+        /* Rank arrows */
+        .arrow-up { color: #2e7d32; font-weight: bold; }
+        .arrow-down { color: #c62828; font-weight: bold; }
+
+        /* ===== ELO History controls in one line ===== */
+        .elo-controls {display: flex;align-items: center;gap: 10px;margin-bottom: 15px;}
+        .elo-controls label {display: inline-block;margin: 0;font-size: 12px;}
+        .elo-controls input {width: 90px;padding: 4px 6px;margin: 0;font-size: 13px;}
+        .elo-controls .btn {padding: 6px 14px;}
+
+        /* --- New styles for the All Games table --- */
+        #games {max-height: 80vh; overflow-y: auto;}
+        #games table thead th {position: sticky; top: 0; background: #f8f8f8; z-index: 10;}
+        .warning {background: #fff3e0; /* light orange */color: #e65100;  }
+        .editable {background: #f1f8ff; cursor: pointer;     }
+        /* === Round Entry Table (responsive, max-widths) === */
+        .round-entry { width: auto; max-width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+
+        /* Tighter spacing like "All Games" */
+        .round-entry td, .round-entry th { padding: 4px 6px; line-height: 1.0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Column sizing using max-width instead of fixed width */
+        .round-entry .col-game { max-width: 60px; text-align: center; }
+        .round-entry .col-team { max-width: 700px; }
+        .round-entry .col-med { max-width: 400px; text-align: center; }
+        .round-entry .col-score { max-width: 400px; text-align: center; }
+
+        /* Make inputs compact + remove spinner arrows */
+        .round-entry input[type=number] { width: 80px; padding: 4px; }
+
+        /* Chrome/Safari */
+        .round-entry input[type=number]::-webkit-inner-spin-button,
+        .round-entry input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+            
+        /* === Rankings table layout === */
+        .rankings-table {
+        table-layout: fixed;
+        width: auto;      
+        max-width: 100%;  
+        }
+
+        .rankings-table .col-rank { max-width: 50px; text-align: center; }
+        .rankings-table .col-elo { max-width: 70px; text-align: right; }
+        .rankings-table .col-points { max-width: 90px; text-align: right; }
+        .rankings-table .col-for { max-width: 80px; text-align: right; }
+        .rankings-table .col-against { max-width: 80px; text-align: right; }
+        .rankings-table .col-margin { max-width: 90px; text-align: right; }
+
+        /* Team column: wide but capped */
+        .rankings-table .col-team {
+        min-width: 180px;
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <header><div class="container"><h1>🏉 NRL ELO Ratings</h1></div></header>
+    
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('games', this)">All Games</button>
+            <button class="tab" onclick="showTab('rankings', this)">Rankings</button>
+            <button class="tab" onclick="showTab('season', this)">Season Matrix</button>
+            <button class="tab" onclick="showTab('add', this)">Add Result</button>
+            <button class="tab" onclick="showTab('elo-history', this)">ELO History</button>
+            <button class="tab" onclick="showTab('settings', this)">Settings</button>
+        </div>
+
+
+        <div id="rankings" class="tab-content">
+            <div class="card">
+                <h2>Rankings</h2>
+
+                <!-- NEW: Year + Round selector -->
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:12px;">Year</label>
+                        <select id="rankings-year"></select>
+                    </div>
+
+                    <div>
+                        <label style="font-size:12px;">Round</label>
+                        <select id="rankings-round"></select>
+                    </div>
+                </div>
+
+
+                <div id="rankings-table">Loading...</div>
+            </div>
+        </div>
+
+
+        <div id="season" class="tab-content">
+            <div class="card">
+                <h2>Season Matrix</h2>
+
+                <div style="margin-bottom:15px;">
+                <label style="font-size:12px;">Year</label>
+                <select id="season-year"></select>
+                </div>
+
+                <div id="season-matrix-table">Loading...</div>
+            </div>
+        </div>
+
+        <div id="games" class="tab-content active">
+            <div class="card">
+                <h2>All Games (with Predictions)</h2>
+                <div id="games-table">Loading...</div>
+            </div>
+        </div>
+
+
+        <div id="add" class="tab-content">
+            <div class="card">
+                <h2>Add Match Result</h2>
+                <div id="add-message"></div>
+
+                <!-- TOP ROW: YEAR + ROUND -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                <div>
+                    <label>Year</label>
+                    <input type="number" id="round-year" value="2026" required>
+                </div>
+
+                <div>
+                    <label>Round</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                    <button type="button" onclick="changeRound(-1)">⬅</button>
+                    <input type="text" id="round-name" value="Rd 1" required>
+                    <button type="button" onclick="changeRound(1)">➡</button>
+                    </div>
+                </div>
+                </div>
+
+                <button class="btn" style="margin-top: 15px;" onclick="loadRoundForEntry()">
+                Load Round
+                </button>
+
+                <!-- TABLE BELOW -->
+                <div id="round-entry-table" style="margin-top: 20px;"></div>
+
+                <button id="save-round-btn" class="btn" style="margin-top: 10px;" disabled
+                        onclick="saveRoundResults()">
+                Save Scores
+                </button>
+            </div>
+        </div>
+
+        <div id="elo-history" class="tab-content">
+            <div class="card">
+                <h2>ELO History</h2>
+
+                <div class="elo-controls">
+                    <label>Start Year</label>
+                    <input type="number" id="elo-start-year">
+
+                    <label>End Year</label>
+                    <input type="number" id="elo-end-year">
+
+                    <button class="btn" onclick="loadEloHistory()">Update</button>
+                    <button class="btn" type="button" onclick="window.eloHistoryChart?.resetZoom?.()"> Reset Zoom</button>
+
+                </div>
+
+
+                <label style="margin-left:20px;">Highlight Team</label>
+                <select id="elo-highlight"></select>
+                    <div style="overflow-x: auto;">
+                        <canvas id="elo-history-chart" height="120" width="2000"></canvas>
+                    </div>
+            </div>
+        </div>
+
+
+<div id="settings" class="tab-content">
+  <div class="card">
+    <h2>ELO Inputs & Model Evaluation</h2>
+    <div id="settings-message"></div>
+
+    <div class="grid" style="grid-template-columns: 1fr 2fr 2fr; align-items: start;">
+
+      <!-- ===== LEFT COLUMN: INPUTS ===== -->
+      <div>
+        <h3>Model Inputs</h3>
+        <form id="settings-form" onsubmit="updateSettingsAndEvaluate(event)">
+
+          <label>K-Factor</label>
+          <input type="number" step="0.5" id="k-factor" value="11">
+
+          <label>Home Advantage</label>
+          <input type="number" id="home-adv" value="45">
+
+          <label>Margin Coefficient</label>
+          <input type="number" step="0.005" id="margin-coef" value="0.048406">
+
+          <label>Early Round Boost (multiplier)</label>
+          <input type="number" step="0.01" id="early-boost" value="1.10">
+
+          <button type="submit" class="btn" style="margin-top: 20px;">
+            Recalculate & Evaluate
+          </button>
+        </form>
+      </div>
+
+      <!-- ===== CENTRE COLUMN: KEY METRICS ===== -->
+      <div>
+        <h3>Overall Performance</h3>
+
+        <table style="font-size: 13px;">
+          <tr>
+            <th>ELO Pick Accuracy</th>
+            <td id="metric-elo-accuracy">—</td>
+          </tr>
+          <tr>
+            <th>Ladder Pick Accuracy</th>
+            <td id="metric-ladder-accuracy">—</td>
+          </tr>
+          <tr>
+            <th>Odds Pick Accuracy</th>
+            <td id="metric-odds-accuracy">—</td>
+          </tr>
+          <tr>
+            <th>Margin R²</th>
+            <td id="metric-r2">—</td>
+          </tr>
+          <tr>
+            <th>Brier Score</th>
+            <td id="metric-brier">—</td>
+          </tr>
+        </table>
+
+        <div style="margin-top:20px;">
+          <h3>Accuracy by Year</h3>
+          <div id="yearly-breakdown">Loading…</div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <h3>Accuracy by Season Stage</h3>
+          <canvas id="accuracy-by-round-chart" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- ===== RIGHT COLUMN: CALIBRATION ===== -->
+      <div>
+        <h3>Win-Probability Calibration</h3>
+        <canvas id="calibration-chart" height="180"></canvas>
+
+        <h3 style="margin-top: 20px;">Recent Game Sample</h3>
+        <div id="sample-games" style="max-height: 220px; overflow-y: auto; font-size: 12px;">
+          Loading…
+        </div>
+      <!-- ===== RIGHT COLUMN: MARGIN GRAPH ===== -->
+        <div>
+        <h3 style="margin-top: 20px;">Predicted vs Actual Margin</h3>
+        <canvas id="margin-scatter-chart" height="180"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script type="module" src="./app.js"></script>
+    
+</body>
+</html>
