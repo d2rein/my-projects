@@ -1117,7 +1117,7 @@ window.loadEloHistory = loadEloHistory;
    ====================================================== */
 
 function logoPath(name) {
-  return "../logos/" +
+  return "logos/" +
     name.toLowerCase()
         .replace(/\./g, "")
         .replace(/\s+/g, "-") +
