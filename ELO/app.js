@@ -1003,6 +1003,9 @@ async function loadAllGames() {
             const eloPick = engine.eloCalc.calculateWinExpectancy(dr) >= 0.5 ? home : away;
             const actualWinner = m.home_score > m.away_score ? home : away;
 
+            const oddsTip = m.odds_tip ?? eloPick;
+            const userTip = m.user_tip ?? eloPick;
+
             //LOG ELO
             if (m.year === 2009 && m.round === "Rd 1" && m.home_team === "Cronulla Sharks") {
               console.log("Before Rd1:", eloHomeBefore, eloAwayBefore);
@@ -1050,10 +1053,26 @@ async function loadAllGames() {
                 <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
                 <td class="col-narrow">${rankHome}</td>
                 <td class="col-narrow">${rankAway}</td>
-                <td class="${colourFor(ladderPick)} col-wide">${ladderPick}</td>
-                <td class="editable col-wide">${ladderPick}</td>
                 <td class="${colourFor(eloPick)} col-wide">${eloPick}</td>
                 <td class="editable col-wide">${eloPick}</td>
+                <td class="col-wide">${ladderPick}</td>
+
+                <td class="editable col-wide tip-cell"
+                    data-id="${m.id}"
+                    data-type="odds"
+                    data-home="${home}"
+                    data-away="${away}">
+                  ${oddsTip}
+                </td>
+
+                <td class="editable col-wide tip-cell"
+                    data-id="${m.id}"
+                    data-type="user"
+                    data-home="${home}"
+                    data-away="${away}">
+                  ${userTip}
+                </td>
+                
                 <td class="col-wide">${actualWinner}</td>
             </tr>`;
         }
@@ -1515,6 +1534,33 @@ window.eloHistoryChart = new Chart(ctx, {
   }
 });
 }
+document.addEventListener("click", async (e) => {
+  const cell = e.target.closest(".tip-cell");
+  if (!cell) return;
+
+  const id = Number(cell.dataset.id);
+  const type = cell.dataset.type;
+  const home = cell.dataset.home;
+  const away = cell.dataset.away;
+
+  const current = cell.textContent.trim();
+  const newValue = current === home ? away : home;
+
+  cell.textContent = newValue;
+
+  const payload = {
+    id,
+    odds_tip: type === "odds" ? newValue : undefined,
+    user_tip: type === "user" ? newValue : undefined
+  };
+
+  await fetch("https://nrl-elo-api.d2-rein.workers.dev/api/tips", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+});
+
 document.getElementById("elo-highlight")?.addEventListener("change", () => {
   loadEloHistory();
 });
