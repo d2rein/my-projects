@@ -938,6 +938,36 @@ function drawMarginScatter(actualMargins, predictedMargins) {
     });
 }
 
+function renderPips(id, type, home, away, selected, eloPick, actualWinner, completed) {
+
+  const getClass = (team) => {
+    if (!completed) return team === selected ? "pip active neutral" : "pip";
+
+    if (team === actualWinner) return "pip success";
+    if (team === eloPick && team !== actualWinner) return "pip error";
+    if (team === selected && team !== actualWinner) return "pip warning";
+
+    return "pip";
+  };
+
+  return `
+    <div class="pip"
+         data-id="${id}"
+         data-type="${type}"
+         data-team="${home}"
+         data-home="${home}"
+         data-away="${away}"
+         ></div>
+    <div class="pip"
+         data-id="${id}"
+         data-type="${type}"
+         data-team="${away}"
+         data-home="${home}"
+         data-away="${away}"
+         ></div>
+  `;
+}
+
 
 async function loadAllGames() {
     if (!Array.isArray(teams) || teams.length === 0) {
@@ -1054,23 +1084,14 @@ async function loadAllGames() {
                 <td class="col-narrow">${rankHome}</td>
                 <td class="col-narrow">${rankAway}</td>
                 <td class="${colourFor(eloPick)} col-wide">${eloPick}</td>
-                <td class="editable col-wide">${eloPick}</td>
                 <td class="col-wide">${ladderPick}</td>
 
-                <td class="editable col-wide tip-cell"
-                    data-id="${m.id}"
-                    data-type="odds"
-                    data-home="${home}"
-                    data-away="${away}">
-                  ${oddsTip}
+                <td class="col-wide tip-cell">
+                  ${renderPips(m.id, "odds", home, away, oddsTip, eloPick, actualWinner, isCompleted)}
                 </td>
 
-                <td class="editable col-wide tip-cell"
-                    data-id="${m.id}"
-                    data-type="user"
-                    data-home="${home}"
-                    data-away="${away}">
-                  ${userTip}
+                <td class="col-wide tip-cell">
+                  ${renderPips(m.id, "user", home, away, userTip, eloPick, actualWinner, isCompleted)}
                 </td>
                 
                 <td class="col-wide">${actualWinner}</td>
@@ -1094,8 +1115,9 @@ async function loadAllGames() {
               <th class="col-narrow">Rank (H)</th>
               <th class="col-narrow">Rank (A)</th>
               <th class="col-wide">Rank</th>
-              <th class="col-wide">Odds</th>
               <th class="col-wide">ELO</th>
+              <th class="col-wide">Rank</th>
+              <th class="col-wide">Odds</th>
               <th class="col-wide">Tip</th>
               <th class="col-wide">Actual</th>
             </tr>
@@ -1534,31 +1556,30 @@ window.eloHistoryChart = new Chart(ctx, {
   }
 });
 }
+
 document.addEventListener("click", async (e) => {
-  const cell = e.target.closest(".tip-cell");
-  if (!cell) return;
+  const pip = e.target.closest(".pip");
+  if (!pip) return;
 
-  const id = Number(cell.dataset.id);
-  const type = cell.dataset.type;
-  const home = cell.dataset.home;
-  const away = cell.dataset.away;
-
-  const current = cell.textContent.trim();
-  const newValue = current === home ? away : home;
-
-  cell.textContent = newValue;
+  const id = Number(pip.dataset.id);
+  const type = pip.dataset.type;
+  const team = pip.dataset.team;
+  const home = pip.dataset.home;
+  const away = pip.dataset.away;
 
   const payload = {
     id,
-    odds_tip: type === "odds" ? newValue : undefined,
-    user_tip: type === "user" ? newValue : undefined
+    odds_tip: type === "odds" ? team : undefined,
+    user_tip: type === "user" ? team : undefined
   };
 
-  await fetch("https://nrl-elo-api.d2-rein.workers.dev/api/tips", {
+  await fetch(API_URL + "/api/tips", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+
+  await loadAllGames(); // refresh to update colours
 });
 
 document.getElementById("elo-highlight")?.addEventListener("change", () => {
