@@ -941,7 +941,10 @@ function drawMarginScatter(actualMargins, predictedMargins) {
 function renderPips(id, type, home, away, selected, eloPick, actualWinner, completed) {
 
   const getClass = (team) => {
-    if (!completed) return team === selected ? "pip active neutral" : "pip";
+
+    if (!completed) {
+      return team === selected ? "pip active neutral" : "pip";
+    }
 
     if (team === actualWinner) return "pip success";
     if (team === eloPick && team !== actualWinner) return "pip error";
@@ -951,20 +954,21 @@ function renderPips(id, type, home, away, selected, eloPick, actualWinner, compl
   };
 
   return `
-    <div class="pip"
+    <div class="${getClass(home)}"
          data-id="${id}"
          data-type="${type}"
          data-team="${home}"
          data-home="${home}"
-         data-away="${away}"
-         ></div>
-    <div class="pip"
+         data-away="${away}">
+    </div>
+
+    <div class="${getClass(away)}"
          data-id="${id}"
          data-type="${type}"
          data-team="${away}"
          data-home="${home}"
-         data-away="${away}"
-         ></div>
+         data-away="${away}">
+    </div>
   `;
 }
 
@@ -1114,7 +1118,6 @@ async function loadAllGames() {
               <th class="col-narrow">ELO (A)</th>
               <th class="col-narrow">Rank (H)</th>
               <th class="col-narrow">Rank (A)</th>
-              <th class="col-wide">Rank</th>
               <th class="col-wide">ELO</th>
               <th class="col-wide">Rank</th>
               <th class="col-wide">Odds</th>

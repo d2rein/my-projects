@@ -74,6 +74,35 @@
         #games table thead th {position: sticky; top: 0; background: #f8f8f8; z-index: 10;}
         .warning {background: #fff3e0; /* light orange */color: #e65100;  }
         .editable {background: #f1f8ff; cursor: pointer;     }
+        .tip-cell {
+          text-align: center;
+          white-space: nowrap;
+        }
+        .pip {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          display: inline-block;
+          margin: 0 3px;
+          cursor: pointer;
+          border: 2px solid #555;
+          background: #222;
+          transition: all 0.2s ease;
+        }
+
+        .pip.active {
+          border-color: #aaa;
+        }
+
+        .pip.success { background: #2e7d32; }
+        .pip.warning { background: #a68b00; }
+        .pip.error   { background: #b71c1c; }
+        .pip.neutral { background: #444; }
+
+        .completed-game .pip {
+          cursor: default;
+        }
+        
         /* === Round Entry Table (responsive, max-widths) === */
         .round-entry { width: auto; max-width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
 
