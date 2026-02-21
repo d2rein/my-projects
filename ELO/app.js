@@ -971,6 +971,29 @@ function renderPip(id, type, selected, eloPick, actualWinner, completed) {
   `;
 }
 
+function renderRankPip(ladderPick, eloPick, actualWinner, completed) {
+
+  let cls = "pip neutral";
+
+  if (!completed) {
+    // Before match: does ladder agree with Elo?
+    cls = ladderPick === eloPick ? "pip success" : "pip error";
+  } else {
+    // After match:
+    if (ladderPick === actualWinner) {
+      cls = "pip success";
+    } else if (eloPick !== actualWinner) {
+      // both wrong
+      cls = "pip warning";
+    } else {
+      // ladder wrong, elo right
+      cls = "pip error";
+    }
+  }
+
+  return `<div class="${cls}"></div>`;
+}
+
 async function loadAllGames() {
     if (!Array.isArray(teams) || teams.length === 0) {
     await loadTeams(); // ensure teams are loaded
@@ -1086,7 +1109,9 @@ async function loadAllGames() {
                 <td class="col-narrow">${rankHome}</td>
                 <td class="col-narrow">${rankAway}</td>
                 <td class="${colourFor(eloPick)} col-wide">${eloPick}</td>
-                <td class="col-wide">${ladderPick}</td>
+                <td class="col-wide tip-cell">
+                  ${renderRankPip(ladderPick, eloPick, actualWinner, isCompleted)}
+                </td>
 
                 <td class="col-wide tip-cell">
                   ${renderPip(m.id, "odds", m.odds_tip, eloPick, actualWinner, isCompleted)}
