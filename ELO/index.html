@@ -73,12 +73,11 @@
         /* ===== Scroll Container ===== */
         #games .card {
           max-height: 80vh;
-          display: flex;
-          flex-direction: column;
+          overflow: hidden;
         }
 
         .games-scroll {
-          flex: 1;
+          max-height: calc(80vh - 60px);
           overflow: auto;
         }
 
@@ -133,6 +132,33 @@
           background: #fff;
           z-index: 25;
         }
+
+      /* Round */
+      .games-table th:nth-child(2),
+      .games-table td:nth-child(2) {
+        position: sticky;
+        left: 60px;
+        background: #fff;
+        z-index: 6;
+      }
+
+      /* Home */
+      .games-table th:nth-child(3),
+      .games-table td:nth-child(3) {
+        position: sticky;
+        left: 120px;
+        background: #fff;
+        z-index: 6;
+      }
+
+      /* Away */
+      .games-table th:nth-child(4),
+      .games-table td:nth-child(4) {
+        position: sticky;
+        left: 300px;
+        background: #fff;
+        z-index: 6;
+      }
 
       /* ===== Round Striping ===== */
 
