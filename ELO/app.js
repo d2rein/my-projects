@@ -1563,36 +1563,44 @@ document.addEventListener("click", async (e) => {
   const pip = e.target.closest(".pip");
   if (!pip) return;
 
+  // Prevent clicks on completed games
+  if (pip.closest(".completed-game")) return;
+
   const id = Number(pip.dataset.id);
   const type = pip.dataset.type;
 
-  // Find current match row
   const row = pip.closest("tr");
-  const eloPick = row.querySelector(".col-wide:nth-child(13)")?.innerText;
 
-  // Fetch match to know current stored pick
-  const matches = await fetch(API_URL + "/api/matches").then(r => r.json());
-  const match = matches.find(x => x.id === id);
+  const home = row.children[2].innerText;
+  const away = row.children[3].innerText;
+  const eloPick = row.children[12].innerText;
 
-  const currentPick = type === "odds"
-    ? match.odds_tip ?? eloPick
-    : match.user_tip ?? eloPick;
+  // Determine current selection from colour
+  const isMatchingElo = pip.classList.contains("success");
 
-  const newPick = currentPick === match.home_team
-    ? match.away_team
-    : match.home_team;
+  // Toggle selection
+  const newPick = isMatchingElo
+    ? (eloPick === home ? away : home)
+    : eloPick;
 
-  await fetch(API_URL + "/api/tips", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id,
-      odds_tip: type === "odds" ? newPick : undefined,
-      user_tip: type === "user" ? newPick : undefined
-    })
-  });
+  // === INSTANT UI UPDATE ===
+  pip.classList.remove("success", "warning");
+  pip.classList.add(newPick === eloPick ? "success" : "warning");
 
-  await loadAllGames();
+  // === SEND TO SERVER IN BACKGROUND ===
+  try {
+    await fetch(API_URL + "/api/tips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        odds_tip: type === "odds" ? newPick : undefined,
+        user_tip: type === "user" ? newPick : undefined
+      })
+    });
+  } catch (err) {
+    console.error("Failed to update tip", err);
+  }
 });
 
 document.getElementById("elo-highlight")?.addEventListener("change", () => {
