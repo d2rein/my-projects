@@ -1027,8 +1027,19 @@ async function loadAllGames() {
         let lastYear = null;
         let lastProcessedRound = null;
         let rows = "";
+
+        let lastRoundKey = null;
+        let roundToggle = false;
         
         for (const m of matches) {
+            const roundKey = `${m.year}-${m.round}`;
+
+            if (roundKey !== lastRoundKey) {
+              roundToggle = !roundToggle;
+              lastRoundKey = roundKey;
+            }
+
+            const roundClass = roundToggle ? "round-a" : "round-b";
             const home = m.home_team;
             const away = m.away_team;
 
@@ -1095,7 +1106,7 @@ async function loadAllGames() {
             const isCompleted = (m.home_score != null && m.away_score != null);
 
             rows += `
-                <tr ${isCompleted ? 'class="completed-game"' : ''}>
+                <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}">
                 <td class="col-narrow">${m.year}</td>
                 <td class="col-narrow">${m.round}</td>
                 <td class="col-wide">${home}</td>
@@ -1126,7 +1137,8 @@ async function loadAllGames() {
         }
 
         const html = `
-        <table>
+        <div class="games-scroll">
+        <table class="games-table">
           <thead>
             <tr>
               <th class="col-narrow">Year</th>
@@ -1148,8 +1160,11 @@ async function loadAllGames() {
               <th class="col-wide">Actual</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+          <tbody>
+            ${rows}
+          </tbody>
+          </table>
+          </div>`;
 
         setTimeout(() => {
             const completedGames = document.querySelectorAll(".completed-game");
