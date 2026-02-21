@@ -69,47 +69,66 @@
         .elo-controls input {width: 90px;padding: 4px 6px;margin: 0;font-size: 13px;}
         .elo-controls .btn {padding: 6px 14px;}
 
-        /* ======================================================
-        =============== ALL GAMES TABLE ======================
-        ====================================================== */
+        /* ===== ALL GAMES TABLE ===== */
 
-      /* Card becomes scroll container */
-      #games .card {
-        max-height: 80vh;
-        display: flex;
-        flex-direction: column;
-      }
+        #games .card {
+          max-height: 80vh;
+          overflow: hidden;
+        }
 
-      /* Scroll wrapper */
-      .games-scroll {
-        flex: 1;
-        overflow: auto;              /* both directions */
-      }
+        .games-scroll {
+          max-height: calc(80vh - 60px);
+          overflow: auto;
+        }
 
-      /* Force horizontal scroll */
-      .games-table {
-        min-width: 1600px;
-        border-collapse: collapse;
-      }
+        .games-table {
+          min-width: 1600px;
+          border-collapse: collapse;
+        }
 
-      /* ===== Sticky Header ===== */
-      .games-scroll thead th {
-        position: sticky;
-        top: 0;
-        background: #f8f8f8;
-        z-index: 10;                 /* must be highest */
-      }
+        /* Sticky header */
+        .games-scroll thead th {
+          position: sticky;
+          top: 0;
+          background: #f8f8f8;
+          z-index: 20;
+        }
 
-      /* ===== Sticky Columns ===== */
+        /* Sticky column 1 */
+        .games-table th:nth-child(1),
+        .games-table td:nth-child(1) {
+          position: sticky;
+          left: 0;
+          background: #fff;
+          z-index: 6;
+        }
 
-      /* Year */
-      .games-table th:nth-child(1),
-      .games-table td:nth-child(1) {
-        position: sticky;
-        left: 0;
-        background: #fff;
-        z-index: 6;
-      }
+        /* Sticky column 2 */
+        .games-table th:nth-child(2),
+        .games-table td:nth-child(2) {
+          position: sticky;
+          left: 60px;
+          background: #fff;
+          z-index: 6;
+        }
+
+        /* Sticky column 3 */
+        .games-table th:nth-child(3),
+        .games-table td:nth-child(3) {
+          position: sticky;
+          left: 120px;
+          background: #fff;
+          z-index: 6;
+        }
+
+        /* Sticky column 4 */
+        .games-table th:nth-child(4),
+        .games-table td:nth-child(4) {
+          position: sticky;
+          left: 300px;
+          background: #fff;
+          z-index: 6;
+        }
 
       /* Round */
       .games-table th:nth-child(2),
