@@ -1032,14 +1032,18 @@ async function loadAllGames() {
         let roundToggle = false;
         
         for (const m of matches) {
-            const roundKey = `${m.year}-${m.round}`;
+            let isNewRound = false;
 
             if (roundKey !== lastRoundKey) {
               roundToggle = !roundToggle;
               lastRoundKey = roundKey;
+              isNewRound = true;
             }
 
-            const roundClass = roundToggle ? "round-a" : "round-b";
+            const roundClass =
+              (roundToggle ? "round-a" : "round-b") +
+              (isNewRound ? " round-start" : "");
+              
             const home = m.home_team;
             const away = m.away_team;
 

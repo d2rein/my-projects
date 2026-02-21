@@ -70,8 +70,22 @@
         .elo-controls .btn {padding: 6px 14px;}
 
         /* --- New styles for the All Games table --- */
-        #games {max-height: 80vh; overflow-y: auto;}
-        #games table thead th {position: sticky; top: 0; background: #f8f8f8; z-index: 10;}
+        #games .card {
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .games-scroll {
+          overflow: auto;
+          flex: 1;
+        }
+        .games-scroll thead th {
+          position: sticky;
+          top: 0;
+          background: #f8f8f8;
+          z-index: 5;
+        }
         .warning {background: #fff3e0; /* light orange */color: #e65100;  }
         .editable {background: #f1f8ff; cursor: pointer;     }
         .games-scroll {
@@ -79,40 +93,50 @@
           max-width: 100%;
         }
 
-        .games-table {
-          min-width: 1600px; /* ensures horizontal scroll appears */
-          border-collapse: collapse;
+        .games-table th,
+        .games-table td {
+          background-clip: padding-box;
         }
+
+        /* Sticky header */
+        .games-scroll thead th {
+          position: sticky;
+          top: 0;
+          background: #f8f8f8;
+          z-index: 5;
+        }
+
+        /* Sticky columns */
         .games-table th:nth-child(1),
         .games-table td:nth-child(1) {
           position: sticky;
           left: 0;
-          background: #fff;
-          z-index: 3;
+          z-index: 4;
+          background: inherit;
         }
 
         .games-table th:nth-child(2),
         .games-table td:nth-child(2) {
           position: sticky;
           left: 60px;
-          background: #fff;
-          z-index: 3;
+          z-index: 4;
+          background: inherit;
         }
 
         .games-table th:nth-child(3),
         .games-table td:nth-child(3) {
           position: sticky;
           left: 120px;
-          background: #fff;
-          z-index: 3;
+          z-index: 4;
+          background: inherit;
         }
 
         .games-table th:nth-child(4),
         .games-table td:nth-child(4) {
           position: sticky;
           left: 300px;
-          background: #fff;
-          z-index: 3;
+          z-index: 4;
+          background: inherit;
         }
         .round-a td {
           background-color: #fafafa;
@@ -122,6 +146,9 @@
           background-color: #ffffff;
         }
 
+        .round-start td {
+          border-top: 3px solid #ccc;
+        }
         /* Slight divider between rounds */
         .round-a:first-child td,
         .round-b:first-child td {
