@@ -70,7 +70,7 @@
         .elo-controls .btn {padding: 6px 14px;}
 
         /* ===== ALL GAMES TABLE ===== */
-
+        /* ===== Scroll Container ===== */
         #games .card {
           max-height: 80vh;
           overflow: hidden;
@@ -81,53 +81,56 @@
           overflow: auto;
         }
 
+        /* ===== Table Width ===== */
         .games-table {
           min-width: 1600px;
           border-collapse: collapse;
         }
 
-        /* Sticky header */
-        .games-scroll thead th {
+        /* ===== Sticky Header (vertical) ===== */
+        .games-table thead th {
           position: sticky;
           top: 0;
           background: #f8f8f8;
           z-index: 20;
         }
 
-        /* Sticky column 1 */
+        /* ===== Sticky Columns (horizontal) ===== */
+
+        /* Column 1 */
         .games-table th:nth-child(1),
         .games-table td:nth-child(1) {
           position: sticky;
           left: 0;
           background: #fff;
-          z-index: 6;
+          z-index: 25;
         }
 
-        /* Sticky column 2 */
+        /* Column 2 */
         .games-table th:nth-child(2),
         .games-table td:nth-child(2) {
           position: sticky;
           left: 60px;
           background: #fff;
-          z-index: 6;
+          z-index: 25;
         }
 
-        /* Sticky column 3 */
+        /* Column 3 */
         .games-table th:nth-child(3),
         .games-table td:nth-child(3) {
           position: sticky;
           left: 120px;
           background: #fff;
-          z-index: 6;
+          z-index: 25;
         }
 
-        /* Sticky column 4 */
+        /* Column 4 */
         .games-table th:nth-child(4),
         .games-table td:nth-child(4) {
           position: sticky;
           left: 300px;
           background: #fff;
-          z-index: 6;
+          z-index: 25;
         }
 
       /* Round */
