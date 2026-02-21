@@ -938,40 +938,38 @@ function drawMarginScatter(actualMargins, predictedMargins) {
     });
 }
 
-function renderPips(id, type, home, away, selected, eloPick, actualWinner, completed) {
+function renderPip(id, type, selected, eloPick, actualWinner, completed) {
 
-  const getClass = (team) => {
+  // DEFAULT behaviour
+  const pick = selected ?? eloPick;
 
-    if (!completed) {
-      return team === selected ? "pip active neutral" : "pip";
+  let css = "pip";
+
+  // BEFORE MATCH
+  if (!completed) {
+    css += (pick === eloPick)
+      ? " success"     // green = matches Elo
+      : " warning";    // bright yellow = toggled
+  }
+
+  // AFTER MATCH
+  else {
+    if (pick === actualWinner) {
+      css += " success";     // correct
+    } else if (eloPick === actualWinner) {
+      css += " error";       // Elo right, you wrong
+    } else {
+      css += " warning";     // both wrong
     }
-
-    if (team === actualWinner) return "pip success";
-    if (team === eloPick && team !== actualWinner) return "pip error";
-    if (team === selected && team !== actualWinner) return "pip warning";
-
-    return "pip";
-  };
+  }
 
   return `
-    <div class="${getClass(home)}"
+    <div class="${css}"
          data-id="${id}"
-         data-type="${type}"
-         data-team="${home}"
-         data-home="${home}"
-         data-away="${away}">
-    </div>
-
-    <div class="${getClass(away)}"
-         data-id="${id}"
-         data-type="${type}"
-         data-team="${away}"
-         data-home="${home}"
-         data-away="${away}">
+         data-type="${type}">
     </div>
   `;
 }
-
 
 async function loadAllGames() {
     if (!Array.isArray(teams) || teams.length === 0) {
@@ -1091,11 +1089,11 @@ async function loadAllGames() {
                 <td class="col-wide">${ladderPick}</td>
 
                 <td class="col-wide tip-cell">
-                  ${renderPips(m.id, "odds", home, away, oddsTip, eloPick, actualWinner, isCompleted)}
+                  ${renderPip(m.id, "odds", m.odds_tip, eloPick, actualWinner, isCompleted)}
                 </td>
 
                 <td class="col-wide tip-cell">
-                  ${renderPips(m.id, "user", home, away, userTip, eloPick, actualWinner, isCompleted)}
+                  ${renderPip(m.id, "user", m.user_tip, eloPick, actualWinner, isCompleted)}
                 </td>
                 
                 <td class="col-wide">${actualWinner}</td>
@@ -1561,28 +1559,40 @@ window.eloHistoryChart = new Chart(ctx, {
 }
 
 document.addEventListener("click", async (e) => {
+
   const pip = e.target.closest(".pip");
   if (!pip) return;
 
   const id = Number(pip.dataset.id);
   const type = pip.dataset.type;
-  const team = pip.dataset.team;
-  const home = pip.dataset.home;
-  const away = pip.dataset.away;
 
-  const payload = {
-    id,
-    odds_tip: type === "odds" ? team : undefined,
-    user_tip: type === "user" ? team : undefined
-  };
+  // Find current match row
+  const row = pip.closest("tr");
+  const eloPick = row.querySelector(".col-wide:nth-child(13)")?.innerText;
+
+  // Fetch match to know current stored pick
+  const matches = await fetch(API_URL + "/api/matches").then(r => r.json());
+  const match = matches.find(x => x.id === id);
+
+  const currentPick = type === "odds"
+    ? match.odds_tip ?? eloPick
+    : match.user_tip ?? eloPick;
+
+  const newPick = currentPick === match.home_team
+    ? match.away_team
+    : match.home_team;
 
   await fetch(API_URL + "/api/tips", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      id,
+      odds_tip: type === "odds" ? newPick : undefined,
+      user_tip: type === "user" ? newPick : undefined
+    })
   });
 
-  await loadAllGames(); // refresh to update colours
+  await loadAllGames();
 });
 
 document.getElementById("elo-highlight")?.addEventListener("change", () => {
