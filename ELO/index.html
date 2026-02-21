@@ -69,95 +69,90 @@
         .elo-controls input {width: 90px;padding: 4px 6px;margin: 0;font-size: 13px;}
         .elo-controls .btn {padding: 6px 14px;}
 
-        /* --- New styles for the All Games table --- */
-        #games .card {
-          max-height: 80vh;
-          display: flex;
-          flex-direction: column;
-        }
+        /* ======================================================
+        =============== ALL GAMES TABLE ======================
+        ====================================================== */
 
-        .games-scroll {
-          overflow: auto;
-          flex: 1;
-        }
-        .games-scroll thead th {
-          position: sticky;
-          top: 0;
-          background: #f8f8f8;
-          z-index: 5;
-        }
-        .warning {background: #fff3e0; /* light orange */color: #e65100;  }
-        .editable {background: #f1f8ff; cursor: pointer;     }
-        .games-scroll {
-          overflow-x: auto;
-          max-width: 100%;
-        }
+      /* Card becomes scroll container */
+      #games .card {
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-        .games-table th,
-        .games-table td {
-          background-clip: padding-box;
-        }
+      /* Scroll wrapper */
+      .games-scroll {
+        flex: 1;
+        overflow: auto;              /* both directions */
+      }
 
-        /* Sticky header */
-        .games-scroll thead th {
-          position: sticky;
-          top: 0;
-          background: #f8f8f8;
-          z-index: 5;
-        }
+      /* Force horizontal scroll */
+      .games-table {
+        min-width: 1600px;
+        border-collapse: collapse;
+      }
 
-        /* Sticky columns */
-        .games-table th:nth-child(1),
-        .games-table td:nth-child(1) {
-          position: sticky;
-          left: 0;
-          z-index: 4;
-          background: inherit;
-        }
+      /* ===== Sticky Header ===== */
+      .games-scroll thead th {
+        position: sticky;
+        top: 0;
+        background: #f8f8f8;
+        z-index: 10;                 /* must be highest */
+      }
 
-        .games-table th:nth-child(2),
-        .games-table td:nth-child(2) {
-          position: sticky;
-          left: 60px;
-          z-index: 4;
-          background: inherit;
-        }
+      /* ===== Sticky Columns ===== */
 
-        .games-table th:nth-child(3),
-        .games-table td:nth-child(3) {
-          position: sticky;
-          left: 120px;
-          z-index: 4;
-          background: inherit;
-        }
+      /* Year */
+      .games-table th:nth-child(1),
+      .games-table td:nth-child(1) {
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 6;
+      }
 
-        .games-table th:nth-child(4),
-        .games-table td:nth-child(4) {
-          position: sticky;
-          left: 300px;
-          z-index: 4;
-          background: inherit;
-        }
-        .round-a td {
-          background-color: #fafafa;
-        }
+      /* Round */
+      .games-table th:nth-child(2),
+      .games-table td:nth-child(2) {
+        position: sticky;
+        left: 60px;
+        background: #fff;
+        z-index: 6;
+      }
 
-        .round-b td {
-          background-color: #ffffff;
-        }
+      /* Home */
+      .games-table th:nth-child(3),
+      .games-table td:nth-child(3) {
+        position: sticky;
+        left: 120px;
+        background: #fff;
+        z-index: 6;
+      }
 
-        .round-start td {
-          border-top: 3px solid #ccc;
-        }
-        /* Slight divider between rounds */
-        .round-a:first-child td,
-        .round-b:first-child td {
-          border-top: 2px solid #ddd;
-        }
-        .games-table td:nth-child(2),
-        .games-table th:nth-child(2) {
-          border-right: 2px solid #bbb;
-        }
+      /* Away */
+      .games-table th:nth-child(4),
+      .games-table td:nth-child(4) {
+        position: sticky;
+        left: 300px;
+        background: #fff;
+        z-index: 6;
+      }
+
+      /* ===== Round Striping ===== */
+
+      .round-a td {
+        background-color: #fafafa;
+      }
+
+      .round-b td {
+        background-color: #ffffff;
+      }
+
+      /* Visual divider at start of new round */
+      .round-start td {
+        border-top: 3px solid #ccc;
+      }
+        
         .tip-cell {
           text-align: center;
           white-space: nowrap;
