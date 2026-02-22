@@ -87,78 +87,53 @@
           border-collapse: collapse;
         }
 
-        /* ===== Sticky Header (vertical) ===== */
+        /* ===== Scroll Container ===== */
+        #games .card {
+          max-height: 80vh;
+          overflow: hidden;
+        }
+
+        .games-scroll {
+          max-height: calc(80vh - 60px);
+          overflow: auto;
+        }
+
+        /* ===== Table ===== */
+        .games-table {
+          min-width: 1600px;
+          border-collapse: collapse;
+        }
+
+        /* ===== Sticky Header (ALL headers freeze vertically) ===== */
         .games-table thead th {
           position: sticky;
           top: 0;
           background: #f8f8f8;
+          z-index: 10;
+        }
+
+        /* ===== Sticky Left Columns (BODY CELLS ONLY) ===== */
+        .games-table td:nth-child(1) { left: 0; }
+        .games-table td:nth-child(2) { left: 60px; }
+        .games-table td:nth-child(3) { left: 120px; }
+        .games-table td:nth-child(4) { left: 300px; }
+
+        .games-table td:nth-child(-n+4) {
+          position: sticky;
+          background: #fff;
+          z-index: 5;
+        }
+
+        /* ===== Sticky Top-Left Intersection (Header + Frozen Columns) ===== */
+        .games-table thead th:nth-child(1) { left: 0; }
+        .games-table thead th:nth-child(2) { left: 60px; }
+        .games-table thead th:nth-child(3) { left: 120px; }
+        .games-table thead th:nth-child(4) { left: 300px; }
+
+        .games-table thead th:nth-child(-n+4) {
+          position: sticky;
           z-index: 20;
         }
-
-        /* ===== Sticky Columns (horizontal) ===== */
-
-        /* Column 1 */
-        .games-table th:nth-child(1),
-        .games-table td:nth-child(1) {
-          position: sticky;
-          left: 0;
-          background: #fff;
-          z-index: 25;
-        }
-
-        /* Column 2 */
-        .games-table th:nth-child(2),
-        .games-table td:nth-child(2) {
-          position: sticky;
-          left: 60px;
-          background: #fff;
-          z-index: 25;
-        }
-
-        /* Column 3 */
-        .games-table th:nth-child(3),
-        .games-table td:nth-child(3) {
-          position: sticky;
-          left: 120px;
-          background: #fff;
-          z-index: 25;
-        }
-
-        /* Column 4 */
-        .games-table th:nth-child(4),
-        .games-table td:nth-child(4) {
-          position: sticky;
-          left: 300px;
-          background: #fff;
-          z-index: 25;
-        }
-
-      /* Round */
-      .games-table th:nth-child(2),
-      .games-table td:nth-child(2) {
-        position: sticky;
-        left: 60px;
-        background: #fff;
-        z-index: 6;
-      }
-
-      /* Home */
-      .games-table th:nth-child(3),
-      .games-table td:nth-child(3) {
-        position: sticky;
-        left: 120px;
-        background: #fff;
-        z-index: 6;
-      }
-
-      /* Away */
-      .games-table th:nth-child(4),
-      .games-table td:nth-child(4) {
-        position: sticky;
-        left: 300px;
-        background: #fff;
-        z-index: 6;
-      }
 
       /* ===== Round Striping ===== */
 
