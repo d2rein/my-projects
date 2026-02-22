@@ -1,4 +1,4 @@
-import { ELOCalculator } from "./elo-calculator.js";
+import { ELOCalculator } from "./shared/elo-calculator.js";
 const API_URL = "https://nrl-elo-api.d2-rein.workers.dev";
 
 const MODEL_PARAMS = Object.freeze({

@@ -1,0 +1,7 @@
+name = "nrl-elo-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+[[d1_databases]]
+binding = "DB"
+database_name = "nrl-elo"
+database_id = "42e2820f-c907-4b87-b9f2-904faa427455"
