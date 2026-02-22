@@ -100,6 +100,56 @@ function updateRoundDropdown(matches) {
 
   roundSelect.value = uniqueRounds[uniqueRounds.length - 1]; // latest round
 }
+// ===== Team name display helper (full / short / code) =====
+const TEAM_DISPLAY_MODE = window.matchMedia("(max-width: 768px)").matches ? "code" : "full";
+// options: "full", "short", "code"
+
+const TEAM_SHORT = {
+  "Brisbane Broncos": "Broncos",
+  "Canberra Raiders": "Raiders",
+  "Canterbury Bulldogs": "Bulldogs",
+  "Cronulla Sharks": "Sharks",
+  "Dolphins": "Dolphins",
+  "Gold Coast Titans": "Titans",
+  "Manly Sea Eagles": "Sea Eagles",
+  "Melbourne Storm": "Storm",
+  "Newcastle Knights": "Knights",
+  "New Zealand Warriors": "Warriors",
+  "NQ Cowboys": "Cowboys",
+  "Parramatta Eels": "Eels",
+  "Penrith Panthers": "Panthers",
+  "South Sydney Rabbitohs": "Rabbitohs",
+  "St. George Illawarra Dragons": "Dragons",
+  "Sydney Roosters": "Roosters",
+  "Wests Tigers": "Wests Tigers"
+};
+
+const TEAM_CODE = {
+  "Brisbane Broncos": "BRI",
+  "Canberra Raiders": "CAN",
+  "Canterbury Bulldogs": "CBY",
+  "Cronulla Sharks": "CRO",
+  "Dolphins": "DOL",
+  "Gold Coast Titans": "GLD",
+  "Manly Sea Eagles": "MAN",
+  "Melbourne Storm": "MEL",
+  "Newcastle Knights": "NEW",
+  "New Zealand Warriors": "NZW",
+  "NQ Cowboys": "NQL",
+  "Parramatta Eels": "PAR",
+  "Penrith Panthers": "PEN",
+  "South Sydney Rabbitohs": "SOU",
+  "St. George Illawarra Dragons": "SGI",
+  "Sydney Roosters": "SYD",
+  "Wests Tigers": "WST"
+};
+
+function displayTeamName(name) {
+  if (!name) return "";
+  if (TEAM_DISPLAY_MODE === "short") return TEAM_SHORT[name] || name;
+  if (TEAM_DISPLAY_MODE === "code") return TEAM_CODE[name] || name;
+  return name; // "full"
+}
 
     // === SINGLE SHARED FRONTEND REPLAY ENGINE ===
     function makeReplayEngine(params) {
