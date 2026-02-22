@@ -1245,6 +1245,8 @@ window.loadAllGames = loadAllGames;
 window.loadRankings = loadRankings;
 window.loadEloHistory = loadEloHistory;
 
+window.downloadDbCsv = () => window.open(API_URL + "/api/export");
+window.downloadDiagnosticCsv = () => window.open(API_URL + "/api/diagnostic");
 
 /* ======================================================
    ======== SEASON MATRIX TAB ===========================

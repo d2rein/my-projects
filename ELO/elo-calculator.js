@@ -136,6 +136,63 @@ calculateNewRating(oldRating, actualResult, expectedResult, margin, roundNumber)
     };
   }
 
+  processMatchDiagnostic(match) {
+    const {
+      homeElo,
+      awayElo,
+      homeScore,
+      awayScore,
+      roundNumber
+    } = match;
+
+    const dr = this.getRatingDifference(homeElo, awayElo);
+    const expected = this.calculateWinExpectancy(dr);
+
+    const margin = homeScore - awayScore;
+    const actualResult = homeScore > awayScore ? 1 : 0;
+
+    // ----- margin bucket -----
+    const rawBucket = Math.ceil(Math.abs(margin) / 6);
+    const idx = Math.max(1, Math.min(rawBucket, 4));
+
+    const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
+
+    const term1 = table[idx];
+    const term2 = Math.max(idx - 3, 0) / 8;
+    const marginAdj = (term1 + term2) - 1.0;
+
+    // ----- early effect (ADDITIVE) -----
+    let early = 0;
+    if (roundNumber && roundNumber > 0) {
+      early = this.earlyBoost * Math.max(0, 11 - roundNumber);
+    }
+
+    const baseK = this.kFactor + early;
+    const finalK = baseK * (1.0 + marginAdj);
+
+    const newHomeElo = homeElo + finalK * (actualResult - expected);
+    const newAwayElo = awayElo + finalK * ((1 - actualResult) - (1 - expected));
+
+    const predictedMargin = this.predictMargin(dr);
+
+    return {
+      dr,
+      expected,
+      predictedMargin,
+      margin,
+      rawBucket,
+      idx,
+      term1,
+      term2,
+      marginAdj,
+      early,
+      baseK,
+      finalK,
+      actualResult,
+      newHomeElo,
+      newAwayElo
+    };
+  }
   /**
    * Predict an upcoming match
    */
