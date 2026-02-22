@@ -1111,33 +1111,30 @@ async function loadAllGames() {
             const isCompleted = (m.home_score != null && m.away_score != null);
 
             rows += `
-                <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}">
-                <td class="col-narrow">${m.year}</td>
-                <td class="col-narrow">${m.round}</td>
-                <td class="col-wide">${home}</td>
-                <td class="col-wide">${away}</td>
-                <td class="col-narrow">${m.home_score}</td>
-                <td class="col-narrow">${m.away_score}</td>
-                <td class="col-narrow">${marginPred}</td>
-                <td class="col-narrow">${oddsPred}</td>
-                <td class="col-narrow">${Math.round(eloHomeBefore)}</td>
-                <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
-                <td class="col-narrow">${rankHome}</td>
-                <td class="col-narrow">${rankAway}</td>
-                <td class="${colourFor(eloPick)} col-wide">${eloPick}</td>
-                <td class="col-wide tip-cell">
-                  ${renderRankPip(ladderPick, eloPick, actualWinner, isCompleted)}
-                </td>
-
-                <td class="col-wide tip-cell">
-                  ${renderPip(m.id, "odds", m.odds_tip, eloPick, actualWinner, isCompleted)}
-                </td>
-
-                <td class="col-wide tip-cell">
-                  ${renderPip(m.id, "user", m.user_tip, eloPick, actualWinner, isCompleted)}
-                </td>
-                
-                <td class="col-wide">${actualWinner}</td>
+            <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}">
+            <td class="col-narrow">${m.year}</td>
+            <td class="col-narrow">${m.round}</td>
+            <td class="col-team">${displayTeamName(home)}</td>
+            <td class="col-team">${displayTeamName(away)}</td>
+            <td class="col-narrow">${m.home_score}</td>
+            <td class="col-narrow">${m.away_score}</td>
+            <td class="col-narrow">${marginPred}</td>
+            <td class="col-narrow">${oddsPred}</td>
+            <td class="col-narrow">${Math.round(eloHomeBefore)}</td>
+            <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
+            <td class="col-narrow">${rankHome}</td>
+            <td class="col-narrow">${rankAway}</td>
+            <td class="${colourFor(eloPick)} col-pick">${displayTeamName(eloPick)}</td>
+            <td class="col-pip tip-cell">
+              ${renderRankPip(ladderPick, eloPick, actualWinner, isCompleted)}
+            </td>
+            <td class="col-pip tip-cell">
+              ${renderPip(m.id, "odds", m.odds_tip, eloPick, actualWinner, isCompleted)}
+            </td>
+            <td class="col-pip tip-cell">
+              ${renderPip(m.id, "user", m.user_tip, eloPick, actualWinner, isCompleted)}
+            </td>
+            <td class="col-pick">${displayTeamName(actualWinner)}</td>
             </tr>`;
         }
 
