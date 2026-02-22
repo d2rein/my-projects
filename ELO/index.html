@@ -97,33 +97,76 @@
           z-index: 10;
         }
 
-        /* ===== Sticky First 4 Columns (auto width, responsive) ===== */
-        .games-table td:nth-child(-n+4),
-        .games-table thead th:nth-child(-n+4) {
-          position: sticky;
-          left: 0;
-          background: #fff;
+        /* ============================================= */
+        /* DESKTOP: Freeze First 4 Columns */
+        /* ============================================= */
+
+        @media (min-width: 769px) {
+
+          .games-table td:nth-child(1),
+          .games-table thead th:nth-child(1) {
+            position: sticky;
+            left: 0;
+            background: #fff;
+            z-index: 30;
+          }
+
+          .games-table td:nth-child(2),
+          .games-table thead th:nth-child(2) {
+            position: sticky;
+            left: 60px;
+            background: #fff;
+            z-index: 29;
+          }
+
+          .games-table td:nth-child(3),
+          .games-table thead th:nth-child(3) {
+            position: sticky;
+            left: 120px;
+            background: #fff;
+            z-index: 28;
+          }
+
+          .games-table td:nth-child(4),
+          .games-table thead th:nth-child(4) {
+            position: sticky;
+            left: 260px;
+            background: #fff;
+            z-index: 27;
+          }
+
+          .games-table thead th:nth-child(-n+4) {
+            z-index: 40;
+          }
         }
 
-        /* Layering so columns stack correctly */
-        .games-table td:nth-child(1),
-        .games-table thead th:nth-child(1) { z-index: 40; }
 
-        .games-table td:nth-child(2),
-        .games-table thead th:nth-child(2) { z-index: 39; }
-
-        .games-table td:nth-child(3),
-        .games-table thead th:nth-child(3) { z-index: 38; }
-
-        .games-table td:nth-child(4),
-        .games-table thead th:nth-child(4) { z-index: 37; }
-
-        /* Header intersection above body cells */
-        .games-table thead th:nth-child(-n+4) {
-          z-index: 50;
-        }
+        /* ============================================= */
+        /* MOBILE: Freeze First 2 Columns Only */
+        /* ============================================= */
 
         @media (max-width: 768px) {
+
+          .games-table td:nth-child(1),
+          .games-table thead th:nth-child(1) {
+            position: sticky;
+            left: 0;
+            background: #fff;
+            z-index: 30;
+          }
+
+          .games-table td:nth-child(2),
+          .games-table thead th:nth-child(2) {
+            position: sticky;
+            left: 60px;
+            background: #fff;
+            z-index: 29;
+          }
+
+          .games-table thead th:nth-child(-n+2) {
+            z-index: 40;
+          }
+
           .col-team {
             width: 80px;
             max-width: 80px;
