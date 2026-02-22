@@ -35,6 +35,11 @@ export class ELOCalculator {
   revertToMean(endOfSeasonElo, w) {
   return (this.initialRating + w * endOfSeasonElo) / (w + 1);
 }
+  revertRating(rating, w = this.reversionWeight) {
+    if (!Number.isFinite(rating)) return this.initialRating;
+    if (rating === this.initialRating) return rating;
+    return this.revertToMean(rating, w);
+  }
 
     applySeasonReversion(elo, lastYear, currentYear, w = 2) {
     if (lastYear !== null && currentYear !== lastYear) {

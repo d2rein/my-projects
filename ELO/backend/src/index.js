@@ -267,8 +267,7 @@ async function handleRecalculate(db, request) {
  * This is the core change: ratings are derived, not stored.
  */
 async function computeRatingsByTeamId(db, calculator) {
-  const params = calculator.params || {};
-  const initial = params.initialRating ?? 1500;
+  const initial = calculator.initialRating ?? 1500;
 
   const { results } = await db.prepare(`
     SELECT
@@ -287,7 +286,6 @@ async function computeRatingsByTeamId(db, calculator) {
     ORDER BY m.year ASC, m.round ASC, m.game_num ASC, m.id ASC
   `).all();
 
-  // We’ll do proper ordering in JS so finals mapping works consistently
   const matches = (results || []).slice().sort((a, b) => {
     const ay = a.year - b.year;
     if (ay) return ay;
@@ -306,7 +304,18 @@ async function computeRatingsByTeamId(db, calculator) {
   const get = (teamId) => (ratings.has(teamId) ? ratings.get(teamId) : initial);
   const set = (teamId, rating) => ratings.set(teamId, rating);
 
+  let lastYear = null;
+
   for (const m of matches) {
+    // Season reversion (Map version)
+    if (lastYear !== null && m.year !== lastYear) {
+      const w = calculator.reversionWeight ?? 2;
+      for (const [teamId, r] of ratings.entries()) {
+        if (r !== initial) ratings.set(teamId, calculator.revertToMean(r, w));
+      }
+    }
+    lastYear = m.year;
+
     const homeElo = get(m.home_team_id);
     const awayElo = get(m.away_team_id);
 
@@ -387,6 +396,7 @@ async function handleDiagnostic(db) {
   const params = await getParameters(db);
   const calculator = new ELOCalculator(params);
 
+  
   // Pull all completed matches with team names
   // NOTE: include extra columns if your DB has them (travel_km/rest_diff/streak_diff)
   const { results } = await db.prepare(`
@@ -430,7 +440,7 @@ async function handleDiagnostic(db) {
     FROM teams
   `).all();
 
-  const initial = calculator.params?.initialRating ?? 1500;
+  const initial = calculator.initialRating ?? 1500;
 
   const ratings = new Map();
   const get = (id) => (ratings.has(id) ? ratings.get(id) : initial);
@@ -438,15 +448,17 @@ async function handleDiagnostic(db) {
 
   // CSV output
   const headers = [
-    "year","round","game_num","match_id",
-    "home_team","away_team",
-    "home_elo_before","away_elo_before",
-    "dr","win_expectancy","predicted_margin_linear",
-    "home_score","away_score","actual_result","actual_margin",
-    "rawBucket","idx","term1","term2","marginAdj",
-    "early","baseK","finalK",
-    "home_elo_after","away_elo_after"
-  ];
+  "year","round","game_num","match_id",
+  "home_team","away_team",
+  "home_elo_before","away_elo_before",
+  "elo_diff",
+  "home_advantage",
+  "dr","win_expectancy","predicted_margin_linear",
+  "home_score","away_score","actual_result","actual_margin",
+  "rawBucket","idx","term1","term2","marginAdj",
+  "early","baseK","finalK",
+  "home_elo_after","away_elo_after"
+];
 
   const rows = [];
 
@@ -466,17 +478,21 @@ async function handleDiagnostic(db) {
     set(m.home_team_id, diag.newHomeElo);
     set(m.away_team_id, diag.newAwayElo);
 
+    const eloDiff = homeEloBefore - awayEloBefore;
+
     rows.push([
       m.year, m.round, m.game_num, m.id,
       m.home_team, m.away_team,
       homeEloBefore, awayEloBefore,
+      eloDiff,
+      calculator.homeAdvantage,
       diag.dr, diag.expected, diag.predictedMargin,
       m.home_score, m.away_score, diag.actualResult, diag.margin,
       diag.rawBucket, diag.idx, diag.term1, diag.term2, diag.marginAdj,
       diag.early, diag.baseK, diag.finalK,
       diag.newHomeElo, diag.newAwayElo
     ]);
-  }
+    }
 
   // parameter block at top of CSV (comment lines)
   const p = calculator.params || {};
@@ -484,11 +500,14 @@ async function handleDiagnostic(db) {
     `# initialRating=${p.initialRating ?? 1500}`,
     `# kFactor=${p.kFactor ?? ""}`,
     `# homeAdvantage=${p.homeAdvantage ?? ""}`,
+    `# travelPer1000km=${p.travelPer1000km ?? ""}`,
+    `# restPerRound=${p.restPerRound ?? ""}`,
+    `# streakPts=${p.streakPts ?? ""}`,
     `# earlyBoost=${p.earlyBoost ?? ""}`,
-    `# marginCoef=${p.marginCoef ?? ""}`,
-    `# drWeighting=${p.drWeighting ?? ""}`,
+    `# marginCoef=${calculator.marginCoef ?? ""}`,
+    `# drWeighting=${calculator.drWeighting ?? ""}`,
     `# formula: newElo = old + finalK*(actual - expected)`,
-    ""
+    ``
   ].join("\n");
 
   const csv = paramBlock + toCsv(headers, rows);
