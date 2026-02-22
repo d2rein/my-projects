@@ -83,26 +83,9 @@
           overflow: auto;
         }
 
-        /* ===== Table Width ===== */
+        /* Table sizing */
         .games-table {
-          min-width: 1600px;
-          border-collapse: collapse;
-        }
-
-        /* ===== Scroll Container ===== */
-        #games .card {
-          max-height: 80vh;
-          overflow: hidden;
-        }
-
-        .games-scroll {
-          max-height: calc(80vh - 60px);
-          overflow: auto;
-        }
-
-        /* ===== Table ===== */
-        .games-table {
-          min-width: 1600px;
+          min-width: 1200px;   /* lower than 1600 so mobile isn't insane */
           border-collapse: collapse;
         }
 
@@ -114,27 +97,43 @@
           z-index: 10;
         }
 
-        /* ===== Sticky Left Columns (BODY CELLS ONLY) ===== */
-        .games-table td:nth-child(1) { left: 0; }
-        .games-table td:nth-child(2) { left: 60px; }
-        .games-table td:nth-child(3) { left: 120px; }
-        .games-table td:nth-child(4) { left: 300px; }
-
-        .games-table td:nth-child(-n+4) {
-          position: sticky;
-          background: #fff;
-          z-index: 5;
-        }
-
-        /* ===== Sticky Top-Left Intersection (Header + Frozen Columns) ===== */
-        .games-table thead th:nth-child(1) { left: 0; }
-        .games-table thead th:nth-child(2) { left: 60px; }
-        .games-table thead th:nth-child(3) { left: 120px; }
-        .games-table thead th:nth-child(4) { left: 300px; }
-
+        /* ===== Sticky First 4 Columns (auto width, responsive) ===== */
+        .games-table td:nth-child(-n+4),
         .games-table thead th:nth-child(-n+4) {
           position: sticky;
-          z-index: 20;
+          left: 0;
+          background: #fff;
+        }
+
+        /* Layering so columns stack correctly */
+        .games-table td:nth-child(1),
+        .games-table thead th:nth-child(1) { z-index: 40; }
+
+        .games-table td:nth-child(2),
+        .games-table thead th:nth-child(2) { z-index: 39; }
+
+        .games-table td:nth-child(3),
+        .games-table thead th:nth-child(3) { z-index: 38; }
+
+        .games-table td:nth-child(4),
+        .games-table thead th:nth-child(4) { z-index: 37; }
+
+        /* Header intersection above body cells */
+        .games-table thead th:nth-child(-n+4) {
+          z-index: 50;
+        }
+
+        @media (max-width: 768px) {
+          .col-team {
+            width: 80px;
+            max-width: 80px;
+            font-size: 11px;
+          }
+
+          .col-pick {
+            width: 90px;
+            max-width: 90px;
+          }
         }
 
       /* ===== Round Striping ===== */
