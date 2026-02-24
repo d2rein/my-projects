@@ -152,105 +152,54 @@ function displayTeamName(name) {
 }
 
     // === SINGLE SHARED FRONTEND REPLAY ENGINE ===
-    function makeReplayEngine(params) {
-    const eloCalc = new ELOCalculator({
-      kFactor: params.k,
-      homeAdvantage: params.homeAdvantage,
-      initialRating: 1500,
-      travelPer1000km: params.travelPer1000km,
-      restPerRound: params.restPerRound,
-      streakPts: params.streakPts,
-      earlyBoost: params.earlyBoost,
-      reversionWeight: params.reversionWeight
-    });
+   function makeReplayEngine(params) {
+  const eloCalc = new ELOCalculator({
+    kFactor: params.k,
+    homeAdvantage: params.homeAdvantage,
+    initialRating: 1500,
+    travelPer1000km: params.travelPer1000km,
+    restPerRound: params.restPerRound,
+    streakPts: params.streakPts,
+    earlyBoost: params.earlyBoost,
+    reversionWeight: params.reversionWeight
+  });
 
-    let ladderLocked = false;
+  const state = eloCalc.createState();
+  let ladderLocked = false;
 
-    // Initialise empty ladder structure
-    function makeEmptyLadder() {
-        const ladder = {};
-        teams.forEach(t => {
-        ladder[t.name] = {
-            points: 0,
-            for: 0,
-            against: 0,
-            margin: 0
-        };
-        });
-        return ladder;
-    }
+  function makeEmptyLadder() { /* unchanged */ }
 
-   return {
+  return {
     eloCalc,
+    state,
     makeEmptyLadder,
 
-    step: (elo, ladder, match, lastYear) => {
-        // Lock ladder once we hit actual finals
-        if (!match.round.startsWith("Rd") &&
-            !match.round.toLowerCase().startsWith("qual")) {
+    step: (ladder, match) => {
+      // ladder finals locking: unchanged
+      if (!match.round.startsWith("Rd") &&
+          !match.round.toLowerCase().startsWith("qual")) {
         ladderLocked = true;
-        }
-
-      // ---- Handle new season reset (with seeding) ----
-      if (isNewSeason(lastYear, match.year)) {
-        const previousOrder = rankLadder(ladder).map(r => r.team);
-        ladder = initLadderSeeded(teams, previousOrder);
-        ladderLocked = false; 
       }
 
-      // Apply season reversion once, here
-      lastYear = eloCalc.applySeasonReversion(
-        elo,
-        lastYear,
-        match.year,
-        eloCalc.reversionWeight
-      );
+      // new season: ladder reset still belongs here (not Elo)
+      // IMPORTANT: do this BEFORE we process the match, so ladder is correct for eval
+      // (your existing code uses lastYear; now use elo engine state's lastYear)
+      if (isNewSeason(state.lastYear, match.year)) {
+        const previousOrder = rankLadder(ladder).map(r => r.team);
+        ladder = initLadderSeeded(teams, previousOrder);
+        ladderLocked = false;
+      }
 
-      
+      // --- ONE CALL DOES EVERYTHING ELO ---
+      const out = eloCalc.stepMatch(state, match);
 
       const home = match.home_team;
       const away = match.away_team;
 
-      const eloHomeBefore = elo[home] ?? eloCalc.initialRating;
-      const eloAwayBefore = elo[away] ?? eloCalc.initialRating;
-
-      const travelAdj = (match.travel_km ?? 0) / 1000 * eloCalc.travelPer1000km;
-      const restAdj = (match.rest_diff ?? 0) * eloCalc.restPerRound;
-      const streakAdj = (match.streak_diff ?? 0) * eloCalc.streakPts;
-
-      const dr = eloCalc.getRatingDifference(
-        eloHomeBefore,
-        eloAwayBefore,
-        travelAdj,
-        restAdj,
-        streakAdj
-      );
-
-      const we = eloCalc.calculateWinExpectancy(dr);
-
-      // “Spreadsheet-style” display predictions (these are already in the class)
-      const homeWinProb = eloCalc.calculateWinExpectancy(dr);
-      const predictedMargin = Math.abs(eloCalc.predictMargin(dr));
-
-      // If no score yet, don’t update ratings
-      if (match.home_score == null || match.away_score == null) {
-        return { elo, ladder, lastYear, dr, we, homeWinProb, predictedMargin, eloHomeBefore, eloAwayBefore };
-      }
-
-      const homeScore = match.home_score;
-      const awayScore = match.away_score;      
-      const margin = match.home_score - match.away_score;
-      const result = match.home_score > match.away_score ? 1 : 0;
-      const roundNo = eloCalc.extractRoundNumber(match.round);
-
-      // Canonical rating updates (your spreadsheet K logic is inside calculateNewRating)
-      elo[home] = eloCalc.calculateNewRating(eloHomeBefore, result, we, margin, roundNo);
-      elo[away] = eloCalc.calculateNewRating(eloAwayBefore, 1 - result, 1 - we, -margin, roundNo);
-
-      
-
-      // === UPDATE OFFICIAL LADDER ===
-      if (!ladderLocked) {
+      // Update ladder only when game played & ladder not locked
+      if (out.updated && !ladderLocked) {
+        const homeScore = match.home_score;
+        const awayScore = match.away_score;
 
         ladder[home].for += homeScore;
         ladder[home].against += awayScore;
@@ -260,20 +209,14 @@ function displayTeamName(name) {
         ladder[away].against += homeScore;
         ladder[away].margin = ladder[away].for - ladder[away].against;
 
-        // Base competition points
-        if (homeScore > awayScore) {
-        ladder[home].compPoints += 2;
-        } else if (awayScore > homeScore) {
-        ladder[away].compPoints += 2;
-        } else {
-        ladder[home].compPoints += 1;
-        ladder[away].compPoints += 1;
-        }
+        if (homeScore > awayScore) ladder[home].compPoints += 2;
+        else if (awayScore > homeScore) ladder[away].compPoints += 2;
+        else { ladder[home].compPoints += 1; ladder[away].compPoints += 1; }
+      }
 
+      return { ladder, out };
     }
-
-    return { elo, ladder, lastYear, dr, we, homeWinProb, predictedMargin };    }
-    };
+  };
 }
 
 
@@ -337,70 +280,70 @@ async function loadRankings() {
     const res = await fetch(`${API_URL}/api/matches`);
     const matches = await res.json();
 
+    const selectedYear = document.getElementById("rankings-year")?.value;
+    const selectedRound = document.getElementById("rankings-round")?.value;
+
     matches.sort((a, b) => {
       if (a.year !== b.year) return a.year - b.year;
       return extractRoundNumber(a.round) - extractRoundNumber(b.round);
     });
 
-    let elo = {};
     let ladder = initLadderSeeded(teams);
-    let lastYear = null;
     const engine = makeReplayEngine(MODEL_PARAMS);
-
-    const selectedYear = document.getElementById("rankings-year")?.value;
-    const selectedRound = document.getElementById("rankings-round")?.value?.trim();
 
     for (const m of matches) {
       if (m.home_score != null && m.away_score != null) {
-        ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
+        ({ ladder } = engine.step(ladder, m));
       }
-      // Stop after selected year/round (if provided)
-    if (selectedYear && selectedRound &&
+
+      if (
+        selectedYear &&
+        selectedRound &&
         String(m.year) === String(selectedYear) &&
-        String(m.round).toLowerCase() === selectedRound.toLowerCase()) {
-        break;}
+        String(m.round).toLowerCase() === selectedRound.toLowerCase()
+      ) {
+        break;
+      }
     }
 
     const ladderTable = rankLadder(ladder);
 
-    const POINTS_DECIMALS = 6; // change to 0 later
-
     const html = `
-    <table class="rankings-table">
+      <table class="rankings-table">
         <thead>
-            <tr>
-                <th class="col-rank">Rank</th>
-                <th class="col-team">Team</th>
-                <th class="col-elo">ELO</th>
-                <th class="col-points">Points</th>
-                <th class="col-for">For</th>
-                <th class="col-against">Against</th>
-                <th class="col-margin">Margin</th>
-            </tr>
-            </thead>
-
-        <tbody>
-        ${ladderTable.map((r, i) => `
           <tr>
-            <td class="col-rank">${i + 1}</td>
-            <td class="col-team">${r.team}</td>
-            <td class="col-elo">${Math.round(elo[r.team] || 1500)}</td>
-            <td class="col-points">${r.compPoints}</td>
-            <td class="col-for">${r.for}</td>
-            <td class="col-against">${r.against}</td>
-            <td class="col-margin">${r.margin}</td>
+            <th>Rank</th>
+            <th>Team</th>
+            <th>ELO</th>
+            <th>Points</th>
+            <th>For</th>
+            <th>Against</th>
+            <th>Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ladderTable
+            .map(
+              (r, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${r.team}</td>
+              <td>${Math.round(engine.state.ratings[r.team] ?? 1500)}</td>
+              <td>${r.compPoints}</td>
+              <td>${r.for}</td>
+              <td>${r.against}</td>
+              <td>${r.margin}</td>
             </tr>
-        `).join("")}
+          `
+            )
+            .join("")}
         </tbody>
       </table>
     `;
 
     document.getElementById("rankings-table").innerHTML = html;
-
   } catch (e) {
     console.error(e);
-    document.getElementById("rankings-table").innerHTML =
-      "<p>Error loading rankings</p>";
   }
 }
 
@@ -486,38 +429,27 @@ async function loadRoundForEntry() {
     return extractRoundNumber(a.round) - extractRoundNumber(b.round);
     });
 
-    let elo = {};
     let ladder = initLadderSeeded(teams);
-    teams.forEach(t => elo[t.name] = 1500);
-    let lastYear = null;
 
     for (const m of matches) {
-    // Stop replay BEFORE the selected round
-    if (String(m.year) === String(year) &&
-        String(m.round).toLowerCase() === round.toLowerCase()) {
+      if (
+        String(m.year) === String(year) &&
+        String(m.round).toLowerCase() === round.toLowerCase()
+      ) {
         break;
-    }
-    ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
+      }
+
+      if (m.home_score != null && m.away_score != null) {
+        ({ ladder } = engine.step(ladder, m));
+      }
     }
 
 
     // Build table
     let rows = roundGames.map(m => {
-        const eloHomeBefore = elo[m.home_team] ?? 1500;
-        const eloAwayBefore = elo[m.away_team] ?? 1500;
-        const travelAdj = (m.travel_km ?? 0) / 1000 * engine.eloCalc.travelPer1000km;
-        const restAdj = (m.rest_diff ?? 0) * engine.eloCalc.restPerRound;
-        const streakAdj = (m.streak_diff ?? 0) * engine.eloCalc.streakPts;
-
-        const dr = engine.eloCalc.getRatingDifference(
-          eloHomeBefore,
-          eloAwayBefore,
-          travelAdj,
-          restAdj,
-          streakAdj
-        );
-        const winPct = (engine.eloCalc.calculateWinExpectancy(dr) * 100).toFixed(1);
-        const predMargin = Math.abs(engine.eloCalc.predictMargin(dr)).toFixed(1);
+        const out = engine.eloCalc.previewMatch(engine.state, m);
+        const winPct = (out.expected * 100).toFixed(1);
+        const predMargin = Math.abs(out.predictedMargin).toFixed(1);
 
       return `
         <tr data-game-id="${m.id}">
@@ -703,11 +635,7 @@ async function evaluateModel() {
     });
 
     // --- Replay setup ---
-    let elo = {};
     let ladder = initLadderSeeded(teams);
-    teams.forEach(t => elo[t.name] = 1500);
-    let lastYear = null;
-
     const engine = makeReplayEngine(MODEL_PARAMS);
 
     const latestYear = Math.max(...matches.map(m => m.year));
@@ -733,30 +661,33 @@ async function evaluateModel() {
       const away = m.away_team;
       const year = m.year;
 
-      if (!yearly[year]) {
-        yearly[year] = { games: 0, elo: 0, ladder: 0, odds: 0 };
-      }
+      if (!yearly[year]) yearly[year] = { games: 0, elo: 0, ladder: 0, odds: 0 };
 
-      const eloHomeBefore = elo[home] ?? 1500;
-      const eloAwayBefore = elo[away] ?? 1500;
+      // --- PRE-MATCH ladder pick ---
+      const ladderTable = rankLadder(ladder);
+      const rankHome = 1 + ladderTable.findIndex(r => r.team === home);
+      const rankAway = 1 + ladderTable.findIndex(r => r.team === away);
+      const ladderPick = rankHome < rankAway ? home : away;
 
-      const travelAdj = (m.travel_km ?? 0) / 1000 * engine.eloCalc.travelPer1000km;
-      const restAdj = (m.rest_diff ?? 0) * engine.eloCalc.restPerRound;
-      const streakAdj = (m.streak_diff ?? 0) * engine.eloCalc.streakPts;
+      // --- ACTUAL WINNER ---
+      const actualWinner =
+        m.home_score > m.away_score ? home : away;
 
-      const dr = engine.eloCalc.getRatingDifference(
-        eloHomeBefore,
-        eloAwayBefore,
-        travelAdj,
-        restAdj,
-        streakAdj
-      );
+      // --- STEP MATCH (updates Elo + ladder) ---
+      const stepRes = engine.step(ladder, m);
+      ladder = stepRes.ladder;
+      const out = stepRes.out;
 
-      const homeWinProb = engine.eloCalc.calculateWinExpectancy(dr);
-
+      const homeWinProb = out.expected;
       const eloPick = homeWinProb >= 0.5 ? home : away;
-      const actualWinner = m.home_score > m.away_score ? home : away;
 
+      // --- Score ladder accuracy AFTER actualWinner defined ---
+      if (ladderPick === actualWinner) {
+        overall.ladder++;
+        yearly[year].ladder++;
+        if (year >= last3Cutoff) last3.ladder++;
+      }
+      
       // --- overall ---
       overall.games++;
       yearly[year].games++;
@@ -767,18 +698,6 @@ async function evaluateModel() {
         overall.elo++;
         yearly[year].elo++;
         if (year >= last3Cutoff) last3.elo++;
-      }
-
-      // --- ladder pick ---
-      const ladderTable = rankLadder(ladder);
-      const rankHome = 1 + ladderTable.findIndex(r => r.team === home);
-      const rankAway = 1 + ladderTable.findIndex(r => r.team === away);
-      const ladderPick = rankHome < rankAway ? home : away;
-
-      if (ladderPick === actualWinner) {
-        overall.ladder++;
-        yearly[year].ladder++;
-        if (year >= last3Cutoff) last3.ladder++;
       }
 
       // --- odds pick (same as elo for now) ---
@@ -800,9 +719,7 @@ async function evaluateModel() {
       bins[bin].games++;
       if (actual === 1) bins[bin].wins++;
 
-      // --- Update ratings ---
-      ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
-    }
+      }
 
     const overallAcc = (100 * overall.elo / overall.games).toFixed(1);
     const last3Acc = last3.games > 0
@@ -1071,10 +988,7 @@ async function loadAllGames() {
 
 
         // Starting ELO
-        let elo = {};
-        teams.forEach(t => elo[t.name] = 1500);
         let ladder = initLadderSeeded(teams);
-        let lastYear = null;
         let lastProcessedRound = null;
         let rows = "";
 
@@ -1098,21 +1012,16 @@ async function loadAllGames() {
             const home = m.home_team;
             const away = m.away_team;
 
-            const eloHomeBefore = elo[home] ?? 1500;
-            const eloAwayBefore = elo[away] ?? 1500;
-            
-            const travelAdj = (m.travel_km ?? 0) / 1000 * engine.eloCalc.travelPer1000km;
-            const restAdj = (m.rest_diff ?? 0) * engine.eloCalc.restPerRound;
-            const streakAdj = (m.streak_diff ?? 0) * engine.eloCalc.streakPts;
+            const stepRes = engine.step(ladder, m);
+            ladder = stepRes.ladder;
+            const out = stepRes.out;
 
-            const dr = engine.eloCalc.getRatingDifference(
-              eloHomeBefore,
-              eloAwayBefore,
-              travelAdj,
-              restAdj,
-              streakAdj
-            );
-            const marginPred = Math.abs(engine.eloCalc.predictMargin(dr)).toFixed(1);
+            const dr = out.dr;
+            const homeWinProb = out.expected;
+            const marginPred = Math.abs(engine.eloCalc.predictMargin(dr));
+            const eloHomeBefore = out.homeEloBefore;
+            const eloAwayBefore = out.awayEloBefore;
+            
             const oddsPred = (engine.eloCalc.calculateWinExpectancy(dr) * 100).toFixed(1) + "%";
 
             const ladderTable = rankLadder(ladder);
@@ -1132,12 +1041,9 @@ async function loadAllGames() {
               console.log("Before Rd1:", eloHomeBefore, eloAwayBefore);
             }
 
-            // ELO update
-            ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
-            
             //LOG ELO
             if (m.year === 2009 && m.round === "Rd 1" && m.home_team === "Cronulla Sharks") {
-              console.log("After Rd1:", elo["Cronulla Sharks"]);
+              console.log("After Rd1:", engine.state.ratings["Cronulla Sharks"]);
             }
 
             // Apply byes ONCE per round (regular season only)
@@ -1264,38 +1170,28 @@ async function loadSeasonMatrix() {
 
   await loadTeams();
 
-  console.log("Teams from API:", teams.map(t => t.name));
-
   const res = await fetch(`${API_URL}/api/matches`);
   const matches = await res.json();
 
-  const engine = makeReplayEngine(MODEL_PARAMS);
-
   const selectedYear = Number(document.getElementById("season-year").value);
-  const latestYear = Math.max(...matches.map(m => m.year));
-  const isCurrentSeason = selectedYear === latestYear;
 
-  // Sort all matches chronologically
-  const allSorted = matches.sort((a, b) => {
+  matches.sort((a, b) => {
     if (a.year !== b.year) return a.year - b.year;
     return extractRoundNumber(a.round) - extractRoundNumber(b.round);
   });
 
-  // ---- Replay prior seasons to build proper ELO ----
-  let elo = {};
-  teams.forEach(t => elo[t.name] = 1500);
-
+  const engine = makeReplayEngine(MODEL_PARAMS);
   let ladder = initLadderSeeded(teams);
-  let lastYear = null;
 
-  for (const m of allSorted) {
+  // ---- Replay ALL prior seasons fully ----
+  for (const m of matches) {
     if (m.year < selectedYear && m.home_score != null && m.away_score != null) {
-      ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
+      ({ ladder } = engine.step(ladder, m));
     }
   }
 
   // ---- Isolate selected season ----
-  const seasonMatches = allSorted.filter(m => m.year === selectedYear);
+  const seasonMatches = matches.filter(m => m.year === selectedYear);
 
   const rounds = [...new Set(seasonMatches.map(m => m.round))]
     .sort((a, b) => extractRoundNumber(a) - extractRoundNumber(b));
@@ -1308,158 +1204,72 @@ async function loadSeasonMatrix() {
 
   let lastCompletedRound = null;
 
-  // ---- Process completed games ----
+  // ---- Process completed games in season ----
   for (const m of seasonMatches) {
 
-    if (m.home_score != null && m.away_score != null) {
+    if (m.home_score == null || m.away_score == null) continue;
 
-      lastCompletedRound = m.round;
+    lastCompletedRound = m.round;
 
-      ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
+    ({ ladder } = engine.step(ladder, m));
 
-      const home = m.home_team;
-      const away = m.away_team;
+    const home = m.home_team;
+    const away = m.away_team;
 
-      const homePts =
-        m.home_score > m.away_score ? 2 :
-        m.home_score < m.away_score ? 0 : 1;
+    const homePts =
+      m.home_score > m.away_score ? 2 :
+      m.home_score < m.away_score ? 0 : 1;
 
-      const awayPts =
-        m.away_score > m.home_score ? 2 :
-        m.away_score < m.home_score ? 0 : 1;
+    const awayPts =
+      m.away_score > m.home_score ? 2 :
+      m.away_score < m.home_score ? 0 : 1;
 
-      cumulativePoints[home] += homePts;
-      cumulativePoints[away] += awayPts;
+    cumulativePoints[home] += homePts;
+    cumulativePoints[away] += awayPts;
 
-      roundPoints[m.round][home] = {
-        pts: cumulativePoints[home],
-        type: homePts === 2 ? "win" : homePts === 1 ? "draw" : "loss"
-      };
+    roundPoints[m.round][home] = {
+      pts: cumulativePoints[home],
+      type: homePts === 2 ? "win" : homePts === 1 ? "draw" : "loss"
+    };
 
-      roundPoints[m.round][away] = {
-        pts: cumulativePoints[away],
-        type: awayPts === 2 ? "win" : awayPts === 1 ? "draw" : "loss"
-      };
-    }
+    roundPoints[m.round][away] = {
+      pts: cumulativePoints[away],
+      type: awayPts === 2 ? "win" : awayPts === 1 ? "draw" : "loss"
+    };
   }
 
   const currentLadder = rankLadder(ladder);
-  const currentElo = { ...elo };
-
-  // ---- Projection (Frozen ELO) ----
-  if (isCurrentSeason && lastCompletedRound) {
-
-    const frozenElo = { ...elo };
-
-    for (const m of seasonMatches) {
-
-      if (m.home_score != null) continue;
-
-      const home = m.home_team;
-      const away = m.away_team;
-
-      const travelAdj = (m.travel_km ?? 0) / 1000 * engine.eloCalc.travelPer1000km;
-      const restAdj = (m.rest_diff ?? 0) * engine.eloCalc.restPerRound;
-      const streakAdj = (m.streak_diff ?? 0) * engine.eloCalc.streakPts;
-
-      const dr = engine.eloCalc.getRatingDifference(
-        frozenElo[home],
-        frozenElo[away],
-        travelAdj,
-        restAdj,
-        streakAdj
-      );
-
-      const winProb = engine.eloCalc.calculateWinExpectancy(dr);
-
-      const homePred = 2 * winProb;
-      const awayPred = 2 * (1 - winProb);
-
-      cumulativePoints[home] += homePred;
-      cumulativePoints[away] += awayPred;
-
-      roundPoints[m.round][home] = {
-        pts: cumulativePoints[home].toFixed(2),
-        type: winProb >= 0.5 ? "pred-win" : "pred-loss"
-      };
-
-      roundPoints[m.round][away] = {
-        pts: cumulativePoints[away].toFixed(2),
-        type: winProb < 0.5 ? "pred-win" : "pred-loss"
-      };
-    }
-  }
-
-  const predictedRanking = rankLadder(ladder);
 
   const currentRankMap = {};
   currentLadder.forEach((r, i) => currentRankMap[r.team] = i + 1);
 
-  const predictedRankMap = {};
-  predictedRanking.forEach((r, i) => predictedRankMap[r.team] = i + 1);
-
   let html = `<table class="matrix-table"><thead><tr>
-    <th class="matrix-team">Team</th>
-    <th class="matrix-rank">Curr</th>
-    <th class="matrix-rank">Pred</th>
-    <th class="matrix-elo">ELO</th>`;
+    <th>Team</th>
+    <th>Rank</th>
+    <th>ELO</th>`;
 
   for (const r of rounds) {
-    const divider = (r === lastCompletedRound) ? "current-round-divider" : "";
-    html += `<th class="round-col ${divider}">${r}</th>`;
+    html += `<th>${r}</th>`;
   }
 
   html += `</tr></thead><tbody>`;
 
-  const displayOrder = isCurrentSeason ? predictedRanking : currentLadder;
-
-  for (const row of displayOrder) {
+  for (const row of currentLadder) {
 
     const team = row.team;
-    const currRank = currentRankMap[team];
-    const predRank = predictedRankMap[team];
-    const delta = currRank - predRank;
-
-    let arrow = "";
-    if (delta > 0) arrow = ` <span class="arrow-up">▲${delta}</span>`;
-    if (delta < 0) arrow = ` <span class="arrow-down">▼${Math.abs(delta)}</span>`;
 
     html += `<tr>
-      <td class="matrix-team">
-        <img src="${logoPath(team)}"style="height:18px; vertical-align:middle; margin-right:6px;">
-        ${team}
-      </td>
-      <td class="matrix-rank">${currRank}</td>
-      <td class="matrix-rank">${predRank}${arrow}</td>
-      <td class="matrix-elo">${Math.round(currentElo[team] || 1500)}</td>`;
+      <td>${team}</td>
+      <td>${currentRankMap[team]}</td>
+      <td>${Math.round(engine.state.ratings[team] ?? 1500)}</td>`;
 
     for (const r of rounds) {
-
       const cell = roundPoints[r][team];
 
-      const match = seasonMatches.find(
-        x => x.round === r &&
-        (x.home_team === team || x.away_team === team)
-      );
-
-      let opponentLogo = "";
-        if (match) {
-        const opponent = match.home_team === team
-            ? match.away_team
-            : match.home_team;
-
-        opponentLogo = `<img src="${logoPath(opponent)}"
-                            style="height:14px;"><br>`;
-        }
-
-
       if (!cell) {
-        html += `<td class="round-col"></td>`;
+        html += `<td></td>`;
       } else {
-        html += `<td class="round-col ${cell.type}">
-          ${opponentLogo}
-          ${cell.pts}
-        </td>`;
+        html += `<td class="${cell.type}">${cell.pts}</td>`;
       }
     }
 
@@ -1528,78 +1338,47 @@ async function loadEloHistory() {
   const res = await fetch(`${API_URL}/api/matches`);
   const matches = await res.json();
 
-  const engine = makeReplayEngine(MODEL_PARAMS);
-
   matches.sort((a, b) => {
     if (a.year !== b.year) return a.year - b.year;
     return extractRoundNumber(a.round) - extractRoundNumber(b.round);
   });
 
-    const startInput = document.getElementById("elo-start-year");
-    const endInput = document.getElementById("elo-end-year");
+  const startYear = parseInt(document.getElementById("elo-start-year")?.value || 2009);
+  const endYear = parseInt(document.getElementById("elo-end-year")?.value || 2026);
 
-    if (!startInput.value) startInput.value = 2009;
-    if (!endInput.value) endInput.value = 2026;
-
-    const startYear = parseInt(startInput.value);
-    const endYear = parseInt(endInput.value);
-
-  let elo = {};
-  teams.forEach(t => elo[t.name] = 1500);
+  const engine = makeReplayEngine(MODEL_PARAMS);
   let ladder = initLadderSeeded(teams);
-  let lastYear = null;
-    const labels = [];
-    const teamHistory = {};
-    teams.forEach(t => teamHistory[t.name] = []);
 
-    for (const m of matches) {
+  const labels = [];
+  const teamHistory = {};
+  teams.forEach(t => teamHistory[t.name] = []);
+
+  for (const m of matches) {
 
     if (m.home_score == null || m.away_score == null) continue;
 
-    ({ elo, ladder, lastYear } = engine.step(elo, ladder, m, lastYear));
+    ({ ladder } = engine.step(ladder, m));
 
     if (m.year >= startYear && m.year <= endYear) {
 
-        // Two-line label
-        labels.push([m.year, m.round]);
+      labels.push([m.year, m.round]);
 
-        teams.forEach(t => {
-        teamHistory[t.name].push(elo[t.name] ?? 1500);
-        });
+      teams.forEach(t => {
+        teamHistory[t.name].push(
+          engine.state.ratings[t.name] ?? 1500
+        );
+      });
     }
-    }
+  }
 
-
-
- // ---- Highlight selector ----
-    const highlightSelect = document.getElementById("elo-highlight");
-
-    // Populate dropdown once
-    if (highlightSelect && highlightSelect.options.length === 0) {
-    highlightSelect.innerHTML =
-        '<option value="">None</option>' +
-        teams.map(t => `<option value="${t.name}">${t.name}</option>`).join("");
-    }
-
-    // Current highlight value
-    const highlight = highlightSelect ? highlightSelect.value : "";
-
-    // ---- Build datasets ----
-    const datasets = teams.map(t => {
-        const isHighlight = highlight && t.name === highlight;
-
-        return {
-            label: t.name,
-            data: teamHistory[t.name],
-            borderWidth: isHighlight ? 3 : 1.5,
-            pointRadius: 0,
-            tension: 0,
-            borderColor: isHighlight
-            ? getTeamColor(t.name)
-            : getTeamColor(t.name) + "66"   // adds transparency but keeps colour
-        };
-    });
-
+  const datasets = teams.map(t => ({
+    label: t.name,
+    data: teamHistory[t.name],
+    borderWidth: 1.5,
+    pointRadius: 0,
+    tension: 0,
+    borderColor: getTeamColor(t.name)
+  }));
 
   const ctx = document.getElementById("elo-history-chart").getContext("2d");
 

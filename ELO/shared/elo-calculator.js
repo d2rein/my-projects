@@ -1,7 +1,46 @@
 /**
- * NRL ELO Calculator - aligned with your spreadsheet logic
- * Defaults: K=11, Home Advantage=45, DR weighting=400
+ * NRL ELO Calculator - single source of truth for:
+ * - season reversion
+ * - travel/rest/streak adjustments
+ * - DR, win expectancy, predicted margin
+ * - rating updates
  */
+
+const TEAM_BASES = {
+  "Melbourne Storm": [-37.8136, 144.9631],
+  "Penrith Panthers": [-33.75, 150.7],
+  "Sydney Roosters": [-33.8688, 151.2093],
+  "Brisbane Broncos": [-27.4698, 153.0251],
+  "Cronulla Sharks": [-34.0574, 151.152],
+  "Canberra Raiders": [-35.2809, 149.13],
+  "Manly Sea Eagles": [-33.7969, 151.2857],
+  "Dolphins": [-27.193, 153.026],
+  "Canterbury Bulldogs": [-33.8688, 151.2093],
+  "New Zealand Warriors": [-36.8485, 174.7633],
+  "NQ Cowboys": [-19.2589, 146.8169],
+  "South Sydney Rabbitohs": [-33.8688, 151.2093],
+  "Parramatta Eels": [-33.815, 151.0011],
+  "Newcastle Knights": [-32.9283, 151.7817],
+  "St. George Illawarra Dragons": [-34.4278, 150.8931],
+  "Wests Tigers": [-33.884, 151.12],
+  "Gold Coast Titans": [-28.0167, 153.4],
+};
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371.0;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const p1 = toRad(lat1);
+  const p2 = toRad(lat2);
+  const dphi = toRad(lat2 - lat1);
+  const dlmb = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dphi / 2) ** 2 +
+    Math.cos(p1) * Math.cos(p2) * Math.sin(dlmb / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 export class ELOCalculator {
   constructor(params = {}) {
@@ -12,225 +51,66 @@ export class ELOCalculator {
     this.travelPer1000km = Number(params.travelPer1000km ?? 0);
     this.restPerRound = Number(params.restPerRound ?? 2);
     this.streakPts = Number(params.streakPts ?? 0);
+
     this.reversionWeight = Number(params.reversionWeight ?? 3.3);
-    this.earlyBoost = Number(params.earlyBoost ?? 0.800);
+    this.earlyBoost = Number(params.earlyBoost ?? 0.8);
 
     this.marginCoef = 0.048406;
     this.oddsCoef = 0.002;
     this.drWeighting = 400;
   }
 
-  /** Expected result: 1 / (10^(-dr/400) + 1) */
-  calculateWinExpectancy(ratingDiff) {
-    return 1 / (Math.pow(10, -ratingDiff / this.drWeighting) + 1);
+  // ----------------------------
+  // STATE (single replay engine)
+  // ----------------------------
+  createState() {
+    return {
+      ratings: {},                 // teamName -> rating
+      lastYear: null,              // last processed year
+      lastRoundPlayed: new Map(),  // teamName -> roundNumber
+      streak: new Map(),           // teamName -> streak int
+    };
   }
 
-  /** Rating difference = (Home + homeAdvantage) - Away */
+  _getRating(state, teamName) {
+    const v = state.ratings[teamName];
+    return Number.isFinite(v) ? v : this.initialRating;
+  }
+
+  _setRating(state, teamName, rating) {
+    state.ratings[teamName] = rating;
+  }
+
+  // ----------------------------
+  // CORE MATH
+  // ----------------------------
+  calculateWinExpectancy(dr) {
+    return 1 / (Math.pow(10, -dr / this.drWeighting) + 1);
+  }
+
   getRatingDifference(homeElo, awayElo, travelAdj = 0, restAdj = 0, streakAdj = 0) {
     return (homeElo + this.homeAdvantage + travelAdj + restAdj + streakAdj) - awayElo;
   }
 
-  /**Spreadsheet-style end-of-season reversion to the mean Rd 1 Elo = (1500 + w * endOfSeasonElo) / (w + 1)
-   */
-  revertToMean(endOfSeasonElo, w) {
-  return (this.initialRating + w * endOfSeasonElo) / (w + 1);
-}
-  revertRating(rating, w = this.reversionWeight) {
-    if (!Number.isFinite(rating)) return this.initialRating;
-    if (rating === this.initialRating) return rating;
-    return this.revertToMean(rating, w);
+  predictMargin(dr) {
+    return this.marginCoef * dr;
   }
 
-    applySeasonReversion(elo, lastYear, currentYear, w = 2) {
-    if (lastYear !== null && currentYear !== lastYear) {
-      for (const team in elo) {
-        if (elo[team] !== this.initialRating) {
-          elo[team] = this.revertToMean(elo[team], w);
-        }
-      }
-    }
-    return currentYear;
-  }
-
-calculateNewRating(oldRating, actualResult, expectedResult, margin, roundNumber) {
-
-  // ----- margin bucket -----
-  const rawBucket = Math.ceil(Math.abs(margin) / 6);
-  const idx = Math.max(1, Math.min(rawBucket, 4));
-
-  const table = {
-    1: 0.5,
-    2: 1.0,
-    3: 1.5,
-    4: 1.75
-  };
-
-  const term1 = table[idx];
-  const term2 = Math.max(idx - 3, 0) / 8;
-
-  const marginAdj = (term1 + term2) - 1.0;
-
-  // ----- early effect (ADDITIVE, like Python) -----
-  let early = 0;
-  if (roundNumber && roundNumber > 0) {
-    early = this.earlyBoost * Math.max(0, 11 - roundNumber);
-  }
-
-  const baseK = this.kFactor + early;
-
-  const finalK = baseK * (1.0 + marginAdj);
-
-  return oldRating + finalK * (actualResult - expectedResult);
-}
-
-  /** Predicted margin = 0 + marginCoef * dr */
-  predictMargin(ratingDiff) {
-    return this.marginCoef * ratingDiff;
-  }
-
-  /**
-   * Spreadsheet-style win probability:
-   *   0.5 + oddsCoef * dr, clipped to [0,1]
-   */
-  calculateWinProbability(ratingDiff) {
-    const prob = 0.5 + (this.oddsCoef * ratingDiff);
+  calculateWinProbability(dr) {
+    const prob = 0.5 + (this.oddsCoef * dr);
     return Math.max(0, Math.min(1, prob));
   }
 
-  /**
-   * Process a played match and return updated ELOs
-   */
-  processMatch(match) {
-    const {
-      homeElo,
-      awayElo,
-      homeScore,
-      awayScore,
-      roundNumber
-    } = match;
-
-    const dr = this.getRatingDifference(homeElo, awayElo);
-    const homeExpectancy = this.calculateWinExpectancy(dr);
-
-    const homeWon = homeScore > awayScore ? 1 : 0;
-    const awayWon = awayScore > homeScore ? 1 : 0;
-    const margin = homeScore - awayScore;
-
-    const newHomeElo = this.calculateNewRating(
-      homeElo,
-      homeWon,
-      homeExpectancy,
-      margin,
-      roundNumber
-    );
-
-    const newAwayElo = this.calculateNewRating(
-      awayElo,
-      awayWon,
-      1 - homeExpectancy,
-      -margin,
-      roundNumber
-    );
-
-    return {
-      homeElo: newHomeElo,
-      awayElo: newAwayElo,
-      homeExpectancy,
-      margin,
-      winner: homeWon ? "home" : "away"
-    };
-  }
-
-  processMatchDiagnostic(match) {
-    const {
-      homeElo,
-      awayElo,
-      homeScore,
-      awayScore,
-      roundNumber
-    } = match;
-
-    const dr = this.getRatingDifference(homeElo, awayElo);
-    const expected = this.calculateWinExpectancy(dr);
-
-    const margin = homeScore - awayScore;
-    const actualResult = homeScore > awayScore ? 1 : 0;
-
-    // ----- margin bucket -----
-    const rawBucket = Math.ceil(Math.abs(margin) / 6);
-    const idx = Math.max(1, Math.min(rawBucket, 4));
-
-    const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
-
-    const term1 = table[idx];
-    const term2 = Math.max(idx - 3, 0) / 8;
-    const marginAdj = (term1 + term2) - 1.0;
-
-    // ----- early effect (ADDITIVE) -----
-    let early = 0;
-    if (roundNumber && roundNumber > 0) {
-      early = this.earlyBoost * Math.max(0, 11 - roundNumber);
-    }
-
-    const baseK = this.kFactor + early;
-    const finalK = baseK * (1.0 + marginAdj);
-
-    const newHomeElo = homeElo + finalK * (actualResult - expected);
-    const newAwayElo = awayElo + finalK * ((1 - actualResult) - (1 - expected));
-
-    const predictedMargin = this.predictMargin(dr);
-
-    return {
-      dr,
-      expected,
-      predictedMargin,
-      margin,
-      rawBucket,
-      idx,
-      term1,
-      term2,
-      marginAdj,
-      early,
-      baseK,
-      finalK,
-      actualResult,
-      newHomeElo,
-      newAwayElo
-    };
-  }
-  /**
-   * Predict an upcoming match
-   */
-  predictMatch(homeElo, awayElo) {
-    const dr = this.getRatingDifference(homeElo, awayElo);
-    const homeWinProb = this.calculateWinProbability(dr);
-    const predictedMargin = this.predictMargin(dr);
-
-    return {
-      ratingDifference: dr,
-      homeWinProbability: homeWinProb,
-      awayWinProbability: 1 - homeWinProb,
-      predictedMargin: Math.round(predictedMargin),
-      homeOdds: (1 / homeWinProb).toFixed(2),
-      awayOdds: (1 / (1 - homeWinProb)).toFixed(2),
-      predictedWinner: predictedMargin > 0 ? "home" : "away"
-    };
-  }
-
-  /**
-   * Convert "Rd 1", "Rd 27", "Qual", "Semi", "Prelim", "GF"
-   * into a sortable round number.
-   */
+  // ----------------------------
+  // ROUND PARSER (must match your python)
+  // ----------------------------
   extractRoundNumber(roundStr) {
     if (!roundStr) return null;
+    const s = String(roundStr).trim();
 
-    const s = roundStr.trim();
-
-    // Regular season: "Rd 1" -> 1, "Rd 27" -> 27
     const rdMatch = s.match(/Rd\s*(\d+)/i);
     if (rdMatch) return parseInt(rdMatch[1], 10);
 
-    // Finals mapping (adjust numbers if you prefer)
     const finalsMap = {
       "Prelim": 28,
       "Preliminary": 28,
@@ -247,5 +127,232 @@ calculateNewRating(oldRating, actualResult, expectedResult, margin, roundNumber)
     );
 
     return key ? finalsMap[key] : null;
+  }
+
+  // ----------------------------
+  // K FACTOR (your bucket + early)
+  // ----------------------------
+  calculateNewRating(oldRating, actualResult, expectedResult, margin, roundNumber) {
+    const rawBucket = Math.ceil(Math.abs(margin) / 6);
+    const idx = Math.max(1, Math.min(rawBucket, 4));
+
+    const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
+    const term1 = table[idx];
+    const term2 = Math.max(idx - 3, 0) / 8;
+    const marginAdj = (term1 + term2) - 1.0;
+
+    let early = 0;
+    if (roundNumber && roundNumber > 0) {
+      early = this.earlyBoost * Math.max(0, 11 - roundNumber);
+    }
+
+    const baseK = this.kFactor + early;
+    const finalK = baseK * (1.0 + marginAdj);
+
+    return oldRating + finalK * (actualResult - expectedResult);
+  }
+
+  // ----------------------------
+  // SEASON REVERSION (single source of truth)
+  // ----------------------------
+  revertToMean(endOfSeasonElo, w = this.reversionWeight) {
+    return (this.initialRating + w * endOfSeasonElo) / (w + 1);
+  }
+
+  applySeasonReversionToRatings(state) {
+    const w = this.reversionWeight;
+    if (!(w > 0)) return;
+
+    for (const team of Object.keys(state.ratings)) {
+      const r = state.ratings[team];
+      if (Number.isFinite(r) && r !== this.initialRating) {
+        state.ratings[team] = this.revertToMean(r, w);
+      }
+    }
+  }
+
+  // ----------------------------
+  // ADJUSTMENTS (travel/rest/streak)
+  // ----------------------------
+  travelKm(awayTeam, homeTeam) {
+    const a = TEAM_BASES[awayTeam];
+    const h = TEAM_BASES[homeTeam];
+    if (!a || !h) return 0;
+    return haversineKm(a[0], a[1], h[0], h[1]);
+  }
+
+  computeAdjustments(state, match) {
+    const home = match.home_team;
+    const away = match.away_team;
+    const roundNo = this.extractRoundNumber(match.round);
+
+    // travel: away -> home
+    const kmAway = this.travelKm(away, home);
+    const travelAdj = (kmAway / 1000) * this.travelPer1000km;
+
+    // rest: based on last round played THIS SEASON
+    let homeRest = 0;
+    let awayRest = 0;
+
+    const prevHome = state.lastRoundPlayed.get(home);
+    const prevAway = state.lastRoundPlayed.get(away);
+
+    if (roundNo != null) {
+      if (prevHome != null) homeRest = Math.max(0, roundNo - prevHome - 1);
+      if (prevAway != null) awayRest = Math.max(0, roundNo - prevAway - 1);
+    }
+
+    const restAdj = this.restPerRound * (homeRest - awayRest);
+
+    // streak (pre-match)
+    const homeStreak = state.streak.get(home) ?? 0;
+    const awayStreak = state.streak.get(away) ?? 0;
+    const streakAdj = this.streakPts * (homeStreak - awayStreak);
+
+    return {
+      roundNo,
+      kmAway,
+      homeRest,
+      awayRest,
+      homeStreak,
+      awayStreak,
+      travelAdj,
+      restAdj,
+      streakAdj,
+    };
+  }
+
+    // ----------------------------
+    // PREVIEW MATCH (NO STATE MUTATION)
+    // ----------------------------
+    previewMatch(state, match) {
+      const home = match.home_team;
+      const away = match.away_team;
+
+      const homeEloBefore = this._getRating(state, home);
+      const awayEloBefore = this._getRating(state, away);
+
+      const adj = this.computeAdjustments(state, match);
+
+      const dr = this.getRatingDifference(
+        homeEloBefore,
+        awayEloBefore,
+        adj.travelAdj,
+        adj.restAdj,
+        adj.streakAdj
+      );
+
+      return {
+        dr,
+        expected: this.calculateWinExpectancy(dr),
+        predictedMargin: this.predictMargin(dr),
+        homeEloBefore,
+        awayEloBefore,
+        ...adj
+      };
+    }
+    
+  // ----------------------------
+  // SINGLE MATCH STEP (replay engine)
+  // ----------------------------
+  stepMatch(state, match) {
+    const year = Number(match.year);
+    const home = match.home_team;
+    const away = match.away_team;
+
+    // season boundary: revert + reset season-only state
+    if (state.lastYear !== null && year !== state.lastYear) {
+      this.applySeasonReversionToRatings(state);
+      state.lastRoundPlayed = new Map();
+      state.streak = new Map();
+    }
+    state.lastYear = year;
+
+    const homeEloBefore = this._getRating(state, home);
+    const awayEloBefore = this._getRating(state, away);
+
+    const adj = this.computeAdjustments(state, match);
+
+    const dr = this.getRatingDifference(
+      homeEloBefore,
+      awayEloBefore,
+      adj.travelAdj,
+      adj.restAdj,
+      adj.streakAdj
+    );
+
+    const expected = this.calculateWinExpectancy(dr);
+    const predictedMargin = this.predictMargin(dr);
+
+    const hasScore = match.home_score != null && match.away_score != null;
+
+    // if unplayed: return predictions only (do NOT update ratings/streak/lastRound)
+    if (!hasScore) {
+      return {
+        dr,
+        expected,
+        predictedMargin,
+        homeEloBefore,
+        awayEloBefore,
+        ...adj,
+        updated: false
+      };
+    }
+
+    const margin = Number(match.home_score) - Number(match.away_score);
+
+    // python-compatible: draw => 0
+    const actualResult = margin > 0 ? 1 : 0;
+
+    const newHomeElo = this.calculateNewRating(
+      homeEloBefore,
+      actualResult,
+      expected,
+      margin,
+      adj.roundNo
+    );
+
+    const newAwayElo = this.calculateNewRating(
+      awayEloBefore,
+      1 - actualResult,
+      1 - expected,
+      -margin,
+      adj.roundNo
+    );
+
+    this._setRating(state, home, newHomeElo);
+    this._setRating(state, away, newAwayElo);
+
+    // streak update (bounded) EXACTLY like python
+    const homeSt = adj.homeStreak;
+    const awaySt = adj.awayStreak;
+
+    if (actualResult === 1) {
+      state.streak.set(home, Math.max(1, homeSt + 1));
+      state.streak.set(away, Math.min(-1, awaySt - 1));
+    } else {
+      state.streak.set(home, Math.min(-1, homeSt - 1));
+      state.streak.set(away, Math.max(1, awaySt + 1));
+    }
+
+    // lastRoundPlayed only if known
+    if (adj.roundNo != null) {
+      state.lastRoundPlayed.set(home, adj.roundNo);
+      state.lastRoundPlayed.set(away, adj.roundNo);
+    }
+
+    return {
+      dr,
+      expected,
+      predictedMargin,
+      margin,
+      actualResult,
+      homeEloBefore,
+      awayEloBefore,
+      newHomeElo,
+      newAwayElo,
+      ...adj,
+      updated: true
+    };
   }
 }
