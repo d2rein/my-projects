@@ -1,4 +1,5 @@
 import { ELOCalculator } from '../../shared/elo-calculator.js';
+import { createReplayEngine } from '../../shared/replay-engine.js';
 
 export default {
   async fetch(request, env) {
@@ -68,66 +69,51 @@ async function handleParity(db) {
 
   const params = await getParameters(db);
   const calculator = new ELOCalculator(params);
-  const initial = calculator.initialRating ?? 1500;
+
+  const stateA = calculator.createState();
+  const stateB = calculator.createState();
 
   const { results } = await db.prepare(`
-    SELECT *
-    FROM matches
-    WHERE completed = 1
-      AND home_score IS NOT NULL
-      AND away_score IS NOT NULL
-    ORDER BY year ASC, round ASC, game_num ASC, id ASC
+    SELECT
+      m.year,
+      m.round,
+      m.home_score,
+      m.away_score,
+      ht.name as home_team,
+      at.name as away_team
+    FROM matches m
+    JOIN teams ht ON m.home_team_id = ht.id
+    JOIN teams at ON m.away_team_id = at.id
+    WHERE m.completed = 1
+      AND m.home_score IS NOT NULL
+      AND m.away_score IS NOT NULL
+    ORDER BY
+      m.year ASC,
+      CASE
+        WHEN m.round LIKE 'Rd %'
+          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        ELSE 99
+      END ASC,
+      m.game_num ASC,
+      m.id ASC
   `).all();
 
-  const ratingsReplay = new Map();
-  const get = id => ratingsReplay.has(id) ? ratingsReplay.get(id) : initial;
-  const set = (id, v) => ratingsReplay.set(id, v);
-
-  let lastYear = null;
-
-  for (const m of results) {
-
-    let home = get(m.home_team_id);
-    let away = get(m.away_team_id);
-
-    if (lastYear !== null && m.year !== lastYear) {
-      for (const [id, r] of ratingsReplay.entries()) {
-        ratingsReplay.set(
-          id,
-          calculator.revertToMean(r, calculator.reversionWeight)
-        );
-      }
-      home = get(m.home_team_id);
-      away = get(m.away_team_id);
-    }
-
-    lastYear = m.year;
-
-    const out = calculator.processMatch({
-      homeElo: home,
-      awayElo: away,
-      homeScore: m.home_score,
-      awayScore: m.away_score,
-      roundNumber: calculator.extractRoundNumber(m.round)
-    });
-
-    set(m.home_team_id, out.homeElo);
-    set(m.away_team_id, out.awayElo);
+  for (const m of results || []) {
+    calculator.stepMatch(stateA, m);
   }
 
-  // Compare to official computeRatingsByTeamId
-  const official = await computeRatingsByTeamId(db, calculator);
+  // second replay for verification
+  for (const m of results || []) {
+    calculator.stepMatch(stateB, m);
+  }
 
   const mismatches = [];
 
-  for (const [id, rating] of ratingsReplay.entries()) {
-    const officialRating = official.get(id) ?? initial;
-    if (Math.abs(rating - officialRating) > 0.0001) {
-      mismatches.push({
-        teamId: id,
-        replay: rating,
-        official: officialRating
-      });
+  for (const team of Object.keys(stateA.ratings)) {
+    const a = stateA.ratings[team];
+    const b = stateB.ratings[team];
+    if (Math.abs(a - b) > 0.0001) {
+      mismatches.push({ team, a, b });
     }
   }
 
@@ -285,7 +271,15 @@ async function handleGetPredictions(db) {
     JOIN teams ht ON m.home_team_id = ht.id
     JOIN teams at ON m.away_team_id = at.id
     WHERE m.completed = 0
-    ORDER BY m.year, m.round, m.game_num;
+    ORDER BY
+      m.year ASC,
+      CASE
+        WHEN m.round LIKE 'Rd %'
+          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        ELSE 99
+      END ASC,
+      m.game_num ASC,
+      m.id ASC
   `).all();
 
   const upcoming = results || [];
@@ -343,71 +337,50 @@ async function handleRecalculate(db, request) {
  * This is the core change: ratings are derived, not stored.
  */
 async function computeRatingsByTeamId(db, calculator) {
-  const initial = calculator.initialRating ?? 1500;
+
+  const state = calculator.createState();
 
   const { results } = await db.prepare(`
     SELECT
-      m.id,
       m.year,
       m.round,
-      m.game_num,
-      m.home_team_id,
-      m.away_team_id,
       m.home_score,
-      m.away_score
+      m.away_score,
+      ht.name as home_team,
+      at.name as away_team
     FROM matches m
+    JOIN teams ht ON m.home_team_id = ht.id
+    JOIN teams at ON m.away_team_id = at.id
     WHERE m.completed = 1
       AND m.home_score IS NOT NULL
       AND m.away_score IS NOT NULL
-    ORDER BY m.year ASC, m.round ASC, m.game_num ASC, m.id ASC
+    ORDER BY
+      m.year ASC,
+      CASE
+        WHEN m.round LIKE 'Rd %'
+          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        ELSE 99
+      END ASC,
+      m.game_num ASC,
+      m.id ASC
   `).all();
 
-  const matches = (results || []).slice().sort((a, b) => {
-    const ay = a.year - b.year;
-    if (ay) return ay;
-
-    const ar = calculator.extractRoundNumber(a.round);
-    const br = calculator.extractRoundNumber(b.round);
-    if (ar !== br) return ar - br;
-
-    const ag = (a.game_num ?? 0) - (b.game_num ?? 0);
-    if (ag) return ag;
-
-    return a.id - b.id;
-  });
-
-  const ratings = new Map();
-  const get = (teamId) => (ratings.has(teamId) ? ratings.get(teamId) : initial);
-  const set = (teamId, rating) => ratings.set(teamId, rating);
-
-  let lastYear = null;
-
-  for (const m of matches) {
-    // Season reversion (Map version)
-    if (lastYear !== null && m.year !== lastYear) {
-      const w = calculator.reversionWeight ?? 2;
-      for (const [teamId, r] of ratings.entries()) {
-        if (r !== initial) ratings.set(teamId, calculator.revertToMean(r, w));
-      }
-    }
-    lastYear = m.year;
-
-    const homeElo = get(m.home_team_id);
-    const awayElo = get(m.away_team_id);
-
-    const result = calculator.processMatch({
-      homeElo,
-      awayElo,
-      homeScore: m.home_score,
-      awayScore: m.away_score,
-      roundNumber: calculator.extractRoundNumber(m.round),
-    });
-
-    set(m.home_team_id, result.homeElo);
-    set(m.away_team_id, result.awayElo);
+  for (const m of results || []) {
+    calculator.stepMatch(state, m);
   }
 
-  return ratings;
+  // convert state.ratings (teamName -> rating) to Map(teamId -> rating)
+  const { results: teams } = await db.prepare(`
+    SELECT id, name FROM teams
+  `).all();
+
+  const map = new Map();
+
+  for (const t of teams || []) {
+    map.set(t.id, state.ratings[t.name] ?? calculator.initialRating);
+  }
+
+  return map;
 }
 
 
@@ -449,7 +422,15 @@ async function handleExport(db) {
   const { results } = await db.prepare(`
     SELECT *
     FROM matches
-    ORDER BY year ASC, round ASC, game_num ASC, id ASC
+    ORDER BY
+      m.year ASC,
+      CASE
+        WHEN m.round LIKE 'Rd %'
+          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        ELSE 99
+      END ASC,
+      m.game_num ASC,
+      m.id ASC
   `).all();
 
   if (!results || results.length === 0) {
@@ -469,195 +450,159 @@ async function handleExport(db) {
   });
 }
 async function handleDiagnostic(db) {
+
   const params = await getParameters(db);
-  const calculator = new ELOCalculator(params);
 
-  const initial = calculator.initialRating ?? 1500;
+  // Fetch full team list (REQUIRED for replay-engine)
+  const { results: teamRows } = await db.prepare(`
+    SELECT name FROM teams
+  `).all();
 
-  // Pull completed matches
+  const teams = (teamRows || []).map(t => t.name);
+
+  const engine = createReplayEngine(
+    {
+      k: params.kFactor,
+      homeAdvantage: params.homeAdvantage,
+      travelPer1000km: params.travelPer1000km,
+      restPerRound: params.restPerRound,
+      streakPts: params.streakPts,
+      earlyBoost: params.earlyBoost,
+      reversionWeight: params.reversionWeight,
+      initialRating: params.initialRating
+    },
+    teams
+  );
+
   const { results } = await db.prepare(`
     SELECT
-      m.id,
       m.year,
       m.round,
       m.game_num,
+      m.id,
       m.home_score,
       m.away_score,
-      ht.id AS home_team_id,
-      ht.name AS home_team,
-      at.id AS away_team_id,
-      at.name AS away_team
+      ht.name as home_team,
+      at.name as away_team
     FROM matches m
     JOIN teams ht ON m.home_team_id = ht.id
     JOIN teams at ON m.away_team_id = at.id
     WHERE m.completed = 1
       AND m.home_score IS NOT NULL
       AND m.away_score IS NOT NULL
-    ORDER BY m.year ASC, m.round ASC, m.game_num ASC, m.id ASC
+    ORDER BY
+      m.year ASC,
+      CASE
+        WHEN m.round LIKE 'Rd %'
+          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        ELSE 99
+      END ASC,
+      m.game_num ASC,
+      m.id ASC
   `).all();
 
-  const matches = (results || []).slice().sort((a, b) => {
-    if (a.year !== b.year) return a.year - b.year;
-
-    const ar = calculator.extractRoundNumber(a.round);
-    const br = calculator.extractRoundNumber(b.round);
-    if (ar !== br) return ar - br;
-
-    return (a.game_num ?? 0) - (b.game_num ?? 0);
-  });
-
-  const ratings = new Map();
-  const get = id => ratings.has(id) ? ratings.get(id) : initial;
-  const set = (id, v) => ratings.set(id, v);
-
-  let lastYear = null;
+  const replay = engine.replayMatches(results || [], { applyByes: true });
 
   const headers = [
     "year","round","game_num","match_id",
+    "home_team","away_team",
+
     "home_elo_before","away_elo_before",
-    "season_reversion_applied",
-    "home_elo_after_reversion","away_elo_after_reversion",
-    "dr","expected",
-    "home_score","away_score","actual_result","actual_margin",
-    "margin_bucket","marginAdj",
-    "baseK","early","finalK",
+
+    "round_no",
+    "travel_km","travelAdj",
+    "rest_diff","restAdj",
+    "streak_diff","streakAdj",
+
+    "dr",
+    "win_expectancy",
+    "predicted_margin",
+    "predicted_win_prob",
+
+    "home_score","away_score",
+    "actual_result","actual_margin",
+
+    "rawBucket","idx","term1","term2","marginAdj",
+    "early","baseK","finalK",
     "delta",
+
     "home_elo_after","away_elo_after",
-    "recomputed_home_after","delta_check"
+
+    "ladder_locked_before",
+    "ladder_locked_after",
+    "season_reset",
+    "bye_applied_this_match",
+
+    "home_pts_after","away_pts_after",
+    "home_margin_after","away_margin_after",
+    "home_rank_after","away_rank_after"
   ];
 
-  const rows = [];
+  const rows = replay.rows.map(r => {
+    const m = r.match;
+    const out = r.out;
 
-  for (const m of matches) {
-
-    let homeEloBefore = get(m.home_team_id);
-    let awayEloBefore = get(m.away_team_id);
-
-    // ----- SEASON REVERSION -----
-    let reversionApplied = false;
-
-    if (lastYear !== null && m.year !== lastYear) {
-      reversionApplied = true;
-
-      for (const [teamId, r] of ratings.entries()) {
-        ratings.set(
-          teamId,
-          calculator.revertToMean(r, calculator.reversionWeight)
-        );
-      }
-
-      homeEloBefore = get(m.home_team_id);
-      awayEloBefore = get(m.away_team_id);
-    }
-
-    lastYear = m.year;
-
-    const homeAfterReversion = homeEloBefore;
-    const awayAfterReversion = awayEloBefore;
-
-    const diag = calculator.processMatchDiagnostic({
-      homeElo: homeAfterReversion,
-      awayElo: awayAfterReversion,
-      homeScore: m.home_score,
-      awayScore: m.away_score,
-      roundNumber: calculator.extractRoundNumber(m.round)
-    });
-
-    const delta = diag.finalK * (diag.actualResult - diag.expected);
-
-    const recomputedHomeAfter = homeAfterReversion + delta;
-    const deltaCheck = Math.abs(recomputedHomeAfter - diag.newHomeElo);
-
-    set(m.home_team_id, diag.newHomeElo);
-    set(m.away_team_id, diag.newAwayElo);
-
-    rows.push([
+    return [
       m.year,
       m.round,
       m.game_num,
       m.id,
+      m.home_team,
+      m.away_team,
 
-      homeEloBefore,
-      awayEloBefore,
+      out.homeEloBefore,
+      out.awayEloBefore,
 
-      reversionApplied,
-      homeAfterReversion,
-      awayAfterReversion,
+      out.roundNo,
+      out.kmAway,
+      out.travelAdj,
+      out.homeRest - out.awayRest,
+      out.restAdj,
+      out.homeStreak - out.awayStreak,
+      out.streakAdj,
 
-      diag.dr,
-      diag.expected,
+      out.dr,
+      out.expected,
+      out.predictedMargin,
+      out.predictedWinProb,
 
       m.home_score,
       m.away_score,
-      diag.actualResult,
-      diag.margin,
+      out.actualResult,
+      out.margin,
 
-      diag.rawBucket,
-      diag.marginAdj,
+      out.rawBucket,
+      out.idx,
+      out.term1,
+      out.term2,
+      out.marginAdj,
 
-      diag.baseK,
-      diag.early,
-      diag.finalK,
+      out.early,
+      out.baseK,
+      out.finalK,
 
-      delta,
+      out.delta,
 
-      diag.newHomeElo,
-      diag.newAwayElo,
+      out.newHomeElo,
+      out.newAwayElo,
 
-      recomputedHomeAfter,
-      deltaCheck
-    ]);
-  }
+      r.events.ladderLockedBefore,
+      r.events.ladderLockedAfter,
+      r.events.seasonReset,
+      r.events.byeApplied,
 
-  const formulaRow = [
-  "",
-  "",
-  "",
-  "",
-  "rating entering match",
-  "rating entering match",
-  "year change → apply reversion",
-  "revertToMean(r, w)",
-  "revertToMean(r, w)",
-  "dr = (home - away + homeAdv)",
-  "1 / (1 + 10^(-dr/400))",
-  "",
-  "",
-  "1 if home win else 0",
-  "home_score - away_score",
-  "bucket(|margin|)",
-  "multiplier from bucket",
-  "kFactor * marginAdj",
-  "earlyBoost applied?",
-  "baseK * earlyBoost",
-  "finalK * (actual - expected)",
-  "homeElo + delta",
-  "awayElo - delta",
-  "manual recompute check",
-  "|recomputed - actual|"
-];
+      r.homeLadderAfter?.compPoints ?? "",
+      r.awayLadderAfter?.compPoints ?? "",
+      r.homeLadderAfter?.margin ?? "",
+      r.awayLadderAfter?.margin ?? "",
+      r.homeRankAfter ?? "",
+      r.awayRankAfter ?? ""
+    ];
+  });
 
-const parameterBlock = [
-  "# ===== MODEL PARAMETERS =====",
-  `# initialRating=${calculator.initialRating}`,
-  `# kFactor=${calculator.kFactor}`,
-  `# homeAdvantage=${calculator.homeAdvantage}`,
-  `# earlyBoost=${calculator.earlyBoost}`,
-  `# reversionWeight=${calculator.reversionWeight}`,
-  "",
-  "# ===== CORE EQUATIONS =====",
-  "# dr = (homeElo - awayElo + homeAdvantage)",
-  "# expected = 1 / (1 + 10^(-dr/400))",
-  "# delta = finalK * (actual - expected)",
-  "# newHomeElo = homeElo + delta",
-  "# newAwayElo = awayElo - delta",
-  "# reversion = (initial + w*elo)/(w+1)",
-  ""
-].join("\n");
-
-const csv =
-  parameterBlock +
-  toCsv(headers, [formulaRow, ...rows]);
+  const csv =
+    engine.diagnosticFormulaBlock() +
+    toCsv(headers, rows);
 
   return new Response(csv, {
     headers: {

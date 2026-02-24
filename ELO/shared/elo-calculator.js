@@ -256,22 +256,31 @@ export class ELOCalculator {
   // SINGLE MATCH STEP (replay engine)
   // ----------------------------
   stepMatch(state, match) {
+
     const year = Number(match.year);
     const home = match.home_team;
     const away = match.away_team;
 
-    // season boundary: revert + reset season-only state
+    let reversionApplied = false;
+
+    // ----------------------------
+    // SEASON REVERSION
+    // ----------------------------
     if (state.lastYear !== null && year !== state.lastYear) {
       this.applySeasonReversionToRatings(state);
       state.lastRoundPlayed = new Map();
       state.streak = new Map();
+      reversionApplied = true;
     }
+
     state.lastYear = year;
 
     const homeEloBefore = this._getRating(state, home);
     const awayEloBefore = this._getRating(state, away);
 
     const adj = this.computeAdjustments(state, match);
+
+    const elo_diff = homeEloBefore - awayEloBefore;
 
     const dr = this.getRatingDifference(
       homeEloBefore,
@@ -283,47 +292,61 @@ export class ELOCalculator {
 
     const expected = this.calculateWinExpectancy(dr);
     const predictedMargin = this.predictMargin(dr);
+    const predictedWinProb = this.calculateWinProbability(dr);
 
     const hasScore = match.home_score != null && match.away_score != null;
 
-    // if unplayed: return predictions only (do NOT update ratings/streak/lastRound)
     if (!hasScore) {
       return {
+        updated: false,
+        reversionApplied,
+        homeEloBefore,
+        awayEloBefore,
+        elo_diff,
         dr,
         expected,
         predictedMargin,
-        homeEloBefore,
-        awayEloBefore,
-        ...adj,
-        updated: false
+        predictedWinProb,
+        ...adj
       };
     }
 
     const margin = Number(match.home_score) - Number(match.away_score);
-
-    // python-compatible: draw => 0
     const actualResult = margin > 0 ? 1 : 0;
 
-    const newHomeElo = this.calculateNewRating(
-      homeEloBefore,
-      actualResult,
-      expected,
-      margin,
-      adj.roundNo
-    );
+    // ----------------------------
+    // K FACTOR DECOMPOSED
+    // ----------------------------
 
-    const newAwayElo = this.calculateNewRating(
-      awayEloBefore,
-      1 - actualResult,
-      1 - expected,
-      -margin,
-      adj.roundNo
-    );
+    const rawBucket = Math.ceil(Math.abs(margin) / 6);
+    const idx = Math.max(1, Math.min(rawBucket, 4));
+
+    const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
+
+    const term1 = table[idx];
+    const term2 = Math.max(idx - 3, 0) / 8;
+
+    const marginAdj = (term1 + term2) - 1.0;
+
+    let early = 0;
+    if (adj.roundNo && adj.roundNo > 0) {
+      early = this.earlyBoost * Math.max(0, 11 - adj.roundNo);
+    }
+
+    const baseK = this.kFactor + early;
+    const finalK = baseK * (1.0 + marginAdj);
+
+    const delta = finalK * (actualResult - expected);
+
+    const newHomeElo = homeEloBefore + delta;
+    const newAwayElo = awayEloBefore - delta;
 
     this._setRating(state, home, newHomeElo);
     this._setRating(state, away, newAwayElo);
 
-    // streak update (bounded) EXACTLY like python
+    // ----------------------------
+    // STREAK UPDATE
+    // ----------------------------
     const homeSt = adj.homeStreak;
     const awaySt = adj.awayStreak;
 
@@ -335,24 +358,52 @@ export class ELOCalculator {
       state.streak.set(away, Math.max(1, awaySt + 1));
     }
 
-    // lastRoundPlayed only if known
     if (adj.roundNo != null) {
       state.lastRoundPlayed.set(home, adj.roundNo);
       state.lastRoundPlayed.set(away, adj.roundNo);
     }
 
     return {
+      updated: true,
+      reversionApplied,
+
+      homeEloBefore,
+      awayEloBefore,
+
+      elo_diff,
+      home_advantage: this.homeAdvantage,
+
+      travel_km: adj.kmAway,
+      travelAdj: adj.travelAdj,
+
+      rest_diff: adj.homeRest - adj.awayRest,
+      restAdj: adj.restAdj,
+
+      streak_diff: adj.homeStreak - adj.awayStreak,
+      streakAdj: adj.streakAdj,
+
       dr,
       expected,
       predictedMargin,
+      predictedWinProb,
+
       margin,
       actualResult,
-      homeEloBefore,
-      awayEloBefore,
+
+      rawBucket,
+      idx,
+      term1,
+      term2,
+      marginAdj,
+
+      early,
+      baseK,
+      finalK,
+
+      delta,
+
       newHomeElo,
-      newAwayElo,
-      ...adj,
-      updated: true
+      newAwayElo
     };
   }
 }
