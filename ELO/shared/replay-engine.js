@@ -260,17 +260,20 @@ export function createReplayEngine(modelParams, teams) {
         out,
         events,
 
-        // Full state snapshots for frontend parity
+        // Full state snapshot AFTER this match
         stateAfter: {
             ratings: { ...state.ratings }
         },
 
+        // Deep copy ladder AFTER this match
         ladderAfter: JSON.parse(JSON.stringify(ladder)),
 
-        homeLadderBefore,
-        awayLadderBefore,
-        homeLadderAfter,
-        awayLadderAfter,
+        // Ladder snapshots
+        homeLadderBefore: homeBefore,
+        awayLadderBefore: awayBefore,
+        homeLadderAfter: homeAfter,
+        awayLadderAfter: awayAfter,
+
         homeRankAfter: rankMap.get(home) ?? null,
         awayRankAfter: rankMap.get(away) ?? null,
         });
