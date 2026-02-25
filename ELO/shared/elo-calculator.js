@@ -139,15 +139,14 @@ export class ELOCalculator {
     const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
     const term1 = table[idx];
     const term2 = Math.max(idx - 3, 0) / 8;
-    const marginAdj = (term1 + term2) - 1.0;
-
+    
     let early = 0;
     if (roundNumber && roundNumber > 0) {
       early = this.earlyBoost * Math.max(0, 11 - roundNumber);
     }
 
     const baseK = this.kFactor + early;
-    const finalK = baseK * (1.0 + marginAdj);
+    const finalK = baseK * (term1 + term2);
 
     return oldRating + finalK * (actualResult - expectedResult);
   }
@@ -312,7 +311,10 @@ export class ELOCalculator {
     }
 
     const margin = Number(match.home_score) - Number(match.away_score);
-    const actualResult = margin > 0 ? 1 : 0;
+    let actualResult;
+      if (margin > 0) actualResult = 1;
+      else if (margin < 0) actualResult = 0;
+      else actualResult = 0.5;
 
     // ----------------------------
     // K FACTOR DECOMPOSED

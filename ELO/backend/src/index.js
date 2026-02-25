@@ -92,6 +92,11 @@ async function handleParity(db) {
       CASE
         WHEN m.round LIKE 'Rd %'
           THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Prelim%' THEN 28
+        WHEN m.round LIKE 'Qual%' THEN 29
+        WHEN m.round LIKE 'Semi%' THEN 30
+        WHEN m.round LIKE 'GF%' THEN 31
+        WHEN m.round LIKE 'Grand Final%' THEN 31
         ELSE 99
       END ASC,
       m.game_num ASC,
@@ -202,9 +207,14 @@ async function handleGetMatches(db, searchParams) {
     JOIN teams at ON m.away_team_id = at.id
     ORDER BY
       m.year ASC,
-      -- puts "Rd 1".."Rd 27" before finals (Qual/Semi/Prelim/GF -> null)
       CASE
-        WHEN m.round LIKE 'Rd %' THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Rd %'
+          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Prelim%' THEN 28
+        WHEN m.round LIKE 'Qual%' THEN 29
+        WHEN m.round LIKE 'Semi%' THEN 30
+        WHEN m.round LIKE 'GF%' THEN 31
+        WHEN m.round LIKE 'Grand Final%' THEN 31
         ELSE 99
       END ASC,
       m.game_num ASC,
@@ -276,6 +286,11 @@ async function handleGetPredictions(db) {
       CASE
         WHEN m.round LIKE 'Rd %'
           THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Prelim%' THEN 28
+        WHEN m.round LIKE 'Qual%' THEN 29
+        WHEN m.round LIKE 'Semi%' THEN 30
+        WHEN m.round LIKE 'GF%' THEN 31
+        WHEN m.round LIKE 'Grand Final%' THEN 31
         ELSE 99
       END ASC,
       m.game_num ASC,
@@ -359,6 +374,11 @@ async function computeRatingsByTeamId(db, calculator) {
       CASE
         WHEN m.round LIKE 'Rd %'
           THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Prelim%' THEN 28
+        WHEN m.round LIKE 'Qual%' THEN 29
+        WHEN m.round LIKE 'Semi%' THEN 30
+        WHEN m.round LIKE 'GF%' THEN 31
+        WHEN m.round LIKE 'Grand Final%' THEN 31
         ELSE 99
       END ASC,
       m.game_num ASC,
@@ -427,6 +447,11 @@ async function handleExport(db) {
       CASE
         WHEN m.round LIKE 'Rd %'
           THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Prelim%' THEN 28
+        WHEN m.round LIKE 'Qual%' THEN 29
+        WHEN m.round LIKE 'Semi%' THEN 30
+        WHEN m.round LIKE 'GF%' THEN 31
+        WHEN m.round LIKE 'Grand Final%' THEN 31
         ELSE 99
       END ASC,
       m.game_num ASC,
@@ -495,6 +520,11 @@ async function handleDiagnostic(db) {
       CASE
         WHEN m.round LIKE 'Rd %'
           THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
+        WHEN m.round LIKE 'Prelim%' THEN 28
+        WHEN m.round LIKE 'Qual%' THEN 29
+        WHEN m.round LIKE 'Semi%' THEN 30
+        WHEN m.round LIKE 'GF%' THEN 31
+        WHEN m.round LIKE 'Grand Final%' THEN 31
         ELSE 99
       END ASC,
       m.game_num ASC,
@@ -535,7 +565,9 @@ async function handleDiagnostic(db) {
 
     "home_pts_after","away_pts_after",
     "home_margin_after","away_margin_after",
-    "home_rank_after","away_rank_after"
+    "home_rank_before_round","away_rank_before_round",
+    "homeRankingScore_before_round","awayRankingScore_before_round",
+    "homeRankingScore_after_match","awayRankingScore_after_match"
   ];
 
   const rows = replay.rows.map(r => {
@@ -554,7 +586,7 @@ async function handleDiagnostic(db) {
       out.awayEloBefore,
 
       out.roundNo,
-      out.kmAway,
+      out.travel_km,
       out.travelAdj,
       out.homeRest - out.awayRest,
       out.restAdj,
@@ -595,8 +627,12 @@ async function handleDiagnostic(db) {
       r.awayLadderAfter?.compPoints ?? "",
       r.homeLadderAfter?.margin ?? "",
       r.awayLadderAfter?.margin ?? "",
-      r.homeRankAfter ?? "",
-      r.awayRankAfter ?? ""
+      r.homeRankBeforeRound ?? "",
+      r.awayRankBeforeRound ?? "",
+      r.homeRankingScore_before_round ?? "",
+      r.awayRankingScore_before_round ?? "",
+      r.homeRankingScore_after_match ?? "",
+      r.awayRankingScore_after_match ?? ""
     ];
   });
 

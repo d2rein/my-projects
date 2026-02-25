@@ -861,8 +861,8 @@ async function loadAllGames() {
 
             const oddsPred = (out.predictedWinProb * 100).toFixed(1) + "%";
 
-            const rankHome = r.homeRankAfter;
-            const rankAway = r.awayRankAfter;
+            const rankHome = r.homeRankBeforeRound;
+            const rankAway = r.awayRankBeforeRound;
 
             const ladderPick = rankHome < rankAway ? home : away;
             const eloPick = homeWinProb >= 0.5 ? home : away;

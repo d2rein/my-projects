@@ -202,93 +202,100 @@ export function createReplayEngine(modelParams, teams) {
     const applyByes = opts.applyByes !== false;
     const stopAt = opts.stopAt || null;
 
-    // REPLAY-LOCAL state: safe to reuse engine instance
     const state = eloCalc.createState();
-
-    // REPLAY-LOCAL ladder lock: safe to reuse engine instance
     let ladderLocked = false;
-
     let ladder = initLadderSeeded(null);
-    let lastProcessedRound = null;
 
     const rows = [];
 
-    // Pre-group by (year, round) to match frontend semantics without O(n^2)
+    // ---- GROUP MATCHES BY (year, round) IN ORDER ----
     const roundKey = (m) => `${m.year}__${m.round}`;
-    const roundGroups = new Map();
+    const groups = [];
+    const map = new Map();
+
     for (const m of matches || []) {
-      const k = roundKey(m);
-      if (!roundGroups.has(k)) roundGroups.set(k, []);
-      roundGroups.get(k).push(m);
+        const k = roundKey(m);
+        if (!map.has(k)) {
+        const g = { year: m.year, round: m.round, matches: [] };
+        map.set(k, g);
+        groups.push(g);
+        }
+        map.get(k).matches.push(m);
     }
 
-    for (const m of matches || []) {
-      const home = m.home_team;
-      const away = m.away_team;
+    for (const g of groups) {
 
-      const homeBefore = ladder[home] ? { ...ladder[home] } : null;
-      const awayBefore = ladder[away] ? { ...ladder[away] } : null;
+        const roundMatches = g.matches;
+        if (!roundMatches.length) continue;
 
-      const stepped = step(state, ladder, m, ladderLocked);
-      ladder = stepped.ladder;
-      ladderLocked = stepped.ladderLocked;
+        // ---- SNAPSHOT LADDER AT END OF PREVIOUS ROUND ----
+        const rankedBefore = rankLadder(ladder);
+        const rankBeforeMap = new Map(rankedBefore.map((r, i) => [r.team, i + 1]));
+        const scoreBeforeMap = new Map(rankedBefore.map((r) => [r.team, r.rankingScore]));
 
-      const events = stepped.events;
-      const out = stepped.out;
+        let byeAppliedThisRound = false;
 
-      // Apply byes ONCE per round (regular season only) — EXACT frontend ordering:
-      // executed after step(), and guarded by:
-      //   if (m.round !== lastProcessedRound && m.round.startsWith("Rd"))
-      if (applyByes && m.round !== lastProcessedRound && String(m.round).startsWith("Rd")) {
-        const thisRoundGames = roundGroups.get(roundKey(m)) || [];
-        if (!isFinalsRound(m.round)) {
-          applyByesForRound(ladder, thisRoundGames);
-          lastProcessedRound = m.round;
-          events.byeApplied = true;
+        for (let i = 0; i < roundMatches.length; i++) {
+
+        const m = roundMatches[i];
+        const home = m.home_team;
+        const away = m.away_team;
+
+        // ---- STEP MATCH (ELO + LADDER UPDATE) ----
+        const stepped = step(state, ladder, m, ladderLocked);
+        ladder = stepped.ladder;
+        ladderLocked = stepped.ladderLocked;
+
+        const events = stepped.events;
+        const out = stepped.out;
+
+        // ---- APPLY BYES ONCE (after first match only) ----
+        if (
+            applyByes &&
+            !byeAppliedThisRound &&
+            String(g.round).startsWith("Rd") &&
+            !isFinalsRound(g.round)
+        ) {
+            applyByesForRound(ladder, roundMatches);
+            byeAppliedThisRound = true;
+            events.byeApplied = true;
         }
-      }
 
-      const homeAfter = ladder[home] ? { ...ladder[home] } : null;
-      const awayAfter = ladder[away] ? { ...ladder[away] } : null;
+        // ---- RANKING SCORE AFTER MATCH (IMMEDIATE) ----
+        const rankedAfterMatch = rankLadder(ladder);
+        const scoreAfterMap = new Map(rankedAfterMatch.map((r) => [r.team, r.rankingScore]));
 
-      // ranks after this match (+ bye application if triggered)
-      const ranked = rankLadder(ladder);
-      const rankMap = new Map(ranked.map((r, i) => [r.team, i + 1]));
+        rows.push({
+            match: m,
+            out,
+            events,
 
-      rows.push({
-        match: m,
-        out,
-        events,
+            stateAfter: { ratings: { ...state.ratings } },
+            ladderAfter: JSON.parse(JSON.stringify(ladder)),
 
-        // Full state snapshot AFTER this match
-        stateAfter: {
-            ratings: { ...state.ratings }
-        },
+            // 🔹 WEBSITE + DIAGNOSTIC (ROUND-START STATE)
+            homeRankBeforeRound: rankBeforeMap.get(home) ?? null,
+            awayRankBeforeRound: rankBeforeMap.get(away) ?? null,
+            homeRankingScore_before_round: scoreBeforeMap.get(home) ?? null,
+            awayRankingScore_before_round: scoreBeforeMap.get(away) ?? null,
 
-        // Deep copy ladder AFTER this match
-        ladderAfter: JSON.parse(JSON.stringify(ladder)),
-
-        // Ladder snapshots
-        homeLadderBefore: homeBefore,
-        awayLadderBefore: awayBefore,
-        homeLadderAfter: homeAfter,
-        awayLadderAfter: awayAfter,
-
-        homeRankAfter: rankMap.get(home) ?? null,
-        awayRankAfter: rankMap.get(away) ?? null,
+            // 🔹 DIAGNOSTIC (IMMEDIATE AFTER MATCH)
+            homeRankingScore_after_match: scoreAfterMap.get(home) ?? null,
+            awayRankingScore_after_match: scoreAfterMap.get(away) ?? null,
         });
 
-      if (
-        stopAt &&
-        String(m.year) === String(stopAt.year) &&
-        String(m.round).toLowerCase() === String(stopAt.round).toLowerCase()
-      ) {
-        break;
-      }
+        if (
+            stopAt &&
+            String(m.year) === String(stopAt.year) &&
+            String(m.round).toLowerCase() === String(stopAt.round).toLowerCase()
+        ) {
+            return { ladder, rows, state, eloCalc };
+        }
+        }
     }
 
     return { ladder, rows, state, eloCalc };
-  }
+    }
 
   // ----------------------------
   // FORMULA DOCUMENTATION (for diagnostic CSV)
