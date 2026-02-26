@@ -3,15 +3,30 @@ import { createReplayEngine } from "./shared/replay-engine.js";
 
 const API_URL = "https://nrl-elo-api.d2-rein.workers.dev";
 
-const MODEL_PARAMS = Object.freeze({
-  k: 8.875,
-  homeAdvantage: 45,
-  travelPer1000km: 0,
-  restPerRound: 2,
-  streakPts: 0,
-  earlyBoost: 0.8,
-  reversionWeight: 3.3
-});
+let MODEL_PARAMS = null;
+
+async function loadModelParams() {
+  const res = await fetch(`${API_URL}/api/parameters`);
+  const rows = await res.json();
+
+  // rows expected: [{name: "...", value: "..."}]
+  const map = Object.fromEntries(
+    rows.map(r => [r.name, Number(r.value)])
+  );
+
+  MODEL_PARAMS = {
+    k: map.k_factor,
+    homeAdvantage: map.home_advantage,
+    travelPer1000km: map.travel_per1000km,
+    restPerRound: map.rest_per_round,
+    streakPts: map.streak_pts,
+    earlyBoost: map.early_boost,
+    reversionWeight: map.reversion_weight,
+    initialRating: map.initial_rating
+  };
+
+  console.log("Loaded model params:", MODEL_PARAMS);
+}
 
 let teams = [];
 
@@ -99,8 +114,9 @@ function displayTeamName(name) {
   return name; // "full"
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadTeams();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadModelParams();
+    await loadTeams();
     loadAllGames();
 });
 
@@ -407,9 +423,14 @@ async function updateSettingsAndEvaluate(e) {
     const params = {
         k_factor: parseFloat(document.getElementById('k-factor').value),
         home_advantage: parseFloat(document.getElementById('home-adv').value),
-        margin_coef: parseFloat(document.getElementById('margin-coef').value),
+        travel_per1000km: parseFloat(document.getElementById('travel-per-1000km').value),
+        rest_per_round: parseFloat(document.getElementById('rest-per-round').value),
+        streak_pts: parseFloat(document.getElementById('streak-pts').value),
+        reversion_weight: parseFloat(document.getElementById('reversion-weight').value),
+        initial_rating: parseFloat(document.getElementById('initial-rating').value),
         early_boost: parseFloat(document.getElementById('early-boost').value)
     };
+    
 
     try {
         const res = await fetch(`${API_URL}/api/calculate`, {
@@ -419,6 +440,8 @@ async function updateSettingsAndEvaluate(e) {
         });
 
         if (!res.ok) throw new Error("Failed to update parameters");
+
+        await loadModelParams();
 
         document.getElementById('settings-message').innerHTML =
             '<div class="message success">Recalculated — updating evaluation…</div>';
@@ -508,7 +531,7 @@ async function evaluateModel() {
 
       if (!yearly[year]) yearly[year] = { games: 0, elo: 0, ladder: 0, odds: 0 };
 
-      const ladderPick = r.homeRankAfter < r.awayRankAfter ? home : away;
+      const ladderPick = r.homeRankBeforeRound < r.awayRankBeforeRound ? home : away;
 
       const actualWinner =
         m.home_score > m.away_score ? home : away;
