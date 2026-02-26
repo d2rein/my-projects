@@ -44,16 +44,16 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 
 export class ELOCalculator {
   constructor(params = {}) {
-    this.kFactor = Number(params.kFactor ?? 8.875);
-    this.homeAdvantage = Number(params.homeAdvantage ?? 45);
+    this.kFactor = Number(params.kFactor ?? 9.5);
+    this.homeAdvantage = Number(params.homeAdvantage ?? 40);
     this.initialRating = Number(params.initialRating ?? 1500);
 
-    this.travelPer1000km = Number(params.travelPer1000km ?? 0);
-    this.restPerRound = Number(params.restPerRound ?? 2);
-    this.streakPts = Number(params.streakPts ?? 0);
+    this.travelPer1000km = Number(params.travelPer1000km ?? 15);
+    this.restPerRound = Number(params.restPerRound ?? 3);
+    this.streakPts = Number(params.streakPts ?? 2.5);
 
-    this.reversionWeight = Number(params.reversionWeight ?? 3.3);
-    this.earlyBoost = Number(params.earlyBoost ?? 0.8);
+    this.reversionWeight = Number(params.reversionWeight ?? 3);
+    this.earlyBoost = Number(params.earlyBoost ?? 0.95);
 
     this.marginCoef = 0.048406;
     this.oddsCoef = 0.002;
