@@ -96,10 +96,10 @@ export class ELOCalculator {
     return this.marginCoef * dr;
   }
 
-  calculateWinProbability(dr) {
-    const prob = 0.5 + (this.oddsCoef * dr);
-    return Math.max(0, Math.min(1, prob));
-  }
+//  calculateWinProbability(dr) {
+//    const prob = 0.5 + (this.oddsCoef * dr);
+//    return Math.max(0, Math.min(1, prob));
+//  }
 
   // ----------------------------
   // ROUND PARSER (must match your python)
@@ -138,7 +138,7 @@ export class ELOCalculator {
 
     const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
     const term1 = table[idx];
-    const term2 = Math.max(idx - 3, 0) / 8;
+    const term2 = Math.max(rawBucket - 4, 0) / 8;
     
     let early = 0;
     if (roundNumber && roundNumber > 0) {
@@ -291,7 +291,7 @@ export class ELOCalculator {
 
     const expected = this.calculateWinExpectancy(dr);
     const predictedMargin = this.predictMargin(dr);
-    const predictedWinProb = this.calculateWinProbability(dr);
+    const predictedWinProb = expected;
 
     const hasScore = match.home_score != null && match.away_score != null;
 
@@ -326,9 +326,7 @@ export class ELOCalculator {
     const table = { 1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75 };
 
     const term1 = table[idx];
-    const term2 = Math.max(idx - 3, 0) / 8;
-
-    const marginAdj = (term1 + term2) - 1.0;
+    const term2 = Math.max(rawBucket - 4, 0) / 8;
 
     let early = 0;
     if (adj.roundNo && adj.roundNo > 0) {
@@ -336,7 +334,7 @@ export class ELOCalculator {
     }
 
     const baseK = this.kFactor + early;
-    const finalK = baseK * (1.0 + marginAdj);
+    const finalK = baseK * (term1 + term2);
 
     const delta = finalK * (actualResult - expected);
 
@@ -355,9 +353,13 @@ export class ELOCalculator {
     if (actualResult === 1) {
       state.streak.set(home, Math.max(1, homeSt + 1));
       state.streak.set(away, Math.min(-1, awaySt - 1));
-    } else {
+    } else if (actualResult === 0) {
       state.streak.set(home, Math.min(-1, homeSt - 1));
       state.streak.set(away, Math.max(1, awaySt + 1));
+    } else {
+      // draw: reset (or you can leave unchanged if you prefer)
+      state.streak.set(home, 0);
+      state.streak.set(away, 0);
     }
 
     if (adj.roundNo != null) {
@@ -378,9 +380,13 @@ export class ELOCalculator {
       travel_km: adj.kmAway,
       travelAdj: adj.travelAdj,
 
+      homeRest: adj.homeRest,
+      awayRest: adj.awayRest,
       rest_diff: adj.homeRest - adj.awayRest,
       restAdj: adj.restAdj,
 
+      homeStreak: adj.homeStreak,
+      awayStreak: adj.awayStreak,
       streak_diff: adj.homeStreak - adj.awayStreak,
       streakAdj: adj.streakAdj,
 
@@ -396,7 +402,6 @@ export class ELOCalculator {
       idx,
       term1,
       term2,
-      marginAdj,
 
       early,
       baseK,

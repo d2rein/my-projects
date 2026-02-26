@@ -441,7 +441,7 @@ function toCsv(headers, rows) {
 async function handleExport(db) {
   const { results } = await db.prepare(`
     SELECT *
-    FROM matches
+    FROM matches m
     ORDER BY
       m.year ASC,
       CASE
@@ -541,8 +541,9 @@ async function handleDiagnostic(db) {
 
     "round_no",
     "travel_km","travelAdj",
-    "rest_diff","restAdj",
-    "streak_diff","streakAdj",
+
+    "home_rest","away_rest","rest_diff","restAdj",
+    "home_streak","away_streak","streak_diff","streakAdj",
 
     "dr",
     "win_expectancy",
@@ -552,7 +553,7 @@ async function handleDiagnostic(db) {
     "home_score","away_score",
     "actual_result","actual_margin",
 
-    "rawBucket","idx","term1","term2","marginAdj",
+    "rawBucket","idx","term1","term2",
     "early","baseK","finalK",
     "delta",
 
@@ -588,10 +589,16 @@ async function handleDiagnostic(db) {
       out.roundNo,
       out.travel_km,
       out.travelAdj,
-      out.homeRest - out.awayRest,
-      out.restAdj,
-      out.homeStreak - out.awayStreak,
-      out.streakAdj,
+
+      out.homeRest ?? "",
+      out.awayRest ?? "",
+      out.rest_diff ?? "",
+      out.restAdj ?? "",
+
+      out.homeStreak ?? "",
+      out.awayStreak ?? "",
+      out.streak_diff ?? "",
+      out.streakAdj ?? "",
 
       out.dr,
       out.expected,
@@ -607,8 +614,7 @@ async function handleDiagnostic(db) {
       out.idx,
       out.term1,
       out.term2,
-      out.marginAdj,
-
+      
       out.early,
       out.baseK,
       out.finalK,
