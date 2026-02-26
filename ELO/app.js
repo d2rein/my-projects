@@ -867,6 +867,7 @@ async function loadAllGames() {
 
         let lastRoundKey = null;
         let roundToggle = false;
+        console.log("MODEL_PARAMS used:", MODEL_PARAMS);
         
         for (const r of replay.rows) {
 
