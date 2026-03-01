@@ -15,7 +15,7 @@ async function loadModelParams() {
   );
 
   MODEL_PARAMS = {
-    k: map.k_factor,
+    kFactor: map.k_factor,
     homeAdvantage: map.home_advantage,
     travelPer1000km: map.travel_per1000km,
     restPerRound: map.rest_per_round,
@@ -533,11 +533,24 @@ async function evaluateModel() {
 
       const ladderPick = r.homeRankBeforeRound < r.awayRankBeforeRound ? home : away;
 
-      const actualWinner =
-        m.home_score > m.away_score ? home : away;
+      const margin = m.home_score - m.away_score;
+
+      // who would be the winner if not a draw
+      const actualWinner = margin > 0 ? home : away;
+
+      // tipping-comp rule: draw is always correct
+      const isDraw = (margin === 0);
 
       const homeWinProb = out.expected;
       const eloPick = homeWinProb >= 0.5 ? home : away;
+
+      // correctness booleans (draw => true)
+      const eloCorrect   = isDraw ? true : (eloPick === actualWinner);
+      const ladderCorrect= isDraw ? true : (ladderPick === actualWinner);
+
+      // odds currently same as elo in your code
+      const oddsPick     = eloPick;
+      const oddsCorrect  = isDraw ? true : (oddsPick === actualWinner);
 
       // --- PRE-MATCH ladder pick ---
 //      const ladderTable = rankLadder(ladder);
@@ -557,35 +570,34 @@ async function evaluateModel() {
 //      const homeWinProb = out.expected;
 //      const eloPick = homeWinProb >= 0.5 ? home : away;
 
-      // --- Score ladder accuracy AFTER actualWinner defined ---
-      if (ladderPick === actualWinner) {
+      // --- Score ladder accuracy ---
+      if (ladderCorrect) {
         overall.ladder++;
         yearly[year].ladder++;
         if (year >= last3Cutoff) last3.ladder++;
       }
-      
+
       // --- overall ---
       overall.games++;
       yearly[year].games++;
-
       if (year >= last3Cutoff) last3.games++;
 
-      if (eloPick === actualWinner) {
+      // --- ELO accuracy ---
+      if (eloCorrect) {
         overall.elo++;
         yearly[year].elo++;
         if (year >= last3Cutoff) last3.elo++;
       }
 
-      // --- odds pick (same as elo for now) ---
-      const oddsPick = eloPick;
-      if (oddsPick === actualWinner) {
+      // --- odds accuracy ---
+      if (oddsCorrect) {
         overall.odds++;
         yearly[year].odds++;
         if (year >= last3Cutoff) last3.odds++;
       }
 
       // --- Proper Brier ---
-      const actual = actualWinner === home ? 1 : 0;
+      const actual = isDraw ? 0.5 : (actualWinner === home ? 1 : 0);
       brierSum += Math.pow(homeWinProb - actual, 2);
       brierCount++;
 
@@ -797,12 +809,14 @@ function renderPip(id, type, selected, eloPick, actualWinner, completed) {
 
   // AFTER MATCH
   else {
-    if (pick === actualWinner) {
-      css += " success";     // correct
+    if (actualWinner === "DRAW") {
+      css += " success";
+    } else if (pick === actualWinner) {
+      css += " success";
     } else if (eloPick === actualWinner) {
-      css += " error";       // Elo right, you wrong
+      css += " error";
     } else {
-      css += " warning";     // both wrong
+      css += " warning";
     }
   }
 
@@ -822,14 +836,13 @@ function renderRankPip(ladderPick, eloPick, actualWinner, completed) {
     // Before match: does ladder agree with Elo?
     cls = ladderPick === eloPick ? "pip success" : "pip error";
   } else {
-    // After match:
-    if (ladderPick === actualWinner) {
+    if (actualWinner === "DRAW") {
+      cls = "pip success";
+    } else if (ladderPick === actualWinner) {
       cls = "pip success";
     } else if (eloPick !== actualWinner) {
-      // both wrong
       cls = "pip warning";
     } else {
-      // ladder wrong, elo right
       cls = "pip error";
     }
   }
@@ -890,7 +903,20 @@ async function loadAllGames() {
 
             const ladderPick = rankHome < rankAway ? home : away;
             const eloPick = homeWinProb >= 0.5 ? home : away;
-            const actualWinner = m.home_score > m.away_score ? home : away;
+            const isCompleted = (m.home_score != null && m.away_score != null);
+
+            let actualWinner = null;
+            let isDraw = false;
+
+            if (isCompleted) {
+              const margin = m.home_score - m.away_score;
+              if (margin === 0) {
+                isDraw = true;
+                actualWinner = "DRAW";
+              } else {
+                actualWinner = margin > 0 ? home : away;
+              }
+            }
 
             const roundKey = `${m.year}-${m.round}`;
             let isNewRound = false;
@@ -910,38 +936,44 @@ async function loadAllGames() {
 
             // Colour logic
             const colourFor = (pick) => {
+                if (!isCompleted) return "";
+
+                if (isDraw) return "success";   // draw = correct for everyone
+
                 if (pick === actualWinner) return "success";
                 if (pick === eloPick) return "warning";
                 return "error";
             };
 
-            const isCompleted = (m.home_score != null && m.away_score != null);
-
             rows += `
             <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}">
-            <td class="col-narrow">${m.year}</td>
-            <td class="col-narrow">${m.round}</td>
-            <td class="col-team">${displayTeamName(home)}</td>
-            <td class="col-team">${displayTeamName(away)}</td>
-            <td class="col-narrow">${m.home_score}</td>
-            <td class="col-narrow">${m.away_score}</td>
-            <td class="col-narrow">${marginPred}</td>
-            <td class="col-narrow">${oddsPred}</td>
-            <td class="col-narrow">${Math.round(eloHomeBefore)}</td>
-            <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
-            <td class="col-narrow">${rankHome}</td>
-            <td class="col-narrow">${rankAway}</td>
-            <td class="${colourFor(eloPick)} col-pick">${displayTeamName(eloPick)}</td>
-            <td class="col-pip tip-cell">
-              ${renderRankPip(ladderPick, eloPick, actualWinner, isCompleted)}
-            </td>
-            <td class="col-pip tip-cell">
-              ${renderPip(m.id, "odds", m.odds_tip, eloPick, actualWinner, isCompleted)}
-            </td>
-            <td class="col-pip tip-cell">
-              ${renderPip(m.id, "user", m.user_tip, eloPick, actualWinner, isCompleted)}
-            </td>
-            <td class="col-pick">${displayTeamName(actualWinner)}</td>
+              <td class="col-narrow">${m.year}</td>
+              <td class="col-narrow">${m.round}</td>
+              <td class="col-team">${displayTeamName(home)}</td>
+              <td class="col-team">${displayTeamName(away)}</td>
+              <td class="col-narrow">${m.home_score}</td>
+              <td class="col-narrow">${m.away_score}</td>
+              <td class="col-narrow">${marginPred}</td>
+              <td class="col-narrow">${oddsPred}</td>
+              <td class="col-narrow">${Math.round(eloHomeBefore)}</td>
+              <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
+              <td class="col-narrow">${rankHome}</td>
+              <td class="col-narrow">${rankAway}</td>
+              <td class="${colourFor(eloPick)} col-pick">
+                ${displayTeamName(eloPick)}
+              </td>
+              <td class="col-pip tip-cell">
+                ${renderRankPip(ladderPick, eloPick, actualWinner, isCompleted)}
+              </td>
+              <td class="col-pip tip-cell">
+                ${renderPip(m.id, "odds", m.odds_tip, eloPick, actualWinner, isCompleted)}
+              </td>
+              <td class="col-pip tip-cell">
+                ${renderPip(m.id, "user", m.user_tip, eloPick, actualWinner, isCompleted)}
+              </td>
+              <td class="col-pick">
+                ${actualWinner === "DRAW" ? "DRAW" : displayTeamName(actualWinner)}
+              </td>
             </tr>`;
         }
 
