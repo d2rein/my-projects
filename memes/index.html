@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Meme Search</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: system-ui;
+  background: #111;
+  color: #eee;
+  margin: 0;
+  padding: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.thumb {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #222;
+}
+
+img:hover {
+  transform: scale(1.03);
+  transition: 0.15s ease;
+}
+
+#viewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.95);
+  overflow-y: auto;
+  display: none;
+  z-index: 1000;
+  padding: 40px 0;
+}
+
+#viewer img {
+  display: block;
+  margin: 0 auto;
+  width: 95%;
+  height: auto;
+  max-width: 1000px;
+}
+
+#closeBtn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+</style>
+</head>
+<body>
+
+<h2>Meme Search</h2>
+<input id="search" placeholder="Search memes..." />
+
+<div class="grid" id="results"></div>
+
+<div id="viewer" style="display:none;">
+  <span id="closeBtn">✕</span>
+  <img id="fullImage">
+</div>
+
+<script>
+let memes = [];
+
+fetch("memes.json")
+  .then(res => res.json())
+  .then(data => {
+    memes = data;
+  });
+
+const input = document.getElementById("search");
+const results = document.getElementById("results");
+
+input.addEventListener("input", () => {
+  const query = input.value.toLowerCase().trim();
+  results.innerHTML = "";
+
+  if (!query) return;
+
+  const words = query.split(/\s+/);
+
+  const scored = memes.map(m => {
+    let score = 0;
+    words.forEach(word => {
+      if (m.text.includes(word)) score++;
+    });
+    return { ...m, score };
+  });
+
+  const matches = scored
+    .filter(m => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+
+  matches.forEach(m => {
+    const img = document.createElement("img");
+    img.src = m.thumb;
+    img.className = "thumb";
+
+    img.onclick = () => {
+      document.body.style.overflow = "hidden";
+      document.getElementById("fullImage").src = m.file;
+      document.getElementById("viewer").style.display = "block";
+    };
+
+    results.appendChild(img);
+  });
+});
+
+document.getElementById("closeBtn").onclick = () => {
+  document.body.style.overflow = "auto";
+  document.getElementById("viewer").style.display = "none";
+};
+
+document.getElementById("viewer").onclick = (e) => {
+  if (e.target.id === "viewer") {
+    document.body.style.overflow = "auto";
+    document.getElementById("viewer").style.display = "none";
+  }
+};
+</script>
+
+</body>
+</html>
