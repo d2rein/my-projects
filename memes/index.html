@@ -80,6 +80,19 @@ img:hover {
 <h2>Meme Search</h2>
 <input id="search" placeholder="Search memes..." />
 
+<label style="font-size:14px;">
+  Show:
+  <select id="limitSelect">
+    <option value="10">10</option>
+    <option value="30" selected>30</option>
+    <option value="50">50</option>
+    <option value="100">100</option>
+    <option value="9999">All</option>
+  </select>
+</label>
+
+<div id="resultCount" style="margin: 6px 0; font-size: 14px;"></div>
+
 <div class="grid" id="results"></div>
 
 <div id="viewer" style="display:none;">
@@ -89,21 +102,33 @@ img:hover {
 
 <script>
 let memes = [];
+let currentLimit = 30;
+
+const input = document.getElementById("search");
+const results = document.getElementById("results");
+const limitSelect = document.getElementById("limitSelect");
 
 fetch("memes.json")
   .then(res => res.json())
   .then(data => {
     memes = data;
+    render(memes);
   });
 
-const input = document.getElementById("search");
-const results = document.getElementById("results");
+limitSelect.addEventListener("change", () => {
+  currentLimit = parseInt(limitSelect.value);
+  applySearch();
+});
 
-input.addEventListener("input", () => {
+input.addEventListener("input", applySearch);
+
+function applySearch() {
   const query = input.value.toLowerCase().trim();
-  results.innerHTML = "";
 
-  if (!query) return;
+  if (!query) {
+    render(memes);
+    return;
+  }
 
   const words = query.split(/\s+/);
 
@@ -117,23 +142,42 @@ input.addEventListener("input", () => {
 
   const matches = scored
     .filter(m => m.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 20);
+    .sort((a, b) => b.score - a.score);
 
-  matches.forEach(m => {
+  render(matches);
+}
+
+function render(list) {
+  results.innerHTML = "";
+
+  document.getElementById("resultCount").innerText =
+  `${Math.min(list.length, currentLimit)} of ${list.length} results`;
+
+  list.slice(0, currentLimit).forEach(m => {
     const img = document.createElement("img");
     img.src = m.thumb;
     img.className = "thumb";
 
     img.onclick = () => {
+      const viewer = document.getElementById("viewer");
+      const fullImage = document.getElementById("fullImage");
+
       document.body.style.overflow = "hidden";
-      document.getElementById("fullImage").src = m.file;
-      document.getElementById("viewer").style.display = "block";
+
+      // Clear previous image immediately
+      fullImage.src = "";
+
+      viewer.style.display = "block";
+
+      // Slight delay ensures clean repaint
+      setTimeout(() => {
+        fullImage.src = m.file;
+      }, 10);
     };
 
     results.appendChild(img);
   });
-});
+}
 
 document.getElementById("closeBtn").onclick = () => {
   document.body.style.overflow = "auto";
