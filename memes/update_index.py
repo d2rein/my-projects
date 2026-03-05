@@ -18,9 +18,6 @@ import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 import torch
-import open_clip
-
-
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 IMAGES_DIR = os.path.join(ROOT, "images")
@@ -36,7 +33,7 @@ CLIP_MODEL = "ViT-L-14"
 CLIP_PRETRAINED = "laion2b_s32b_b82k"
 
 # Store embeddings as float32 lists (smaller). Optionally round to save JSON size.
-ROUND_EMBEDDINGS_DECIMALS = 3 # set None to disable rounding
+ROUND_EMBEDDINGS_DECIMALS = 2 # set None to disable rounding
 
 
 def md5_file(path: str, chunk_size: int = 1024 * 1024) -> str:
