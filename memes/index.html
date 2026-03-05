@@ -8,73 +8,67 @@
 <style>
 * { box-sizing: border-box; }
 
-body {
-  font-family: system-ui;
-  background: #111;
-  color: #eee;
-  margin: 0;
-  padding: 10px;
+body{
+  font-family:system-ui;
+  background:#111;
+  color:#eee;
+  margin:0;
+  padding:10px;
 }
 
-h2 { margin: 8px 0 10px; }
+h2{ margin:8px 0 10px; }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 10px;
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  margin-bottom:10px;
 }
 
-input#search {
-  flex: 1 1 240px;
-  width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
+input#search{
+  flex:1 1 240px;
+  padding:12px;
+  font-size:16px;
+  border-radius:6px;
+  border:none;
 }
 
-select, button.toggle {
-  padding: 10px 10px;
-  border-radius: 6px;
-  border: none;
-  background: #222;
-  color: #eee;
-  cursor: pointer;
+select,button.toggle{
+  padding:10px;
+  border-radius:6px;
+  border:none;
+  background:#222;
+  color:#eee;
+  cursor:pointer;
 }
 
-button.toggle.active {
-  background: #3a5cff;
+button.toggle.active{ background:#3a5cff; }
+
+#resultCount{
+  font-size:14px;
+  color:#bbb;
+  margin:6px 0 10px;
 }
 
-#resultCount {
-  font-size: 14px;
-  color: #bbb;
-  margin: 6px 0 10px;
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:10px;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+.thumb{
+  width:100%;
+  height:140px;
+  object-fit:cover;
+  border-radius:6px;
+  cursor:pointer;
+  background:#222;
 }
 
-.thumb {
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  border-radius: 6px;
-  cursor: pointer;
-  background: #222;
-  transition: transform 0.15s ease;
-}
+.thumb:hover{ transform:scale(1.03); }
 
-.thumb:hover {
-  transform: scale(1.03);
-}
-
-/* viewer overlay */
+/* viewer */
 
 #viewer{
   position:fixed;
@@ -82,45 +76,63 @@ button.toggle.active {
   background:rgba(0,0,0,.95);
   display:none;
   z-index:1000;
-
   flex-direction:column;
   align-items:center;
-  justify-content:center;
 }
-
-/* close button */
 
 #viewerBar{
   position:absolute;
   top:10px;
   right:10px;
+  display:flex;
+  gap:10px;
 }
 
-#closeBtn{
-  font-size:26px;
-  padding:6px 12px;
+#viewerBar button{
+  font-size:18px;
+  padding:6px 10px;
 }
-
-/* fixed image frame */
 
 #imageFrame{
   width:90vw;
   height:70vh;
+  margin-top:60px;
   display:flex;
   align-items:center;
   justify-content:center;
   overflow:hidden;
+  position:relative;
 }
 
-/* image behaviour */
+#imageFrame.zoomed{
+  overflow:auto;
+  align-items:flex-start;
+  justify-content:flex-start;
+}
 
 #fullImage{
   max-width:100%;
   max-height:100%;
   object-fit:contain;
-  transition:transform .15s ease;
   cursor:zoom-in;
 }
+
+/* navigation arrows */
+
+.navArrow{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:40px;
+  color:white;
+  background:rgba(0,0,0,.4);
+  border:none;
+  cursor:pointer;
+  padding:8px 12px;
+}
+
+#prevBtn{ left:10px; }
+#nextBtn{ right:10px; }
 
 /* similar strip */
 
@@ -149,7 +161,7 @@ button.toggle.active {
 <h2>😂 Meme Search</h2>
 
 <div class="controls">
-<input id="search" placeholder="Search… (text or concepts like 'painting', 'cricket match', 'watch')" />
+<input id="search" placeholder="Search…">
 
 <select id="limitSelect">
 <option value="10">10</option>
@@ -170,11 +182,14 @@ button.toggle.active {
 <div id="viewer">
 
 <div id="viewerBar">
+<button id="similarBtn">Find Similar</button>
 <button id="closeBtn">✕</button>
 </div>
 
 <div id="imageFrame">
+<button class="navArrow" id="prevBtn">‹</button>
 <img id="fullImage">
+<button class="navArrow" id="nextBtn">›</button>
 </div>
 
 <div id="similarStrip">
@@ -185,41 +200,32 @@ button.toggle.active {
 
 <script>
 
-let memes = [];
-let currentLimit = 9999;
-let mode = "hybrid";
-let currentOpenIndex = -1;
-let zoom = 1;
-const SIMILAR_COUNT = 60;
+let memes=[];
+let currentLimit=9999;
+let mode="hybrid";
+let currentOpenIndex=-1;
+let zoom=false;
 
-/* math helpers */
+let similarList=[];
+let similarPointer=0;
+
+const SIMILAR_COUNT=60;
+
+/* helpers */
 
 function dot(a,b){
-  let s=0;
-  for(let i=0;i<a.length;i++) s+=a[i]*b[i];
-  return s;
+let s=0;
+for(let i=0;i<a.length;i++) s+=a[i]*b[i];
+return s;
 }
 
 function ocrScore(m,words){
-  let score=0;
-  for(const w of words){
-    if(m.text && m.text.includes(w)) score++;
-    if(m.caption && m.caption.includes(w)) score++;
-  }
-  return score;
+let score=0;
+for(const w of words){
+if(m.text && m.text.includes(w)) score++;
+if(m.caption && m.caption.includes(w)) score++;
 }
-
-/* mode switching */
-
-function setMode(newMode){
-
-mode=newMode;
-
-document.getElementById("modeText").classList.toggle("active",mode==="text");
-document.getElementById("modeVisual").classList.toggle("active",mode==="visual");
-document.getElementById("modeHybrid").classList.toggle("active",mode==="hybrid");
-
-applySearch();
+return score;
 }
 
 /* render */
@@ -271,37 +277,65 @@ render(scored);
 function openViewer(index){
 
 currentOpenIndex=index;
-zoom=1;
 
 const viewer=document.getElementById("viewer");
-const fullImage=document.getElementById("fullImage");
+const img=document.getElementById("fullImage");
 
 viewer.style.display="flex";
 
-fullImage.style.transform="scale(1)";
-fullImage.src="";
+img.src="";
 
-/* preload */
+const loader=new Image();
+loader.src=memes[index].file;
 
-const img=new Image();
-img.src=memes[index].file;
-
-img.onload=()=>{
-  fullImage.src=img.src;
+loader.onload=()=>{
+img.src=loader.src;
 };
 
-showSimilar(index);
+zoom=false;
+document.getElementById("imageFrame").classList.remove("zoomed");
+
+centerThumbnail(index);
 
 }
 
-/* similar search */
+/* zoom */
 
-function showSimilar(index){
+document.getElementById("fullImage").onclick=()=>{
+
+const frame=document.getElementById("imageFrame");
+const img=document.getElementById("fullImage");
+
+if(!zoom){
+
+frame.classList.add("zoomed");
+
+img.style.maxWidth="none";
+img.style.maxHeight="none";
+img.style.width="100%";
+
+zoom=true;
+
+}else{
+
+frame.classList.remove("zoomed");
+
+img.style.width="";
+img.style.maxWidth="100%";
+img.style.maxHeight="100%";
+
+zoom=false;
+
+}
+
+};
+
+/* build similar */
+
+function buildSimilar(index){
 
 const base=memes[index];
-if(!base.embVec) return;
-
-const sims=[];
+similarList=[];
 
 for(let i=0;i<memes.length;i++){
 
@@ -312,24 +346,35 @@ if(!m.embVec) continue;
 
 const s=dot(base.embVec,m.embVec);
 
-sims.push({idx:i,score:s});
+similarList.push({idx:i,score:s});
 
 }
 
-sims.sort((a,b)=>b.score-a.score);
+similarList.sort((a,b)=>b.score-a.score);
 
-const top=sims.slice(0,SIMILAR_COUNT);
+renderSimilar();
+
+}
+
+/* render similar */
+
+function renderSimilar(){
 
 const row=document.getElementById("similarRow");
 row.innerHTML="";
 
-top.forEach(x=>{
+similarList.slice(0,SIMILAR_COUNT).forEach((x,i)=>{
+
 const m=memes[x.idx];
 
 const img=document.createElement("img");
 img.src=m.thumb;
 img.className="similarThumb";
-img.onclick=()=>openViewer(x.idx);
+
+img.onclick=()=>{
+similarPointer=i;
+openViewer(x.idx);
+};
 
 row.appendChild(img);
 
@@ -337,41 +382,72 @@ row.appendChild(img);
 
 }
 
-/* close viewer */
+/* navigation */
 
-document.getElementById("closeBtn").onclick=()=>{
-document.body.style.overflow="auto";
-document.getElementById("viewer").style.display="none";
-};
+function nextSimilar(){
 
-document.getElementById("viewer").onclick=(e)=>{
-if(e.target.id==="viewer"){
-document.body.style.overflow="auto";
-document.getElementById("viewer").style.display="none";
-}
-};
+similarPointer=(similarPointer+1)%similarList.length;
 
-/* zoom */
+openViewer(similarList[similarPointer].idx);
 
-document.getElementById("fullImage").onclick=()=>{
-
-const img=document.getElementById("fullImage");
-
-if(zoom===1){
-  img.style.maxWidth="none";
-  img.style.width="100%";
-  zoom=2;
-}else{
-  img.style.width="";
-  img.style.maxWidth="100%";
-  zoom=1;
 }
 
-};
+function prevSimilar(){
+
+similarPointer=(similarPointer-1+similarList.length)%similarList.length;
+
+openViewer(similarList[similarPointer].idx);
+
+}
+
+document.getElementById("nextBtn").onclick=nextSimilar;
+document.getElementById("prevBtn").onclick=prevSimilar;
+
+/* swipe */
+
+let touchStartX=0;
+
+document.getElementById("imageFrame").addEventListener("touchstart",(e)=>{
+touchStartX=e.touches[0].clientX;
+});
+
+document.getElementById("imageFrame").addEventListener("touchend",(e)=>{
+
+const dx=e.changedTouches[0].clientX-touchStartX;
+
+if(Math.abs(dx)>50){
+
+if(dx<0) nextSimilar();
+else prevSimilar();
+
+}
+
+});
+
+/* center thumbnail */
+
+function centerThumbnail(index){
+
+const row=document.getElementById("similarRow");
+
+[...row.children].forEach(el=>{
+
+if(el.src.includes(memes[index].thumb)){
+
+const left=el.offsetLeft-(row.clientWidth/2)+(el.clientWidth/2);
+
+row.parentElement.scrollTo({left,behavior:"smooth"});
+
+}
+
+});
+
+}
+
 /* controls */
 
 document.getElementById("limitSelect").addEventListener("change",()=>{
-currentLimit=parseInt(document.getElementById("limitSelect").value);
+currentLimit=parseInt(limitSelect.value);
 applySearch();
 });
 
@@ -381,44 +457,39 @@ document.getElementById("modeText").onclick=()=>setMode("text");
 document.getElementById("modeVisual").onclick=()=>setMode("visual");
 document.getElementById("modeHybrid").onclick=()=>setMode("hybrid");
 
-/* keyboard navigation */
+function setMode(newMode){
+mode=newMode;
 
-document.addEventListener("keydown",(e)=>{
+modeText.classList.toggle("active",mode==="text");
+modeVisual.classList.toggle("active",mode==="visual");
+modeHybrid.classList.toggle("active",mode==="hybrid");
 
-const viewerOpen=document.getElementById("viewer").style.display==="flex";
-
-if(!viewerOpen) return;
-
-if(e.key==="ArrowRight"){
-openViewer((currentOpenIndex+1)%memes.length);
+applySearch();
 }
 
-if(e.key==="ArrowLeft"){
-openViewer((currentOpenIndex-1+memes.length)%memes.length);
-}
+/* buttons */
 
-if(e.key==="Escape"){
-document.body.style.overflow="auto";
-document.getElementById("viewer").style.display="none";
-}
+document.getElementById("similarBtn").onclick=()=>{
+buildSimilar(currentOpenIndex);
+};
 
-});
+/* close */
 
-/* load data */
+document.getElementById("closeBtn").onclick=()=>{
+viewer.style.display="none";
+};
+
+/* load */
 
 fetch("memes.json")
-.then(res=>res.json())
+.then(r=>r.json())
 .then(data=>{
 
 memes=data.map((m,i)=>{
 
 const out={...m,_index:i};
 
-if(m.emb && Array.isArray(m.emb)){
-out.embVec=new Float32Array(m.emb);
-}else{
-out.embVec=null;
-}
+if(m.emb) out.embVec=new Float32Array(m.emb);
 
 return out;
 
