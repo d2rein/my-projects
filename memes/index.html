@@ -359,6 +359,9 @@ similarList.push({idx:i,score:s});
 
 similarList.sort((a,b)=>b.score-a.score);
 
+renderSimilar();   // IMPORTANT
+
+}
 function renderSimilar(){
 
 const row=document.getElementById("similarRow");
@@ -438,18 +441,11 @@ const row=document.getElementById("similarRow");
 
 [...row.children].forEach(el=>{
 
-el.classList.remove("active");
-
 if(el.src.includes(memes[index].thumb)){
-
-el.classList.add("active");
 
 const left=el.offsetLeft-(row.clientWidth/2)+(el.clientWidth/2);
 
-row.parentElement.scrollTo({
-left,
-behavior:"smooth"
-});
+row.parentElement.scrollTo({left,behavior:"smooth"});
 
 }
 
@@ -460,7 +456,7 @@ behavior:"smooth"
 /* controls */
 
 document.getElementById("limitSelect").addEventListener("change",()=>{
-currentLimit=parseInt(limitSelect.value);
+currentLimit=parseInt(document.getElementById("limitSelect").value);
 applySearch();
 });
 
