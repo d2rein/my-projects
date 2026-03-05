@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Meme Search</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 * { box-sizing: border-box; }
 
@@ -73,35 +74,25 @@ button.toggle.active {
   transform: scale(1.03);
 }
 
+/* viewer */
+
 #viewer {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.95);
-  overflow-y: auto;
+  background: rgba(0,0,0,0.96);
   display: none;
   z-index: 1000;
-  padding: 60px 0 30px;
-}
 
-#viewer img#fullImage {
-  display: block;
-  margin: 0 auto;
-  width: 95%;
-  height: auto;
-  max-width: 1000px;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 #viewerBar {
   position: fixed;
   top: 10px;
-  left: 10px;
   right: 10px;
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 1001;
 }
 
 #closeBtn {
@@ -109,14 +100,19 @@ button.toggle.active {
   padding: 6px 12px;
 }
 
-#similarBtn {
-  font-size: 14px;
-  padding: 10px 12px;
+#fullImage {
+  max-width: 95vw;
+  max-height: 80vh;
+  object-fit: contain;
+  display: block;
+  margin: auto;
+  cursor: zoom-in;
+  transition: transform 0.15s ease;
 }
 
 #similarStrip {
   max-width: 1000px;
-  margin: 14px auto 0;
+  margin: 16px auto 0;
   padding: 0 10px;
 }
 
@@ -142,271 +138,280 @@ button.toggle.active {
 }
 </style>
 </head>
+
 <body>
 
 <h2>😂 Meme Search</h2>
 
 <div class="controls">
-  <input id="search" placeholder="Search… (text or concepts like 'painting', 'cricket match', 'watch')" />
+<input id="search" placeholder="Search… (text or concepts like 'painting', 'cricket match', 'watch')" />
 
-  <select id="limitSelect" title="How many results to show">
-    <option value="10">10</option>
-    <option value="30" selected>30</option>
-    <option value="50">50</option>
-    <option value="100">100</option>
-    <option value="9999">All</option>
-  </select>
+<select id="limitSelect">
+<option value="10">10</option>
+<option value="30">30</option>
+<option value="50">50</option>
+<option value="100">100</option>
+<option value="9999" selected>All</option>
+</select>
 
-  <button class="toggle active" id="modeText">Text</button>
-  <button class="toggle" id="modeVisual">Visual</button>
-  <button class="toggle" id="modeHybrid">Hybrid</button>
+<button class="toggle" id="modeText">Text</button>
+<button class="toggle" id="modeVisual">Visual</button>
+<button class="toggle active" id="modeHybrid">Hybrid</button>
 </div>
 
 <div id="resultCount"></div>
 <div class="grid" id="results"></div>
 
 <div id="viewer">
-  <div id="viewerBar">
-    <button id="similarBtn">Find similar</button>
-    <button id="closeBtn">✕</button>
-  </div>
 
-  <img id="fullImage" />
-  <div id="similarStrip" style="display:none;">
-    <div id="similarStripTitle">Similar</div>
-    <div class="similarGrid" id="similarGrid"></div>
-  </div>
+<div id="viewerBar">
+<button id="closeBtn">✕</button>
+</div>
+
+<img id="fullImage">
+
+<div id="similarStrip">
+<div id="similarStripTitle">Similar</div>
+<div class="similarGrid" id="similarGrid"></div>
+</div>
+
 </div>
 
 <script>
-let memes = [];
-let currentLimit = 30;
-let mode = "text"; // "text" | "visual" | "hybrid"
-let currentOpenIndex = -1;
 
-// --- helpers ---
-function dot(a, b) {
-  // a and b are arrays (Float32Array or number[])
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+let memes = [];
+let currentLimit = 9999;
+let mode = "hybrid";
+let currentOpenIndex = -1;
+let zoom = 1;
+const SIMILAR_COUNT = 60;
+
+/* math helpers */
+
+function dot(a,b){
+  let s=0;
+  for(let i=0;i<a.length;i++) s+=a[i]*b[i];
   return s;
 }
 
-function normalizeVec(v) {
-  let norm = 0;
-  for (let i = 0; i < v.length; i++) norm += v[i] * v[i];
-  norm = Math.sqrt(norm) || 1;
-  const out = new Float32Array(v.length);
-  for (let i = 0; i < v.length; i++) out[i] = v[i] / norm;
-  return out;
-}
-
-// A lightweight “text -> vector” trick:
-// Since we precomputed only image embeddings offline, we can’t do *true* CLIP text embeddings in-browser
-// without shipping a model. Instead, for now:
-// - Visual mode uses "find similar" + browsing
-// - Hybrid mode = OCR-driven ranking, with a bonus if query words hit
-//
-// If you want real "type 'painting' and it finds paintings visually", we add CLIP text embeddings offline too.
-// I’ll outline that after this baseline works.
-
-function ocrScore(m, words) {
-  let score = 0;
-  for (const w of words) {
-    if (m.text && m.text.includes(w)) score++;
-    if (m.caption && m.caption.includes(w)) score++;
+function ocrScore(m,words){
+  let score=0;
+  for(const w of words){
+    if(m.text && m.text.includes(w)) score++;
+    if(m.caption && m.caption.includes(w)) score++;
   }
   return score;
 }
 
-function setMode(newMode) {
-  mode = newMode;
-  document.getElementById("modeText").classList.toggle("active", mode === "text");
-  document.getElementById("modeVisual").classList.toggle("active", mode === "visual");
-  document.getElementById("modeHybrid").classList.toggle("active", mode === "hybrid");
-  applySearch();
+/* mode switching */
+
+function setMode(newMode){
+
+mode=newMode;
+
+document.getElementById("modeText").classList.toggle("active",mode==="text");
+document.getElementById("modeVisual").classList.toggle("active",mode==="visual");
+document.getElementById("modeHybrid").classList.toggle("active",mode==="hybrid");
+
+applySearch();
 }
 
-function render(list) {
-  const results = document.getElementById("results");
-  const rc = document.getElementById("resultCount");
+/* render */
 
-  results.innerHTML = "";
-  const shown = list.slice(0, currentLimit);
+function render(list){
 
-  rc.textContent = `${Math.min(list.length, currentLimit)} of ${list.length} results`;
+const results=document.getElementById("results");
+const rc=document.getElementById("resultCount");
 
-  shown.forEach((m, idx) => {
-    const img = document.createElement("img");
-    img.src = m.thumb;
-    img.className = "thumb";
-    img.onclick = () => openViewer(m._index);
-    results.appendChild(img);
-  });
-}
+results.innerHTML="";
 
-function applySearch() {
-  const q = document.getElementById("search").value.toLowerCase().trim();
-  const words = q ? q.split(/\s+/) : [];
+const shown=list.slice(0,currentLimit);
 
-  // default show all (sorted as-is)
-  if (!q) {
-    render(memes.map(m => ({...m})));
-    return;
-  }
+rc.textContent=`${Math.min(list.length,currentLimit)} of ${list.length} results`;
 
-  // For now, Text and Hybrid behave similarly (OCR ranking).
-  // Visual search-from-text needs text embeddings (we can add in a second step).
-  if (mode === "visual") {
-    // Visual mode with a text query isn't meaningful without CLIP text embeddings.
-    // We'll fall back to OCR filtering so it doesn't look "broken".
-    const filtered = memes
-      .map(m => ({...m, score: ocrScore(m, words)}))
-      .filter(m => m.score > 0)
-      .sort((a, b) => b.score - a.score);
-    render(filtered);
-    return;
-  }
-
-  if (mode === "text" || mode === "hybrid") {
-    const scored = memes
-      .map(m => ({...m, score: ocrScore(m, words)}))
-      .filter(m => m.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    render(scored);
-    return;
-  }
-}
-
-// Viewer
-function openViewer(index) {
-  currentOpenIndex = index;
-
-  const viewer = document.getElementById("viewer");
-  const fullImage = document.getElementById("fullImage");
-  const similarStrip = document.getElementById("similarStrip");
-  const similarGrid = document.getElementById("similarGrid");
-
-  document.body.style.overflow = "hidden";
-  similarStrip.style.display = "none";
-  similarGrid.innerHTML = "";
-
-  // prevent flash of previous image
-  fullImage.src = "";
-  viewer.style.display = "block";
-  setTimeout(() => {
-    fullImage.src = memes[index].file;
-    showSimilar(index);
-  }, 10);
-}
-
-function showSimilar(index) {
-  const base = memes[index];
-  if (!base.embVec) return;
-
-  const sims = [];
-
-  for (let i = 0; i < memes.length; i++) {
-    if (i === index) continue;
-
-    const m = memes[i];
-    if (!m.embVec) continue;
-
-    const s = dot(base.embVec, m.embVec);
-    sims.push({ idx: i, score: s });
-  }
-
-  sims.sort((a,b)=>b.score-a.score);
-
-  const top = sims.slice(0,30);
-
-  const similarStrip = document.getElementById("similarStrip");
-  const similarGrid = document.getElementById("similarGrid");
-
-  similarGrid.innerHTML = "";
-
-  top.forEach(x => {
-    const m = memes[x.idx];
-    const img = document.createElement("img");
-    img.src = m.thumb;
-    img.className = "similarThumb";
-    img.onclick = () => openViewer(x.idx);
-    similarGrid.appendChild(img);
-  });
-
-  similarStrip.style.display = "block";
-}
-
-document.getElementById("closeBtn").onclick = () => {
-  document.body.style.overflow = "auto";
-  document.getElementById("viewer").style.display = "none";
-};
-
-document.getElementById("viewer").onclick = (e) => {
-  if (e.target.id === "viewer") {
-    document.body.style.overflow = "auto";
-    document.getElementById("viewer").style.display = "none";
-  }
-};
-
-// Find similar (visual-only, uses image embeddings)
-document.getElementById("similarBtn").onclick = () => {
-  if (currentOpenIndex >= 0) showSimilar(currentOpenIndex);
-};
-
-// Controls
-document.getElementById("limitSelect").addEventListener("change", () => {
-  currentLimit = parseInt(document.getElementById("limitSelect").value, 10);
-  applySearch();
+shown.forEach(m=>{
+const img=document.createElement("img");
+img.src=m.thumb;
+img.className="thumb";
+img.onclick=()=>openViewer(m._index);
+results.appendChild(img);
 });
 
-document.getElementById("search").addEventListener("input", applySearch);
+}
 
-document.getElementById("modeText").onclick = () => setMode("text");
-document.getElementById("modeVisual").onclick = () => setMode("visual");
-document.getElementById("modeHybrid").onclick = () => setMode("hybrid");
+/* search */
 
-// Load data
+function applySearch(){
+
+const q=document.getElementById("search").value.toLowerCase().trim();
+const words=q ? q.split(/\s+/) : [];
+
+if(!q){
+render(memes);
+return;
+}
+
+const scored=memes
+.map(m=>({...m,score:ocrScore(m,words)}))
+.filter(m=>m.score>0)
+.sort((a,b)=>b.score-a.score);
+
+render(scored);
+
+}
+
+/* viewer */
+
+function openViewer(index){
+
+currentOpenIndex=index;
+zoom=1;
+
+const viewer=document.getElementById("viewer");
+const fullImage=document.getElementById("fullImage");
+
+document.body.style.overflow="hidden";
+
+viewer.style.display="flex";
+fullImage.style.transform="scale(1)";
+fullImage.src="";
+
+const img=new Image();
+img.src=memes[index].file;
+
+img.onload=()=>{
+fullImage.src=img.src;
+};
+
+showSimilar(index);
+
+}
+
+/* similar search */
+
+function showSimilar(index){
+
+const base=memes[index];
+if(!base.embVec) return;
+
+const sims=[];
+
+for(let i=0;i<memes.length;i++){
+
+if(i===index) continue;
+
+const m=memes[i];
+if(!m.embVec) continue;
+
+const s=dot(base.embVec,m.embVec);
+
+sims.push({idx:i,score:s});
+
+}
+
+sims.sort((a,b)=>b.score-a.score);
+
+const top=sims.slice(0,SIMILAR_COUNT);
+
+const grid=document.getElementById("similarGrid");
+
+grid.innerHTML="";
+
+top.forEach(x=>{
+const m=memes[x.idx];
+
+const img=document.createElement("img");
+img.src=m.thumb;
+img.className="similarThumb";
+img.onclick=()=>openViewer(x.idx);
+
+grid.appendChild(img);
+
+});
+
+}
+
+/* close viewer */
+
+document.getElementById("closeBtn").onclick=()=>{
+document.body.style.overflow="auto";
+document.getElementById("viewer").style.display="none";
+};
+
+document.getElementById("viewer").onclick=(e)=>{
+if(e.target.id==="viewer"){
+document.body.style.overflow="auto";
+document.getElementById("viewer").style.display="none";
+}
+};
+
+/* zoom */
+
+document.getElementById("fullImage").onclick=()=>{
+zoom=zoom===1?2:1;
+document.getElementById("fullImage").style.transform=`scale(${zoom})`;
+};
+
+/* controls */
+
+document.getElementById("limitSelect").addEventListener("change",()=>{
+currentLimit=parseInt(document.getElementById("limitSelect").value);
+applySearch();
+});
+
+document.getElementById("search").addEventListener("input",applySearch);
+
+document.getElementById("modeText").onclick=()=>setMode("text");
+document.getElementById("modeVisual").onclick=()=>setMode("visual");
+document.getElementById("modeHybrid").onclick=()=>setMode("hybrid");
+
+/* keyboard navigation */
+
+document.addEventListener("keydown",(e)=>{
+
+const viewerOpen=document.getElementById("viewer").style.display==="flex";
+
+if(!viewerOpen) return;
+
+if(e.key==="ArrowRight"){
+openViewer((currentOpenIndex+1)%memes.length);
+}
+
+if(e.key==="ArrowLeft"){
+openViewer((currentOpenIndex-1+memes.length)%memes.length);
+}
+
+if(e.key==="Escape"){
+document.body.style.overflow="auto";
+document.getElementById("viewer").style.display="none";
+}
+
+});
+
+/* load data */
+
 fetch("memes.json")
-  .then(res => res.json())
-  .then(data => {
-    // Attach indices and convert emb lists to Float32Array for speed
-    memes = data.map((m, i) => {
-      const out = {...m, _index: i};
-      if (m.emb && Array.isArray(m.emb)) {
-        // emb already normalized in Python; store in Float32Array
-        out.embVec = new Float32Array(m.emb);
-      } else {
-        out.embVec = null;
-      }
-      return out;
-    });
-    applySearch();
-  });
+.then(res=>res.json())
+.then(data=>{
 
-  document.addEventListener("keydown", (e) => {
+memes=data.map((m,i)=>{
 
-    const viewerOpen =
-      document.getElementById("viewer").style.display === "block";
+const out={...m,_index:i};
 
-    if (!viewerOpen) return;
+if(m.emb && Array.isArray(m.emb)){
+out.embVec=new Float32Array(m.emb);
+}else{
+out.embVec=null;
+}
 
-    if (e.key === "ArrowRight") {
-      const next = (currentOpenIndex + 1) % memes.length;
-      openViewer(next);
-    }
+return out;
 
-    if (e.key === "ArrowLeft") {
-      const prev = (currentOpenIndex - 1 + memes.length) % memes.length;
-      openViewer(prev);
-    }
+});
 
-    if (e.key === "Escape") {
-      document.body.style.overflow = "auto";
-      document.getElementById("viewer").style.display = "none";
-    }
-  });
+applySearch();
+
+});
+
 </script>
 
 </body>
