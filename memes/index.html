@@ -80,13 +80,10 @@ button.toggle.active {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.96);
-  display: none;
+  display: none;           /* hidden by default */
   z-index: 1000;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  text-align: center;
+  padding-top: 60px;
 }
 
 #viewerBar {
@@ -272,7 +269,7 @@ const fullImage=document.getElementById("fullImage");
 
 document.body.style.overflow="hidden";
 
-viewer.style.display="flex";
+viewer.style.display="block";
 fullImage.style.transform="scale(1)";
 fullImage.src="";
 
