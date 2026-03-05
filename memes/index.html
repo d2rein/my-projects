@@ -153,6 +153,11 @@ button.toggle.active{ background:#3a5cff; }
   border-radius:6px;
   cursor:pointer;
 }
+
+.similarThumb.active{
+  outline:3px solid #3a5cff;
+  transform:scale(1.05);
+}
 </style>
 </head>
 
@@ -295,6 +300,8 @@ img.src=loader.src;
 zoom=false;
 document.getElementById("imageFrame").classList.remove("zoomed");
 
+if(similarList.length===0) buildSimilar(index);
+
 centerThumbnail(index);
 
 }
@@ -352,12 +359,6 @@ similarList.push({idx:i,score:s});
 
 similarList.sort((a,b)=>b.score-a.score);
 
-renderSimilar();
-
-}
-
-/* render similar */
-
 function renderSimilar(){
 
 const row=document.getElementById("similarRow");
@@ -370,6 +371,11 @@ const m=memes[x.idx];
 const img=document.createElement("img");
 img.src=m.thumb;
 img.className="similarThumb";
+
+if(x.idx===currentOpenIndex){
+img.classList.add("active");
+similarPointer=i;
+}
 
 img.onclick=()=>{
 similarPointer=i;
@@ -432,11 +438,18 @@ const row=document.getElementById("similarRow");
 
 [...row.children].forEach(el=>{
 
+el.classList.remove("active");
+
 if(el.src.includes(memes[index].thumb)){
+
+el.classList.add("active");
 
 const left=el.offsetLeft-(row.clientWidth/2)+(el.clientWidth/2);
 
-row.parentElement.scrollTo({left,behavior:"smooth"});
+row.parentElement.scrollTo({
+left,
+behavior:"smooth"
+});
 
 }
 
@@ -477,6 +490,7 @@ buildSimilar(currentOpenIndex);
 
 document.getElementById("closeBtn").onclick=()=>{
 viewer.style.display="none";
+similarList=[];
 };
 
 /* load */
