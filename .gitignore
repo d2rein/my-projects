@@ -1,0 +1,14 @@
+# AI model cache
+memes/cache/
+
+# incoming staging folder
+memes/incoming/
+
+# python cache
+__pycache__/
+*.pyc
+
+# AI model files
+*.safetensors
+*.bin
+*.pt
