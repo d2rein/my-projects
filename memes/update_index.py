@@ -36,7 +36,7 @@ CLIP_MODEL = "ViT-L-14"
 CLIP_PRETRAINED = "laion2b_s32b_b82k"
 
 # Store embeddings as float32 lists (smaller). Optionally round to save JSON size.
-ROUND_EMBEDDINGS_DECIMALS = 6  # set None to disable rounding
+ROUND_EMBEDDINGS_DECIMALS = 3 # set None to disable rounding
 
 
 def md5_file(path: str, chunk_size: int = 1024 * 1024) -> str:
