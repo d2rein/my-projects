@@ -300,7 +300,11 @@ img.src=loader.src;
 zoom=false;
 document.getElementById("imageFrame").classList.remove("zoomed");
 
-if(similarList.length===0) buildSimilar(index);
+if(similarList.length===0){
+  buildSimilar(index);
+}else{
+  renderSimilar();
+}
 
 centerThumbnail(index);
 
