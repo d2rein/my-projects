@@ -1,218 +1,260 @@
 import os
 import json
 import hashlib
-import shutil
 from typing import Dict, Any, List
 
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+import pytesseract
+import torch
 import open_clip
 from clip_interrogator import Config, Interrogator
 
-import pytesseract
-
-# --- OPTIONAL: hardcode tesseract path (recommended on Windows) ---
-# If your PATH works, you can comment this out.
+# --- OPTIONAL: hardcode tesseract path ---
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-import torch
-
 ROOT = os.path.dirname(os.path.abspath(__file__))
+
 IMAGES_DIR = os.path.join(ROOT, "images")
-INCOMING_DIR = os.path.join(ROOT, "incoming")
 THUMBS_DIR = os.path.join(ROOT, "thumbs")
+EMB_DIR = os.path.join(ROOT, "embeddings")
+
 INDEX_PATH = os.path.join(ROOT, "memes.json")
 
-THUMB_SIZE = 300  # 300x300 squares
+THUMB_SIZE = 300
 OCR_CONFIG = "--oem 3 --psm 6"
 
-# CLIP model choice: good balance of quality/speed
 CLIP_MODEL = "ViT-L-14"
 CLIP_PRETRAINED = "laion2b_s32b_b82k"
 
-# Store embeddings as float32 lists (smaller). Optionally round to save JSON size.
-ROUND_EMBEDDINGS_DECIMALS = 2 # set None to disable rounding
+# ~20MB bins for Cloudflare safety
+MAX_BIN_MB = 20
+
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
 
-def md5_file(path: str, chunk_size: int = 1024 * 1024) -> str:
+def md5_file(path: str):
     h = hashlib.md5()
     with open(path, "rb") as f:
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
+        while chunk := f.read(1024 * 1024):
             h.update(chunk)
     return h.hexdigest()
 
 
-def safe_load_index() -> List[Dict[str, Any]]:
+def safe_load_index():
     if not os.path.exists(INDEX_PATH):
         return []
     with open(INDEX_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    # Backwards-compatible: if old list exists, keep it
-    if isinstance(data, list):
-        return data
-    raise ValueError("memes.json exists but is not a list")
+        return json.load(f)
 
 
-def save_index(items: List[Dict[str, Any]]) -> None:
+def save_index(items):
     with open(INDEX_PATH, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False)
+        json.dump(items, f, ensure_ascii=False, separators=(",", ":"))
 
 
-def make_square_thumb(src_path: str, dst_path: str) -> None:
+def make_square_thumb(src_path, dst_path):
     img = Image.open(src_path).convert("RGB")
+
     w, h = img.size
-    min_dim = min(w, h)
-    left = (w - min_dim) // 2
-    top = (h - min_dim) // 2
-    img = img.crop((left, top, left + min_dim, top + min_dim))
+    m = min(w, h)
+
+    img = img.crop(((w - m) // 2, (h - m) // 2, (w + m) // 2, (h + m) // 2))
     img = img.resize((THUMB_SIZE, THUMB_SIZE), Image.LANCZOS)
-    img.save(dst_path, "JPEG", quality=80, optimize=True, progressive=True)
+
+    img.save(dst_path, "JPEG", quality=80, optimize=True)
 
 
-def ocr_text(src_path: str) -> str:
+def ocr_text(src_path):
     img = Image.open(src_path)
     txt = pytesseract.image_to_string(img, config=OCR_CONFIG)
-    # normalize
-    txt = txt.replace("\n", " ").strip().lower()
-    # collapse whitespace
+
+    txt = txt.replace("\n", " ").lower()
     txt = " ".join(txt.split())
+
     return txt
 
 
-def build_clip(device: str):
+def build_clip(device):
     model, _, preprocess = open_clip.create_model_and_transforms(
         CLIP_MODEL, pretrained=CLIP_PRETRAINED
     )
+
     model.eval()
     model.to(device)
-    tokenizer = open_clip.get_tokenizer(CLIP_MODEL)
-    return model, preprocess, tokenizer
+
+    return model, preprocess
 
 
 @torch.no_grad()
-def image_embedding(model, preprocess, device: str, src_path: str) -> np.ndarray:
+def image_embedding(model, preprocess, device, src_path):
     img = Image.open(src_path).convert("RGB")
+
     img_t = preprocess(img).unsqueeze(0).to(device)
+
     emb = model.encode_image(img_t)
-    emb = emb / emb.norm(dim=-1, keepdim=True)  # normalize for cosine=dot
-    emb = emb.squeeze(0).detach().cpu().numpy().astype(np.float32)
-    if ROUND_EMBEDDINGS_DECIMALS is not None:
-        emb = np.round(emb, ROUND_EMBEDDINGS_DECIMALS)
-    return emb
+
+    emb = emb / emb.norm(dim=-1, keepdim=True)
+
+    return emb.squeeze(0).cpu().numpy().astype(np.float32)
+
+
+def load_existing_embeddings():
+
+    emb_files = sorted(os.listdir(EMB_DIR)) if os.path.exists(EMB_DIR) else []
+
+    embeddings = []
+
+    for f in emb_files:
+        if f.endswith(".bin"):
+            path = os.path.join(EMB_DIR, f)
+            arr = np.fromfile(path, dtype=np.float32)
+            embeddings.append(arr)
+
+    if embeddings:
+        return np.concatenate(embeddings)
+
+    return np.array([], dtype=np.float32)
+
+
+def write_embedding_bins(all_embeddings, dim):
+
+    os.makedirs(EMB_DIR, exist_ok=True)
+
+    bin_size = int((MAX_BIN_MB * 1024 * 1024) / (4 * dim))
+
+    start = 0
+    i = 0
+
+    while start < len(all_embeddings):
+
+        chunk = all_embeddings[start:start + bin_size]
+
+        path = os.path.join(EMB_DIR, f"emb_{i:03d}.bin")
+
+        chunk.astype(np.float32).tofile(path)
+
+        start += bin_size
+        i += 1
 
 
 def main():
-    os.makedirs(IMAGES_DIR, exist_ok=True)
-    os.makedirs(INCOMING_DIR, exist_ok=True)
-    os.makedirs(THUMBS_DIR, exist_ok=True)
 
-    # load existing index
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    os.makedirs(THUMBS_DIR, exist_ok=True)
+    os.makedirs(EMB_DIR, exist_ok=True)
+
     items = safe_load_index()
 
-    # Build lookup by hash and by filename
-    seen_hashes = set()
-    seen_files = set()
-    for it in items:
-        if "hash" in it:
-            seen_hashes.add(it["hash"])
-        if "file" in it:
-            seen_files.add(it["file"])
+    seen_hashes = {it["hash"] for it in items}
 
-    # collect incoming files
-    incoming_files = [
-        f for f in os.listdir(INCOMING_DIR)
-        if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
-    ]
+    seen_files = {it["file"] for it in items}
 
-    if not incoming_files:
-        print("No new files found in incoming/. Nothing to do.")
+    image_files = sorted(
+        f for f in os.listdir(IMAGES_DIR)
+        if f.lower().endswith(IMAGE_EXT)
+    )
+
+    new_files = []
+
+    for f in image_files:
+        if f"images/{f}" not in seen_files:
+            new_files.append(f)
+
+    if not new_files:
+        print("No new images detected.")
         return
-
-    # choose device
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device}")
-    print("Loading CLIP model...")
-    model, preprocess, tokenizer = build_clip(device)
     
+    print(f"{len(new_files)} new images detected")
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    print("Using device:", device)
+
+    print("Loading CLIP model...")
+
+    model, preprocess = build_clip(device)
+
     print("Loading caption model...")
     config = Config(device=device)
     ci = Interrogator(config)
 
+    new_embeddings = []
+
     processed = 0
     skipped = 0
 
-    for filename in tqdm(incoming_files, desc="Indexing new memes"):
-        src_incoming = os.path.join(INCOMING_DIR, filename)
+    for filename in tqdm(new_files, desc="Indexing new memes"):
+
+        path = os.path.join(IMAGES_DIR, filename)
 
         try:
-            h = md5_file(src_incoming)
+
+            h = md5_file(path)
 
             if h in seen_hashes:
-                # duplicate content
+
+                print("Duplicate detected:", filename)
+
                 skipped += 1
-                # Move to images anyway? Safer to move into a duplicates folder; for now, just delete.
-                # If you prefer to keep it, comment out the delete.
-                os.remove(src_incoming)
                 continue
 
-            # Move into images/ (keep original filename)
-            dst_image = os.path.join(IMAGES_DIR, filename)
-            # If a file with same name exists, avoid overwrite by adding suffix
-            if os.path.exists(dst_image):
-                base, ext = os.path.splitext(filename)
-                i = 2
-                while True:
-                    candidate = f"{base} ({i}){ext}"
-                    candidate_path = os.path.join(IMAGES_DIR, candidate)
-                    if not os.path.exists(candidate_path):
-                        filename = candidate
-                        dst_image = candidate_path
-                        break
-                    i += 1
-
-            shutil.move(src_incoming, dst_image)
-
-            # Create thumb (always jpg for speed/consistency)
             thumb_name = os.path.splitext(filename)[0] + ".jpg"
-            dst_thumb = os.path.join(THUMBS_DIR, thumb_name)
-            make_square_thumb(dst_image, dst_thumb)
 
-            # OCR
-            txt = ocr_text(dst_image)
+            thumb_path = os.path.join(THUMBS_DIR, thumb_name)
 
-            # CLIP embedding
-            emb = image_embedding(model, preprocess, device, dst_image)
+            if not os.path.exists(thumb_path):
+                make_square_thumb(path, thumb_path)
 
-            # CLIP interrogator caption
-            img = Image.open(dst_image).convert("RGB")
+            txt = ocr_text(path)
+
+            # generate caption
+            with Image.open(path) as im:
+                img = im.convert("RGB")
             caption = ci.generate_caption(img).lower()
+
+            emb = image_embedding(model, preprocess, device, path)
+
+            new_embeddings.append(emb)
 
             item = {
                 "file": f"images/{filename}",
                 "thumb": f"thumbs/{thumb_name}",
                 "text": txt,
                 "caption": caption,
-                "hash": h,
-                "emb": emb.tolist(),
+                "hash": h
             }
+
             items.append(item)
+
             seen_hashes.add(h)
-            seen_files.add(item["file"])
+
             processed += 1
 
         except Exception as e:
-            print(f"\nError processing {filename}: {e}\n")
-            # If something went wrong after move, you may want to move it back to incoming or leave it in images.
-            continue
+            print("Error:", filename, e)
+
+    if new_embeddings:
+
+        dim = len(new_embeddings[0])
+
+        existing = load_existing_embeddings()
+
+        if existing.size:
+            existing = existing.reshape(-1, dim)
+            all_embeddings = np.vstack([existing, new_embeddings])
+        else:
+            all_embeddings = np.array(new_embeddings)
+
+        write_embedding_bins(all_embeddings, dim)
 
     save_index(items)
-    print(f"Done. Added: {processed}, skipped duplicates: {skipped}, total indexed: {len(items)}")
-    print("memes.json updated.")
+
+    print(
+        f"\nAdded: {processed}, duplicates skipped: {skipped}, total indexed: {len(items)}"
+    )
 
 
 if __name__ == "__main__":

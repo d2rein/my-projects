@@ -489,25 +489,73 @@ viewer.style.display="none";
 similarList=[];
 };
 
-/* load */
+/* load metadata + embeddings */
 
-fetch("memes.json")
-.then(r=>r.json())
-.then(data=>{
+async function loadData(){
 
-memes=data.map((m,i)=>{
+// load meme metadata
+const meta = await fetch("memes.json").then(r=>r.json());
 
-const out={...m,_index:i};
+memes = meta.map((m,i)=>({...m,_index:i}));
 
-if(m.emb) out.embVec=new Float32Array(m.emb);
+// load embedding bins
+let embeddings=[];
 
-return out;
+let binIndex=0;
 
-});
+while(true){
+
+try{
+
+const path=`embeddings/emb_${String(binIndex).padStart(3,"0")}.bin`;
+
+const res=await fetch(path);
+
+if(!res.ok) break;
+
+const buffer=await res.arrayBuffer();
+
+embeddings.push(new Float32Array(buffer));
+
+binIndex++;
+
+}catch(e){
+break;
+}
+
+}
+
+if(embeddings.length===0){
+console.warn("No embedding bins found.");
+applySearch();
+return;
+}
+
+// merge bins
+const totalLength=embeddings.reduce((a,b)=>a+b.length,0);
+const merged=new Float32Array(totalLength);
+
+let offset=0;
+
+for(const arr of embeddings){
+merged.set(arr,offset);
+offset+=arr.length;
+}
+
+// determine vector dimension
+const dim=merged.length/memes.length;
+
+// attach embeddings
+for(let i=0;i<memes.length;i++){
+memes[i].embVec=merged.subarray(i*dim,(i+1)*dim);
+}
 
 applySearch();
 
-});
+}
+document.getElementById("resultCount").textContent="Loading...";
+
+loadData();
 
 </script>
 
