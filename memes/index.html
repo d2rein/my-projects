@@ -168,6 +168,12 @@ button.toggle.active{ background:#3a5cff; }
 <div class="controls">
 <input id="search" placeholder="Search…">
 
+<select id="sortSelect">
+<option value="relevance">Relevance</option>
+<option value="date">Newest</option>
+<option value="name">Filename</option>
+</select>
+
 <select id="limitSelect">
 <option value="10">10</option>
 <option value="30">30</option>
@@ -191,11 +197,15 @@ button.toggle.active{ background:#3a5cff; }
 <button id="closeBtn">✕</button>
 </div>
 
+<button id="backBtn">Back</button>
+
 <div id="imageFrame">
 <button class="navArrow" id="prevBtn">‹</button>
 <img id="fullImage">
 <button class="navArrow" id="nextBtn">›</button>
 </div>
+
+<div id="fileName" style="margin-top:8px;font-size:14px;color:#aaa"></div>
 
 <div id="similarStrip">
 <div id="similarRow"></div>
@@ -210,6 +220,9 @@ let currentLimit=9999;
 let mode="hybrid";
 let currentOpenIndex=-1;
 let zoom=false;
+
+let currentResults=[];
+let sortMode="relevance";
 
 let similarList=[];
 let similarPointer=0;
@@ -264,8 +277,20 @@ const q=document.getElementById("search").value.toLowerCase().trim();
 const words=q ? q.split(/\s+/) : [];
 
 if(!q){
-render(memes);
+
+currentResults=[...memes];
+
+if(sortMode==="date"){
+currentResults.sort((a,b)=>new Date(b.created)-new Date(a.created));
+}
+
+if(sortMode==="name"){
+currentResults.sort((a,b)=>a.basename.localeCompare(b.basename));
+}
+
+render(currentResults);
 return;
+
 }
 
 const scored=memes
@@ -273,7 +298,17 @@ const scored=memes
 .filter(m=>m.score>0)
 .sort((a,b)=>b.score-a.score);
 
-render(scored);
+if(sortMode==="date"){
+scored.sort((a,b)=>new Date(b.created)-new Date(a.created));
+}
+
+if(sortMode==="name"){
+scored.sort((a,b)=>a.basename.localeCompare(b.basename));
+}
+
+currentResults=scored;
+
+render(currentResults);
 
 }
 
@@ -300,12 +335,10 @@ img.src=loader.src;
 zoom=false;
 document.getElementById("imageFrame").classList.remove("zoomed");
 
-if(similarList.length===0){
-  buildSimilar(index);
-}else{
-  renderSimilar();
-}
+document.getElementById("fileName").textContent =
+memes[index].basename + memes[index].ext;
 
+renderSimilar();
 centerThumbnail(index);
 
 }
@@ -363,7 +396,15 @@ similarList.push({idx:i,score:s});
 
 similarList.sort((a,b)=>b.score-a.score);
 
-renderSimilar();   // IMPORTANT
+currentResults = similarList
+.slice(0,SIMILAR_COUNT)
+.map(x=>memes[x.idx]);
+
+render(currentResults);
+
+renderSimilar();
+
+openViewer(currentResults[0]._index);
 
 }
 function renderSimilar(){
@@ -371,22 +412,18 @@ function renderSimilar(){
 const row=document.getElementById("similarRow");
 row.innerHTML="";
 
-similarList.slice(0,SIMILAR_COUNT).forEach((x,i)=>{
-
-const m=memes[x.idx];
+currentResults.slice(0,SIMILAR_COUNT).forEach((m,i)=>{
 
 const img=document.createElement("img");
 img.src=m.thumb;
 img.className="similarThumb";
 
-if(x.idx===currentOpenIndex){
+if(m._index===currentOpenIndex){
 img.classList.add("active");
-similarPointer=i;
 }
 
 img.onclick=()=>{
-similarPointer=i;
-openViewer(x.idx);
+openViewer(m._index);
 };
 
 row.appendChild(img);
@@ -397,24 +434,28 @@ row.appendChild(img);
 
 /* navigation */
 
-function nextSimilar(){
+function nextImage(){
 
-similarPointer=(similarPointer+1)%similarList.length;
+let idx=currentResults.findIndex(m=>m._index===currentOpenIndex);
 
-openViewer(similarList[similarPointer].idx);
+idx=(idx+1)%currentResults.length;
 
-}
-
-function prevSimilar(){
-
-similarPointer=(similarPointer-1+similarList.length)%similarList.length;
-
-openViewer(similarList[similarPointer].idx);
+openViewer(currentResults[idx]._index);
 
 }
 
-document.getElementById("nextBtn").onclick=nextSimilar;
-document.getElementById("prevBtn").onclick=prevSimilar;
+function prevImage(){
+
+let idx=currentResults.findIndex(m=>m._index===currentOpenIndex);
+
+idx=(idx-1+currentResults.length)%currentResults.length;
+
+openViewer(currentResults[idx]._index);
+
+}
+
+document.getElementById("nextBtn").onclick = nextImage;
+document.getElementById("prevBtn").onclick = prevImage;
 
 /* swipe */
 
@@ -430,8 +471,8 @@ const dx=e.changedTouches[0].clientX-touchStartX;
 
 if(Math.abs(dx)>50){
 
-if(dx<0) nextSimilar();
-else prevSimilar();
+if(dx<0) nextImage();
+else prevImage();
 
 }
 
@@ -470,6 +511,11 @@ document.getElementById("modeText").onclick=()=>setMode("text");
 document.getElementById("modeVisual").onclick=()=>setMode("visual");
 document.getElementById("modeHybrid").onclick=()=>setMode("hybrid");
 
+document.getElementById("sortSelect").addEventListener("change",()=>{
+sortMode=document.getElementById("sortSelect").value;
+applySearch();
+});
+
 function setMode(newMode){
 mode=newMode;
 
@@ -484,6 +530,11 @@ applySearch();
 
 document.getElementById("similarBtn").onclick=()=>{
 buildSimilar(currentOpenIndex);
+};
+
+document.getElementById("backBtn").onclick=()=>{
+similarList=[];
+applySearch();
 };
 
 /* close */
