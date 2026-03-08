@@ -170,7 +170,7 @@ button.toggle.active{ background:#3a5cff; }
 
 <select id="sortSelect">
 <option value="relevance">Relevance</option>
-<option value="date">Newest</option>
+<option value="date" selected>Newest</option>
 <option value="name">Filename</option>
 </select>
 
@@ -246,6 +246,22 @@ if(m.caption && m.caption.includes(w)) score++;
 return score;
 }
 
+function preloadNeighbors(index){
+
+let pos = currentResults.findIndex(m => m._index === index);
+
+for(let i=1;i<=2;i++){
+
+const prev = currentResults[(pos - i + currentResults.length) % currentResults.length];
+const next = currentResults[(pos + i) % currentResults.length];
+
+new Image().src = memes[prev._index].file;
+new Image().src = memes[next._index].file;
+
+}
+
+}
+
 /* render */
 
 function render(list){
@@ -281,7 +297,7 @@ if(!q){
 currentResults=[...memes];
 
 if(sortMode==="date"){
-currentResults.sort((a,b)=>new Date(b.created)-new Date(a.created));
+currentResults.sort((a,b)=>new Date(b.modified)-new Date(a.modified));
 }
 
 if(sortMode==="name"){
@@ -299,7 +315,7 @@ const scored=memes
 .sort((a,b)=>b.score-a.score);
 
 if(sortMode==="date"){
-scored.sort((a,b)=>new Date(b.created)-new Date(a.created));
+scored.sort((a,b)=>new Date(b.modified)-new Date(a.modified));
 }
 
 if(sortMode==="name"){
@@ -328,6 +344,9 @@ img.src="";
 const loader=new Image();
 loader.src=memes[index].file;
 
+loader.decoding="async";
+loader.loading="eager";
+
 loader.onload=()=>{
 img.src=loader.src;
 };
@@ -340,6 +359,8 @@ memes[index].basename + memes[index].ext;
 
 renderSimilar();
 centerThumbnail(index);
+
+preloadNeighbors(index);
 
 }
 
@@ -582,6 +603,7 @@ break;
 
 if(embeddings.length===0){
 console.warn("No embedding bins found.");
+sortMode = document.getElementById("sortSelect").value;
 applySearch();
 return;
 }
