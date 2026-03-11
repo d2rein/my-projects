@@ -139,7 +139,9 @@ async function handleUpdateTips(request, env) {
 
   const stmt = env.DB.prepare(`
     UPDATE matches
-    SET odds_tip = ?, user_tip = ?
+    SET
+      odds_tip = COALESCE(?, odds_tip),
+      user_tip = COALESCE(?, user_tip)
     WHERE id = ?
   `).bind(odds_tip ?? null, user_tip ?? null, id);
 
@@ -189,18 +191,31 @@ async function handleGetMatches(db, searchParams) {
 
   const { results } = await db.prepare(`
     SELECT
-      m.id,
       m.year,
       m.round,
       m.game_num,
+      m.id,
+
+      m.home_team_id,
+      m.away_team_id,
+
       m.home_score,
       m.away_score,
       m.completed,
       m.odds_tip,
       m.user_tip,
-      ht.id as home_team_id,
+
+      m.venue_name,
+      m.primary_home_venue,
+
+      m.home_odds,
+      m.away_odds,
+      m.home_odds_open,
+      m.away_odds_open,
+      m.home_odds_close,
+      m.away_odds_close,
+
       ht.name as home_team,
-      at.id as away_team_id,
       at.name as away_team
     FROM matches m
     JOIN teams ht ON m.home_team_id = ht.id
@@ -241,7 +256,15 @@ async function handleUpdateScores(db, request) {
 
   const stmt = db.prepare(`
     UPDATE matches
-    SET home_score = ?, away_score = ?, completed = 1
+    SET
+      home_score = ?,
+      away_score = ?,
+      completed =
+        CASE
+          WHEN ? IS NOT NULL AND ? IS NOT NULL
+          THEN 1
+          ELSE 0
+        END
     WHERE id = ?
   `);
 
@@ -250,6 +273,8 @@ async function handleUpdateScores(db, request) {
 
     await stmt
       .bind(
+        u.home_score !== "" ? Number(u.home_score) : null,
+        u.away_score !== "" ? Number(u.away_score) : null,
         u.home_score !== "" ? Number(u.home_score) : null,
         u.away_score !== "" ? Number(u.away_score) : null,
         Number(u.game_id)
@@ -280,7 +305,7 @@ async function handleGetPredictions(db) {
     FROM matches m
     JOIN teams ht ON m.home_team_id = ht.id
     JOIN teams at ON m.away_team_id = at.id
-    WHERE m.completed = 0
+    WHERE m.home_score IS NULL
     ORDER BY
       m.year ASC,
       CASE
@@ -505,8 +530,20 @@ async function handleDiagnostic(db) {
       m.round,
       m.game_num,
       m.id,
+
+      m.venue_name,
+      m.primary_home_venue,
+
+      m.home_odds,
+      m.away_odds,
+      m.home_odds_open,
+      m.away_odds_open,
+      m.home_odds_close,
+      m.away_odds_close,
+
       m.home_score,
       m.away_score,
+
       ht.name as home_team,
       at.name as away_team
     FROM matches m
@@ -539,6 +576,13 @@ async function handleDiagnostic(db) {
 
     "home_elo_before","away_elo_before",
 
+    "venue_name",
+    "primary_home_venue",
+
+    "home_odds","away_odds",
+    "home_odds_open","away_odds_open",
+    "home_odds_close","away_odds_close",
+    
     "round_no",
     "travel_km","travelAdj",
 
@@ -586,6 +630,15 @@ async function handleDiagnostic(db) {
       out.homeEloBefore,
       out.awayEloBefore,
 
+      m.venue_name ?? "",
+      m.primary_home_venue ?? "",
+
+      m.home_odds ?? "",
+      m.away_odds ?? "",
+      m.home_odds_open ?? "",
+      m.away_odds_open ?? "",
+      m.home_odds_close ?? "",
+      m.away_odds_close ?? "",
       out.roundNo,
       out.travel_km,
       out.travelAdj,
