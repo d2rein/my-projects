@@ -89,9 +89,7 @@ async function handleParity(db) {
       AND m.away_score IS NOT NULL
     ORDER BY
       m.year ASC,
-      m.round_seq ASC,
-      m.game_num ASC,
-      m.id ASC
+      m.match_index ASC
   `).all();
 
   for (const m of results || []) {
@@ -213,9 +211,7 @@ async function handleGetMatches(db, searchParams) {
     JOIN teams at ON m.away_team_id = at.id
     ORDER BY
       m.year ASC,
-      m.round_seq ASC,
-      m.game_num ASC,
-      m.id ASC
+      m.match_index ASC
     LIMIT ?
   `).bind(safeLimit).all();
 
@@ -290,9 +286,7 @@ async function handleGetPredictions(db) {
     WHERE m.home_score IS NULL
     ORDER BY
       m.year ASC,
-      m.round_seq ASC,
-      m.game_num ASC,
-      m.id ASC
+      m.match_index ASC
   `).all();
 
   const upcoming = results || [];
@@ -369,9 +363,7 @@ async function computeRatingsByTeamId(db, calculator) {
       AND m.away_score IS NOT NULL
     ORDER BY
       m.year ASC,
-      m.round_seq ASC,
-      m.game_num ASC,
-      m.id ASC
+      m.match_index ASC
   `).all();
 
   for (const m of results || []) {
@@ -433,9 +425,7 @@ async function handleExport(db) {
     FROM matches m
     ORDER BY
       m.year ASC,
-      m.round_seq ASC,
-      m.game_num ASC,
-      m.id ASC
+      m.match_index ASC
   `).all();
 
   if (!results || results.length === 0) {
@@ -509,9 +499,7 @@ async function handleDiagnostic(db) {
       AND m.away_score IS NOT NULL
     ORDER BY
       m.year ASC,
-      m.round_seq ASC,
-      m.game_num ASC,
-      m.id ASC
+      m.match_index ASC
   `).all();
 
   const replay = engine.replayMatches(results || [], { applyByes: true });
