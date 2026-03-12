@@ -168,7 +168,10 @@ async function loadRankings() {
     const selectedYear = document.getElementById("rankings-year")?.value;
     const selectedRound = document.getElementById("rankings-round")?.value;
 
-    matches.sort((a,b)=>a.match_index-b.match_index);
+    matches.sort((a,b)=>{
+      if (a.year !== b.year) return a.year - b.year;
+      return a.match_index - b.match_index;
+    });
 
     const engine = createReplayEngine(MODEL_PARAMS, teams);
 
@@ -294,7 +297,10 @@ async function loadRoundForEntry() {
     }
 
     // Replay ELO up to (but NOT including) this round so we get correct pre-game ELO
-    matches.sort((a,b)=>a.match_index-b.match_index);
+    matches.sort((a,b)=>{
+      if (a.year !== b.year) return a.year - b.year;
+      return a.match_index - b.match_index;
+    });
 
     const engine = createReplayEngine(MODEL_PARAMS, teams);
 
@@ -491,7 +497,10 @@ async function evaluateModel() {
     const matches = await res.json();
 
     // --- Sort chronologically ---
-    matches.sort((a,b)=>a.match_index-b.match_index);
+    matches.sort((a,b)=>{
+      if (a.year !== b.year) return a.year - b.year;
+      return a.match_index - b.match_index;
+    });
 
     // --- Replay setup ---
     const engine = createReplayEngine(MODEL_PARAMS, teams);
@@ -854,7 +863,10 @@ async function loadAllGames() {
         const matches = await res.json();
 
         // Sort matches chronologically before replaying ELO
-        matches.sort((a,b)=>a.match_index-b.match_index);
+        matches.sort((a,b)=>{
+          if (a.year !== b.year) return a.year - b.year;
+          return a.match_index - b.match_index;
+        });
 
         const engine = createReplayEngine(MODEL_PARAMS, teams);
         const replay = engine.replayMatches(matches, { applyByes: true });
@@ -1042,7 +1054,10 @@ async function loadSeasonMatrix() {
 
   const selectedYear = Number(document.getElementById("season-year").value);
 
-  matches.sort((a,b)=>a.match_index-b.match_index);
+  matches.sort((a,b)=>{
+    if (a.year !== b.year) return a.year - b.year;
+    return a.match_index - b.match_index;
+  });
 
   const engine = createReplayEngine(MODEL_PARAMS, teams);
   const replay = engine.replayMatches(matches, { applyByes: true });
@@ -1209,7 +1224,10 @@ async function loadEloHistory() {
   const res = await fetch(`${API_URL}/api/matches`);
   const matches = await res.json();
 
-  matches.sort((a,b)=>a.match_index-b.match_index);
+  matches.sort((a,b)=>{
+    if (a.year !== b.year) return a.year - b.year;
+    return a.match_index - b.match_index;
+  });
 
   const startYear = parseInt(document.getElementById("elo-start-year")?.value || 2009);
   const endYear = parseInt(document.getElementById("elo-end-year")?.value || 2026);
