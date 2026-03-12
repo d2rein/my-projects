@@ -1,0 +1,44 @@
+match_key,odds_tip,user_tip,home_odds,away_odds,home_odds_open,away_odds_open,home_odds_close,away_odds_close,year,round,home,away
+2019|Prelim|Manly Sea Eagles|Cronulla Sharks,Cronulla Sharks,Cronulla Sharks,2.64,1.53,2.05,1.78,2.75,1.48,2019,Prelim,Manly Sea Eagles,Cronulla Sharks
+2019|Prelim|Melbourne Storm|Canberra Raiders,Canberra Raiders,Melbourne Storm,1.38,3.26,1.42,2.9,1.33,3.5,2019,Prelim,Melbourne Storm,Canberra Raiders
+2019|Prelim|Parramatta Eels|Brisbane Broncos,Brisbane Broncos,Parramatta Eels,1.46,2.84,1.58,2.4,1.44,2.9,2019,Prelim,Parramatta Eels,Brisbane Broncos
+2019|Prelim|Sydney Roosters|South Sydney Rabbitohs,South Sydney Rabbitohs,0,1.27,3.99,1.48,2.65,1.25,4.15,2019,Prelim,Sydney Roosters,South Sydney Rabbitohs
+2019|Qual|Melbourne Storm|Parramatta Eels,Parramatta Eels,Melbourne Storm,1.35,3.36,1.35,3.25,1.35,3.35,2019,Qual,Melbourne Storm,Parramatta Eels
+2019|Qual|South Sydney Rabbitohs|Manly Sea Eagles,Manly Sea Eagles,South Sydney Rabbitohs,1.41,3.09,1.48,2.65,1.42,3.0,2019,Qual,South Sydney Rabbitohs,Manly Sea Eagles
+2019|Semi|Canberra Raiders|South Sydney Rabbitohs,South Sydney Rabbitohs,Canberra Raiders,1.39,3.21,1.44,2.8,1.4,3.1,2019,Semi,Canberra Raiders,South Sydney Rabbitohs
+2019|Semi|Sydney Roosters|Melbourne Storm,Melbourne Storm,Melbourne Storm,1.59,2.48,1.56,2.45,1.58,2.45,2019,Semi,Sydney Roosters,Melbourne Storm
+2020|Prelim|Canberra Raiders|Cronulla Sharks,Canberra Raiders,Canberra Raiders,1.18,4.99,1.22,4.35,1.18,5.2,2020,Prelim,Canberra Raiders,Cronulla Sharks
+2020|Prelim|Melbourne Storm|Parramatta Eels,Melbourne Storm,Melbourne Storm,1.19,4.81,1.23,4.2,1.2,4.8,2020,Prelim,Melbourne Storm,Parramatta Eels
+2020|Prelim|Penrith Panthers|Sydney Roosters,Penrith Panthers,Penrith Panthers,1.66,2.26,1.75,2.1,1.72,2.18,2020,Prelim,Penrith Panthers,Sydney Roosters
+2020|Prelim|South Sydney Rabbitohs|Newcastle Knights,South Sydney Rabbitohs,South Sydney Rabbitohs,1.31,3.54,1.36,3.2,1.3,3.7,2020,Prelim,South Sydney Rabbitohs,Newcastle Knights
+2020|Qual|Parramatta Eels|South Sydney Rabbitohs,0,0,3.57,1.3,2.5,1.54,3.5,1.33,2020,Qual,Parramatta Eels,South Sydney Rabbitohs
+2020|Qual|Sydney Roosters|Canberra Raiders,0,0,1.43,2.91,1.56,2.45,1.42,3.0,2020,Qual,Sydney Roosters,Canberra Raiders
+2020|Semi|Melbourne Storm|Canberra Raiders,0,0,1.45,2.86,1.5,2.6,1.45,2.85,2020,Semi,Melbourne Storm,Canberra Raiders
+2020|Semi|Penrith Panthers|South Sydney Rabbitohs,0,0,1.38,3.18,1.48,2.65,1.36,3.3,2020,Semi,Penrith Panthers,South Sydney Rabbitohs
+2023|GF|Penrith Panthers|Brisbane Broncos,Penrith Panthers,Penrith Panthers,1.62,2.4,1.65,2.25,1.6,2.4,2023,GF,Penrith Panthers,Brisbane Broncos
+2023|Prelim|Brisbane Broncos|Melbourne Storm,Brisbane Broncos,Brisbane Broncos,1.62,2.35,1.58,2.4,1.63,2.35,2023,Prelim,Brisbane Broncos,Melbourne Storm
+2023|Prelim|Cronulla Sharks|Sydney Roosters,Cronulla Sharks,Cronulla Sharks,2.01,1.85,1.78,2.05,2.02,1.83,2023,Prelim,Cronulla Sharks,Sydney Roosters
+2023|Prelim|Newcastle Knights|Canberra Raiders,Newcastle Knights,Newcastle Knights,1.15,5.51,1.25,4.0,1.17,5.4,2023,Prelim,Newcastle Knights,Canberra Raiders
+2023|Prelim|Penrith Panthers|New Zealand Warriors,Penrith Panthers,Penrith Panthers,1.11,6.83,1.21,4.5,1.12,6.75,2023,Prelim,Penrith Panthers,New Zealand Warriors
+2023|Qual|Melbourne Storm|Sydney Roosters,Melbourne Storm,Melbourne Storm,1.38,3.16,1.4,3.0,1.38,3.2,2023,Qual,Melbourne Storm,Sydney Roosters
+2023|Qual|New Zealand Warriors|Newcastle Knights,New Zealand Warriors,New Zealand Warriors,1.53,2.58,1.52,2.55,1.52,2.62,2023,Qual,New Zealand Warriors,Newcastle Knights
+2023|Semi|Brisbane Broncos|New Zealand Warriors,Brisbane Broncos,Brisbane Broncos,1.25,4.05,1.27,3.85,1.25,4.0,2023,Semi,Brisbane Broncos,New Zealand Warriors
+2023|Semi|Penrith Panthers|Melbourne Storm,Penrith Panthers,Penrith Panthers,1.18,5.09,1.25,4.0,1.19,5.0,2023,Semi,Penrith Panthers,Melbourne Storm
+2024|GF|Melbourne Storm|Penrith Panthers,Melbourne Storm,Melbourne Storm,1.83,2.11,2.0,1.8,1.83,2.11,2024,GF,Melbourne Storm,Penrith Panthers
+2024|Prelim|Canterbury Bulldogs|Manly Sea Eagles,Manly Sea Eagles,Manly Sea Eagles,2.09,1.84,1.8,2.0,2.09,1.84,2024,Prelim,Canterbury Bulldogs,Manly Sea Eagles
+2024|Prelim|Melbourne Storm|Cronulla Sharks,Melbourne Storm,Melbourne Storm,1.29,3.94,1.3,3.5,1.29,3.94,2024,Prelim,Melbourne Storm,Cronulla Sharks
+2024|Prelim|NQ Cowboys|Newcastle Knights,NQ Cowboys,NQ Cowboys,1.36,3.47,1.45,2.75,1.36,3.47,2024,Prelim,NQ Cowboys,Newcastle Knights
+2024|Prelim|Penrith Panthers|Sydney Roosters,Penrith Panthers,Penrith Panthers,1.37,3.32,1.45,2.75,1.37,3.32,2024,Prelim,Penrith Panthers,Sydney Roosters
+2024|Qual|Cronulla Sharks|NQ Cowboys,Cronulla Sharks,Cronulla Sharks,1.61,2.48,1.65,2.25,1.61,2.48,2024,Qual,Cronulla Sharks,NQ Cowboys
+2024|Qual|Sydney Roosters|Manly Sea Eagles,Sydney Roosters,Sydney Roosters,,,,,,,2024,Qual,Sydney Roosters,Manly Sea Eagles
+2024|Semi|Melbourne Storm|Sydney Roosters,Melbourne Storm,Melbourne Storm,1.3,3.89,1.3,3.5,1.3,3.89,2024,Semi,Melbourne Storm,Sydney Roosters
+2024|Semi|Penrith Panthers|Cronulla Sharks,Penrith Panthers,Penrith Panthers,1.2,5.15,1.25,4.0,1.2,5.15,2024,Semi,Penrith Panthers,Cronulla Sharks
+2025|GF|Melbourne Storm|Brisbane Broncos,Melbourne Storm,Brisbane Broncos,1.7,2.24,1.7,2.15,1.72,2.15,2025,GF,Melbourne Storm,Brisbane Broncos
+2025|Prelim|Canberra Raiders|Brisbane Broncos,Canberra Raiders,Canberra Raiders,1.68,2.28,1.65,2.25,1.68,2.28,2025,Prelim,Canberra Raiders,Brisbane Broncos
+2025|Prelim|Cronulla Sharks|Sydney Roosters,Cronulla Sharks,Cronulla Sharks,2.26,1.69,2.2,1.67,2.26,1.69,2025,Prelim,Cronulla Sharks,Sydney Roosters
+2025|Prelim|Melbourne Storm|Canterbury Bulldogs,Melbourne Storm,Melbourne Storm,1.46,2.85,1.5,2.6,1.46,2.85,2025,Prelim,Melbourne Storm,Canterbury Bulldogs
+2025|Prelim|New Zealand Warriors|Penrith Panthers,Penrith Panthers,Penrith Panthers,3.65,1.3,3.15,1.35,3.65,1.3,2025,Prelim,New Zealand Warriors,Penrith Panthers
+2025|Qual|Canberra Raiders|Cronulla Sharks,Canberra Raiders,Canberra Raiders,1.78,2.12,1.53,2.5,1.78,2.12,2025,Qual,Canberra Raiders,Cronulla Sharks
+2025|Qual|Canterbury Bulldogs|Penrith Panthers,Penrith Panthers,Penrith Panthers,3.17,1.38,2.8,1.43,3.17,1.38,2025,Qual,Canterbury Bulldogs,Penrith Panthers
+2025|Semi|Brisbane Broncos|Penrith Panthers,Penrith Panthers,Penrith Panthers,2.2,1.72,2.1,1.72,2.2,1.72,2025,Semi,Brisbane Broncos,Penrith Panthers
+2025|Semi|Melbourne Storm|Cronulla Sharks,Melbourne Storm,Melbourne Storm,1.35,3.39,1.46,2.7,1.35,3.39,2025,Semi,Melbourne Storm,Cronulla Sharks

@@ -89,16 +89,7 @@ async function handleParity(db) {
       AND m.away_score IS NOT NULL
     ORDER BY
       m.year ASC,
-      CASE
-        WHEN m.round LIKE 'Rd %'
-          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
-        WHEN m.round LIKE 'Prelim%' THEN 28
-        WHEN m.round LIKE 'Qual%' THEN 29
-        WHEN m.round LIKE 'Semi%' THEN 30
-        WHEN m.round LIKE 'GF%' THEN 31
-        WHEN m.round LIKE 'Grand Final%' THEN 31
-        ELSE 99
-      END ASC,
+      m.round_seq ASC,
       m.game_num ASC,
       m.id ASC
   `).all();
@@ -222,16 +213,7 @@ async function handleGetMatches(db, searchParams) {
     JOIN teams at ON m.away_team_id = at.id
     ORDER BY
       m.year ASC,
-      CASE
-        WHEN m.round LIKE 'Rd %'
-          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
-        WHEN m.round LIKE 'Prelim%' THEN 28
-        WHEN m.round LIKE 'Qual%' THEN 29
-        WHEN m.round LIKE 'Semi%' THEN 30
-        WHEN m.round LIKE 'GF%' THEN 31
-        WHEN m.round LIKE 'Grand Final%' THEN 31
-        ELSE 99
-      END ASC,
+      m.round_seq ASC,
       m.game_num ASC,
       m.id ASC
     LIMIT ?
@@ -308,16 +290,7 @@ async function handleGetPredictions(db) {
     WHERE m.home_score IS NULL
     ORDER BY
       m.year ASC,
-      CASE
-        WHEN m.round LIKE 'Rd %'
-          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
-        WHEN m.round LIKE 'Prelim%' THEN 28
-        WHEN m.round LIKE 'Qual%' THEN 29
-        WHEN m.round LIKE 'Semi%' THEN 30
-        WHEN m.round LIKE 'GF%' THEN 31
-        WHEN m.round LIKE 'Grand Final%' THEN 31
-        ELSE 99
-      END ASC,
+      m.round_seq ASC,
       m.game_num ASC,
       m.id ASC
   `).all();
@@ -396,16 +369,7 @@ async function computeRatingsByTeamId(db, calculator) {
       AND m.away_score IS NOT NULL
     ORDER BY
       m.year ASC,
-      CASE
-        WHEN m.round LIKE 'Rd %'
-          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
-        WHEN m.round LIKE 'Prelim%' THEN 28
-        WHEN m.round LIKE 'Qual%' THEN 29
-        WHEN m.round LIKE 'Semi%' THEN 30
-        WHEN m.round LIKE 'GF%' THEN 31
-        WHEN m.round LIKE 'Grand Final%' THEN 31
-        ELSE 99
-      END ASC,
+      m.round_seq ASC,
       m.game_num ASC,
       m.id ASC
   `).all();
@@ -469,16 +433,7 @@ async function handleExport(db) {
     FROM matches m
     ORDER BY
       m.year ASC,
-      CASE
-        WHEN m.round LIKE 'Rd %'
-          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
-        WHEN m.round LIKE 'Prelim%' THEN 28
-        WHEN m.round LIKE 'Qual%' THEN 29
-        WHEN m.round LIKE 'Semi%' THEN 30
-        WHEN m.round LIKE 'GF%' THEN 31
-        WHEN m.round LIKE 'Grand Final%' THEN 31
-        ELSE 99
-      END ASC,
+      m.round_seq ASC,
       m.game_num ASC,
       m.id ASC
   `).all();
@@ -554,16 +509,7 @@ async function handleDiagnostic(db) {
       AND m.away_score IS NOT NULL
     ORDER BY
       m.year ASC,
-      CASE
-        WHEN m.round LIKE 'Rd %'
-          THEN CAST(TRIM(REPLACE(m.round, 'Rd', '')) AS INTEGER)
-        WHEN m.round LIKE 'Prelim%' THEN 28
-        WHEN m.round LIKE 'Qual%' THEN 29
-        WHEN m.round LIKE 'Semi%' THEN 30
-        WHEN m.round LIKE 'GF%' THEN 31
-        WHEN m.round LIKE 'Grand Final%' THEN 31
-        ELSE 99
-      END ASC,
+      m.round_seq ASC,
       m.game_num ASC,
       m.id ASC
   `).all();
@@ -639,7 +585,7 @@ async function handleDiagnostic(db) {
       m.away_odds_open ?? "",
       m.home_odds_close ?? "",
       m.away_odds_close ?? "",
-      out.roundNo,
+      out.effectiveRound,
       out.travel_km,
       out.travelAdj,
 
@@ -682,10 +628,10 @@ async function handleDiagnostic(db) {
       r.events.seasonReset,
       r.events.byeApplied,
 
-      r.homeLadderAfter?.compPoints ?? "",
-      r.awayLadderAfter?.compPoints ?? "",
-      r.homeLadderAfter?.margin ?? "",
-      r.awayLadderAfter?.margin ?? "",
+      r.ladderAfter?.[m.home_team]?.compPoints ?? "",
+      r.ladderAfter?.[m.away_team]?.compPoints ?? "",
+      r.ladderAfter?.[m.home_team]?.margin ?? "",
+      r.ladderAfter?.[m.away_team]?.margin ?? "",
       r.homeRankBeforeRound ?? "",
       r.awayRankBeforeRound ?? "",
       r.homeRankingScore_before_round ?? "",

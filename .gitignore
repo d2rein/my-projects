@@ -15,3 +15,18 @@ __pycache__/
 
 # EXCEPTION: allow meme embedding bins for website
 !memes/embeddings/*.bin
+
+# node dependencies
+node_modules/
+
+# environment variables
+.env
+.env.*
+
+# wrangler local state
+.wrangler/
+
+# local sqlite databases
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

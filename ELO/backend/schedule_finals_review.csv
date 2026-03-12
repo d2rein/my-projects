@@ -1,0 +1,257 @@
+match_key,year,round,round_seq,game_num,match_index,date,home_team,away_team,home_score,away_score,venue_name,match_url
+1998|Elim Prelim Final|Brisbane Broncos|Melbourne Storm,1998,Elim Prelim Final,31,2,250,1998-09-13,Brisbane Broncos,Melbourne Storm,30,6,SFS,https://www.rugbyleagueproject.org/matches/1220
+1998|Elim Prelim Final|Canterbury Bulldogs|Newcastle Knights,1998,Elim Prelim Final,31,1,249,1998-09-12,Canterbury Bulldogs,Newcastle Knights,28,16,SFS,https://www.rugbyleagueproject.org/matches/1219
+1998|Grand Final|Brisbane Broncos|Canterbury Bulldogs,1998,Grand Final,33,1,253,1998-09-27,Brisbane Broncos,Canterbury Bulldogs,38,12,SFS,https://www.rugbyleagueproject.org/matches/1223
+1998|Major Prelim Semi|Melbourne Storm|Sydney Roosters,1998,Major Prelim Semi,28,1,244,1998-08-30,Melbourne Storm,Sydney Roosters,12,26,Olympic Park,https://www.rugbyleagueproject.org/matches/1214
+1998|Major Prelim Semi|Parramatta Eels|North Sydney Bears,1998,Major Prelim Semi,26,1,242,1998-08-29,Parramatta Eels,North Sydney Bears,25,12,Parramatta,https://www.rugbyleagueproject.org/matches/1213
+1998|Major Semi|Brisbane Broncos|Parramatta Eels,1998,Major Semi,30,2,248,1998-09-06,Brisbane Broncos,Parramatta Eels,10,15,ANZ,https://www.rugbyleagueproject.org/matches/1218
+1998|Major Semi|Newcastle Knights|Sydney Roosters,1998,Major Semi,30,1,247,1998-09-05,Newcastle Knights,Sydney Roosters,15,26,Marathon,https://www.rugbyleagueproject.org/matches/1217
+1998|Minor Prelim Semi|Canberra Raiders|Manly Sea Eagles,1998,Minor Prelim Semi,25,1,241,1998-08-28,Canberra Raiders,Manly Sea Eagles,17,4,Bruce,https://www.rugbyleagueproject.org/matches/1211
+1998|Minor Prelim Semi|St. George Dragons|Canterbury Bulldogs,1998,Minor Prelim Semi,27,1,243,1998-08-29,St. George Dragons,Canterbury Bulldogs,12,20,Kogarah,https://www.rugbyleagueproject.org/matches/1212
+1998|Minor Semi|Melbourne Storm|Canberra Raiders,1998,Minor Semi,29,2,246,1998-09-05,Melbourne Storm,Canberra Raiders,24,10,Olympic Park,https://www.rugbyleagueproject.org/matches/1216
+1998|Minor Semi|North Sydney Bears|Canterbury Bulldogs,1998,Minor Semi,29,1,245,1998-09-04,North Sydney Bears,Canterbury Bulldogs,2,23,North Sydney,https://www.rugbyleagueproject.org/matches/1215
+1998|Prelim Final|Brisbane Broncos|Sydney Roosters,1998,Prelim Final,32,1,251,1998-09-19,Brisbane Broncos,Sydney Roosters,46,18,ANZ,https://www.rugbyleagueproject.org/matches/1221
+1998|Prelim Final|Canterbury Bulldogs|Parramatta Eels,1998,Prelim Final,32,2,252,1998-09-20,Canterbury Bulldogs,Parramatta Eels,32,20,SFS,https://www.rugbyleagueproject.org/matches/1222
+1999|Grand Final|Melbourne Storm|St. George Illawarra Dragons,1999,Grand Final,30,1,213,1999-09-26,Melbourne Storm,St. George Illawarra Dragons,20,18,Stdm Australia,https://www.rugbyleagueproject.org/matches/1412
+1999|Prelim Final|Melbourne Storm|Parramatta Eels,1999,Prelim Final,29,1,211,1999-09-18,Melbourne Storm,Parramatta Eels,18,16,SFS,https://www.rugbyleagueproject.org/matches/1410
+1999|Prelim Final|St. George Illawarra Dragons|Cronulla Sharks,1999,Prelim Final,29,2,212,1999-09-19,St. George Illawarra Dragons,Cronulla Sharks,24,8,Stdm Australia,https://www.rugbyleagueproject.org/matches/1411
+1999|Qualif Final|Cronulla Sharks|Brisbane Broncos,1999,Qualif Final,27,4,208,1999-09-05,Cronulla Sharks,Brisbane Broncos,42,20,Shark Park,https://www.rugbyleagueproject.org/matches/1407
+1999|Qualif Final|Melbourne Storm|St. George Illawarra Dragons,1999,Qualif Final,27,2,206,1999-09-04,Melbourne Storm,St. George Illawarra Dragons,10,34,Olympic Park,https://www.rugbyleagueproject.org/matches/1406
+1999|Qualif Final|Parramatta Eels|Newcastle Knights,1999,Qualif Final,27,3,207,1999-09-04,Parramatta Eels,Newcastle Knights,30,16,Parramatta,https://www.rugbyleagueproject.org/matches/1405
+1999|Qualif Final|Sydney Roosters|Canterbury Bulldogs,1999,Qualif Final,27,1,205,1999-09-03,Sydney Roosters,Canterbury Bulldogs,8,12,SFS,https://www.rugbyleagueproject.org/matches/1404
+1999|Semi Final|Melbourne Storm|Canterbury Bulldogs,1999,Semi Final,28,2,210,1999-09-12,Melbourne Storm,Canterbury Bulldogs,24,22,SFS,https://www.rugbyleagueproject.org/matches/1409
+1999|Semi Final|St. George Illawarra Dragons|Sydney Roosters,1999,Semi Final,28,1,209,1999-09-11,St. George Illawarra Dragons,Sydney Roosters,28,18,SFS,https://www.rugbyleagueproject.org/matches/1408
+2000|Grand Final|Brisbane Broncos|Sydney Roosters,2000,Grand Final,30,1,191,2000-08-27,Brisbane Broncos,Sydney Roosters,14,6,Stdm Australia,https://www.rugbyleagueproject.org/matches/1577
+2000|Prelim Final|Brisbane Broncos|Parramatta Eels,2000,Prelim Final,29,2,190,2000-08-20,Brisbane Broncos,Parramatta Eels,16,10,Stdm Australia,https://www.rugbyleagueproject.org/matches/1576
+2000|Prelim Final|Sydney Roosters|Newcastle Knights,2000,Prelim Final,29,1,189,2000-08-19,Sydney Roosters,Newcastle Knights,26,20,SFS,https://www.rugbyleagueproject.org/matches/1575
+2000|Qualif Final|Brisbane Broncos|Cronulla Sharks,2000,Qualif Final,27,4,186,2000-08-06,Brisbane Broncos,Cronulla Sharks,34,20,ANZ,https://www.rugbyleagueproject.org/matches/1572
+2000|Qualif Final|Canberra Raiders|Penrith Panthers,2000,Qualif Final,27,1,183,2000-08-04,Canberra Raiders,Penrith Panthers,34,16,Bruce,https://www.rugbyleagueproject.org/matches/1569
+2000|Qualif Final|Newcastle Knights|Melbourne Storm,2000,Qualif Final,27,2,184,2000-08-05,Newcastle Knights,Melbourne Storm,30,16,Marathon,https://www.rugbyleagueproject.org/matches/1571
+2000|Qualif Final|Sydney Roosters|Parramatta Eels,2000,Qualif Final,27,3,185,2000-08-05,Sydney Roosters,Parramatta Eels,8,32,SFS,https://www.rugbyleagueproject.org/matches/1570
+2000|Semi Final|Parramatta Eels|Penrith Panthers,2000,Semi Final,28,1,187,2000-08-12,Parramatta Eels,Penrith Panthers,28,10,SFS,https://www.rugbyleagueproject.org/matches/1573
+2000|Semi Final|Sydney Roosters|Canberra Raiders,2000,Semi Final,28,2,188,2000-08-13,Sydney Roosters,Canberra Raiders,38,10,SFS,https://www.rugbyleagueproject.org/matches/1574
+2001|Grand Final|Newcastle Knights|Parramatta Eels,2001,Grand Final,30,1,191,2001-09-30,Newcastle Knights,Parramatta Eels,30,24,Stdm Australia,https://www.rugbyleagueproject.org/matches/1742
+2001|Prelim Final|Newcastle Knights|Cronulla Sharks,2001,Prelim Final,29,1,189,2001-09-22,Newcastle Knights,Cronulla Sharks,18,10,SFS,https://www.rugbyleagueproject.org/matches/1740
+2001|Prelim Final|Parramatta Eels|Brisbane Broncos,2001,Prelim Final,29,2,190,2001-09-23,Parramatta Eels,Brisbane Broncos,24,16,Stdm Australia,https://www.rugbyleagueproject.org/matches/1741
+2001|Qualif Final|Canterbury Bulldogs|St. George Illawarra Dragons,2001,Qualif Final,27,2,184,2001-09-08,Canterbury Bulldogs,St. George Illawarra Dragons,22,23,Showground,https://www.rugbyleagueproject.org/matches/1735
+2001|Qualif Final|Cronulla Sharks|Brisbane Broncos,2001,Qualif Final,27,1,183,2001-09-07,Cronulla Sharks,Brisbane Broncos,22,6,Toyota,https://www.rugbyleagueproject.org/matches/1734
+2001|Qualif Final|Newcastle Knights|Sydney Roosters,2001,Qualif Final,27,3,185,2001-09-08,Newcastle Knights,Sydney Roosters,40,6,Marathon,https://www.rugbyleagueproject.org/matches/1736
+2001|Qualif Final|Parramatta Eels|New Zealand Warriors,2001,Qualif Final,27,4,186,2001-09-09,Parramatta Eels,New Zealand Warriors,56,12,Parramatta,https://www.rugbyleagueproject.org/matches/1737
+2001|Semi Final|Brisbane Broncos|St. George Illawarra Dragons,2001,Semi Final,28,1,187,2001-09-15,Brisbane Broncos,St. George Illawarra Dragons,44,28,SFS,https://www.rugbyleagueproject.org/matches/1738
+2001|Semi Final|Cronulla Sharks|Canterbury Bulldogs,2001,Semi Final,28,2,188,2001-09-16,Cronulla Sharks,Canterbury Bulldogs,52,10,SFS,https://www.rugbyleagueproject.org/matches/1739
+2002|Grand Final|Sydney Roosters|New Zealand Warriors,2002,Grand Final,30,1,189,2002-10-06,Sydney Roosters,New Zealand Warriors,30,8,Telstra,https://www.rugbyleagueproject.org/matches/1907
+2002|Prelim Final|New Zealand Warriors|Cronulla Sharks,2002,Prelim Final,29,2,188,2002-09-29,New Zealand Warriors,Cronulla Sharks,16,10,Stdm Australia,https://www.rugbyleagueproject.org/matches/1906
+2002|Prelim Final|Sydney Roosters|Brisbane Broncos,2002,Prelim Final,29,1,187,2002-09-28,Sydney Roosters,Brisbane Broncos,16,12,Aussie,https://www.rugbyleagueproject.org/matches/1905
+2002|Qualif Final|Brisbane Broncos|Parramatta Eels,2002,Qualif Final,27,2,182,2002-09-14,Brisbane Broncos,Parramatta Eels,24,14,ANZ,https://www.rugbyleagueproject.org/matches/1901
+2002|Qualif Final|New Zealand Warriors|Canberra Raiders,2002,Qualif Final,27,4,184,2002-09-15,New Zealand Warriors,Canberra Raiders,36,20,Ericsson,https://www.rugbyleagueproject.org/matches/1902
+2002|Qualif Final|Newcastle Knights|St. George Illawarra Dragons,2002,Qualif Final,27,3,183,2002-09-14,Newcastle Knights,St. George Illawarra Dragons,22,26,EnergyAustralia,https://www.rugbyleagueproject.org/matches/1900
+2002|Qualif Final|Sydney Roosters|Cronulla Sharks,2002,Qualif Final,27,1,181,2002-09-13,Sydney Roosters,Cronulla Sharks,32,20,Aussie,https://www.rugbyleagueproject.org/matches/1899
+2002|Semi Final|Cronulla Sharks|St. George Illawarra Dragons,2002,Semi Final,28,1,185,2002-09-21,Cronulla Sharks,St. George Illawarra Dragons,40,24,Aussie,https://www.rugbyleagueproject.org/matches/1903
+2002|Semi Final|Sydney Roosters|Newcastle Knights,2002,Semi Final,28,2,186,2002-09-22,Sydney Roosters,Newcastle Knights,38,12,Aussie,https://www.rugbyleagueproject.org/matches/1904
+2003|Grand Final|Penrith Panthers|Sydney Roosters,2003,Grand Final,30,1,189,2003-10-05,Penrith Panthers,Sydney Roosters,18,6,Telstra,https://www.rugbyleagueproject.org/matches/2242
+2003|Prelim Final|Penrith Panthers|New Zealand Warriors,2003,Prelim Final,29,2,188,2003-09-28,Penrith Panthers,New Zealand Warriors,28,20,Telstra,https://www.rugbyleagueproject.org/matches/2241
+2003|Prelim Final|Sydney Roosters|Canterbury Bulldogs,2003,Prelim Final,29,1,187,2003-09-27,Sydney Roosters,Canterbury Bulldogs,28,18,Aussie,https://www.rugbyleagueproject.org/matches/2240
+2003|Qualif Final|Canberra Raiders|Melbourne Storm,2003,Qualif Final,27,1,181,2003-09-12,Canberra Raiders,Melbourne Storm,18,30,Canberra Stadium,https://www.rugbyleagueproject.org/matches/2234
+2003|Qualif Final|Canterbury Bulldogs|New Zealand Warriors,2003,Qualif Final,27,2,182,2003-09-13,Canterbury Bulldogs,New Zealand Warriors,22,48,Showground,https://www.rugbyleagueproject.org/matches/2236
+2003|Qualif Final|Penrith Panthers|Brisbane Broncos,2003,Qualif Final,27,4,184,2003-09-14,Penrith Panthers,Brisbane Broncos,28,18,Penrith,https://www.rugbyleagueproject.org/matches/2237
+2003|Qualif Final|Sydney Roosters|Newcastle Knights,2003,Qualif Final,27,3,183,2003-09-13,Sydney Roosters,Newcastle Knights,36,8,Aussie,https://www.rugbyleagueproject.org/matches/2235
+2003|Semi Final|Canterbury Bulldogs|Melbourne Storm,2003,Semi Final,28,2,186,2003-09-21,Canterbury Bulldogs,Melbourne Storm,30,0,Aussie,https://www.rugbyleagueproject.org/matches/2239
+2003|Semi Final|New Zealand Warriors|Canberra Raiders,2003,Semi Final,28,1,185,2003-09-20,New Zealand Warriors,Canberra Raiders,17,16,Aussie,https://www.rugbyleagueproject.org/matches/2238
+2004|Grand Final|Canterbury Bulldogs|Sydney Roosters,2004,Grand Final,30,1,189,2004-10-03,Canterbury Bulldogs,Sydney Roosters,16,13,Telstra,https://www.rugbyleagueproject.org/matches/2248
+2004|Prelim Final|Canterbury Bulldogs|Penrith Panthers,2004,Prelim Final,29,1,187,2004-09-25,Canterbury Bulldogs,Penrith Panthers,30,14,Aussie,https://www.rugbyleagueproject.org/matches/2247
+2004|Prelim Final|Sydney Roosters|NQ Cowboys,2004,Prelim Final,29,2,188,2004-09-26,Sydney Roosters,NQ Cowboys,19,16,Telstra,https://www.rugbyleagueproject.org/matches/236
+2004|Qualif Final|Brisbane Broncos|Melbourne Storm,2004,Qualif Final,27,2,182,2004-09-11,Brisbane Broncos,Melbourne Storm,14,31,Suncorp,https://www.rugbyleagueproject.org/matches/2244
+2004|Qualif Final|Canterbury Bulldogs|NQ Cowboys,2004,Qualif Final,27,3,183,2004-09-11,Canterbury Bulldogs,NQ Cowboys,22,30,Telstra,https://www.rugbyleagueproject.org/matches/234
+2004|Qualif Final|Penrith Panthers|St. George Illawarra Dragons,2004,Qualif Final,27,1,181,2004-09-10,Penrith Panthers,St. George Illawarra Dragons,31,30,Penrith,https://www.rugbyleagueproject.org/matches/2243
+2004|Qualif Final|Sydney Roosters|Canberra Raiders,2004,Qualif Final,27,4,184,2004-09-12,Sydney Roosters,Canberra Raiders,38,12,Aussie,https://www.rugbyleagueproject.org/matches/2245
+2004|Semi Final|Canterbury Bulldogs|Melbourne Storm,2004,Semi Final,28,2,186,2004-09-19,Canterbury Bulldogs,Melbourne Storm,43,18,Aussie,https://www.rugbyleagueproject.org/matches/2246
+2004|Semi Final|NQ Cowboys|Brisbane Broncos,2004,Semi Final,28,1,185,2004-09-18,NQ Cowboys,Brisbane Broncos,10,0,Dairy Farmers,https://www.rugbyleagueproject.org/matches/350
+2005|Grand Final|Wests Tigers|NQ Cowboys,2005,Grand Final,30,1,189,2005-10-02,Wests Tigers,NQ Cowboys,30,16,Telstra,https://www.rugbyleagueproject.org/matches/3319
+2005|Prelim Final|Parramatta Eels|NQ Cowboys,2005,Prelim Final,29,2,188,2005-09-25,Parramatta Eels,NQ Cowboys,0,29,Telstra,https://www.rugbyleagueproject.org/matches/3318
+2005|Prelim Final|St. George Illawarra Dragons|Wests Tigers,2005,Prelim Final,29,1,187,2005-09-24,St. George Illawarra Dragons,Wests Tigers,12,20,Aussie,https://www.rugbyleagueproject.org/matches/3317
+2005|Qualif Final|Brisbane Broncos|Melbourne Storm,2005,Qualif Final,27,2,182,2005-09-10,Brisbane Broncos,Melbourne Storm,18,24,Suncorp,https://www.rugbyleagueproject.org/matches/3312
+2005|Qualif Final|Parramatta Eels|Manly Sea Eagles,2005,Qualif Final,27,4,184,2005-09-11,Parramatta Eels,Manly Sea Eagles,46,22,Parramatta,https://www.rugbyleagueproject.org/matches/3314
+2005|Qualif Final|St. George Illawarra Dragons|Cronulla Sharks,2005,Qualif Final,27,3,183,2005-09-10,St. George Illawarra Dragons,Cronulla Sharks,28,22,WIN,https://www.rugbyleagueproject.org/matches/3313
+2005|Qualif Final|Wests Tigers|NQ Cowboys,2005,Qualif Final,27,1,181,2005-09-09,Wests Tigers,NQ Cowboys,50,6,Telstra,https://www.rugbyleagueproject.org/matches/3311
+2005|Semi Final|Melbourne Storm|NQ Cowboys,2005,Semi Final,28,1,185,2005-09-17,Melbourne Storm,NQ Cowboys,16,24,Aussie,https://www.rugbyleagueproject.org/matches/3315
+2005|Semi Final|Wests Tigers|Brisbane Broncos,2005,Semi Final,28,2,186,2005-09-18,Wests Tigers,Brisbane Broncos,34,6,Aussie,https://www.rugbyleagueproject.org/matches/3316
+2006|Grand Final|Melbourne Storm|Brisbane Broncos,2006,Grand Final,30,1,189,2006-10-01,Melbourne Storm,Brisbane Broncos,8,15,Telstra,https://www.rugbyleagueproject.org/matches/6921
+2006|Prelim Final|Canterbury Bulldogs|Brisbane Broncos,2006,Prelim Final,29,1,187,2006-09-22,Canterbury Bulldogs,Brisbane Broncos,20,37,Aussie,https://www.rugbyleagueproject.org/matches/6919
+2006|Prelim Final|Melbourne Storm|St. George Illawarra Dragons,2006,Prelim Final,29,2,188,2006-09-23,Melbourne Storm,St. George Illawarra Dragons,24,10,Telstra,https://www.rugbyleagueproject.org/matches/6920
+2006|Qualif Final|Brisbane Broncos|St. George Illawarra Dragons,2006,Qualif Final,27,2,182,2006-09-09,Brisbane Broncos,St. George Illawarra Dragons,4,20,Suncorp,https://www.rugbyleagueproject.org/matches/6914
+2006|Qualif Final|Canterbury Bulldogs|Canberra Raiders,2006,Qualif Final,27,3,183,2006-09-09,Canterbury Bulldogs,Canberra Raiders,30,12,Telstra,https://www.rugbyleagueproject.org/matches/6915
+2006|Qualif Final|Melbourne Storm|Parramatta Eels,2006,Qualif Final,27,4,184,2006-09-10,Melbourne Storm,Parramatta Eels,12,6,Olympic Park,https://www.rugbyleagueproject.org/matches/6916
+2006|Qualif Final|Newcastle Knights|Manly Sea Eagles,2006,Qualif Final,27,1,181,2006-09-08,Newcastle Knights,Manly Sea Eagles,25,18,EnergyAustralia,https://www.rugbyleagueproject.org/matches/6913
+2006|Semi Final|Brisbane Broncos|Newcastle Knights,2006,Semi Final,28,2,186,2006-09-16,Brisbane Broncos,Newcastle Knights,50,6,Aussie,https://www.rugbyleagueproject.org/matches/6918
+2006|Semi Final|St. George Illawarra Dragons|Manly Sea Eagles,2006,Semi Final,28,1,185,2006-09-15,St. George Illawarra Dragons,Manly Sea Eagles,28,0,Aussie,https://www.rugbyleagueproject.org/matches/6917
+2007|Grand Final|Melbourne Storm|Manly Sea Eagles,2007,Grand Final,29,1,201,2007-09-30,Melbourne Storm,Manly Sea Eagles,34,8,Telstra,https://www.rugbyleagueproject.org/matches/7748
+2007|Prelim Final|Manly Sea Eagles|NQ Cowboys,2007,Prelim Final,28,1,199,2007-09-22,Manly Sea Eagles,NQ Cowboys,28,6,SFS,https://www.rugbyleagueproject.org/matches/7746
+2007|Prelim Final|Melbourne Storm|Parramatta Eels,2007,Prelim Final,28,2,200,2007-09-23,Melbourne Storm,Parramatta Eels,26,10,Telstra Dome,https://www.rugbyleagueproject.org/matches/7747
+2007|Qualif Final|Manly Sea Eagles|South Sydney Rabbitohs,2007,Qualif Final,26,2,194,2007-09-08,Manly Sea Eagles,South Sydney Rabbitohs,30,6,Brookvale,https://www.rugbyleagueproject.org/matches/7742
+2007|Qualif Final|Melbourne Storm|Brisbane Broncos,2007,Qualif Final,26,4,196,2007-09-09,Melbourne Storm,Brisbane Broncos,40,0,Olympic Park,https://www.rugbyleagueproject.org/matches/7743
+2007|Qualif Final|NQ Cowboys|Canterbury Bulldogs,2007,Qualif Final,26,3,195,2007-09-08,NQ Cowboys,Canterbury Bulldogs,20,18,Dairy Farmers,https://www.rugbyleagueproject.org/matches/7741
+2007|Qualif Final|New Zealand Warriors|Parramatta Eels,2007,Qualif Final,26,1,193,2007-09-07,New Zealand Warriors,Parramatta Eels,10,12,Mt Smart,https://www.rugbyleagueproject.org/matches/7740
+2007|Semi Final|NQ Cowboys|New Zealand Warriors,2007,Semi Final,27,2,198,2007-09-16,NQ Cowboys,New Zealand Warriors,49,12,Dairy Farmers,https://www.rugbyleagueproject.org/matches/7745
+2007|Semi Final|Parramatta Eels|Canterbury Bulldogs,2007,Semi Final,27,1,197,2007-09-15,Parramatta Eels,Canterbury Bulldogs,25,6,Telstra,https://www.rugbyleagueproject.org/matches/7744
+2008|Grand Final|Manly Sea Eagles|Melbourne Storm,2008,Grand Final,30,1,201,2008-10-05,Manly Sea Eagles,Melbourne Storm,40,0,ANZ,https://www.rugbyleagueproject.org/matches/14687
+2008|Prelim Final|Cronulla Sharks|Melbourne Storm,2008,Prelim Final,29,1,199,2008-09-26,Cronulla Sharks,Melbourne Storm,0,28,SFS,https://www.rugbyleagueproject.org/matches/14685
+2008|Prelim Final|Manly Sea Eagles|New Zealand Warriors,2008,Prelim Final,29,2,200,2008-09-27,Manly Sea Eagles,New Zealand Warriors,32,6,SFS,https://www.rugbyleagueproject.org/matches/14686
+2008|Qualif Final|Cronulla Sharks|Canberra Raiders,2008,Qualif Final,27,2,194,2008-09-13,Cronulla Sharks,Canberra Raiders,36,10,Toyota,https://www.rugbyleagueproject.org/matches/14681
+2008|Qualif Final|Manly Sea Eagles|St. George Illawarra Dragons,2008,Qualif Final,27,3,195,2008-09-13,Manly Sea Eagles,St. George Illawarra Dragons,38,6,Brookvale,https://www.rugbyleagueproject.org/matches/14680
+2008|Qualif Final|Melbourne Storm|New Zealand Warriors,2008,Qualif Final,27,4,196,2008-09-14,Melbourne Storm,New Zealand Warriors,15,18,Olympic Park,https://www.rugbyleagueproject.org/matches/14682
+2008|Qualif Final|Sydney Roosters|Brisbane Broncos,2008,Qualif Final,27,1,193,2008-09-12,Sydney Roosters,Brisbane Broncos,16,24,SFS,https://www.rugbyleagueproject.org/matches/14679
+2008|Semi Final|Brisbane Broncos|Melbourne Storm,2008,Semi Final,28,2,198,2008-09-20,Brisbane Broncos,Melbourne Storm,14,16,Suncorp,https://www.rugbyleagueproject.org/matches/14684
+2008|Semi Final|New Zealand Warriors|Sydney Roosters,2008,Semi Final,28,1,197,2008-09-19,New Zealand Warriors,Sydney Roosters,30,13,Mt Smart,https://www.rugbyleagueproject.org/matches/14683
+2009|Grand Final|Melbourne Storm|Parramatta Eels,2009,Grand Final,30,1,201,2009-10-04,Melbourne Storm,Parramatta Eels,23,16,ANZ,https://www.rugbyleagueproject.org/matches/17245
+2009|Prelim Final|Canterbury Bulldogs|Parramatta Eels,2009,Prelim Final,29,1,199,2009-09-25,Canterbury Bulldogs,Parramatta Eels,12,22,ANZ,https://www.rugbyleagueproject.org/matches/17241
+2009|Prelim Final|Melbourne Storm|Brisbane Broncos,2009,Prelim Final,29,2,200,2009-09-26,Melbourne Storm,Brisbane Broncos,40,10,Etihad,https://www.rugbyleagueproject.org/matches/17242
+2009|Qualif Final|Canterbury Bulldogs|Newcastle Knights,2009,Qualif Final,27,2,194,2009-09-12,Canterbury Bulldogs,Newcastle Knights,26,12,ANZ,https://www.rugbyleagueproject.org/matches/17233
+2009|Qualif Final|Gold Coast Titans|Brisbane Broncos,2009,Qualif Final,27,3,195,2009-09-12,Gold Coast Titans,Brisbane Broncos,32,40,Skilled Park,https://www.rugbyleagueproject.org/matches/17232
+2009|Qualif Final|Melbourne Storm|Manly Sea Eagles,2009,Qualif Final,27,1,193,2009-09-11,Melbourne Storm,Manly Sea Eagles,40,12,Etihad,https://www.rugbyleagueproject.org/matches/17231
+2009|Qualif Final|St. George Illawarra Dragons|Parramatta Eels,2009,Qualif Final,27,4,196,2009-09-13,St. George Illawarra Dragons,Parramatta Eels,12,25,WIN Jubilee,https://www.rugbyleagueproject.org/matches/17234
+2009|Semi Final|Brisbane Broncos|St. George Illawarra Dragons,2009,Semi Final,28,2,198,2009-09-19,Brisbane Broncos,St. George Illawarra Dragons,24,10,Suncorp,https://www.rugbyleagueproject.org/matches/17236
+2009|Semi Final|Parramatta Eels|Gold Coast Titans,2009,Semi Final,28,1,197,2009-09-18,Parramatta Eels,Gold Coast Titans,27,2,SFS,https://www.rugbyleagueproject.org/matches/17235
+2010|Grand Final|St. George Illawarra Dragons|Sydney Roosters,2010,Grand Final,30,1,201,2010-10-03,St. George Illawarra Dragons,Sydney Roosters,32,8,ANZ,https://www.rugbyleagueproject.org/matches/20051
+2010|Prelim Final|Gold Coast Titans|Sydney Roosters,2010,Prelim Final,29,1,199,2010-09-24,Gold Coast Titans,Sydney Roosters,6,32,Suncorp,https://www.rugbyleagueproject.org/matches/20049
+2010|Prelim Final|St. George Illawarra Dragons|Wests Tigers,2010,Prelim Final,29,2,200,2010-09-25,St. George Illawarra Dragons,Wests Tigers,13,12,ANZ,https://www.rugbyleagueproject.org/matches/20050
+2010|Qualif Final|Gold Coast Titans|New Zealand Warriors,2010,Qualif Final,27,1,193,2010-09-10,Gold Coast Titans,New Zealand Warriors,28,16,Skilled Park,https://www.rugbyleagueproject.org/matches/20043
+2010|Qualif Final|Penrith Panthers|Canberra Raiders,2010,Qualif Final,27,2,194,2010-09-11,Penrith Panthers,Canberra Raiders,22,24,CUA Stadium,https://www.rugbyleagueproject.org/matches/20045
+2010|Qualif Final|St. George Illawarra Dragons|Manly Sea Eagles,2010,Qualif Final,27,4,196,2010-09-12,St. George Illawarra Dragons,Manly Sea Eagles,28,0,WIN Jubilee,https://www.rugbyleagueproject.org/matches/20046
+2010|Qualif Final|Wests Tigers|Sydney Roosters,2010,Qualif Final,27,3,195,2010-09-11,Wests Tigers,Sydney Roosters,15,19,SFS,https://www.rugbyleagueproject.org/matches/20044
+2010|Semi Final|Canberra Raiders|Wests Tigers,2010,Semi Final,28,1,197,2010-09-17,Canberra Raiders,Wests Tigers,24,26,Canberra Stadium,https://www.rugbyleagueproject.org/matches/20047
+2010|Semi Final|Sydney Roosters|Penrith Panthers,2010,Semi Final,28,2,198,2010-09-18,Sydney Roosters,Penrith Panthers,34,12,SFS,https://www.rugbyleagueproject.org/matches/20048
+2011|Grand Final|Manly Sea Eagles|New Zealand Warriors,2011,Grand Final,30,1,201,2011-10-02,Manly Sea Eagles,New Zealand Warriors,24,10,ANZ,https://www.rugbyleagueproject.org/matches/23622
+2011|Prelim Final|Manly Sea Eagles|Brisbane Broncos,2011,Prelim Final,29,1,199,2011-09-23,Manly Sea Eagles,Brisbane Broncos,26,14,SFS,https://www.rugbyleagueproject.org/matches/23620
+2011|Prelim Final|Melbourne Storm|New Zealand Warriors,2011,Prelim Final,29,2,200,2011-09-24,Melbourne Storm,New Zealand Warriors,12,20,AAMI,https://www.rugbyleagueproject.org/matches/23621
+2011|Qualif Final|Brisbane Broncos|New Zealand Warriors,2011,Qualif Final,27,2,194,2011-09-10,Brisbane Broncos,New Zealand Warriors,40,10,Suncorp,https://www.rugbyleagueproject.org/matches/23609
+2011|Qualif Final|Manly Sea Eagles|NQ Cowboys,2011,Qualif Final,27,3,195,2011-09-10,Manly Sea Eagles,NQ Cowboys,42,8,SFS,https://www.rugbyleagueproject.org/matches/23610
+2011|Qualif Final|Melbourne Storm|Newcastle Knights,2011,Qualif Final,27,4,196,2011-09-11,Melbourne Storm,Newcastle Knights,18,8,AAMI,https://www.rugbyleagueproject.org/matches/23611
+2011|Qualif Final|Wests Tigers|St. George Illawarra Dragons,2011,Qualif Final,27,1,193,2011-09-09,Wests Tigers,St. George Illawarra Dragons,21,12,ANZ,https://www.rugbyleagueproject.org/matches/23608
+2011|Semi Final|Brisbane Broncos|St. George Illawarra Dragons,2011,Semi Final,28,2,198,2011-09-17,Brisbane Broncos,St. George Illawarra Dragons,13,12,Suncorp,https://www.rugbyleagueproject.org/matches/23613
+2011|Semi Final|Wests Tigers|New Zealand Warriors,2011,Semi Final,28,1,197,2011-09-16,Wests Tigers,New Zealand Warriors,20,22,SFS,https://www.rugbyleagueproject.org/matches/23612
+2012|Grand Final|Canterbury Bulldogs|Melbourne Storm,2012,Grand Final,30,1,201,2012-09-30,Canterbury Bulldogs,Melbourne Storm,4,14,ANZ,https://www.rugbyleagueproject.org/matches/28309
+2012|Prelim Final|Canterbury Bulldogs|South Sydney Rabbitohs,2012,Prelim Final,29,2,200,2012-09-22,Canterbury Bulldogs,South Sydney Rabbitohs,32,8,ANZ,https://www.rugbyleagueproject.org/matches/28308
+2012|Prelim Final|Melbourne Storm|Manly Sea Eagles,2012,Prelim Final,29,1,199,2012-09-21,Melbourne Storm,Manly Sea Eagles,40,12,AAMI,https://www.rugbyleagueproject.org/matches/28307
+2012|Qualif Final|Canberra Raiders|Cronulla Sharks,2012,Qualif Final,27,4,196,2012-09-09,Canberra Raiders,Cronulla Sharks,34,16,Canberra Stadium,https://www.rugbyleagueproject.org/matches/28304
+2012|Qualif Final|Canterbury Bulldogs|Manly Sea Eagles,2012,Qualif Final,27,1,193,2012-09-07,Canterbury Bulldogs,Manly Sea Eagles,16,10,ANZ,https://www.rugbyleagueproject.org/matches/28301
+2012|Qualif Final|Melbourne Storm|South Sydney Rabbitohs,2012,Qualif Final,27,2,194,2012-09-08,Melbourne Storm,South Sydney Rabbitohs,24,6,AAMI,https://www.rugbyleagueproject.org/matches/28302
+2012|Qualif Final|NQ Cowboys|Brisbane Broncos,2012,Qualif Final,27,3,195,2012-09-08,NQ Cowboys,Brisbane Broncos,33,16,Dairy Farmers,https://www.rugbyleagueproject.org/matches/28303
+2012|Semi Final|Manly Sea Eagles|NQ Cowboys,2012,Semi Final,28,1,197,2012-09-14,Manly Sea Eagles,NQ Cowboys,22,12,Allianz,https://www.rugbyleagueproject.org/matches/28305
+2012|Semi Final|South Sydney Rabbitohs|Canberra Raiders,2012,Semi Final,28,2,198,2012-09-15,South Sydney Rabbitohs,Canberra Raiders,38,16,ANZ,https://www.rugbyleagueproject.org/matches/28306
+2013|Grand Final|Sydney Roosters|Manly Sea Eagles,2013,Grand Final,30,1,201,2013-10-06,Sydney Roosters,Manly Sea Eagles,26,18,ANZ,https://www.rugbyleagueproject.org/matches/28985
+2013|Prelim Final|South Sydney Rabbitohs|Manly Sea Eagles,2013,Prelim Final,29,1,199,2013-09-27,South Sydney Rabbitohs,Manly Sea Eagles,20,30,ANZ,https://www.rugbyleagueproject.org/matches/28983
+2013|Prelim Final|Sydney Roosters|Newcastle Knights,2013,Prelim Final,29,2,200,2013-09-28,Sydney Roosters,Newcastle Knights,40,14,Allianz,https://www.rugbyleagueproject.org/matches/28984
+2013|Qualif Final|Canterbury Bulldogs|Newcastle Knights,2013,Qualif Final,27,4,196,2013-09-15,Canterbury Bulldogs,Newcastle Knights,6,22,ANZ,https://www.rugbyleagueproject.org/matches/28969
+2013|Qualif Final|Cronulla Sharks|NQ Cowboys,2013,Qualif Final,27,2,194,2013-09-14,Cronulla Sharks,NQ Cowboys,20,18,Allianz,https://www.rugbyleagueproject.org/matches/28968
+2013|Qualif Final|South Sydney Rabbitohs|Melbourne Storm,2013,Qualif Final,27,1,193,2013-09-13,South Sydney Rabbitohs,Melbourne Storm,20,10,ANZ,https://www.rugbyleagueproject.org/matches/28966
+2013|Qualif Final|Sydney Roosters|Manly Sea Eagles,2013,Qualif Final,27,3,195,2013-09-14,Sydney Roosters,Manly Sea Eagles,4,0,Allianz,https://www.rugbyleagueproject.org/matches/28967
+2013|Semi Final|Manly Sea Eagles|Cronulla Sharks,2013,Semi Final,28,1,197,2013-09-20,Manly Sea Eagles,Cronulla Sharks,24,18,Allianz,https://www.rugbyleagueproject.org/matches/28970
+2013|Semi Final|Melbourne Storm|Newcastle Knights,2013,Semi Final,28,2,198,2013-09-21,Melbourne Storm,Newcastle Knights,16,18,AAMI,https://www.rugbyleagueproject.org/matches/28971
+2014|Grand Final|South Sydney Rabbitohs|Canterbury Bulldogs,2014,Grand Final,30,1,201,2014-10-05,South Sydney Rabbitohs,Canterbury Bulldogs,30,6,ANZ,https://www.rugbyleagueproject.org/matches/29744
+2014|Prelim Final|Penrith Panthers|Canterbury Bulldogs,2014,Prelim Final,29,2,200,2014-09-27,Penrith Panthers,Canterbury Bulldogs,12,18,ANZ,https://www.rugbyleagueproject.org/matches/29741
+2014|Prelim Final|South Sydney Rabbitohs|Sydney Roosters,2014,Prelim Final,29,1,199,2014-09-26,South Sydney Rabbitohs,Sydney Roosters,32,22,ANZ,https://www.rugbyleagueproject.org/matches/29740
+2014|Qualif Final|Manly Sea Eagles|South Sydney Rabbitohs,2014,Qualif Final,27,1,193,2014-09-12,Manly Sea Eagles,South Sydney Rabbitohs,24,40,Allianz,https://www.rugbyleagueproject.org/matches/29735
+2014|Qualif Final|Melbourne Storm|Canterbury Bulldogs,2014,Qualif Final,27,4,196,2014-09-14,Melbourne Storm,Canterbury Bulldogs,4,28,AAMI,https://www.rugbyleagueproject.org/matches/29734
+2014|Qualif Final|NQ Cowboys|Brisbane Broncos,2014,Qualif Final,27,2,194,2014-09-13,NQ Cowboys,Brisbane Broncos,32,20,1300SMILES,https://www.rugbyleagueproject.org/matches/29737
+2014|Qualif Final|Sydney Roosters|Penrith Panthers,2014,Qualif Final,27,3,195,2014-09-13,Sydney Roosters,Penrith Panthers,18,19,Allianz,https://www.rugbyleagueproject.org/matches/29736
+2014|Semi Final|Manly Sea Eagles|Canterbury Bulldogs,2014,Semi Final,28,2,198,2014-09-20,Manly Sea Eagles,Canterbury Bulldogs,17,18,Allianz,https://www.rugbyleagueproject.org/matches/29739
+2014|Semi Final|Sydney Roosters|NQ Cowboys,2014,Semi Final,28,1,197,2014-09-19,Sydney Roosters,NQ Cowboys,31,30,Allianz,https://www.rugbyleagueproject.org/matches/29738
+2015|Grand Final|Brisbane Broncos|NQ Cowboys,2015,Grand Final,30,1,201,2015-10-04,Brisbane Broncos,NQ Cowboys,16,17,ANZ,https://www.rugbyleagueproject.org/matches/30752
+2015|Prelim Final|Brisbane Broncos|Sydney Roosters,2015,Prelim Final,29,1,199,2015-09-25,Brisbane Broncos,Sydney Roosters,31,12,Suncorp,https://www.rugbyleagueproject.org/matches/30751
+2015|Prelim Final|Melbourne Storm|NQ Cowboys,2015,Prelim Final,29,2,200,2015-09-26,Melbourne Storm,NQ Cowboys,12,32,AAMI,https://www.rugbyleagueproject.org/matches/30750
+2015|Qualif Final|Brisbane Broncos|NQ Cowboys,2015,Qualif Final,27,2,194,2015-09-12,Brisbane Broncos,NQ Cowboys,16,12,Suncorp,https://www.rugbyleagueproject.org/matches/30745
+2015|Qualif Final|Canterbury Bulldogs|St. George Illawarra Dragons,2015,Qualif Final,27,3,195,2015-09-12,Canterbury Bulldogs,St. George Illawarra Dragons,11,10,ANZ,https://www.rugbyleagueproject.org/matches/30746
+2015|Qualif Final|Cronulla Sharks|South Sydney Rabbitohs,2015,Qualif Final,27,4,196,2015-09-13,Cronulla Sharks,South Sydney Rabbitohs,28,12,Allianz,https://www.rugbyleagueproject.org/matches/30744
+2015|Qualif Final|Sydney Roosters|Melbourne Storm,2015,Qualif Final,27,1,193,2015-09-11,Sydney Roosters,Melbourne Storm,18,20,Allianz,https://www.rugbyleagueproject.org/matches/30747
+2015|Semi Final|NQ Cowboys|Cronulla Sharks,2015,Semi Final,28,2,198,2015-09-19,NQ Cowboys,Cronulla Sharks,39,0,1300SMILES,https://www.rugbyleagueproject.org/matches/30748
+2015|Semi Final|Sydney Roosters|Canterbury Bulldogs,2015,Semi Final,28,1,197,2015-09-18,Sydney Roosters,Canterbury Bulldogs,38,12,Allianz,https://www.rugbyleagueproject.org/matches/30749
+2016|Grand Final|Cronulla Sharks|Melbourne Storm,2016,Grand Final,30,1,201,2016-10-02,Cronulla Sharks,Melbourne Storm,14,12,ANZ,https://www.rugbyleagueproject.org/matches/31270
+2016|Prelim Final|Cronulla Sharks|NQ Cowboys,2016,Prelim Final,29,1,199,2016-09-23,Cronulla Sharks,NQ Cowboys,32,20,Allianz,https://www.rugbyleagueproject.org/matches/31268
+2016|Prelim Final|Melbourne Storm|Canberra Raiders,2016,Prelim Final,29,2,200,2016-09-24,Melbourne Storm,Canberra Raiders,14,12,AAMI,https://www.rugbyleagueproject.org/matches/31269
+2016|Qualif Final|Brisbane Broncos|Gold Coast Titans,2016,Qualif Final,27,1,193,2016-09-09,Brisbane Broncos,Gold Coast Titans,44,28,Suncorp,https://www.rugbyleagueproject.org/matches/31263
+2016|Qualif Final|Canberra Raiders|Cronulla Sharks,2016,Qualif Final,27,2,194,2016-09-10,Canberra Raiders,Cronulla Sharks,14,16,GIO,https://www.rugbyleagueproject.org/matches/31264
+2016|Qualif Final|Melbourne Storm|NQ Cowboys,2016,Qualif Final,27,3,195,2016-09-10,Melbourne Storm,NQ Cowboys,16,10,AAMI,https://www.rugbyleagueproject.org/matches/31265
+2016|Qualif Final|Penrith Panthers|Canterbury Bulldogs,2016,Qualif Final,27,4,196,2016-09-11,Penrith Panthers,Canterbury Bulldogs,28,12,Allianz,https://www.rugbyleagueproject.org/matches/31262
+2016|Semi Final|Canberra Raiders|Penrith Panthers,2016,Semi Final,28,2,198,2016-09-17,Canberra Raiders,Penrith Panthers,22,12,GIO,https://www.rugbyleagueproject.org/matches/31267
+2016|Semi Final|NQ Cowboys|Brisbane Broncos,2016,Semi Final,28,1,197,2016-09-16,NQ Cowboys,Brisbane Broncos,26,20,1300SMILES,https://www.rugbyleagueproject.org/matches/31266
+2017|Grand Final|Melbourne Storm|NQ Cowboys,2017,Grand Final,30,1,201,2017-10-01,Melbourne Storm,NQ Cowboys,34,6,ANZ,https://www.rugbyleagueproject.org/matches/36398
+2017|Prelim Final|Melbourne Storm|Brisbane Broncos,2017,Prelim Final,29,1,199,2017-09-22,Melbourne Storm,Brisbane Broncos,30,0,AAMI,https://www.rugbyleagueproject.org/matches/36383
+2017|Prelim Final|Sydney Roosters|NQ Cowboys,2017,Prelim Final,29,2,200,2017-09-23,Sydney Roosters,NQ Cowboys,16,29,Allianz,https://www.rugbyleagueproject.org/matches/36384
+2017|Qualif Final|Cronulla Sharks|NQ Cowboys,2017,Qualif Final,27,4,196,2017-09-10,Cronulla Sharks,NQ Cowboys,14,15,Allianz,https://www.rugbyleagueproject.org/matches/36376
+2017|Qualif Final|Manly Sea Eagles|Penrith Panthers,2017,Qualif Final,27,2,194,2017-09-09,Manly Sea Eagles,Penrith Panthers,10,22,Allianz,https://www.rugbyleagueproject.org/matches/36375
+2017|Qualif Final|Melbourne Storm|Parramatta Eels,2017,Qualif Final,27,3,195,2017-09-09,Melbourne Storm,Parramatta Eels,18,16,AAMI,https://www.rugbyleagueproject.org/matches/36374
+2017|Qualif Final|Sydney Roosters|Brisbane Broncos,2017,Qualif Final,27,1,193,2017-09-08,Sydney Roosters,Brisbane Broncos,24,22,Allianz,https://www.rugbyleagueproject.org/matches/36373
+2017|Semi Final|Brisbane Broncos|Penrith Panthers,2017,Semi Final,28,1,197,2017-09-15,Brisbane Broncos,Penrith Panthers,13,6,Suncorp,https://www.rugbyleagueproject.org/matches/36381
+2017|Semi Final|Parramatta Eels|NQ Cowboys,2017,Semi Final,28,2,198,2017-09-16,Parramatta Eels,NQ Cowboys,16,24,ANZ,https://www.rugbyleagueproject.org/matches/36382
+2018|Grand Final|Sydney Roosters|Melbourne Storm,2018,Grand Final,29,1,201,2018-09-30,Sydney Roosters,Melbourne Storm,21,6,ANZ,https://www.rugbyleagueproject.org/matches/38347
+2018|Prelim Final|Melbourne Storm|Cronulla Sharks,2018,Prelim Final,28,1,199,2018-09-21,Melbourne Storm,Cronulla Sharks,22,6,AAMI,https://www.rugbyleagueproject.org/matches/38345
+2018|Prelim Final|Sydney Roosters|South Sydney Rabbitohs,2018,Prelim Final,28,2,200,2018-09-22,Sydney Roosters,South Sydney Rabbitohs,12,4,Allianz,https://www.rugbyleagueproject.org/matches/38346
+2018|Qualif Final|Brisbane Broncos|St. George Illawarra Dragons,2018,Qualif Final,26,4,196,2018-09-09,Brisbane Broncos,St. George Illawarra Dragons,18,48,Suncorp,https://www.rugbyleagueproject.org/matches/38342
+2018|Qualif Final|Melbourne Storm|South Sydney Rabbitohs,2018,Qualif Final,26,1,193,2018-09-07,Melbourne Storm,South Sydney Rabbitohs,29,28,AAMI,https://www.rugbyleagueproject.org/matches/38339
+2018|Qualif Final|Penrith Panthers|New Zealand Warriors,2018,Qualif Final,26,2,194,2018-09-08,Penrith Panthers,New Zealand Warriors,27,12,ANZ,https://www.rugbyleagueproject.org/matches/38340
+2018|Qualif Final|Sydney Roosters|Cronulla Sharks,2018,Qualif Final,26,3,195,2018-09-08,Sydney Roosters,Cronulla Sharks,21,12,Allianz,https://www.rugbyleagueproject.org/matches/38341
+2018|Semi Final|Cronulla Sharks|Penrith Panthers,2018,Semi Final,27,1,197,2018-09-14,Cronulla Sharks,Penrith Panthers,21,20,Allianz,https://www.rugbyleagueproject.org/matches/38343
+2018|Semi Final|South Sydney Rabbitohs|St. George Illawarra Dragons,2018,Semi Final,27,2,198,2018-09-15,South Sydney Rabbitohs,St. George Illawarra Dragons,13,12,ANZ,https://www.rugbyleagueproject.org/matches/38344
+2019|Grand Final|Sydney Roosters|Canberra Raiders,2019,Grand Final,29,1,201,2019-10-06,Sydney Roosters,Canberra Raiders,14,8,ANZ,https://www.rugbyleagueproject.org/matches/39999
+2019|Prelim Final|Canberra Raiders|South Sydney Rabbitohs,2019,Prelim Final,28,1,199,2019-09-27,Canberra Raiders,South Sydney Rabbitohs,16,10,GIO,https://www.rugbyleagueproject.org/matches/39991
+2019|Prelim Final|Sydney Roosters|Melbourne Storm,2019,Prelim Final,28,2,200,2019-09-28,Sydney Roosters,Melbourne Storm,14,6,SCG,https://www.rugbyleagueproject.org/matches/39992
+2019|Qualif Final|Manly Sea Eagles|Cronulla Sharks,2019,Qualif Final,26,2,194,2019-09-14,Manly Sea Eagles,Cronulla Sharks,28,16,Lottoland,https://www.rugbyleagueproject.org/matches/39919
+2019|Qualif Final|Melbourne Storm|Canberra Raiders,2019,Qualif Final,26,3,195,2019-09-14,Melbourne Storm,Canberra Raiders,10,12,AAMI,https://www.rugbyleagueproject.org/matches/39918
+2019|Qualif Final|Parramatta Eels|Brisbane Broncos,2019,Qualif Final,26,4,196,2019-09-15,Parramatta Eels,Brisbane Broncos,58,0,Bankwest,https://www.rugbyleagueproject.org/matches/39920
+2019|Qualif Final|Sydney Roosters|South Sydney Rabbitohs,2019,Qualif Final,26,1,193,2019-09-13,Sydney Roosters,South Sydney Rabbitohs,30,6,SCG,https://www.rugbyleagueproject.org/matches/39917
+2019|Semi Final|Melbourne Storm|Parramatta Eels,2019,Semi Final,27,2,198,2019-09-21,Melbourne Storm,Parramatta Eels,32,0,AAMI,https://www.rugbyleagueproject.org/matches/39944
+2019|Semi Final|South Sydney Rabbitohs|Manly Sea Eagles,2019,Semi Final,27,1,197,2019-09-20,South Sydney Rabbitohs,Manly Sea Eagles,34,26,ANZ,https://www.rugbyleagueproject.org/matches/39943
+2020|Grand Final|Penrith Panthers|Melbourne Storm,2020,Grand Final,24,1,169,2020-10-25,Penrith Panthers,Melbourne Storm,20,26,ANZ,https://www.rugbyleagueproject.org/matches/44946
+2020|Prelim Final|Melbourne Storm|Canberra Raiders,2020,Prelim Final,23,1,167,2020-10-16,Melbourne Storm,Canberra Raiders,30,10,Suncorp,https://www.rugbyleagueproject.org/matches/44935
+2020|Prelim Final|Penrith Panthers|South Sydney Rabbitohs,2020,Prelim Final,23,2,168,2020-10-17,Penrith Panthers,South Sydney Rabbitohs,20,16,ANZ,https://www.rugbyleagueproject.org/matches/44936
+2020|Qualif Final|Canberra Raiders|Cronulla Sharks,2020,Qualif Final,21,2,162,2020-10-03,Canberra Raiders,Cronulla Sharks,32,20,GIO,https://www.rugbyleagueproject.org/matches/44919
+2020|Qualif Final|Melbourne Storm|Parramatta Eels,2020,Qualif Final,21,3,163,2020-10-03,Melbourne Storm,Parramatta Eels,36,24,Suncorp,https://www.rugbyleagueproject.org/matches/44920
+2020|Qualif Final|Penrith Panthers|Sydney Roosters,2020,Qualif Final,21,1,161,2020-10-02,Penrith Panthers,Sydney Roosters,29,28,Panthers Stadium,https://www.rugbyleagueproject.org/matches/44918
+2020|Qualif Final|South Sydney Rabbitohs|Newcastle Knights,2020,Qualif Final,21,4,164,2020-10-04,South Sydney Rabbitohs,Newcastle Knights,46,20,ANZ,https://www.rugbyleagueproject.org/matches/44921
+2020|Semi Final|Parramatta Eels|South Sydney Rabbitohs,2020,Semi Final,22,2,166,2020-10-10,Parramatta Eels,South Sydney Rabbitohs,24,38,Bankwest,https://www.rugbyleagueproject.org/matches/44932
+2020|Semi Final|Sydney Roosters|Canberra Raiders,2020,Semi Final,22,1,165,2020-10-09,Sydney Roosters,Canberra Raiders,18,22,SCG,https://www.rugbyleagueproject.org/matches/44931
+2021|Grand Final|Penrith Panthers|South Sydney Rabbitohs,2021,Grand Final,29,1,201,2021-10-03,Penrith Panthers,South Sydney Rabbitohs,14,12,Suncorp,https://www.rugbyleagueproject.org/matches/45427
+2021|Prelim Final|Melbourne Storm|Penrith Panthers,2021,Prelim Final,28,2,200,2021-09-25,Melbourne Storm,Penrith Panthers,6,10,Suncorp,https://www.rugbyleagueproject.org/matches/45426
+2021|Prelim Final|South Sydney Rabbitohs|Manly Sea Eagles,2021,Prelim Final,28,1,199,2021-09-24,South Sydney Rabbitohs,Manly Sea Eagles,36,16,Suncorp,https://www.rugbyleagueproject.org/matches/45425
+2021|Qualifier|Melbourne Storm|Manly Sea Eagles,2021,Qualifier,26,1,193,2021-09-10,Melbourne Storm,Manly Sea Eagles,40,12,Sunshine Coast,https://www.rugbyleagueproject.org/matches/45419
+2021|Qualifier|Parramatta Eels|Newcastle Knights,2021,Qualifier,26,4,196,2021-09-12,Parramatta Eels,Newcastle Knights,28,20,Browne Park,https://www.rugbyleagueproject.org/matches/45422
+2021|Qualifier|Penrith Panthers|South Sydney Rabbitohs,2021,Qualifier,26,2,194,2021-09-11,Penrith Panthers,South Sydney Rabbitohs,10,16,QLD C. Bank,https://www.rugbyleagueproject.org/matches/45421
+2021|Qualifier|Sydney Roosters|Gold Coast Titans,2021,Qualifier,26,3,195,2021-09-11,Sydney Roosters,Gold Coast Titans,25,24,QLD C. Bank,https://www.rugbyleagueproject.org/matches/45420
+2021|Semi Final|Manly Sea Eagles|Sydney Roosters,2021,Semi Final,27,1,197,2021-09-17,Manly Sea Eagles,Sydney Roosters,42,6,BB Print Stadium,https://www.rugbyleagueproject.org/matches/45423
+2021|Semi Final|Penrith Panthers|Parramatta Eels,2021,Semi Final,27,2,198,2021-09-18,Penrith Panthers,Parramatta Eels,8,6,BB Print Stadium,https://www.rugbyleagueproject.org/matches/45424
+2022|Grand Final|Penrith Panthers|Parramatta Eels,2022,Grand Final,29,1,201,2022-10-02,Penrith Panthers,Parramatta Eels,28,12,Accor,https://www.rugbyleagueproject.org/matches/53775
+2022|Prelim Final|NQ Cowboys|Parramatta Eels,2022,Prelim Final,28,1,199,2022-09-23,NQ Cowboys,Parramatta Eels,20,24,QLD C. Bank,https://www.rugbyleagueproject.org/matches/53766
+2022|Prelim Final|Penrith Panthers|South Sydney Rabbitohs,2022,Prelim Final,28,2,200,2022-09-24,Penrith Panthers,South Sydney Rabbitohs,32,12,Accor,https://www.rugbyleagueproject.org/matches/53767
+2022|Qualif Final|Cronulla Sharks|NQ Cowboys,2022,Qualif Final,26,2,194,2022-09-10,Cronulla Sharks,NQ Cowboys,30,32,Pointsbet,https://www.rugbyleagueproject.org/matches/53727
+2022|Qualif Final|Melbourne Storm|Canberra Raiders,2022,Qualif Final,26,3,195,2022-09-10,Melbourne Storm,Canberra Raiders,20,28,AAMI,https://www.rugbyleagueproject.org/matches/53726
+2022|Qualif Final|Penrith Panthers|Parramatta Eels,2022,Qualif Final,26,1,193,2022-09-09,Penrith Panthers,Parramatta Eels,27,8,BlueBet,https://www.rugbyleagueproject.org/matches/53725
+2022|Qualif Final|Sydney Roosters|South Sydney Rabbitohs,2022,Qualif Final,26,4,196,2022-09-11,Sydney Roosters,South Sydney Rabbitohs,14,30,Allianz,https://www.rugbyleagueproject.org/matches/53728
+2022|Semi Final|Cronulla Sharks|South Sydney Rabbitohs,2022,Semi Final,27,2,198,2022-09-17,Cronulla Sharks,South Sydney Rabbitohs,12,38,Allianz,https://www.rugbyleagueproject.org/matches/53743
+2022|Semi Final|Parramatta Eels|Canberra Raiders,2022,Semi Final,27,1,197,2022-09-16,Parramatta Eels,Canberra Raiders,40,4,CommBank,https://www.rugbyleagueproject.org/matches/53742
+2023|Elim Qualif|Cronulla Sharks|Sydney Roosters,2023,Elim Qualif,29,1,206,2023-09-09,Cronulla Sharks,Sydney Roosters,12,13,Pointsbet,https://www.rugbyleagueproject.org/matches/58413
+2023|Elim Qualif|Newcastle Knights|Canberra Raiders,2023,Elim Qualif,31,1,208,2023-09-10,Newcastle Knights,Canberra Raiders,30,28,McD. Jones,https://www.rugbyleagueproject.org/matches/58414
+2023|Grand Final|Penrith Panthers|Brisbane Broncos,2023,Grand Final,34,1,213,2023-10-01,Penrith Panthers,Brisbane Broncos,26,24,Accor,https://www.rugbyleagueproject.org/matches/58463
+2023|Prelim Final|Brisbane Broncos|New Zealand Warriors,2023,Prelim Final,33,2,212,2023-09-23,Brisbane Broncos,New Zealand Warriors,42,12,Suncorp,https://www.rugbyleagueproject.org/matches/58457
+2023|Prelim Final|Penrith Panthers|Melbourne Storm,2023,Prelim Final,33,1,211,2023-09-22,Penrith Panthers,Melbourne Storm,38,4,Accor,https://www.rugbyleagueproject.org/matches/58456
+2023|Qualif Final|Brisbane Broncos|Melbourne Storm,2023,Qualif Final,28,1,205,2023-09-08,Brisbane Broncos,Melbourne Storm,26,0,Suncorp,https://www.rugbyleagueproject.org/matches/58411
+2023|Qualif Final|Penrith Panthers|New Zealand Warriors,2023,Qualif Final,30,1,207,2023-09-09,Penrith Panthers,New Zealand Warriors,32,6,BlueBet,https://www.rugbyleagueproject.org/matches/58412
+2023|Semi Final|Melbourne Storm|Sydney Roosters,2023,Semi Final,32,1,209,2023-09-15,Melbourne Storm,Sydney Roosters,18,13,AAMI,https://www.rugbyleagueproject.org/matches/58454
+2023|Semi Final|New Zealand Warriors|Newcastle Knights,2023,Semi Final,32,2,210,2023-09-16,New Zealand Warriors,Newcastle Knights,40,10,Go Media,https://www.rugbyleagueproject.org/matches/58455
+2024|Elim Final|Canterbury Bulldogs|Manly Sea Eagles,2024,Elim Final,29,2,208,2024-09-15,Canterbury Bulldogs,Manly Sea Eagles,22,24,Accor,https://www.rugbyleagueproject.org/matches/103109
+2024|Elim Final|NQ Cowboys|Newcastle Knights,2024,Elim Final,29,1,207,2024-09-14,NQ Cowboys,Newcastle Knights,28,16,QLD C. Bank,https://www.rugbyleagueproject.org/matches/103110
+2024|Grand Final|Melbourne Storm|Penrith Panthers,2024,Grand Final,32,1,213,2024-10-06,Melbourne Storm,Penrith Panthers,6,14,Accor,https://www.rugbyleagueproject.org/matches/103131
+2024|Prelim Final|Melbourne Storm|Sydney Roosters,2024,Prelim Final,31,1,211,2024-09-27,Melbourne Storm,Sydney Roosters,48,18,AAMI,https://www.rugbyleagueproject.org/matches/103129
+2024|Prelim Final|Penrith Panthers|Cronulla Sharks,2024,Prelim Final,31,2,212,2024-09-28,Penrith Panthers,Cronulla Sharks,26,6,Accor,https://www.rugbyleagueproject.org/matches/103136
+2024|Qualif Final|Melbourne Storm|Cronulla Sharks,2024,Qualif Final,28,2,206,2024-09-14,Melbourne Storm,Cronulla Sharks,37,10,AAMI,https://www.rugbyleagueproject.org/matches/103107
+2024|Qualif Final|Penrith Panthers|Sydney Roosters,2024,Qualif Final,28,1,205,2024-09-13,Penrith Panthers,Sydney Roosters,30,10,BlueBet,https://www.rugbyleagueproject.org/matches/103108
+2024|Semi Final|Cronulla Sharks|NQ Cowboys,2024,Semi Final,30,1,209,2024-09-20,Cronulla Sharks,NQ Cowboys,26,18,Allianz,https://www.rugbyleagueproject.org/matches/103120
+2024|Semi Final|Sydney Roosters|Manly Sea Eagles,2024,Semi Final,30,2,210,2024-09-21,Sydney Roosters,Manly Sea Eagles,40,16,Allianz,https://www.rugbyleagueproject.org/matches/103121
+2025|Elim Final|Cronulla Sharks|Sydney Roosters,2025,Elim Final,29,1,206,2025-09-13,Cronulla Sharks,Sydney Roosters,20,10,Sharks,https://www.rugbyleagueproject.org/matches/113922
+2025|Elim Final|New Zealand Warriors|Penrith Panthers,2025,Elim Final,29,2,207,2025-09-13,New Zealand Warriors,Penrith Panthers,8,24,Go Media,https://www.rugbyleagueproject.org/matches/113923
+2025|Grand Final|Melbourne Storm|Brisbane Broncos,2025,Grand Final,33,1,213,2025-10-05,Melbourne Storm,Brisbane Broncos,22,26,Accor,https://www.rugbyleagueproject.org/matches/113928
+2025|Prelim Final|Brisbane Broncos|Penrith Panthers,2025,Prelim Final,32,2,212,2025-09-28,Brisbane Broncos,Penrith Panthers,16,14,Suncorp,https://www.rugbyleagueproject.org/matches/113926
+2025|Prelim Final|Melbourne Storm|Cronulla Sharks,2025,Prelim Final,32,1,211,2025-09-26,Melbourne Storm,Cronulla Sharks,22,14,AAMI,https://www.rugbyleagueproject.org/matches/113927
+2025|Qualif Final|Canberra Raiders|Brisbane Broncos,2025,Qualif Final,30,1,208,2025-09-14,Canberra Raiders,Brisbane Broncos,28,29,GIO,https://www.rugbyleagueproject.org/matches/113918
+2025|Qualif Final|Melbourne Storm|Canterbury Bulldogs,2025,Qualif Final,28,1,205,2025-09-12,Melbourne Storm,Canterbury Bulldogs,26,18,AAMI,https://www.rugbyleagueproject.org/matches/113921
+2025|Semi Final|Canberra Raiders|Cronulla Sharks,2025,Semi Final,31,1,209,2025-09-20,Canberra Raiders,Cronulla Sharks,12,32,GIO,https://www.rugbyleagueproject.org/matches/113924
+2025|Semi Final|Canterbury Bulldogs|Penrith Panthers,2025,Semi Final,31,2,210,2025-09-21,Canterbury Bulldogs,Penrith Panthers,26,46,Accor,https://www.rugbyleagueproject.org/matches/113925
