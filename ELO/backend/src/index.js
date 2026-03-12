@@ -182,6 +182,7 @@ async function handleGetMatches(db, searchParams) {
     SELECT
       m.year,
       m.round,
+      m.match_index,
       m.game_num,
       m.id,
 
@@ -275,6 +276,7 @@ async function handleGetPredictions(db) {
       m.id,
       m.year,
       m.round,
+      m.match_index,
       m.game_num,
       ht.id as home_team_id,
       ht.name as home_team,
@@ -473,6 +475,7 @@ async function handleDiagnostic(db) {
     SELECT
       m.year,
       m.round,
+      m.match_index,
       m.game_num,
       m.id,
 
@@ -556,6 +559,7 @@ async function handleDiagnostic(db) {
     return [
       m.year,
       m.round,
+      m.match_index,
       m.game_num,
       m.id,
       m.home_team,
