@@ -1629,6 +1629,31 @@ async function loadEloHistory() {
   });
 
   const canvas = document.getElementById("elo-history-chart");
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  const emptyId = "elo-history-empty";
+  const existingEmpty = document.getElementById(emptyId);
+
+  if (labels.length === 0) {
+    if (existingEmpty) {
+      existingEmpty.style.display = "block";
+    } else if (wrap) {
+      const msg = document.createElement("div");
+      msg.id = emptyId;
+      msg.style.padding = "12px";
+      msg.style.color = "#666";
+      msg.textContent = "No completed matches found for the selected year range.";
+      wrap.appendChild(msg);
+    }
+    canvas.style.display = "none";
+    return;
+  }
+
+  if (existingEmpty) {
+    existingEmpty.style.display = "none";
+  }
+  canvas.style.display = "block";
+
   const minWidth = Math.max(1400, labels.length * 24);
   canvas.width = minWidth;
   canvas.height = 420;
@@ -1638,7 +1663,10 @@ async function loadEloHistory() {
     window.eloHistoryChart.destroy();
   }
 
-Chart.register(ChartZoom);
+  const hasZoomPlugin = typeof ChartZoom !== "undefined";
+  if (hasZoomPlugin) {
+    Chart.register(ChartZoom);
+  }
 
 window.eloHistoryChart = new Chart(ctx, {
   type: "line",
@@ -1652,21 +1680,23 @@ window.eloHistoryChart = new Chart(ctx, {
     animation: false,
     interaction: { mode: "nearest", intersect: false },
 
-    plugins: {
-      zoom: {
-        pan: {
-          enabled: true,
-          mode: "x",
-          modifierKey: null
-        },
-        zoom: {
-          wheel: { enabled: true },
-          drag: { enabled: false },
-          pinch: { enabled: true },
-          mode: "x"
+    plugins: hasZoomPlugin
+      ? {
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: "x",
+              modifierKey: null
+            },
+            zoom: {
+              wheel: { enabled: true },
+              drag: { enabled: false },
+              pinch: { enabled: true },
+              mode: "x"
+            }
+          }
         }
-      }
-    },
+      : {},
 
     scales: {
       x: {
