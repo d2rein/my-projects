@@ -2,6 +2,8 @@ import { createReplayEngine } from "./shared/replay-engine.js";
 
 const API_URL = "https://nrl-elo-api.d2-rein.workers.dev";
 let matchesCache = null;
+const MATCH_PAGE_SIZE = 1500;
+const MATCH_MAX_PAGES = 20;
 
 let MODEL_PARAMS = null;
 let rankingsSort = { key: "rank", dir: "asc" };
@@ -34,9 +36,33 @@ async function getMatches(force = false) {
     return matchesCache;
   }
   try {
-    const data = await fetchJsonWithFallback(`${API_URL}/api/matches`, 4);
-    if (!Array.isArray(data)) throw new Error("Matches payload was not an array");
-    matchesCache = data;
+    const pages = [];
+    let offset = 0;
+    let seenFirstIds = new Set();
+
+    for (let page = 0; page < MATCH_MAX_PAGES; page++) {
+      const chunk = await fetchJsonWithFallback(
+        `${API_URL}/api/matches?limit=${MATCH_PAGE_SIZE}&offset=${offset}`,
+        4
+      );
+
+      if (!Array.isArray(chunk)) throw new Error("Matches payload was not an array");
+      if (chunk.length === 0) break;
+
+      // Guard if backend ignores offset (prevents duplicate infinite paging)
+      const firstId = chunk[0]?.id ?? `${chunk[0]?.year}-${chunk[0]?.match_index}-${chunk[0]?.home_team}`;
+      if (seenFirstIds.has(firstId)) {
+        throw new Error("Backend pagination not active yet (duplicate page received).");
+      }
+      seenFirstIds.add(firstId);
+
+      pages.push(...chunk);
+      if (chunk.length < MATCH_PAGE_SIZE) break;
+      offset += MATCH_PAGE_SIZE;
+    }
+
+    if (pages.length === 0) throw new Error("No matches returned from API");
+    matchesCache = pages;
     return matchesCache;
   } catch (e) {
     if (Array.isArray(matchesCache) && matchesCache.length > 0) {
@@ -1706,4 +1732,3 @@ document.addEventListener("click", async (e) => {
 document.getElementById("elo-highlight")?.addEventListener("change", () => {
   loadEloHistory();
 });
-

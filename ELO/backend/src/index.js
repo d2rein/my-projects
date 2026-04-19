@@ -177,6 +177,8 @@ async function handleGetMatches(db, searchParams) {
   // default big enough to cover all history; you can tune later
   const limit = Number(searchParams?.get("limit") ?? 10000);
   const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 20000)) : 10000;
+  const offset = Number(searchParams?.get("offset") ?? 0);
+  const safeOffset = Number.isFinite(offset) ? Math.max(0, Math.min(offset, 500000)) : 0;
 
   const { results } = await db.prepare(`
     SELECT
@@ -214,7 +216,8 @@ async function handleGetMatches(db, searchParams) {
       m.year ASC,
       m.match_index ASC
     LIMIT ?
-  `).bind(safeLimit).all();
+    OFFSET ?
+  `).bind(safeLimit, safeOffset).all();
 
   return jsonResponse(results || []);
 }
