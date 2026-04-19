@@ -1,13 +1,53 @@
-import { ELOCalculator } from "./shared/elo-calculator.js";
 import { createReplayEngine } from "./shared/replay-engine.js";
 
 const API_URL = "https://nrl-elo-api.d2-rein.workers.dev";
+let matchesCache = null;
 
 let MODEL_PARAMS = null;
+let rankingsSort = { key: "rank", dir: "asc" };
+
+async function fetchJsonWithRetry(url, attempts = 3) {
+  let lastError = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.json();
+    } catch (e) {
+      lastError = e;
+      await new Promise(r => setTimeout(r, 250 * (i + 1)));
+    }
+  }
+  throw lastError || new Error(`Failed to fetch ${url}`);
+}
+
+async function fetchJsonWithFallback(url, attempts = 3) {
+  return fetchJsonWithRetry(url, attempts);
+}
+
+async function fetchWithFallback(url, options = {}) {
+  return fetch(url, options);
+}
+
+async function getMatches(force = false) {
+  if (!force && Array.isArray(matchesCache) && matchesCache.length > 0) {
+    return matchesCache;
+  }
+  try {
+    const data = await fetchJsonWithFallback(`${API_URL}/api/matches`, 4);
+    if (!Array.isArray(data)) throw new Error("Matches payload was not an array");
+    matchesCache = data;
+    return matchesCache;
+  } catch (e) {
+    if (Array.isArray(matchesCache) && matchesCache.length > 0) {
+      return matchesCache;
+    }
+    throw e;
+  }
+}
 
 async function loadModelParams() {
-  const res = await fetch(`${API_URL}/api/parameters`);
-  const rows = await res.json();
+  const rows = await fetchJsonWithFallback(`${API_URL}/api/parameters`);
 
   // rows expected: [{name: "...", value: "..."}]
   const map = Object.fromEntries(
@@ -30,9 +70,22 @@ async function loadModelParams() {
 
 let teams = [];
 
+function getTeamsInYearFixtures(matches, year) {
+  const set = new Set();
+  for (const m of matches) {
+    if (Number(m.year) !== Number(year)) continue;
+    if (m.home_team) set.add(m.home_team);
+    if (m.away_team) set.add(m.away_team);
+  }
+  return set;
+}
+
+function getLatestSeasonYear(matches) {
+  return Math.max(...matches.map(m => Number(m.year)));
+}
+
 async function populateRankingsSelectors() {
-  const res = await fetch(`${API_URL}/api/matches`);
-  const matches = await res.json();
+  const matches = await getMatches();
 
   const years = [...new Set(matches.map(m => m.year))].sort();
   const yearSelect = document.getElementById("rankings-year");
@@ -41,9 +94,21 @@ async function populateRankingsSelectors() {
     .map(y => `<option value="${y}">${y}</option>`)
     .join("");
 
-  yearSelect.value = years[years.length - 1]; // default to latest year
+  const next = getNextUncompletedRound(matches);
+  yearSelect.value = next ? String(next.year) : String(years[years.length - 1]);
 
   updateRoundDropdown(matches);
+  if (next) {
+    document.getElementById("rankings-round").value = next.round;
+  }
+}
+
+function getNextUncompletedRound(matches) {
+  const ordered = [...matches].sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.match_index - b.match_index;
+  });
+  return ordered.find(m => m.home_score == null || m.away_score == null) || null;
 }
 
 function updateRoundDropdown(matches) {
@@ -121,15 +186,20 @@ function displayTeamName(name) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadModelParams();
-    await loadTeams();
-    loadAllGames();
+    try {
+      await loadModelParams();
+      await loadTeams();
+      loadAllGames();
+    } catch (e) {
+      console.error("Initial preview load failed:", e);
+      const el = document.getElementById("games-table");
+      if (el) el.innerHTML = `<p>Error loading preview: ${e?.message || e}</p>`;
+    }
 });
 
 document.addEventListener('change', async (e) => {
   if (e.target.id === "rankings-year") {
-    const res = await fetch(`${API_URL}/api/matches`);
-    const matches = await res.json();
+    const matches = await getMatches();
     updateRoundDropdown(matches);
     loadRankings();
   }
@@ -137,6 +207,24 @@ document.addEventListener('change', async (e) => {
   if (e.target.id === "rankings-round") {
     loadRankings();
   }
+});
+
+document.addEventListener("click", (e) => {
+  const th = e.target.closest("#rankings-table th.sortable");
+  if (!th) return;
+
+  const key = th.dataset.sortKey;
+  if (!key) return;
+
+  if (rankingsSort.key === key) {
+    rankingsSort.dir = rankingsSort.dir === "asc" ? "desc" : "asc";
+  } else {
+    rankingsSort = { key, dir: key === "team" ? "asc" : "desc" };
+  }
+
+  const raw = document.getElementById("rankings-table").dataset.rows;
+  if (!raw) return;
+  renderRankingsTable(JSON.parse(raw));
 });
 
 
@@ -149,6 +237,7 @@ function showTab(tab, btn) {
 
   if (tab === 'rankings') {populateRankingsSelectors().then(loadRankings);};
   if (tab === 'season') { populateSeasonYearSelector(); };
+  if (tab === 'add') { prepareNextRoundForEntry(); }
   if (tab === 'games') loadAllGames();
   if (tab === 'elo-history') loadEloHistory();
   if (tab === 'settings') evaluateModel();
@@ -162,8 +251,7 @@ function showTab(tab, btn) {
 
 async function loadRankings() {
   try {
-    const res = await fetch(`${API_URL}/api/matches`);
-    const matches = await res.json();
+    const matches = await getMatches();
 
     const selectedYear = document.getElementById("rankings-year")?.value;
     const selectedRound = document.getElementById("rankings-round")?.value;
@@ -182,62 +270,96 @@ async function loadRankings() {
         : null
     });
 
-    const ladderTable = engine.rankLadder(replay.ladder);
+    const teamsInYear = getTeamsInYearFixtures(matches, selectedYear);
+    const ladderTable = engine
+      .rankLadder(replay.ladder)
+      .filter(r => teamsInYear.has(r.team))
+      .map((r, i) => ({
+        rank: i + 1,
+        team: r.team,
+        elo: Math.round(replay.state.ratings[r.team] ?? 1500),
+        points: r.compPoints,
+        pointsFor: r.for,
+        pointsAgainst: r.against,
+        margin: r.margin
+      }));
 
-    const html = `
-      <table class="rankings-table">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Team</th>
-            <th>ELO</th>
-            <th>Points</th>
-            <th>For</th>
-            <th>Against</th>
-            <th>Margin</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${ladderTable
-            .map(
-              (r, i) => `
-            <tr>
-              <td>${i + 1}</td>
-              <td>${r.team}</td>
-              <td>${Math.round(replay.state.ratings[r.team] ?? 1500)}</td>
-              <td>${r.compPoints}</td>
-              <td>${r.for}</td>
-              <td>${r.against}</td>
-              <td>${r.margin}</td>
-            </tr>
-          `
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-
-    document.getElementById("rankings-table").innerHTML = html;
+    renderRankingsTable(ladderTable);
   } catch (e) {
     console.error(e);
   }
 }
 
+function renderRankingsTable(rows) {
+  const data = [...rows];
+  const { key, dir } = rankingsSort;
+  const multiplier = dir === "asc" ? 1 : -1;
+
+  data.sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    if (typeof av === "string" || typeof bv === "string") {
+      return String(av).localeCompare(String(bv)) * multiplier;
+    }
+    return ((Number(av) || 0) - (Number(bv) || 0)) * multiplier;
+  });
+
+  const arrowFor = (k) => (k === key ? (dir === "asc" ? "▲" : "▼") : "↕");
+  const html = `
+    <table class="rankings-table">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort-key="rank">Rank <span class="sort-indicator">${arrowFor("rank")}</span></th>
+          <th class="sortable" data-sort-key="team">Team <span class="sort-indicator">${arrowFor("team")}</span></th>
+          <th class="sortable" data-sort-key="elo">ELO <span class="sort-indicator">${arrowFor("elo")}</span></th>
+          <th class="sortable" data-sort-key="points">Points <span class="sort-indicator">${arrowFor("points")}</span></th>
+          <th class="sortable" data-sort-key="pointsFor">For <span class="sort-indicator">${arrowFor("pointsFor")}</span></th>
+          <th class="sortable" data-sort-key="pointsAgainst">Against <span class="sort-indicator">${arrowFor("pointsAgainst")}</span></th>
+          <th class="sortable" data-sort-key="margin">Margin <span class="sort-indicator">${arrowFor("margin")}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(r => `
+          <tr>
+            <td>${r.rank}</td>
+            <td>${r.team}</td>
+            <td>${r.elo}</td>
+            <td>${r.points}</td>
+            <td>${r.pointsFor}</td>
+            <td>${r.pointsAgainst}</td>
+            <td>${r.margin}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
+  document.getElementById("rankings-table").innerHTML = html;
+  document.getElementById("rankings-table").dataset.rows = JSON.stringify(rows);
+}
+
 async function loadTeams() {
     try {
-        const res = await fetch(`${API_URL}/api/teams`);
-        const data = await res.json();
+        const data = await fetchJsonWithFallback(`${API_URL}/api/teams`);
         teams = data;
     } catch (e) {
         console.error('Error loading teams:', e);
+        try {
+          const matches = await getMatches();
+          const uniqueNames = Array.from(
+            new Set(matches.flatMap(m => [m.home_team, m.away_team]).filter(Boolean))
+          );
+          teams = uniqueNames.map(name => ({ name }));
+        } catch {
+          teams = [];
+        }
     }
 }
 
 
 async function loadPredictions() {
     try {
-        const res = await fetch(`${API_URL}/api/predictions`);
-        const data = await res.json();
+        const data = await fetchJsonWithFallback(`${API_URL}/api/predictions`);
         
         if (data.length === 0) {
             document.getElementById('predictions-list').innerHTML = '<p>No upcoming matches</p>';
@@ -269,6 +391,28 @@ async function loadPredictions() {
     }
 }
 
+async function prepareNextRoundForEntry() {
+  try {
+    const matches = await getMatches();
+
+    matches.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.match_index - b.match_index;
+    });
+
+    const next = getNextUncompletedRound(matches);
+    const fallback = matches[matches.length - 1];
+    const target = next || fallback;
+    if (!target) return;
+
+    document.getElementById("round-year").value = target.year;
+    document.getElementById("round-name").value = target.round;
+    await loadRoundForEntry();
+  } catch (e) {
+    console.error("Failed to default next round", e);
+  }
+}
+
 async function loadRoundForEntry() {
   const year = document.getElementById("round-year").value;
   const round = document.getElementById("round-name").value.trim();
@@ -280,8 +424,7 @@ async function loadRoundForEntry() {
   }
 
   try {
-    const res = await fetch(`${API_URL}/api/matches`);
-    const matches = await res.json();
+    const matches = await getMatches();
 
     // Filter to this round + year
     const roundGames = matches.filter(m =>
@@ -401,7 +544,7 @@ async function saveRoundResults() {
   });
 
   try {
-    const res = await fetch(`${API_URL}/api/matches/bulk-update`, {
+    const res = await fetchWithFallback(`${API_URL}/api/matches/bulk-update`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ updates })
@@ -412,6 +555,7 @@ async function saveRoundResults() {
     document.getElementById("add-message").innerHTML =
       '<div class="message success">Scores saved successfully.</div>';
 
+    matchesCache = null;
     // Refresh the All Games table so you see the changes immediately
     await loadAllGames();
 
@@ -424,41 +568,10 @@ async function saveRoundResults() {
 
 
 async function updateSettingsAndEvaluate(e) {
-    e.preventDefault();
-
-    const params = {
-        k_factor: parseFloat(document.getElementById('k-factor').value),
-        home_advantage: parseFloat(document.getElementById('home-adv').value),
-        travel_per1000km: parseFloat(document.getElementById('travel-per-1000km').value),
-        rest_per_round: parseFloat(document.getElementById('rest-per-round').value),
-        streak_pts: parseFloat(document.getElementById('streak-pts').value),
-        reversion_weight: parseFloat(document.getElementById('reversion-weight').value),
-        initial_rating: parseFloat(document.getElementById('initial-rating').value),
-        early_boost: parseFloat(document.getElementById('early-boost').value)
-    };
-    
-
-    try {
-        const res = await fetch(`${API_URL}/api/calculate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
-        });
-
-        if (!res.ok) throw new Error("Failed to update parameters");
-
-        await loadModelParams();
-
-        document.getElementById('settings-message').innerHTML =
-            '<div class="message success">Recalculated — updating evaluation…</div>';
-
-        await evaluateModel(); // <-- NEW PART
-
-    } catch (e) {
-        document.getElementById('settings-message').innerHTML =
-            '<div class="message error">Error updating settings</div>';
-        console.error(e);
-    }
+    if (e?.preventDefault) e.preventDefault();
+    document.getElementById('settings-message').innerHTML =
+      '<div class="message error">Live parameter updates are disabled on this page. Update model inputs in code and redeploy.</div>';
+    await evaluateModel();
 }
 
 
@@ -491,10 +604,131 @@ function extractRoundNumber(roundStr) {
     return key ? finalsMap[key] : 999; // unknown rounds go last
 }
 
+function buildRoundJokerStats(matches, replayRows, year) {
+  const rowsById = new Map(replayRows.map(r => [r.match.id, r]));
+  const seasonMatches = matches
+    .filter(m => Number(m.year) === Number(year))
+    .sort((a, b) => a.match_index - b.match_index);
+
+  const perRound = new Map();
+
+  for (const m of seasonMatches) {
+    const rr = rowsById.get(m.id);
+    if (!rr) continue;
+
+    const round = m.round;
+    if (!perRound.has(round)) {
+      perRound.set(round, {
+        round,
+        c10: 0,
+        c15: 0,
+        c20: 0,
+        c25: 0,
+        c30: 0,
+        eloEv: 0,
+        broncosEv: 0,
+        actual: 0,
+        games: 0
+      });
+    }
+
+    const stats = perRound.get(round);
+    const pHome = rr.out.expected;
+    const pAway = 1 - pHome;
+    const favProb = Math.max(pHome, pAway);
+    const favTeam = pHome >= pAway ? m.home_team : m.away_team;
+
+    stats.games += 1;
+    if (favProb >= 0.60) stats.c10 += 1;
+    if (favProb >= 0.65) stats.c15 += 1;
+    if (favProb >= 0.70) stats.c20 += 1;
+    if (favProb >= 0.75) stats.c25 += 1;
+    if (favProb >= 0.80) stats.c30 += 1;
+
+    stats.eloEv += favProb;
+
+    const broncosInGame =
+      m.home_team === "Brisbane Broncos" || m.away_team === "Brisbane Broncos";
+    const broncosPick = broncosInGame ? "Brisbane Broncos" : favTeam;
+    const broncosPickProb = broncosPick === m.home_team ? pHome : pAway;
+    stats.broncosEv += broncosPickProb;
+
+    const completed = m.home_score != null && m.away_score != null;
+    if (completed) {
+      const margin = Number(m.home_score) - Number(m.away_score);
+      const winner = margin > 0 ? m.home_team : margin < 0 ? m.away_team : "DRAW";
+      if (winner === "DRAW" || broncosPick === winner) {
+        stats.actual += 1;
+      }
+    }
+  }
+
+  return Array.from(perRound.values()).sort(
+    (a, b) => extractRoundNumber(a.round) - extractRoundNumber(b.round)
+  );
+}
+
+function heatClassForCount(v) {
+  if (v <= 0) return "heat-red";
+  if (v <= 1) return "heat-yellow";
+  return "heat-green";
+}
+
+function heatClassForEv(ev, games) {
+  const ratio = games > 0 ? ev / games : 0;
+  if (ratio < 0.56) return "heat-red";
+  if (ratio < 0.62) return "heat-yellow";
+  return "heat-green";
+}
+
+function renderJokerTable(stats) {
+  const topTwoBroncos = new Set(
+    [...stats]
+      .sort((a, b) => b.broncosEv - a.broncosEv)
+      .slice(0, 2)
+      .map(s => s.round)
+  );
+
+  const html = `
+    <table class="joker-table">
+      <thead>
+        <tr>
+          <th>Round</th>
+          <th>10%</th>
+          <th>15%</th>
+          <th>20%</th>
+          <th>25%</th>
+          <th>30%</th>
+          <th>Elo Pick</th>
+          <th>Broncos Pick</th>
+          <th>Actual</th>
+          <th>Games</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${stats.map(s => `
+          <tr>
+            <td>${s.round}</td>
+            <td class="${heatClassForCount(s.c10)}">${s.c10}</td>
+            <td class="${heatClassForCount(s.c15)}">${s.c15}</td>
+            <td class="${heatClassForCount(s.c20)}">${s.c20}</td>
+            <td class="${heatClassForCount(s.c25)}">${s.c25}</td>
+            <td class="${heatClassForCount(s.c30)}">${s.c30}</td>
+            <td class="${heatClassForEv(s.eloEv, s.games)}">${s.eloEv.toFixed(2)}</td>
+            <td class="${heatClassForEv(s.broncosEv, s.games)} ${topTwoBroncos.has(s.round) ? "top-broncos" : ""}">${s.broncosEv.toFixed(2)}</td>
+            <td>${s.actual}</td>
+            <td>${s.games}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+  document.getElementById("joker-table").innerHTML = html;
+}
+
 async function evaluateModel() {
   try {
-    const res = await fetch(`${API_URL}/api/matches`);
-    const matches = await res.json();
+    const matches = await getMatches();
 
     // --- Sort chronologically ---
     matches.sort((a,b)=>{
@@ -551,8 +785,17 @@ async function evaluateModel() {
       const eloCorrect   = isDraw ? true : (eloPick === actualWinner);
       const ladderCorrect= isDraw ? true : (ladderPick === actualWinner);
 
-      // odds currently same as elo in your code
-      const oddsPick     = eloPick;
+      const homeOdds = Number(m.home_odds);
+      const awayOdds = Number(m.away_odds);
+      let oddsPick = eloPick;
+      if (Number.isFinite(homeOdds) && Number.isFinite(awayOdds)) {
+        if (homeOdds < awayOdds) oddsPick = home;
+        else if (awayOdds < homeOdds) oddsPick = away;
+      } else if (Number.isFinite(homeOdds)) {
+        oddsPick = home;
+      } else if (Number.isFinite(awayOdds)) {
+        oddsPick = away;
+      }
       const oddsCorrect  = isDraw ? true : (oddsPick === actualWinner);
 
       // --- PRE-MATCH ladder pick ---
@@ -671,6 +914,11 @@ async function evaluateModel() {
 
     if (document.getElementById("yearly-breakdown")) {
       document.getElementById("yearly-breakdown").innerHTML = yearlyHtml;
+    }
+
+    const jokerStats = buildRoundJokerStats(matches, replay.rows, latestYear);
+    if (document.getElementById("joker-table")) {
+      renderJokerTable(jokerStats);
     }
 
     drawCalibrationChart(bins);
@@ -854,13 +1102,18 @@ function renderRankPip(ladderPick, eloPick, actualWinner, completed) {
 }
 
 async function loadAllGames() {
-    if (!Array.isArray(teams) || teams.length === 0) {
-    await loadTeams(); // ensure teams are loaded
-    }
-
     try {
-        const res = await fetch(`${API_URL}/api/matches`);
-        const matches = await res.json();
+        const matches = await getMatches();
+
+        if (!Array.isArray(teams) || teams.length === 0) {
+          await loadTeams();
+        }
+        if (!Array.isArray(teams) || teams.length === 0) {
+          const uniqueTeams = Array.from(
+            new Set(matches.flatMap(m => [m.home_team, m.away_team]).filter(Boolean))
+          );
+          teams = uniqueTeams.map(name => ({ name }));
+        }
 
         // Sort matches chronologically before replaying ELO
         matches.sort((a,b)=>{
@@ -888,11 +1141,13 @@ async function loadAllGames() {
 
             const dr = out.dr;
             const homeWinProb = out.expected;
-            const marginPred = Math.abs(out.predictedMargin);
+            const drAbs = Math.abs(dr);
+            const tipPoints = drAbs < 30 ? 2 : drAbs < 70 ? 4 : 8;
+            const marginPred = `${Math.abs(out.predictedMargin).toFixed(1)} (${tipPoints})`;
             const eloHomeBefore = out.homeEloBefore;
             const eloAwayBefore = out.awayEloBefore;
 
-            const oddsPred = (out.predictedWinProb * 100).toFixed(1) + "%";
+            const homeWinPct = (homeWinProb * 100).toFixed(1) + "%";
 
             const rankHome = r.homeRankBeforeRound;
             const rankAway = r.awayRankBeforeRound;
@@ -941,22 +1196,32 @@ async function loadAllGames() {
                 return "error";
             };
 
+            const highlightTeamClass = (teamName) => {
+              if (teamName !== eloPick) return "";
+              if (!isCompleted) return "team-pick-green";
+              if (isDraw) return "team-pick-yellow";
+              return actualWinner === eloPick ? "team-pick-green" : "team-pick-red";
+            };
+
             rows += `
-            <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}">
+            <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}"
+                data-home-team="${home}"
+                data-away-team="${away}"
+                data-elo-pick="${eloPick}">
               <td class="col-narrow">${m.year}</td>
               <td class="col-narrow">${m.round}</td>
-              <td class="col-team">${displayTeamName(home)}</td>
-              <td class="col-team">${displayTeamName(away)}</td>
+              <td class="col-team ${highlightTeamClass(home)}">${displayTeamName(home)}</td>
+              <td class="col-team ${highlightTeamClass(away)}">${displayTeamName(away)}</td>
+              <td class="col-narrow">${homeWinPct}</td>
               <td class="col-narrow">${m.home_score}</td>
               <td class="col-narrow">${m.away_score}</td>
               <td class="col-narrow">${marginPred}</td>
-              <td class="col-narrow">${oddsPred}</td>
               <td class="col-narrow">${Math.round(eloHomeBefore)}</td>
               <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
               <td class="col-narrow">${rankHome}</td>
               <td class="col-narrow">${rankAway}</td>
               <td class="${colourFor(eloPick)} col-pick">
-                ${displayTeamName(eloPick)}
+                ${displayTeamName(eloPick)} (${tipPoints})
               </td>
               <td class="col-pip tip-cell">
                 ${renderRankPip(ladderPick, eloPick, actualWinner, isCompleted)}
@@ -982,10 +1247,10 @@ async function loadAllGames() {
               <th class="col-narrow">Round</th>
               <th class="col-wide">Home</th>
               <th class="col-wide">Away</th>
+              <th class="col-narrow">Home<br>Win %</th>
               <th class="col-narrow">Home<br>Score</th>
               <th class="col-narrow">Away<br>Score</th>
               <th class="col-narrow">Pred<br>Margin</th>
-              <th class="col-narrow">Home<br>Win %</th>
               <th class="col-narrow">ELO (H)</th>
               <th class="col-narrow">ELO (A)</th>
               <th class="col-narrow">Rank (H)</th>
@@ -1016,7 +1281,7 @@ async function loadAllGames() {
     } catch (e) {
         console.error(e);
         document.getElementById("games-table").innerHTML =
-            "<p>Error loading games</p>";
+            `<p>Error loading games: ${e?.message || e}</p>`;
     }
 }
 
@@ -1049,8 +1314,7 @@ async function loadSeasonMatrix() {
 
   await loadTeams();
 
-  const res = await fetch(`${API_URL}/api/matches`);
-  const matches = await res.json();
+  const matches = await getMatches();
 
   const selectedYear = Number(document.getElementById("season-year").value);
 
@@ -1062,68 +1326,110 @@ async function loadSeasonMatrix() {
   const engine = createReplayEngine(MODEL_PARAMS, teams);
   const replay = engine.replayMatches(matches, { applyByes: true });
 
-  // ---- Isolate selected season ----
-  const seasonMatches = matches.filter(m => m.year === selectedYear);
+  const seasonMatches = matches
+    .filter(m => Number(m.year) === selectedYear)
+    .sort((a, b) => a.match_index - b.match_index);
 
-  const rounds = [];
+  const yearTeams = Array.from(getTeamsInYearFixtures(matches, selectedYear));
+  const rowsById = new Map(replay.rows.map(r => [r.match.id, r]));
+  const rounds = Array.from(new Set(seasonMatches.map(m => m.round))).sort(
+    (a, b) => extractRoundNumber(a) - extractRoundNumber(b)
+  );
 
-  for (const m of seasonMatches) {
-    if (!rounds.includes(m.round)) {
-      rounds.push(m.round);
+  const cumulativePoints = {};
+  yearTeams.forEach(team => { cumulativePoints[team] = 0; });
+
+  const roundPoints = {};
+  rounds.forEach(round => { roundPoints[round] = {}; });
+
+  for (const round of rounds) {
+    const roundMatches = seasonMatches.filter(m => m.round === round);
+    const playedThisRound = new Set();
+
+    for (const m of roundMatches) {
+      playedThisRound.add(m.home_team);
+      playedThisRound.add(m.away_team);
+
+      const r = rowsById.get(m.id);
+      if (!r) continue;
+
+      const pHome = r.out.expected;
+      const pAway = 1 - pHome;
+      const completed = m.home_score != null && m.away_score != null;
+
+      let homePts = 0;
+      let awayPts = 0;
+      let homeType = "pred-loss";
+      let awayType = "pred-loss";
+
+      if (completed) {
+        if (m.home_score > m.away_score) {
+          homePts = 2;
+          awayPts = 0;
+          homeType = "win";
+          awayType = "loss";
+        } else if (m.away_score > m.home_score) {
+          homePts = 0;
+          awayPts = 2;
+          homeType = "loss";
+          awayType = "win";
+        } else {
+          homePts = 1;
+          awayPts = 1;
+          homeType = "draw";
+          awayType = "draw";
+        }
+      } else {
+        homePts = 2 * pHome;
+        awayPts = 2 * pAway;
+        homeType = pHome >= 0.5 ? "pred-win" : "pred-loss";
+        awayType = pAway >= 0.5 ? "pred-win" : "pred-loss";
+      }
+
+      cumulativePoints[m.home_team] += homePts;
+      cumulativePoints[m.away_team] += awayPts;
+
+      roundPoints[round][m.home_team] = {
+        pts: cumulativePoints[m.home_team],
+        type: homeType,
+        opponent: m.away_team
+      };
+      roundPoints[round][m.away_team] = {
+        pts: cumulativePoints[m.away_team],
+        type: awayType,
+        opponent: m.home_team
+      };
+    }
+
+    const isRegularRound = /^Rd\s*\d+/i.test(round);
+    const isFinalsRound = /^(qual|elim|semi|prelim|grand|gf)/i.test(round);
+    if (isRegularRound && !isFinalsRound) {
+      for (const team of yearTeams) {
+        if (playedThisRound.has(team)) continue;
+        cumulativePoints[team] += 2;
+        roundPoints[round][team] = {
+          pts: cumulativePoints[team],
+          type: "bye",
+          opponent: null
+        };
+      }
     }
   }
 
-  const cumulativePoints = {};
-  teams.forEach(t => cumulativePoints[t.name] = 0);
-
-  const roundPoints = {};
-  rounds.forEach(r => roundPoints[r] = {});
-
-  let lastCompletedRound = null;
-
-  // ---- Process completed games in season ----
-  for (const m of seasonMatches) {
-
-    if (m.home_score == null || m.away_score == null) continue;
-
-    lastCompletedRound = m.round;
-
-    const home = m.home_team;
-    const away = m.away_team;
-
-    const homePts =
-      m.home_score > m.away_score ? 2 :
-      m.home_score < m.away_score ? 0 : 1;
-
-    const awayPts =
-      m.away_score > m.home_score ? 2 :
-      m.away_score < m.home_score ? 0 : 1;
-
-    cumulativePoints[home] += homePts;
-    cumulativePoints[away] += awayPts;
-
-    roundPoints[m.round][home] = {
-      pts: cumulativePoints[home],
-      type: homePts === 2 ? "win" : homePts === 1 ? "draw" : "loss"
-    };
-
-    roundPoints[m.round][away] = {
-      pts: cumulativePoints[away],
-      type: awayPts === 2 ? "win" : awayPts === 1 ? "draw" : "loss"
-    };
-  }
-
-  const seasonRows = replay.rows.filter(r => r.match.year === selectedYear);
-
-  const ladderAtSeasonEnd =
-    seasonRows.length > 0
-      ? seasonRows[seasonRows.length - 1].ladderAfter
-      : replay.ladder;
-
-  const currentLadder = engine.rankLadder(ladderAtSeasonEnd);
+  const currentLadder = yearTeams
+    .map(team => ({
+      team,
+      compPoints: cumulativePoints[team] ?? 0,
+      rating: Math.round(replay.state.ratings[team] ?? 1500)
+    }))
+    .sort((a, b) => {
+      if (b.compPoints !== a.compPoints) return b.compPoints - a.compPoints;
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return a.team.localeCompare(b.team);
+    });
 
   const currentRankMap = {};
-  currentLadder.forEach((r, i) => currentRankMap[r.team] = i + 1);
+  currentLadder.forEach((r, i) => { currentRankMap[r.team] = i + 1; });
 
   let html = `<table class="matrix-table"><thead><tr>
     <th>Team</th>
@@ -1141,13 +1447,9 @@ async function loadSeasonMatrix() {
     const team = row.team;
 
     html += `<tr>
-      <td>${team}</td>
+      <td><img class="team-logo" src="${logoPath(team)}" alt="">${team}</td>
       <td>${currentRankMap[team]}</td>
-      <td>${Math.round(
-        (seasonRows.length > 0
-          ? seasonRows[seasonRows.length - 1].stateAfter.ratings[team]
-          : replay.state.ratings[team]) ?? 1500
-      )}</td>`;
+      <td>${row.rating}</td>`;
 
     for (const r of rounds) {
       const cell = roundPoints[r][team];
@@ -1155,7 +1457,13 @@ async function loadSeasonMatrix() {
       if (!cell) {
         html += `<td></td>`;
       } else {
-        html += `<td class="${cell.type}">${cell.pts}</td>`;
+        const rounded = Math.abs(cell.pts - Math.round(cell.pts)) < 0.001
+          ? Number(cell.pts).toFixed(0)
+          : Number(cell.pts).toFixed(2);
+        const oppLogo = cell.opponent
+          ? `<img class="matrix-opponent-logo" src="${logoPath(cell.opponent)}" alt="">`
+          : "";
+        html += `<td class="${cell.type}">${rounded}${oppLogo}</td>`;
       }
     }
 
@@ -1169,8 +1477,7 @@ async function loadSeasonMatrix() {
 
 async function populateSeasonYearSelector() {
 
-  const res = await fetch(`${API_URL}/api/matches`);
-  const matches = await res.json();
+  const matches = await getMatches();
 
   const years = [...new Set(matches.map(m => m.year))].sort();
   const select = document.getElementById("season-year");
@@ -1217,12 +1524,25 @@ function getTeamColor(name) {
   return colors[name] || "#888";
 }
 
+function fadeHexColor(hex, alpha) {
+  if (typeof hex !== "string" || !hex.startsWith("#") || (hex.length !== 7 && hex.length !== 4)) {
+    return hex;
+  }
+  let full = hex;
+  if (hex.length === 4) {
+    full = "#" + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+  }
+  const r = parseInt(full.slice(1, 3), 16);
+  const g = parseInt(full.slice(3, 5), 16);
+  const b = parseInt(full.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 async function loadEloHistory() {
 
   await loadTeams();
 
-  const res = await fetch(`${API_URL}/api/matches`);
-  const matches = await res.json();
+  const matches = await getMatches();
 
   matches.sort((a,b)=>{
     if (a.year !== b.year) return a.year - b.year;
@@ -1257,16 +1577,36 @@ async function loadEloHistory() {
     }
   }
 
-  const datasets = teams.map(t => ({
-    label: t.name,
-    data: teamHistory[t.name],
-    borderWidth: 1.5,
-    pointRadius: 0,
-    tension: 0,
-    borderColor: getTeamColor(t.name)
-  }));
+  const highlightSelect = document.getElementById("elo-highlight");
+  const currentHighlight = highlightSelect?.value || "Any";
+  if (highlightSelect) {
+    highlightSelect.innerHTML = `
+      <option value="Any">Any</option>
+      ${teams.map(t => `<option value="${t.name}">${t.name}</option>`).join("")}
+    `;
+    highlightSelect.value = teams.some(t => t.name === currentHighlight) ? currentHighlight : "Any";
+  }
+  const selectedHighlight = highlightSelect?.value || "Any";
 
-  const ctx = document.getElementById("elo-history-chart").getContext("2d");
+  const datasets = teams.map(t => {
+    const baseColor = getTeamColor(t.name);
+    const highlighted = selectedHighlight !== "Any" && t.name === selectedHighlight;
+    const dimOthers = selectedHighlight !== "Any" && !highlighted;
+    return {
+      label: t.name,
+      data: teamHistory[t.name],
+      borderWidth: highlighted ? 3 : 1.5,
+      pointRadius: 0,
+      tension: 0,
+      borderColor: dimOthers ? fadeHexColor(baseColor, 0.18) : baseColor
+    };
+  });
+
+  const canvas = document.getElementById("elo-history-chart");
+  const minWidth = Math.max(1400, labels.length * 24);
+  canvas.width = minWidth;
+  canvas.height = 420;
+  const ctx = canvas.getContext("2d");
 
   if (window.eloHistoryChart) {
     window.eloHistoryChart.destroy();
@@ -1281,7 +1621,8 @@ window.eloHistoryChart = new Chart(ctx, {
     datasets
   },
   options: {
-    responsive: true,
+    responsive: false,
+    maintainAspectRatio: false,
     animation: false,
     interaction: { mode: "nearest", intersect: false },
 
@@ -1330,9 +1671,9 @@ document.addEventListener("click", async (e) => {
 
   const row = pip.closest("tr");
 
-  const home = row.children[2].innerText;
-  const away = row.children[3].innerText;
-  const eloPick = row.children[12].innerText;
+  const home = row.dataset.homeTeam;
+  const away = row.dataset.awayTeam;
+  const eloPick = row.dataset.eloPick;
 
   // Determine current selection from colour
   const isMatchingElo = pip.classList.contains("success");
@@ -1348,7 +1689,7 @@ document.addEventListener("click", async (e) => {
 
   // === SEND TO SERVER IN BACKGROUND ===
   try {
-    await fetch(API_URL + "/api/tips", {
+    await fetchWithFallback(API_URL + "/api/tips", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1365,3 +1706,4 @@ document.addEventListener("click", async (e) => {
 document.getElementById("elo-highlight")?.addEventListener("change", () => {
   loadEloHistory();
 });
+

@@ -265,6 +265,21 @@
         overflow: hidden;
         text-overflow: ellipsis;
         }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable .sort-indicator { margin-left: 4px; color: #666; }
+        .team-logo { width: 18px; height: 18px; vertical-align: text-bottom; margin-right: 6px; object-fit: contain; }
+        .team-pick-green { color: #2e7d32; font-weight: 700; }
+        .team-pick-yellow { color: #a68b00; font-weight: 700; }
+        .team-pick-red { color: #b71c1c; font-weight: 700; }
+        .joker-table-wrap { overflow-x: auto; margin-top: 12px; }
+        .joker-table th, .joker-table td { text-align: center; }
+        .heat-red { background: #ef6a6a; }
+        .heat-yellow { background: #efdd88; }
+        .heat-green { background: #67be7b; }
+        .top-broncos { border: 3px solid #111 !important; font-weight: 700; }
+        .matrix-opponent-logo { width: 14px; height: 14px; margin-left: 4px; vertical-align: text-bottom; object-fit: contain; }
+        .elo-history-wrap { width: 100%; height: 420px; min-height: 320px; overflow-x: auto; overflow-y: hidden; }
+        .elo-history-wrap canvas { height: 100% !important; display: block; }
     </style>
 </head>
 <body>
@@ -380,8 +395,8 @@
 
                 <label style="margin-left:20px;">Highlight Team</label>
                 <select id="elo-highlight"></select>
-                    <div style="overflow-x: auto;">
-                        <canvas id="elo-history-chart" height="120" width="2000"></canvas>
+                    <div class="elo-history-wrap">
+                        <canvas id="elo-history-chart"></canvas>
                     </div>
             </div>
         </div>
@@ -389,40 +404,21 @@
 
 <div id="settings" class="tab-content">
   <div class="card">
-    <h2>ELO Inputs & Model Evaluation</h2>
+    <h2>Joker & Model Evaluation</h2>
     <div id="settings-message"></div>
 
     <div class="grid" style="grid-template-columns: 1fr 2fr 2fr; align-items: start;">
 
-      <!-- ===== LEFT COLUMN: INPUTS ===== -->
+      <!-- ===== LEFT COLUMN: JOKER TABLE ===== -->
       <div>
-        <h3>Model Inputs</h3>
-        <form id="settings-form" onsubmit="updateSettingsAndEvaluate(event)">
-
-          <label>K-Factor</label>
-          <input type="number" step="0.5" id="k-factor" value="11">
-
-          <label>Home Advantage</label>
-          <input type="number" id="home-adv" value="45">
-
-          <label>Margin Coefficient</label>
-          <input type="number" step="0.005" id="margin-coef" value="0.048406">
-
-          <label>Early Round Boost (multiplier)</label>
-          <input type="number" step="0.01" id="early-boost" value="1.10">
-
-          <button type="submit" class="btn" style="margin-top: 20px;">
-            Recalculate & Evaluate
-          </button>
-
-          <button class="btn" type="button" onclick="downloadDbCsv()">
-            Download Database CSV
-          </button>
-
-          <button class="btn" type="button" style="margin-top:10px;" onclick="downloadDiagnosticCsv()">
-            Download Diagnostic CSV
-          </button>
-        </form>
+        <h3>Joker Table</h3>
+        <div id="joker-table" class="joker-table-wrap">Loading...</div>
+        <button class="btn" type="button" onclick="downloadDbCsv()">
+          Download Database CSV
+        </button>
+        <button class="btn" type="button" style="margin-top:10px;" onclick="downloadDiagnosticCsv()">
+          Download Diagnostic CSV
+        </button>
       </div>
 
       <!-- ===== CENTRE COLUMN: KEY METRICS ===== -->
@@ -491,3 +487,4 @@
     
 </body>
 </html>
+
