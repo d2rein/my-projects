@@ -4,42 +4,134 @@
 <meta charset="UTF-8">
 <title>Live Orrery with Moons</title>
 <style>
-  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
-  canvas { display: block; margin: 0 auto; background: #000; }
-  #controls { text-align: center; margin: 10px; }
-  button { margin: 0 5px; padding: 5px 10px; }
+  body {
+    margin: 0;
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    line-height: 1.35;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #000;
+  }
+  #controls {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.88);
+    border-bottom: 1px solid #262626;
+    padding: 10px;
+    text-align: center;
+  }
+  .time-readout {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .speed-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    touch-action: pan-y;
+  }
+  button {
+    margin: 0;
+    padding: 8px 12px;
+    min-height: 38px;
+    border: 1px solid #3d3d3d;
+    border-radius: 8px;
+    background: #161616;
+    color: #fff;
+    font-size: 14px;
+    touch-action: manipulation;
+  }
+  .control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px 12px;
+    align-items: center;
+    max-width: 920px;
+    margin: 0 auto;
+    text-align: left;
+  }
+  .control-grid label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .control-grid input[type="number"] {
+    width: 78px;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #3d3d3d;
+    background: #101010;
+    color: #fff;
+    font-size: 16px;
+  }
+  #orbitTableContainer {
+    padding: 0 8px 16px;
+  }
+  h3 {
+    margin: 12px 0 6px;
+    font-size: 16px;
+  }
 
   table { width: 100%; border-collapse: collapse; margin-top: 10px; }
   th, td { padding: 4px 6px; border: 1px solid #444; }
   th { background: #111; color: #fff; }
   td.num, th.num { text-align: right; font-family: monospace; }
+  @media (max-width: 768px) {
+    .time-readout { font-size: 13px; }
+    .speed-buttons {
+      justify-content: flex-start;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+    button {
+      flex: 0 0 auto;
+      min-width: 86px;
+      min-height: 42px;
+    }
+    table { font-size: 12px; }
+    th, td { padding: 3px 4px; }
+  }
 </style>
 </head>
 <body>
 
 <div id="controls">
-  Current Time: <span id="currentTime"></span><br>
-  Current Local Time: <span id="localTime"></span><br>
-  Days since J2000: <span id="daysSinceJ2000"></span><br>
-  <button data-speed="1">1×</button>
-  <button data-speed="3600">3600×</button>
-  <button data-speed="86400">86400×</button>
-  <button data-speed="1000000">1,000,000×</button>
-  <button data-speed="reset">Reset</button>
+  <div class="time-readout">
+    Current Time: <span id="currentTime"></span><br>
+    Current Local Time: <span id="localTime"></span><br>
+    Days since J2000: <span id="daysSinceJ2000"></span>
+  </div>
+  <div class="speed-buttons">
+    <button data-speed="1">1x</button>
+    <button data-speed="3600">3600x</button>
+    <button data-speed="86400">86400x</button>
+    <button data-speed="1000000">1,000,000x</button>
+    <button data-speed="reset">Reset</button>
+  </div>
+  <div class="control-grid">
+    <label for="observerLon">
+      Observer longitude (deg):
+      <input id="observerLon" type="number" value="153" step="1">
+    </label>
+    <label for="timeZoneOffset">
+      Time zone from GMT:
+      <input id="timeZoneOffset" type="number" value="0" step="1">
+    </label>
+    <label>
+      <input type="checkbox" id="showVisibilityLines" checked>
+      Show visibility and horizon lines
+    </label>
+  </div>
 </div>
-
-<br>
-Observer longitude:
-<input id="observerLon" type="number" value="153" step="1" style="width:60px">
-°
-<br>
-Time Zone (hours from GMT): 
-<input id="timeZoneOffset" type="number" value="0" step="1" style="width:50px"> <br><br>
-
-<label>
-<input type="checkbox" id="showVisibilityLines" checked>
-Show Visibility & Horizon Lines
-</label>
 
 <canvas id="orreryCanvas" width="1200" height="800"></canvas>
 
@@ -577,9 +669,8 @@ let cx, cy;
 
 function resizeCanvas(){
   const controlsH = document.getElementById("controls").offsetHeight;
-  const tableH = document.getElementById("orbitTableContainer").offsetHeight;
   canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - controlsH - tableH;
+  canvas.height = Math.max(320, window.innerHeight - controlsH - 24);
   cx = canvas.width/2;
   cy = canvas.height/2;
   inset.x = canvas.width - inset.w - 20;
@@ -592,12 +683,34 @@ resizeCanvas();
 let currentJD = Date.now()/86400000 + 2440587.5;
 const BASE_SPEED = 1/86400;
 let timeSpeed = BASE_SPEED;
+function applySpeedControl(speedValue){
+  if(speedValue === "reset"){
+    currentJD = Date.now()/86400000 + 2440587.5;
+    timeSpeed = BASE_SPEED;
+    return;
+  }
+  timeSpeed = BASE_SPEED * parseFloat(speedValue);
+}
 document.querySelectorAll("#controls button").forEach(btn=>{
-  btn.onclick = ()=>{
-    const s = btn.dataset.speed;
-    if(s==="reset"){ currentJD = Date.now()/86400000 + 2440587.5; timeSpeed = BASE_SPEED; }
-    else timeSpeed = BASE_SPEED * parseFloat(s);
-  };
+  let touchMoved = false;
+  let startY = 0;
+  btn.addEventListener("click", (event) => {
+    if (touchMoved) {
+      touchMoved = false;
+      event.preventDefault();
+      return;
+    }
+    applySpeedControl(btn.dataset.speed);
+    touchMoved = false;
+  });
+  btn.addEventListener("touchstart", (event) => {
+    touchMoved = false;
+    startY = event.touches[0].clientY;
+  }, { passive: true });
+  btn.addEventListener("touchmove", (event) => {
+    const dy = Math.abs(event.touches[0].clientY - startY);
+    if (dy > 10) touchMoved = true;
+  }, { passive: true });
 });
 
   // Time
@@ -629,22 +742,27 @@ function orbitPos(obj,jd){
   for(let i=0;i<8;i++) E = M*Math.PI/180 + e*Math.sin(E);
   const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
   const r = a*(1-e*e)/(1+e*Math.cos(nu));
-  // --- ROTATION INTO ECLIPTIC FRAME ---
-  const Ω = (obj.Omega || 0) * Math.PI / 180;
-  const ω = (obj.omega || 0) * Math.PI / 180;
-  const i = (obj.i || 0) * Math.PI / 180;
+  const rotated = rotateToEcliptic(obj, r, nu);
+  return { ...rotated, r, nu: nu*180/Math.PI, M, E:E*180/Math.PI };
+}
 
-  const θ = ω + nu;
+function rotateToEcliptic(obj, r, nu){
+  const OmegaRad = (obj.Omega || 0) * Math.PI / 180;
+  const omegaRad = (obj.omega || 0) * Math.PI / 180;
+  const iRad = (obj.i || 0) * Math.PI / 180;
+  const theta = omegaRad + nu;
 
-  const cosΩ = Math.cos(Ω), sinΩ = Math.sin(Ω);
-  const cosθ = Math.cos(θ), sinθ = Math.sin(θ);
-  const cosi = Math.cos(i), sini = Math.sin(i);
+  const cosOmega = Math.cos(OmegaRad);
+  const sinOmega = Math.sin(OmegaRad);
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  const cosI = Math.cos(iRad);
+  const sinI = Math.sin(iRad);
 
-  const x = r * (cosΩ * cosθ - sinΩ * sinθ * cosi);
-  const y = r * (sinΩ * cosθ + cosΩ * sinθ * cosi);
-  const z = r * (sinθ * sini);
-
-return { x, y, z, r, nu: nu*180/Math.PI, M, E:E*180/Math.PI };
+  const x = r * (cosOmega * cosTheta - sinOmega * sinTheta * cosI);
+  const y = r * (sinOmega * cosTheta + cosOmega * sinTheta * cosI);
+  const z = r * (sinTheta * sinI);
+  return { x, y, z };
 }
 
 function precomputeOrbit(p, steps=360){
@@ -652,7 +770,7 @@ function precomputeOrbit(p, steps=360){
   for(let t=0;t<=steps;t++){
     const nu=t*Math.PI/180;
     const r=p.a*(1-p.e*p.e)/(1+p.e*Math.cos(nu));
-    pts.push({x:r*Math.cos(nu), y:r*Math.sin(nu)});
+    pts.push(rotateToEcliptic(p, r, nu));
   }
   return pts;
 }
@@ -721,22 +839,8 @@ function moonPosAroundPlanet(moon, jd){
 
   const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
   const r = a*(1-e*e)/(1+e*Math.cos(nu));
-
-   // --- ROTATION INTO ECLIPTIC FRAME ---
-  const Ω = (moon.Omega || 0) * Math.PI / 180;
-  const ω = (moon.omega || 0) * Math.PI / 180;
-  const i = (moon.i || 0) * Math.PI / 180;
-
-  const θ = ω + nu;
-
-  const cosΩ = Math.cos(Ω), sinΩ = Math.sin(Ω);
-  const cosθ = Math.cos(θ), sinθ = Math.sin(θ);
-  const cosi = Math.cos(i), sini = Math.sin(i);
-
-  const x = r * (cosΩ * cosθ - sinΩ * sinθ * cosi);
-  const y = r * (sinΩ * cosθ + cosΩ * sinθ * cosi);
-  const z = r * (sinθ * sini);
-  return { x, y, z, r, nu: nu*180/Math.PI, M, E:E*180/Math.PI };
+  const rotated = rotateToEcliptic(moon, r, nu);
+  return { ...rotated, r, nu: nu*180/Math.PI, M, E:E*180/Math.PI };
 }
 
 // ------------------- TABLE SETUP -------------------
