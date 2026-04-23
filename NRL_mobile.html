@@ -104,6 +104,7 @@ resizeCanvas(); // initial
 ====================== */
 let joyActive = false;
 let joyCenter = { x: 0, y: 0 };
+let joyTouchId = null;
 
 /* =====================
    INPUT STATE
@@ -121,6 +122,8 @@ const DEFENDER_SPEED = 1.2;
 const FEND_RADIUS = 60;
 const FEND_COOLDOWN_MAX = 70;
 const FEND_WAVE_DURATION = 20;
+const IS_TOUCH_DEVICE = window.matchMedia("(pointer: coarse)").matches || ("ontouchstart" in window);
+const BALL_PICKUP_ASSIST_PX = IS_TOUCH_DEVICE ? 12 : 0;
 
 /* =====================
    GAME STATE
@@ -205,7 +208,10 @@ const scaleY = canvas.height / FIELD_H;
 
   if(!ball.rolled){ ball.y += 0.35; if(ball.y>=tackledPlayer.y+10) ball.rolled=true; }
 
-  if(!player.hasBall && ball.rolled && Math.hypot(player.x-ball.x,player.y-ball.y)<16){
+  const ballDistPx = Math.hypot((player.x - ball.x) * scaleX, (player.y - ball.y) * scaleY);
+  const avgScale = (scaleX + scaleY) / 2;
+  const pickupRadiusPx = (player.r + ball.r) * avgScale + BALL_PICKUP_ASSIST_PX;
+  if(!player.hasBall && ball.rolled && ballDistPx < pickupRadiusPx){
     player.hasBall=true; defendersActive=true;
   }
 
@@ -334,13 +340,59 @@ resetGame();
 const joyBase=document.getElementById("joystickBase");
 const joyStick=document.getElementById("joystickStick");
 
-function joyStart(e){ joyActive=true; const r=joyBase.getBoundingClientRect(); joyCenter={x:r.left+r.width/2,y:r.top+r.height/2}; }
-function joyMove(e){ if(!joyActive) return; const t=e.touches?e.touches[0]:e; const dx=t.clientX-joyCenter.x, dy=t.clientY-joyCenter.y; const dist=Math.min(40,Math.hypot(dx,dy)); const a=Math.atan2(dy,dx); const ox=Math.cos(a)*dist, oy=Math.sin(a)*dist; joyStick.style.transform=`translate(${ox}px,${oy}px)`; input.dx=ox/40; input.dy=oy/40; }
-function joyEnd(){ joyActive=false; joyStick.style.transform="translate(0,0)"; input.dx=0; input.dy=0; }
+function joyStart(e){
+  joyActive = true;
+  const r = joyBase.getBoundingClientRect();
+  joyCenter = { x:r.left+r.width/2, y:r.top+r.height/2 };
+  if (e.changedTouches && e.changedTouches.length) {
+    joyTouchId = e.changedTouches[0].identifier;
+  } else {
+    joyTouchId = null;
+  }
+}
+
+function joyMove(e){
+  if(!joyActive) return;
+  let t = e;
+  if(e.touches){
+    t = null;
+    for(const touch of e.touches){
+      if(touch.identifier === joyTouchId){
+        t = touch;
+        break;
+      }
+    }
+    if(!t) return;
+  }
+  const dx=t.clientX-joyCenter.x, dy=t.clientY-joyCenter.y;
+  const dist=Math.min(40,Math.hypot(dx,dy));
+  const a=Math.atan2(dy,dx);
+  const ox=Math.cos(a)*dist, oy=Math.sin(a)*dist;
+  joyStick.style.transform=`translate(${ox}px,${oy}px)`;
+  input.dx=ox/40; input.dy=oy/40;
+}
+
+function joyEnd(e){
+  if(e && e.changedTouches && joyTouchId !== null){
+    let joystickTouchEnded = false;
+    for(const touch of e.changedTouches){
+      if(touch.identifier === joyTouchId){
+        joystickTouchEnded = true;
+        break;
+      }
+    }
+    if(!joystickTouchEnded) return;
+  }
+  joyActive=false;
+  joyTouchId=null;
+  joyStick.style.transform="translate(0,0)";
+  input.dx=0; input.dy=0;
+}
 
 ["mousedown","touchstart"].forEach(ev=>joyBase.addEventListener(ev,joyStart));
 ["mousemove","touchmove"].forEach(ev=>window.addEventListener(ev,joyMove));
-["mouseup","touchend","touchcancel"].forEach(ev=>window.addEventListener(ev,joyEnd));
+["mouseup"].forEach(ev=>window.addEventListener(ev,joyEnd));
+["touchend","touchcancel"].forEach(ev=>window.addEventListener(ev,joyEnd, { passive: true }));
 
 // Buttons
 const fendBtn=document.getElementById("fendBtn");
