@@ -29,6 +29,11 @@
     font-size: 14px;
     margin-bottom: 8px;
   }
+  #moonElementsStatus {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #9aa0a6;
+  }
   .speed-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -109,6 +114,7 @@
     Current Time: <span id="currentTime"></span><br>
     Current Local Time: <span id="localTime"></span><br>
     Days since J2000: <span id="daysSinceJ2000"></span>
+    <div id="moonElementsStatus">Moon elements: baseline snapshot</div>
   </div>
   <div class="speed-buttons">
     <button data-speed="1">1x</button>
@@ -116,6 +122,7 @@
     <button data-speed="86400">86400x</button>
     <button data-speed="1000000">1,000,000x</button>
     <button data-speed="reset">Reset</button>
+    <button id="refreshMoonElementsBtn" type="button">Refresh Moons (JPL)</button>
   </div>
   <div class="control-grid">
     <label for="observerLon">
@@ -154,9 +161,6 @@
 const AU = 149597870.7; // km
 const JD_J2000 = 2451545.0;
 const MU = 1.32712440018e11; // km^3/s^2
-// ------------------- EARTH ROTATION -------------------
-const EARTH_ROT_RATE = 2 * Math.PI * 1.00273790935; // rad/day
-
 
 // ------------------- PLANETS -------------------
 const planets = [
@@ -691,7 +695,7 @@ function applySpeedControl(speedValue){
   }
   timeSpeed = BASE_SPEED * parseFloat(speedValue);
 }
-document.querySelectorAll("#controls button").forEach(btn=>{
+document.querySelectorAll("#controls button[data-speed]").forEach(btn=>{
   let touchMoved = false;
   let startY = 0;
   btn.addEventListener("click", (event) => {
@@ -713,6 +717,38 @@ document.querySelectorAll("#controls button").forEach(btn=>{
   }, { passive: true });
 });
 
+function setMoonStatus(text){
+  const el = document.getElementById("moonElementsStatus");
+  if (el) el.textContent = text;
+}
+
+async function refreshMoonElementsFromApi(force = false, notify = false){
+  try {
+    const url = force ? "/api/moon-elements?force=1" : "/api/moon-elements";
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data || !Array.isArray(data.moons)) throw new Error("Invalid response payload");
+
+    const updated = applyMoonSnapshot(data.moons);
+    if (!updated) throw new Error("No moon entries updated");
+    recomputeMaxMoonDist();
+
+    const stamp = data.generated_at_utc || "unknown";
+    const source = data.cached ? "cached weekly snapshot" : "fresh JPL snapshot";
+    setMoonStatus(`Moon elements: ${source} (${stamp})`);
+    if (notify) window.alert(`Updated ${updated} moon entries (${source}).`);
+  } catch (err) {
+    console.warn("Moon refresh failed", err);
+    setMoonStatus("Moon elements: using embedded fallback");
+    if (notify) window.alert(`Moon refresh failed: ${err.message}`);
+  }
+}
+
+document.getElementById("refreshMoonElementsBtn").addEventListener("click", () => {
+  refreshMoonElementsFromApi(true, true);
+});
+
   // Time
 function updateTimeDisplays() {
   const dateUTC = new Date((currentJD - 2440587.5) * 86400000);
@@ -728,6 +764,32 @@ function updateTimeDisplays() {
   // Days since J2000
   const daysSince = currentJD - JD_J2000;
   document.getElementById("daysSinceJ2000").textContent = daysSince.toFixed(5);
+}
+
+function applyMoonSnapshot(snapshot){
+  const byName = new Map(snapshot.map(m => [m.name, m]));
+  let updated = 0;
+
+  moons.forEach(m => {
+    const src = byName.get(m.name);
+    if (!src) return;
+    if (
+      src.A_km === undefined || src.EC === undefined || src.IN_deg === undefined ||
+      src.OM_deg === undefined || src.W_deg === undefined || src.MA_deg === undefined ||
+      src.N_deg_per_sec === undefined || src.epoch_jd === undefined
+    ) return;
+
+    m.a = Number(src.A_km);
+    m.e = Number(src.EC);
+    m.i = Number(src.IN_deg);
+    m.Omega = Number(src.OM_deg);
+    m.omega = Number(src.W_deg);
+    m.M0 = Number(src.MA_deg);
+    m.n = Number(src.N_deg_per_sec) * 86400;
+    m.epoch_jd = Number(src.epoch_jd);
+    updated++;
+  });
+  return updated;
 }
 
 // ------------------- ORBIT FUNCTIONS -------------------
@@ -937,15 +999,18 @@ requestAnimationFrame(physics);
 
 /* ================= DRAW MOON ================= */
 const maxMoonDist = {};
-moons.forEach(m => {
-  const p = m.parent;
-  if (!p) return;
-
-  const rel = moonPosAroundPlanet(m, currentJD);
-  const r = Math.hypot(rel.x, rel.y);
-
-  maxMoonDist[p.name] = Math.max(maxMoonDist[p.name] || 0, r);
-});
+function recomputeMaxMoonDist(){
+  Object.keys(maxMoonDist).forEach(k => delete maxMoonDist[k]);
+  moons.forEach(m => {
+    const p = m.parent;
+    if (!p) return;
+    const rel = moonPosAroundPlanet(m, currentJD);
+    const r = Math.hypot(rel.x, rel.y);
+    maxMoonDist[p.name] = Math.max(maxMoonDist[p.name] || 0, r);
+  });
+}
+recomputeMaxMoonDist();
+refreshMoonElementsFromApi(false, false);
 
 
 function drawMoon(moonPos, planetPos, planetName, scale, cxRef, cyRef){
@@ -990,12 +1055,15 @@ function drawVisibilityCone(cxRef, cyRef, scale, jd, maxAU = 10){
   const obsLonDeg = parseFloat(document.getElementById("observerLon").value || 0);
   const obsLonRad = obsLonDeg * Math.PI / 180;
 
-  // Earth rotation since J2000
-  const dDays = jd - JD_J2000;
-  const thetaRot = EARTH_ROT_RATE * dDays;
+  // Local solar hour angle:
+  // 12:00 local solar time => hourAngle = 0 => zenith aligns with the Sun.
+  // JD day starts at noon, so use (jd + 0.5) for midnight-based clock hours.
+  const utcHours = (((jd + 0.5) % 1 + 1) % 1) * 24;
+  const localSolarHours = ((utcHours + obsLonDeg / 15) % 24 + 24) % 24;
+  const hourAngle = (localSolarHours - 12) * Math.PI / 12;
 
-  // Local zenith direction
-  const zenith = sunDir + obsLonRad + thetaRot;
+  // Morning (hourAngle < 0) should be east of the Sun; afternoon west.
+  const zenith = sunDir - hourAngle;
 
   // Canvas anchor (Earth, not Sun)
   const ex = cxRef + e.x * scale;
