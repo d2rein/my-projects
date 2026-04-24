@@ -46,7 +46,7 @@ function parseElementsResult(resultText) {
   }
   const block = clean.slice(soeIdx, eoeIdx);
   const getNum = (key) => {
-    const match = block.match(new RegExp(`${key}\\s*=\\s*([-+0-9.E]+)`));
+    const match = block.match(new RegExp(`(?:^|\\s)${key}\\s*=\\s*([-+0-9.E]+)`));
     if (!match) throw new Error(`Missing ${key} in Horizons block`);
     return Number(match[1]);
   };
