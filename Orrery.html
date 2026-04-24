@@ -1062,8 +1062,9 @@ function drawVisibilityCone(cxRef, cyRef, scale, jd, maxAU = 10){
   const localSolarHours = ((utcHours + obsLonDeg / 15) % 24 + 24) % 24;
   const hourAngle = (localSolarHours - 12) * Math.PI / 12;
 
-  // Morning (hourAngle < 0) should be east of the Sun; afternoon west.
-  const zenith = sunDir - hourAngle;
+  // Earth rotates eastward (CCW in this top-down view): afternoon should advance
+  // CCW from the noon direction, morning should be clockwise.
+  const zenith = sunDir + hourAngle;
 
   // Canvas anchor (Earth, not Sun)
   const ex = cxRef + e.x * scale;
