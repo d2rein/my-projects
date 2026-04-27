@@ -1564,6 +1564,24 @@ function fadeHexColor(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function showEloHistoryMessage(canvas, wrap, message) {
+  if (!canvas) return;
+  const emptyId = "elo-history-empty";
+  let msg = document.getElementById(emptyId);
+  if (!msg && wrap) {
+    msg = document.createElement("div");
+    msg.id = emptyId;
+    msg.style.padding = "12px";
+    msg.style.color = "#666";
+    wrap.appendChild(msg);
+  }
+  if (msg) {
+    msg.textContent = message;
+    msg.style.display = "block";
+  }
+  canvas.style.display = "none";
+}
+
 async function loadEloHistory() {
 
   await loadTeams();
@@ -1634,18 +1652,21 @@ async function loadEloHistory() {
   const emptyId = "elo-history-empty";
   const existingEmpty = document.getElementById(emptyId);
 
+  if (typeof Chart === "undefined") {
+    showEloHistoryMessage(
+      canvas,
+      wrap,
+      "Chart library failed to load. Please refresh and try again."
+    );
+    return;
+  }
+
   if (labels.length === 0) {
-    if (existingEmpty) {
-      existingEmpty.style.display = "block";
-    } else if (wrap) {
-      const msg = document.createElement("div");
-      msg.id = emptyId;
-      msg.style.padding = "12px";
-      msg.style.color = "#666";
-      msg.textContent = "No completed matches found for the selected year range.";
-      wrap.appendChild(msg);
-    }
-    canvas.style.display = "none";
+    showEloHistoryMessage(
+      canvas,
+      wrap,
+      "No completed matches found for the selected year range."
+    );
     return;
   }
 
@@ -1664,10 +1685,16 @@ async function loadEloHistory() {
   }
 
   const hasZoomPlugin = typeof ChartZoom !== "undefined";
-  if (hasZoomPlugin) {
-    Chart.register(ChartZoom);
+  if (hasZoomPlugin && !window.__eloZoomRegistered) {
+    try {
+      Chart.register(ChartZoom);
+      window.__eloZoomRegistered = true;
+    } catch (err) {
+      console.warn("ELO History: failed to register zoom plugin, continuing without zoom.", err);
+    }
   }
 
+  try {
 window.eloHistoryChart = new Chart(ctx, {
   type: "line",
   data: {
@@ -1712,6 +1739,14 @@ window.eloHistoryChart = new Chart(ctx, {
     }
   }
 });
+  } catch (err) {
+    console.error("ELO History chart render failed:", err);
+    showEloHistoryMessage(
+      canvas,
+      wrap,
+      "ELO History chart failed to render. Please refresh and try again."
+    );
+  }
 }
 
 document.addEventListener("click", async (e) => {
