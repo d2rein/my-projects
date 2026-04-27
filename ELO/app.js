@@ -1675,8 +1675,12 @@ async function loadEloHistory() {
   }
   canvas.style.display = "block";
 
-  const minWidth = Math.max(1400, labels.length * 24);
-  canvas.width = minWidth;
+  // Avoid huge canvas allocations on long time ranges (can crash chart render in-browser).
+  const minWidth = 1400;
+  const maxWidth = 16000;
+  const pixelsPerPoint = 6;
+  const targetWidth = labels.length * pixelsPerPoint;
+  canvas.width = Math.min(maxWidth, Math.max(minWidth, targetWidth));
   canvas.height = 420;
   const ctx = canvas.getContext("2d");
 
