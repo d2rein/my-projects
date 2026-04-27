@@ -1711,14 +1711,15 @@ window.eloHistoryChart = new Chart(ctx, {
       ? {
           zoom: {
             pan: {
-              enabled: true,
+              // Keep zoom stable without touch gesture dependencies.
+              enabled: false,
               mode: "x",
               modifierKey: null
             },
             zoom: {
               wheel: { enabled: true },
-              drag: { enabled: false },
-              pinch: { enabled: true },
+              drag: { enabled: true },
+              pinch: { enabled: false },
               mode: "x"
             }
           }
