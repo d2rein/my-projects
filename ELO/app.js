@@ -1564,6 +1564,43 @@ function fadeHexColor(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function getCompletedYearBounds(matches) {
+  const completedYears = matches
+    .filter(m => m.home_score != null && m.away_score != null)
+    .map(m => Number(m.year))
+    .filter(Number.isFinite);
+  if (completedYears.length === 0) return null;
+  return {
+    minYear: Math.min(...completedYears),
+    maxYear: Math.max(...completedYears)
+  };
+}
+
+window.setEloHistoryRange = async function(years) {
+  const matches = await getMatches();
+  const bounds = getCompletedYearBounds(matches);
+  if (!bounds) return;
+
+  const startInput = document.getElementById("elo-start-year");
+  const endInput = document.getElementById("elo-end-year");
+  if (!startInput || !endInput) return;
+
+  const { minYear, maxYear } = bounds;
+  const endYear = maxYear;
+  let startYear = minYear;
+
+  if (years !== "all") {
+    const n = Number(years);
+    if (Number.isFinite(n) && n > 0) {
+      startYear = Math.max(minYear, maxYear - n + 1);
+    }
+  }
+
+  startInput.value = String(startYear);
+  endInput.value = String(endYear);
+  await loadEloHistory();
+};
+
 function showEloHistoryMessage(canvas, wrap, message) {
   if (!canvas) return;
   const emptyId = "elo-history-empty";
@@ -1593,8 +1630,29 @@ async function loadEloHistory() {
     return a.match_index - b.match_index;
   });
 
-  const startYear = parseInt(document.getElementById("elo-start-year")?.value || 2009);
-  const endYear = parseInt(document.getElementById("elo-end-year")?.value || 2026);
+  const bounds = getCompletedYearBounds(matches);
+  if (!bounds) return;
+  const { minYear, maxYear } = bounds;
+
+  const startInput = document.getElementById("elo-start-year");
+  const endInput = document.getElementById("elo-end-year");
+
+  if (startInput && !startInput.value) {
+    startInput.value = String(Math.max(minYear, maxYear - 4));
+  }
+  if (endInput && !endInput.value) {
+    endInput.value = String(maxYear);
+  }
+
+  let startYear = parseInt(startInput?.value || String(minYear), 10);
+  let endYear = parseInt(endInput?.value || String(maxYear), 10);
+  if (!Number.isFinite(startYear)) startYear = minYear;
+  if (!Number.isFinite(endYear)) endYear = maxYear;
+  startYear = Math.max(minYear, startYear);
+  endYear = Math.min(maxYear, endYear);
+  if (startYear > endYear) [startYear, endYear] = [endYear, startYear];
+  if (startInput) startInput.value = String(startYear);
+  if (endInput) endInput.value = String(endYear);
 
   const engine = createReplayEngine(MODEL_PARAMS, teams);
   const replay = engine.replayMatches(matches, { applyByes: true });
@@ -1675,12 +1733,9 @@ async function loadEloHistory() {
   }
   canvas.style.display = "block";
 
-  // Avoid huge canvas allocations on long time ranges (can crash chart render in-browser).
-  const minWidth = 1400;
-  const maxWidth = 16000;
-  const pixelsPerPoint = 6;
-  const targetWidth = labels.length * pixelsPerPoint;
-  canvas.width = Math.min(maxWidth, Math.max(minWidth, targetWidth));
+  // Fit chart to visible container by default so full selected period is visible without horizontal scroll.
+  const containerWidth = wrap?.clientWidth || 1400;
+  canvas.width = Math.max(900, Math.floor(containerWidth));
   canvas.height = 420;
   const ctx = canvas.getContext("2d");
 
@@ -1706,7 +1761,7 @@ window.eloHistoryChart = new Chart(ctx, {
     datasets
   },
   options: {
-    responsive: false,
+    responsive: true,
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: "nearest", intersect: false },

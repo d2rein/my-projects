@@ -391,6 +391,15 @@
                     <button class="btn" type="button" onclick="window.eloHistoryChart?.resetZoom?.()"> Reset Zoom</button>
 
                 </div>
+                <div class="elo-controls">
+                    <label>Quick View</label>
+                    <button class="btn" type="button" onclick="setEloHistoryRange('all')">All</button>
+                    <button class="btn" type="button" onclick="setEloHistoryRange(1)">1y</button>
+                    <button class="btn" type="button" onclick="setEloHistoryRange(5)">5y</button>
+                    <button class="btn" type="button" onclick="setEloHistoryRange(10)">10y</button>
+                    <button class="btn" type="button" onclick="setEloHistoryRange(20)">20y</button>
+                    <button class="btn" type="button" onclick="setEloHistoryRange(100)">100y</button>
+                </div>
 
 
                 <label style="margin-left:20px;">Highlight Team</label>
