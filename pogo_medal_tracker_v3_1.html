@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pokémon GO Medal Forecast Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+:root {
+  --bg:#0d1426; --bg2:#121c34; --bg3:#192543; --line:rgba(255,255,255,.08); --text:#eef4ff; --muted:#9fb2d9;
+  --accent:#7fd4ff; --ok:#76e39f; --gold:#ffd76e; --danger:#ff8f9d;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; background:linear-gradient(180deg,#09111f,#0d1426 30%,#10182f); color:var(--text); font-family:Arial, Helvetica, sans-serif; }
+body { padding:10px; }
+button,input,select { font:inherit; }
+input,select,button { outline:none; }
+.app { max-width:1900px; margin:0 auto; }
+.topbar {
+  display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; margin-bottom:8px;
+}
+.title { font-size:18px; font-weight:700; white-space:nowrap; }
+.mini-stats { display:flex; gap:8px; flex-wrap:wrap; min-width:0; }
+.mini-pill {
+  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; font-size:12px; white-space:nowrap;
+}
+.tabs { display:flex; gap:6px; margin-bottom:8px; }
+.tab-btn {
+  border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:7px 12px; border-radius:10px; cursor:pointer; font-weight:700;
+}
+.tab-btn.active { background:#21345e; }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+.panel {
+  background:rgba(18,28,52,.95); border:1px solid var(--line); border-radius:12px; padding:8px; margin-bottom:8px;
+}
+.row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+.field { min-width:130px; }
+.field.small { min-width:110px; }
+label { display:block; font-size:11px; color:var(--muted); margin-bottom:2px; }
+.text-input, .date-input {
+  width:100%; background:#0e1730; color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:6px 8px; height:32px;
+}
+button.primary, button.secondary {
+  height:32px; padding:0 12px; border-radius:8px; cursor:pointer; font-weight:700;
+}
+button.primary { border:none; background:linear-gradient(135deg,var(--accent),#9bffb2); color:#031018; }
+button.secondary { border:1px solid var(--line); background:#0f1730; color:var(--text); }
+.compact-note { font-size:11px; color:var(--muted); margin-left:auto; }
+.table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
+table { width:100%; border-collapse:collapse; min-width:1100px; }
+.forecast-table { min-width:720px; }
+.additional-table { min-width:520px; }
+th,td {
+  padding:2px 4px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; font-size:12px; line-height:1.15; white-space:nowrap;
+}
+th { position:sticky; top:0; background:#172445; z-index:1; color:#dcebff; }
+tbody tr:hover { background:rgba(255,255,255,.03); }
+td.desc { max-width:360px; overflow:hidden; text-overflow:ellipsis; }
+td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellipsis; }
+.order-cell { width:36px; color:var(--muted); }
+.cell-input {
+  width:100%; min-width:70px; height:24px; background:#0c1630; color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:6px; padding:2px 6px;
+  text-align:right;
+}
+.status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+.status-good { background:var(--ok); }
+.status-bad { background:var(--danger); }
+.status-flat { background:#8996b8; }
+.tier {
+  display:inline-block; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:700; border:1px solid rgba(255,255,255,.1);
+}
+.tier-None { color:#9fb2d9; }
+.tier-Bronze { color:#f0c3a4; background:rgba(185,118,59,.16); }
+.tier-Silver { color:#eaf2ff; background:rgba(189,203,230,.14); }
+.tier-Gold { color:#ffe49a; background:rgba(255,215,90,.14); }
+.tier-Platinum { color:#d4f2ff; background:rgba(103,201,255,.18); }
+.progress-text { color:#cfe1ff; }
+.section-head {
+  display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;
+}
+.section-head h2, .section-head h3 { margin:0; font-size:14px; }
+.small { font-size:11px; color:var(--muted); }
+.inline-list { display:flex; gap:8px; flex-wrap:wrap; }
+.mini-table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.chart-card { background:rgba(18,28,52,.95); border:1px solid var(--line); border-radius:12px; padding:8px; margin-bottom:8px; }
+.chart-card canvas { width:100% !important; height:360px !important; }
+.graph-title { margin:0 0 6px; font-size:14px; }
+.footer { font-size:11px; color:var(--muted); margin-top:4px; }
+@media (max-width:1200px) {
+  .topbar { grid-template-columns:1fr; }
+  .grid-2 { grid-template-columns:1fr; }
+}
+
+tr.tier-Bronze { background: rgba(185,118,59,.12); }
+tr.tier-Silver { background: rgba(189,203,230,.12); }
+tr.tier-Gold { background: rgba(255,215,90,.12); }
+tr.tier-Platinum { background: rgba(103,201,255,.12); }
+tr.tier-Bronze:nth-child(even) { background: rgba(185,118,59,.18); }
+tr.tier-Silver:nth-child(even) { background: rgba(189,203,230,.18); }
+tr.tier-Gold:nth-child(even) { background: rgba(255,215,90,.18); }
+tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="title">Pokémon GO medal planner</div>
+    <div id="summaryBar" class="mini-stats"></div>
+    <div class="mini-pill" id="nextSoonBar">—</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="entry">Entry</button>
+    <button class="tab-btn" data-tab="forecast">Level Forecast</button>
+    <button class="tab-btn" data-tab="graphs">Graphs</button>
+  </div>
+
+  <section id="entry" class="tab-pane active">
+    <div class="panel">
+      <div class="row">
+        <div class="field"><label for="snapshotDate">Record date</label><input class="date-input" id="snapshotDate" type="date"></div>
+        <div class="field"><label for="xpInput">XP</label><input class="text-input format-number" id="xpInput" type="text" inputmode="numeric"></div>
+        <div class="field small"><label for="hiddenBonusInput">Hidden bonus medals</label><input class="text-input format-number" id="hiddenBonusInput" type="text" inputmode="numeric"></div>
+        <button class="primary" id="saveSnapshotBtn">Save snapshot</button>
+        <button class="secondary" id="resetDataBtn">Reset seeded data</button>
+        <div class="compact-note" id="entryHeaderNote">—</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head">
+        <h2>Main medals</h2>
+        <div class="small">Drag to match the in-app order. Current cells accept commas.</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Vs avg</th><th>Progress</th><th>Expected</th><th>Type</th>
+            </tr>
+          </thead>
+          <tbody id="mainMedalTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head">
+        <h2>Catch medals</h2>
+        <div class="small">Separate section kept for entry, graphing, and forecasting.</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Vs avg</th><th>Progress</th><th>Expected</th><th>Type</th>
+            </tr>
+          </thead>
+          <tbody id="catchMedalTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="forecast" class="tab-pane">
+    <div class="panel">
+      <div class="section-head">
+        <h2>Level readiness</h2>
+        <div class="small">Non-dex medals required = medals required − assumed dex. Hidden bonus medal counts toward the non-dex total.</div>
+      </div>
+      <div class="table-wrap">
+        <table class="forecast-table">
+          <thead>
+            <tr>
+              <th>Level</th><th>Medals req</th><th>Dex assumed</th><th>XP required</th><th>XP date</th><th>Medal date</th><th>Ready</th><th>Bottleneck</th>
+            </tr>
+          </thead>
+          <tbody id="forecastTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="additionalForecastTables"></div>
+  </section>
+
+  <section id="graphs" class="tab-pane">
+    <div class="chart-card">
+      <h3 class="graph-title">XP and total medals</h3>
+      <canvas id="combinedChart"></canvas>
+      <div class="footer">Historical snapshots use all recorded dates. Future points are monthly projections through the last relevant level gate.</div>
+    </div>
+    <div class="chart-card">
+      <h3 class="graph-title">Main medal progress (% to platinum)</h3>
+      <canvas id="medalProgressChart"></canvas>
+      <div class="footer">Completed medals (100%+) are greyed by default. Projected values are capped at 150%.</div>
+    </div>
+    <div class="chart-card">
+      <h3 class="graph-title">Catch medal progress (% to platinum)</h3>
+      <canvas id="catchProgressChart"></canvas>
+      <div class="footer">Completed medals (100%+) are greyed by default. Projected values are capped at 150%.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+const DEFAULT_DATA = {
+  hiddenBonusMedals: 1,
+  catchesPerDayRecent: 153.6,
+  xpPerDayRecent: 326674,
+  levels: [{"level": 71, "medalsRequired": 15, "xpRequired": 93853000, "dexAssumed": 3}, {"level": 72, "medalsRequired": 20, "xpRequired": 102603000, "dexAssumed": 3}, {"level": 73, "medalsRequired": 25, "xpRequired": 112103000, "dexAssumed": 3}, {"level": 74, "medalsRequired": 30, "xpRequired": 122353000, "dexAssumed": 3}, {"level": 75, "medalsRequired": 34, "xpRequired": 133353000, "dexAssumed": 4}, {"level": 76, "medalsRequired": 38, "xpRequired": 145353000, "dexAssumed": 4}, {"level": 77, "medalsRequired": 41, "xpRequired": 158353000, "dexAssumed": 4}, {"level": 78, "medalsRequired": 44, "xpRequired": 172353000, "dexAssumed": 4}, {"level": 79, "medalsRequired": 47, "xpRequired": 187353000, "dexAssumed": 7}, {"level": 80, "medalsRequired": 50, "xpRequired": 203353000, "dexAssumed": 7}],
+  medals: [{"id": "vivillon", "group": "main", "name": "Vivillon Collector", "description": "Unique Vivillon patterns caught", "bronze": 1, "silver": 5, "gold": 10, "platinum": 18, "type": "Standard", "manualExpected": "2025-10-01"}, {"id": "kanto", "group": "main", "name": "Kanto", "description": "Kanto Pokédex entries registered", "bronze": 5, "silver": 50, "gold": 100, "platinum": 151, "type": "Pokedex", "manualExpected": "2026-10-01"}, {"id": "johto", "group": "main", "name": "Johto", "description": "Johto Pokédex entries registered", "bronze": 5, "silver": 30, "gold": 70, "platinum": 100, "type": "Pokedex", "manualExpected": "2026-06-01"}, {"id": "gym_leader", "group": "main", "name": "Gym Leader", "description": "Hours of defending Gyms", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 15000, "type": "Standard", "manualExpected": "2025-10-01"}, {"id": "idol", "group": "main", "name": "Idol", "description": "Become Best Friends with Trainers", "bronze": 1, "silver": 2, "gold": 3, "platinum": 20, "type": "Standard", "manualExpected": "2025-10-01"}, {"id": "kalos", "group": "main", "name": "Kalos", "description": "Kalos Pokédex entries registered", "bronze": 5, "silver": 25, "gold": 50, "platinum": 72, "type": "Pokedex", "manualExpected": "2026-08-01"}, {"id": "triathlete", "group": "main", "name": "Triathlete", "description": "Complete 7-day streaks", "bronze": 1, "silver": 10, "gold": 50, "platinum": 100, "type": "Standard", "manualExpected": "2026-02-01"}, {"id": "rising_star", "group": "main", "name": "Rising Star", "description": "Unique Raid bosses defeated", "bronze": 2, "silver": 10, "gold": 50, "platinum": 150, "type": "Standard", "manualExpected": "2026-02-01"}, {"id": "expert_navigator", "group": "main", "name": "Expert Navigator", "description": "Complete Routes", "bronze": 10, "silver": 50, "gold": 200, "platinum": 600, "type": "Standard", "manualExpected": "2026-01-01"}, {"id": "life_party", "group": "main", "name": "Life of the Party", "description": "Complete Party Challenges", "bronze": 10, "silver": 50, "gold": 100, "platinum": 200, "type": "Standard", "manualExpected": "2025-11-01"}, {"id": "jogger", "group": "main", "name": "Jogger", "description": "Kilometers walked", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 10000, "type": "Progressive", "manualExpected": "2028-05-01"}, {"id": "collector", "group": "main", "name": "Collector", "description": "Pokémon caught", "bronze": 30, "silver": 500, "gold": 2000, "platinum": 50000, "type": "Progressive", "manualExpected": "2026-08-01"}, {"id": "scientist", "group": "main", "name": "Scientist", "description": "Pokémon evolved", "bronze": 3, "silver": 20, "gold": 200, "platinum": 2000, "type": "Progressive", "manualExpected": "2027-04-01"}, {"id": "breeder", "group": "main", "name": "Breeder", "description": "Pokémon Eggs hatched", "bronze": 10, "silver": 100, "gold": 500, "platinum": 2500, "type": "Progressive", "manualExpected": "2028-01-01"}, {"id": "backpacker", "group": "main", "name": "Backpacker", "description": "PokéStops visited", "bronze": 100, "silver": 1000, "gold": 2000, "platinum": 50000, "type": "Progressive", "manualExpected": "2027-02-01"}, {"id": "sightseer", "group": "main", "name": "Sightseer", "description": "Unique PokéStops visited", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2000, "type": "Progressive", "manualExpected": "2026-07-01"}, {"id": "battle_girl", "group": "main", "name": "Battle Girl", "description": "Gym Battles won", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 4000, "type": "Progressive", "manualExpected": "2026-07-01"}, {"id": "berry_master", "group": "main", "name": "Berry Master", "description": "Berries fed at Gyms", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 15000, "type": "Progressive", "manualExpected": "2026-04-01"}, {"id": "hoenn", "group": "main", "name": "Hoenn", "description": "Hoenn Pokédex entries registered", "bronze": 5, "silver": 40, "gold": 90, "platinum": 135, "type": "Pokedex", "manualExpected": "2026-09-01"}, {"id": "pokemon_ranger", "group": "main", "name": "Pokémon Ranger", "description": "Field Research tasks completed", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2500, "type": "Progressive", "manualExpected": "2027-03-01"}, {"id": "pilot", "group": "main", "name": "Pilot", "description": "Earned km across the distance of all Pokémon trades", "bronze": 1000, "silver": 100000, "gold": 1000000, "platinum": 10000000, "type": "Progressive", "manualExpected": "2028-08-01"}, {"id": "unova", "group": "main", "name": "Unova", "description": "Unova Pokédex entries registered", "bronze": 5, "silver": 50, "gold": 100, "platinum": 156, "type": "Pokedex", "manualExpected": "2027-01-01"}, {"id": "alola", "group": "main", "name": "Alola", "description": "Alola Pokédex entries registered", "bronze": 5, "silver": 25, "gold": 50, "platinum": 86, "type": "Pokedex", "manualExpected": "2027-06-01"}, {"id": "galar", "group": "main", "name": "Galar", "description": "Galar Pokédex entries registered", "bronze": 5, "silver": 25, "gold": 50, "platinum": 89, "type": "Pokedex", "manualExpected": "2028-05-01"}, {"id": "mega_evo_guru", "group": "main", "name": "Mega Evolution Guru", "description": "Mega Evolve unique Pokémon", "bronze": 1, "silver": 24, "gold": 36, "platinum": 46, "type": "Standard", "manualExpected": "2026-06-01"}, {"id": "raid_expert", "group": "main", "name": "Raid Expert", "description": "Earn Raid Battle Trainer Achievements", "bronze": 1, "silver": 50, "gold": 200, "platinum": 500, "type": "Progressive", "manualExpected": "2026-08-01"}, {"id": "tiny_collector", "group": "main", "name": "Tiny Pokémon Collector", "description": "Catch XXS Pokémon", "bronze": 5, "silver": 25, "gold": 100, "platinum": 500, "type": "Progressive", "manualExpected": "2026-11-01"}, {"id": "jumbo_collector", "group": "main", "name": "Jumbo Pokémon Collector", "description": "Catch XXL Pokémon", "bronze": 5, "silver": 25, "gold": 100, "platinum": 500, "type": "Progressive", "manualExpected": "2026-05-01"}, {"id": "fisher", "group": "main", "name": "Fisher", "description": "Big (13.13 kg or heavier) Magikarp caught", "bronze": 3, "silver": 50, "gold": 300, "platinum": 1000, "type": "Progressive", "manualExpected": "2034-08-01"}, {"id": "youngster", "group": "main", "name": "Youngster", "description": "Tiny (2.41 kg or lighter) Rattata caught", "bronze": 3, "silver": 50, "gold": 300, "platinum": 1000, "type": "Progressive", "manualExpected": "2032-01-01"}, {"id": "pikachu_fan", "group": "main", "name": "Pikachu Fan", "description": "Pikachu caught", "bronze": 3, "silver": 50, "gold": 300, "platinum": 1000, "type": "Progressive", "manualExpected": "2027-05-01"}, {"id": "unown", "group": "main", "name": "Unown", "description": "Unique Unown caught", "bronze": 3, "silver": 10, "gold": 26, "platinum": 28, "type": "Progressive", "manualExpected": "2027-04-01"}, {"id": "champion", "group": "main", "name": "Champion", "description": "Non-legendary Raid Battles won", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2000, "type": "Progressive", "manualExpected": "2038-02-01"}, {"id": "battle_legend", "group": "main", "name": "Battle Legend", "description": "Legendary Raid Battles won", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2000, "type": "Progressive", "manualExpected": "2034-02-01"}, {"id": "gentleman", "group": "main", "name": "Gentleman", "description": "Pokémon trades", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2500, "type": "Progressive", "manualExpected": "2029-08-01"}, {"id": "sinnoh", "group": "main", "name": "Sinnoh", "description": "Sinnoh Pokédex entries registered", "bronze": 5, "silver": 30, "gold": 80, "platinum": 107, "type": "Pokedex", "manualExpected": "2027-03-01"}, {"id": "cameraman", "group": "main", "name": "Cameraman", "description": "GO Snapshot photobombs", "bronze": 10, "silver": 50, "gold": 200, "platinum": 400, "type": "Progressive", "manualExpected": "2028-06-01"}, {"id": "purifier", "group": "main", "name": "Purifier", "description": "Shadow Pokémon purified", "bronze": 5, "silver": 50, "gold": 500, "platinum": 1000, "type": "Progressive", "manualExpected": "2027-01-01"}, {"id": "hero", "group": "main", "name": "Hero", "description": "Defeat Team GO Rocket members", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2000, "type": "Progressive", "manualExpected": "2027-11-01"}, {"id": "rising_star_duo", "group": "main", "name": "Rising Star Duo", "description": "Raids won with a friend", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2000, "type": "Progressive", "manualExpected": "2030-08-01"}, {"id": "picnicker", "group": "main", "name": "Picnicker", "description": "Pokémon caught by other Trainers at your PokéStop Lures", "bronze": 5, "silver": 25, "gold": 500, "platinum": 2500, "type": "Progressive", "manualExpected": "2035-05-01"}, {"id": "successor", "group": "main", "name": "Successor", "description": "Mega Evolve Pokémon", "bronze": 1, "silver": 50, "gold": 500, "platinum": 1000, "type": "Progressive", "manualExpected": "2026-10-01"}, {"id": "hisui", "group": "main", "name": "Hisui", "description": "Hisui Pokédex entries registered", "bronze": 1, "silver": 3, "gold": 5, "platinum": 7, "type": "Pokedex", "manualExpected": "2028-02-01"}, {"id": "paldea", "group": "main", "name": "Paldea", "description": "Paldea Pokédex entries registered", "bronze": 5, "silver": 30, "gold": 80, "platinum": 103, "type": "Pokedex", "manualExpected": "2028-05-01"}, {"id": "great_league", "group": "main", "name": "Great League Veteran", "description": "Win Trainer Battles in the Great League", "bronze": 5, "silver": 50, "gold": 200, "platinum": 1000, "type": "Optional", "manualExpected": "2058-11-01"}, {"id": "master_league", "group": "main", "name": "Master League Veteran", "description": "Win Trainer Battles in the Master League", "bronze": 5, "silver": 50, "gold": 200, "platinum": 1000, "type": "Optional", "manualExpected": "2101-05-01"}, {"id": "ultra_hero", "group": "main", "name": "Ultra Hero", "description": "Defeat the Team GO Rocket Boss", "bronze": 1, "silver": 5, "gold": 20, "platinum": 50, "type": "Progressive", "manualExpected": "2043-12-01"}, {"id": "best_buddy", "group": "main", "name": "Best Buddy", "description": "Have Buddy Pokémon at Best Buddy level", "bronze": 1, "silver": 10, "gold": 100, "platinum": 200, "type": "Progressive", "manualExpected": "2063-01-01"}, {"id": "friend_finder", "group": "main", "name": "Friend Finder", "description": "Refer other Trainers", "bronze": 1, "silver": 10, "gold": 20, "platinum": 50, "type": "Impossible", "manualExpected": "2099-12-31"}, {"id": "showcase_star", "group": "main", "name": "Showcase Star", "description": "Win contests at PokéStop Showcase", "bronze": 1, "silver": 10, "gold": 50, "platinum": 100, "type": "Impossible", "manualExpected": "2099-12-31"}, {"id": "ace_trainer", "group": "main", "name": "Ace Trainer", "description": "Team Leader Battles won", "bronze": 10, "silver": 100, "gold": 1000, "platinum": 2000, "type": "Impossible", "manualExpected": "2099-12-31"}, {"id": "ultra_league", "group": "main", "name": "Ultra League Veteran", "description": "Win Trainer Battles in the Ultra League", "bronze": 5, "silver": 50, "gold": 200, "platinum": 1000, "type": "Impossible", "manualExpected": "2099-12-31"}, {"id": "wayfarer", "group": "main", "name": "Wayfarer", "description": "Earn Wayfarer agreements", "bronze": 50, "silver": 500, "gold": 1000, "platinum": 1500, "type": "Impossible", "manualExpected": "2099-12-31"}, {"id": "community_member", "group": "main", "name": "Community Member", "description": "Check-in with Community Ambassadors during events hosted on Campfire", "bronze": 1, "silver": 20, "gold": 50, "platinum": 100, "type": "Impossible", "manualExpected": "2099-12-31"}, {"id": "schoolkid", "group": "catch", "name": "Schoolkid", "description": "Normal-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2025-10-01"}, {"id": "bird_keeper", "group": "catch", "name": "Bird Keeper", "description": "Flying-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-01-01"}, {"id": "bug_catcher", "group": "catch", "name": "Bug Catcher", "description": "Bug-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-02-01"}, {"id": "swimmer", "group": "catch", "name": "Swimmer", "description": "Water-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2025-12-01"}, {"id": "gardener", "group": "catch", "name": "Gardener", "description": "Grass-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-03-01"}, {"id": "black_belt", "group": "catch", "name": "Black Belt", "description": "Fighting-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-05-01"}, {"id": "punk_girl", "group": "catch", "name": "Punk Girl", "description": "Poison-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-03-01"}, {"id": "ruin_maniac", "group": "catch", "name": "Ruin Maniac", "description": "Ground-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-07-01"}, {"id": "hiker", "group": "catch", "name": "Hiker", "description": "Rock-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-10-01"}, {"id": "hex_maniac", "group": "catch", "name": "Hex Maniac", "description": "Ghost-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-06-01"}, {"id": "rail_staff", "group": "catch", "name": "Rail Staff", "description": "Steel-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-08-01"}, {"id": "kindler", "group": "catch", "name": "Kindler", "description": "Fire-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-05-01"}, {"id": "rocker", "group": "catch", "name": "Rocker", "description": "Electric-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-03-01"}, {"id": "psychic", "group": "catch", "name": "Psychic", "description": "Psychic-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-04-01"}, {"id": "skier", "group": "catch", "name": "Skier", "description": "Ice-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-12-01"}, {"id": "dragon_tamer", "group": "catch", "name": "Dragon Tamer", "description": "Dragon-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2029-01-01"}, {"id": "delinquent", "group": "catch", "name": "Delinquent", "description": "Dark-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-05-01"}, {"id": "fairy_tale", "group": "catch", "name": "Fairy-Tale Girl", "description": "Fairy-type caught", "bronze": 10, "silver": 50, "gold": 200, "platinum": 2500, "type": "Catch", "manualExpected": "2026-07-01"}],
+  snapshots: [{"date": "2026-01-15", "xp": 54221175, "medals": {"vivillon": 18, "kanto": 145, "johto": 97, "gym_leader": 22487, "idol": 57, "kalos": 52, "triathlete": 88, "rising_star": 141, "expert_navigator": 616, "life_party": 207, "jogger": 2364.6, "collector": 20692, "scientist": 313, "breeder": 534, "backpacker": 14054, "sightseer": 1100, "battle_girl": 2584, "berry_master": 7378, "hoenn": 118, "pokemon_ranger": 882, "pilot": 1112321, "unova": 120, "alola": 46, "galar": 50, "mega_evo_guru": 33, "raid_expert": 257, "tiny_collector": 92, "jumbo_collector": 293, "fisher": 57, "youngster": 66, "pikachu_fan": 195, "unown": 6, "champion": 147, "battle_legend": 110, "gentleman": 569, "sinnoh": 77, "cameraman": 93, "purifier": 71, "hero": 373, "rising_star_duo": 240, "picnicker": 107, "successor": 312, "hisui": 3, "paldea": 42, "great_league": 48, "master_league": 5, "ultra_hero": 3, "best_buddy": 4, "friend_finder": 1, "showcase_star": 6, "ace_trainer": 5, "ultra_league": 0, "wayfarer": 0, "community_member": 0, "schoolkid": 4231, "bird_keeper": 2378, "bug_catcher": 1978, "swimmer": 2702, "gardener": 1893, "black_belt": 1499, "punk_girl": 1720, "ruin_maniac": 1221, "hiker": 1040, "hex_maniac": 1320, "rail_staff": 1171, "kindler": 1320, "rocker": 1532, "psychic": 1718, "skier": 867, "dragon_tamer": 663, "delinquent": 1560, "fairy_tale": 1054}}, {"date": "2026-02-05", "xp": 71296718, "medals": {"vivillon": 18, "kanto": 148, "johto": 98, "gym_leader": 24126, "idol": 58, "kalos": 53, "triathlete": 97, "rising_star": 145, "expert_navigator": 653, "life_party": 210, "jogger": 2539.3, "collector": 23537, "scientist": 413, "breeder": 586, "backpacker": 16093, "sightseer": 1174, "battle_girl": 2730, "berry_master": 9170, "hoenn": 121, "pokemon_ranger": 999, "pilot": 1453722, "unova": 124, "alola": 49, "galar": 50, "mega_evo_guru": 33, "raid_expert": 266, "tiny_collector": 146, "jumbo_collector": 316, "fisher": 67, "youngster": 84, "pikachu_fan": 225, "unown": 6, "champion": 151, "battle_legend": 115, "gentleman": 643, "sinnoh": 77, "cameraman": 105, "purifier": 152, "hero": 444, "rising_star_duo": 249, "picnicker": 107, "successor": 376, "hisui": 3, "paldea": 47, "great_league": 48, "master_league": 5, "ultra_hero": 3, "best_buddy": 4, "friend_finder": 1, "showcase_star": 7, "ace_trainer": 6, "ultra_league": 0, "wayfarer": 0, "community_member": 0, "schoolkid": 4965, "bird_keeper": 2827, "bug_catcher": 2252, "swimmer": 3069, "gardener": 2167, "black_belt": 1719, "punk_girl": 1973, "ruin_maniac": 1399, "hiker": 1176, "hex_maniac": 1443, "rail_staff": 1316, "kindler": 1473, "rocker": 1894, "psychic": 1950, "skier": 900, "dragon_tamer": 684, "delinquent": 1729, "fairy_tale": 1196}}, {"date": "2026-03-08", "xp": 85145879, "medals": {"vivillon": 18, "kanto": 151, "johto": 100, "gym_leader": 27989, "idol": 75, "kalos": 72, "triathlete": 105, "rising_star": 164, "expert_navigator": 682, "life_party": 210, "jogger": 2815.3, "collector": 27928, "scientist": 524, "breeder": 681, "backpacker": 19232, "sightseer": 1322, "battle_girl": 2953, "berry_master": 11128, "hoenn": 122, "pokemon_ranger": 1117, "pilot": 1672640, "unova": 128, "alola": 54, "galar": 50, "mega_evo_guru": 36, "raid_expert": 319, "tiny_collector": 205, "jumbo_collector": 346, "fisher": 86, "youngster": 100, "pikachu_fan": 254, "unown": 11, "champion": 165, "battle_legend": 154, "gentleman": 673, "sinnoh": 78, "cameraman": 114, "purifier": 203, "hero": 498, "rising_star_duo": 301, "picnicker": 166, "successor": 438, "hisui": 4, "paldea": 47, "great_league": 48, "master_league": 5, "ultra_hero": 3, "best_buddy": 5, "friend_finder": 1, "showcase_star": 7, "ace_trainer": 6, "ultra_league": 0, "wayfarer": 0, "community_member": 0, "schoolkid": 6019, "bird_keeper": 3356, "bug_catcher": 2908, "swimmer": 3598, "gardener": 2545, "black_belt": 1890, "punk_girl": 2437, "ruin_maniac": 1603, "hiker": 1373, "hex_maniac": 1592, "rail_staff": 1493, "kindler": 1934, "rocker": 2222, "psychic": 2282, "skier": 948, "dragon_tamer": 746, "delinquent": 1905, "fairy_tale": 1462}}],
+  medalOrder: { main: ["vivillon", "kanto", "johto", "gym_leader", "idol", "kalos", "triathlete", "rising_star", "expert_navigator", "life_party", "jogger", "collector", "scientist", "breeder", "backpacker", "sightseer", "battle_girl", "berry_master", "hoenn", "pokemon_ranger", "pilot", "unova", "alola", "galar", "mega_evo_guru", "raid_expert", "tiny_collector", "jumbo_collector", "fisher", "youngster", "pikachu_fan", "unown", "champion", "battle_legend", "gentleman", "sinnoh", "cameraman", "purifier", "hero", "rising_star_duo", "picnicker", "successor", "hisui", "paldea", "great_league", "master_league", "ultra_hero", "best_buddy", "friend_finder", "showcase_star", "ace_trainer", "ultra_league", "wayfarer", "community_member"], catch: ["schoolkid", "bird_keeper", "bug_catcher", "swimmer", "gardener", "black_belt", "punk_girl", "ruin_maniac", "hiker", "hex_maniac", "rail_staff", "kindler", "rocker", "psychic", "skier", "dragon_tamer", "delinquent", "fairy_tale"] }
+};
+const STORAGE_KEY = "pogo-medal-forecast-v2";
+const RECOVERED_SNAPSHOTS = [
+  {"date":"2026-03-17","xp":88752236,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":28766,"idol":81,"kalos":72,"triathlete":106,"rising_star":166,"expert_navigator":685,"life_party":210,"jogger":2884.7,"collector":29196,"scientist":556,"breeder":698,"backpacker":20125,"sightseer":1359,"battle_girl":2971,"pikachu_fan":300,"berry_master":11754,"hoenn":122,"pokemon_ranger":1158,"pilot":1755463,"unova":130,"alola":56,"galar":51,"mega_evo_guru":36,"raid_expert":325,"tiny_collector":220,"jumbo_collector":350,"fisher":86,"youngster":103,"unown":11,"champion":168,"battle_legend":157,"gentleman":685,"sinnoh":79,"cameraman":118,"purifier":221,"hero":521,"rising_star_duo":307,"picnicker":180,"successor":475,"hisui":4,"paldea":48,"ace_trainer":10,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"showcase_star":8,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":6256,"bird_keeper":3504,"punk_girl":2543,"bug_catcher":3067,"swimmer":3762,"gardener":2629,"black_belt":1958,"ruin_maniac":1737,"hiker":1424,"hex_maniac":1621,"rail_staff":1537,"kindler":2108,"rocker":2336,"psychic":2356,"skier":958,"dragon_tamer":767,"delinquent":1973,"fairy_tale":1550}},
+  {"date":"2026-04-16","xp":99957272,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":32187,"idol":97,"kalos":72,"triathlete":116,"rising_star":169,"mega_evo_guru":46,"expert_navigator":703,"life_party":210,"jogger":3164.5,"collector":34068,"scientist":612,"breeder":767,"backpacker":23753,"sightseer":1504,"battle_girl":3238,"pikachu_fan":348,"berry_master":14400,"hoenn":124,"pokemon_ranger":1313,"pilot":1910542,"sinnoh":86,"unova":132,"alola":60,"galar":53,"successor":578,"raid_expert":347,"tiny_collector":256,"jumbo_collector":371,"fisher":90,"youngster":116,"unown":11,"champion":183,"battle_legend":164,"gentleman":711,"cameraman":126,"purifier":259,"hero":600,"rising_star_duo":328,"picnicker":222,"hisui":4,"paldea":49,"showcase_star":10,"ace_trainer":11,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":7295,"bird_keeper":4070,"punk_girl":2984,"bug_catcher":4246,"swimmer":4212,"gardener":3118,"rocker":2981,"psychic":2687,"black_belt":2148,"ruin_maniac":1970,"hiker":1633,"hex_maniac":1796,"rail_staff":1826,"kindler":2416,"skier":1005,"dragon_tamer":792,"delinquent":2205,"fairy_tale":1901}}
+];
+let state = loadState();
+let combinedChart, medalProgressChart, catchProgressChart;
+const liveTierAnnouncements = {};
+
+function mergeSnapshots(...sources) {
+  const byDate = new Map();
+  sources.flat().forEach(s => {
+    if (!s || !s.date) return;
+    byDate.set(s.date, { date: s.date, xp: Number(s.xp || 0), medals: { ...(s.medals || {}) } });
+  });
+  return [...byDate.values()].sort((a,b) => a.date.localeCompare(b.date));
+}
+
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) {
+    const fresh = structuredClone(DEFAULT_DATA);
+    fresh.snapshots = mergeSnapshots(fresh.snapshots, RECOVERED_SNAPSHOTS);
+    return fresh;
+  }
+  try {
+    let parsed = JSON.parse(saved);
+    if (typeof parsed === "string") parsed = JSON.parse(parsed);
+    const merged = { ...structuredClone(DEFAULT_DATA), ...(parsed || {}) };
+    merged.snapshots = mergeSnapshots(DEFAULT_DATA.snapshots, RECOVERED_SNAPSHOTS, merged.snapshots || []);
+    merged.hiddenBonusMedals = Number(merged.hiddenBonusMedals || 0);
+    return merged;
+  } catch (e) {
+    const fallback = structuredClone(DEFAULT_DATA);
+    fallback.snapshots = mergeSnapshots(fallback.snapshots, RECOVERED_SNAPSHOTS);
+    return fallback;
+  }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function medalMap() { return Object.fromEntries(state.medals.map(m => [m.id, m])); }
+function snapshotSorted() { return [...state.snapshots].sort((a,b) => a.date.localeCompare(b.date)); }
+function latestSnapshot() { return snapshotSorted().at(-1); }
+function previousSnapshot() { const s = snapshotSorted(); return s.length > 1 ? s.at(-2) : null; }
+function fmtNum(n, digits=0) {
+  if (n == null || n === "" || Number.isNaN(Number(n))) return "—";
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits:digits, minimumFractionDigits:digits });
+}
+function fmtDate(s) {
+  if (!s) return "TBD";
+  const d = new Date(s + "T00:00:00");
+  return d.toLocaleDateString(undefined, { day:"2-digit", month:"short", year:"numeric" });
+}
+function fmtMonth(s) {
+  if (!s) return "TBD";
+  const d = new Date(s + "T00:00:00");
+  return d.toLocaleDateString(undefined, { month:"short", year:"numeric" });
+}
+function parseNumber(value) {
+  if (value == null) return 0;
+  const cleaned = String(value).replace(/,/g, "").trim();
+  if (!cleaned) return 0;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+function daysBetween(a,b) { return (new Date(b+"T00:00:00") - new Date(a+"T00:00:00")) / 86400000; }
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + Math.round(days));
+  return d.toISOString().slice(0,10);
+}
+function monthRange(startDate, endDate) {
+  const out = [];
+  const s = new Date(startDate + "T00:00:00");
+  const e = new Date(endDate + "T00:00:00");
+  s.setDate(1);
+  while (s <= e) {
+    out.push(s.toISOString().slice(0,10));
+    s.setMonth(s.getMonth()+1);
+  }
+  if (!out.includes(endDate)) out.push(endDate);
+  return out.sort();
+}
+function getTier(value, medal) {
+  if (value >= medal.platinum) return "Platinum";
+  if (value >= medal.gold) return "Gold";
+  if (value >= medal.silver) return "Silver";
+  if (value >= medal.bronze) return "Bronze";
+  return "None";
+}
+function getVisibleCompletedCount(snapshot) {
+  return state.medals.filter(m => (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
+}
+function getCurrentDexCompleted(snapshot) {
+  return state.medals.filter(m => m.type === "Pokedex" && (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
+}
+function getTotalCompletedMedals(snapshot) {
+  return getVisibleCompletedCount(snapshot) + Number(state.hiddenBonusMedals || 0);
+}
+function computeRate(id) {
+  const sorted = snapshotSorted();
+  const segments = [];
+  for (let i=1; i<sorted.length; i++) {
+    const days = daysBetween(sorted[i-1].date, sorted[i].date);
+    if (days <= 0) continue;
+    segments.push({
+      start: sorted[i-1].date,
+      end: sorted[i].date,
+      rate: ((Number(sorted[i].medals[id]) || 0) - (Number(sorted[i-1].medals[id]) || 0)) / days,
+      days
+    });
+  }
+  const recent = segments.at(-1)?.rate ?? 0;
+  const historical = segments.length > 1 ? segments.slice(0,-1).reduce((sum,s)=>sum+s.rate,0) / segments.slice(0,-1).length : recent;
+  const blended = segments.length ? recent * 0.65 + historical * 0.35 : 0;
+  return { recent, historical, blended, segments };
+}
+function computeXpRate() {
+  const sorted = snapshotSorted();
+  const seg = [];
+  for (let i=1; i<sorted.length; i++) {
+    const days = daysBetween(sorted[i-1].date, sorted[i].date);
+    if (days <= 0) continue;
+    seg.push((sorted[i].xp - sorted[i-1].xp) / days);
+  }
+  const recent = seg.at(-1) ?? 0;
+  const historical = seg.length > 1 ? seg.slice(0,-1).reduce((a,b)=>a+b,0) / seg.slice(0,-1).length : recent;
+  const blended = seg.length ? recent * 0.65 + historical * 0.35 : Number(state.xpPerDayRecent || 0);
+  return { recent, historical, blended };
+}
+function computeMedalProjection(medal, snapshot = latestSnapshot()) {
+  const current = Number(snapshot.medals[medal.id] || 0);
+  if (current >= medal.platinum) return { projectedDate: snapshot.date, daysRemaining:0, current, rate:0 };
+  if (["Pokedex","Impossible","Optional"].includes(medal.type)) {
+    return {
+      projectedDate: medal.manualExpected || null,
+      daysRemaining: medal.manualExpected ? Math.max(0, daysBetween(snapshot.date, medal.manualExpected)) : Infinity,
+      current,
+      rate:0
+    };
+  }
+  const rate = computeRate(medal.id);
+  if (!rate.blended || rate.blended <= 0) {
+    return {
+      projectedDate: medal.manualExpected || null,
+      daysRemaining: medal.manualExpected ? Math.max(0, daysBetween(snapshot.date, medal.manualExpected)) : Infinity,
+      current,
+      rate:0
+    };
+  }
+  const daysRemaining = Math.max(0, (medal.platinum - current) / rate.blended);
+  return { projectedDate: addDays(snapshot.date, daysRemaining), daysRemaining, current, rate: rate.blended };
+}
+function computeAllProjections() {
+  const latest = latestSnapshot();
+  return state.medals.map(m => {
+    const proj = computeMedalProjection(m, latest);
+    return { ...m, ...proj, current: Number(latest.medals[m.id] || 0) };
+  });
+}
+function getVsAverage(id) {
+  const rate = computeRate(id);
+  if (!rate.segments.length) return { cls:"flat", label:"—" };
+  if (Math.abs(rate.recent - rate.historical) < Math.max(0.0001, Math.abs(rate.historical) * 0.05)) return { cls:"flat", label:"On avg" };
+  return rate.recent > rate.historical
+    ? { cls:"good", label:`+${fmtNum(rate.recent - rate.historical, 2)}/day` }
+    : { cls:"bad", label:`${fmtNum(rate.recent - rate.historical, 2)}/day` };
+}
+function formatInput(el) {
+  const raw = parseNumber(el.value);
+  const digits = el.dataset.decimals ? Number(el.dataset.decimals) : 0;
+  el.value = raw.toLocaleString(undefined, { maximumFractionDigits:digits, minimumFractionDigits:digits });
+}
+function makeEditableInput(value, decimals, id) {
+  const digits = Math.abs(value % 1) > 0 ? decimals : 0;
+  return `<input class="cell-input format-number medal-input" data-id="${id}" data-decimals="${digits}" type="text" inputmode="decimal" value="${Number(value).toLocaleString(undefined, { maximumFractionDigits:digits, minimumFractionDigits:digits })}">`;
+}
+function progressText(current, max) {
+  return `${fmtNum(current, current % 1 ? 1 : 0)} / ${fmtNum(max)}`;
+}
+function renderTopBar() {
+  const latest = latestSnapshot();
+  const forecastRows = computeForecastRows();
+  const xpRate = computeXpRate();
+  const total = getTotalCompletedMedals(latest);
+  const nextGate = forecastRows.find(r => r.medalsRequired > total) || forecastRows.at(-1);
+  const nextPlatinum = computeAllProjections()
+    .filter(m => Number(latest.medals[m.id] || 0) < m.platinum)
+    .sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"))[0];
+
+  document.getElementById("summaryBar").innerHTML = `
+    <span class="mini-pill">XP <strong>${fmtNum(latest.xp)}</strong></span>
+    <span class="mini-pill">XP/day <strong>${fmtNum(xpRate.blended)}</strong></span>
+    <span class="mini-pill">Medals <strong>${total}</strong> (${getVisibleCompletedCount(latest)} visible + ${state.hiddenBonusMedals} hidden)</span>
+    <span class="mini-pill">Dex now <strong>${getCurrentDexCompleted(latest)}</strong></span>
+    <span class="mini-pill">Catch platinum <strong>${state.medals.filter(m => m.group === "catch" && (Number(latest.medals[m.id]) || 0) >= m.platinum).length}</strong></span>
+    <span class="mini-pill">Next gate <strong>L${nextGate.level}</strong></span>
+  `;
+  document.getElementById("nextSoonBar").innerHTML = nextPlatinum
+    ? `Next platinum <strong>${nextPlatinum.name}</strong> · ${fmtNum(nextPlatinum.current)} / ${fmtNum(nextPlatinum.platinum)} · ${fmtMonth(nextPlatinum.projectedDate)}`
+    : "All shown medals platinum";
+}
+function makeRow(medal, orderIndex, currentSnapshot, prevSnapshot, projectionsById) {
+  const current = Number(currentSnapshot.medals[medal.id] || 0);
+  const previous = Number(prevSnapshot?.medals?.[medal.id] ?? current);
+  const delta = current - previous;
+  const proj = projectionsById[medal.id];
+  const tier = getTier(current, medal);
+  const vs = getVsAverage(medal.id);
+  const tr = document.createElement("tr");
+  tr.dataset.id = medal.id;
+  tr.innerHTML = `
+    <td class="order-cell">${orderIndex + 1}</td>
+    <td class="name">${medal.name}</td>
+    <td class="desc">${medal.description || ""}</td>
+    
+    <td>${fmtNum(medal.platinum)}</td>
+    <td>${fmtNum(previous, previous % 1 ? 1 : 0)}</td>
+    <td>${makeEditableInput(current, 1, medal.id)}</td>
+    <td>${delta >= 0 ? "+" : ""}${fmtNum(delta, delta % 1 ? 1 : 0)}</td>
+    <td><span class="status-dot status-${vs.cls}"></span>${vs.label}</td>
+    <td class="progress-text">${fmtNum((current / medal.platinum) * 100,1)}%</td>
+    <td>${fmtMonth(proj.projectedDate)}</td>
+  `;
+  return tr;
+}
+function renumberOrder(tableId) {
+  document.querySelectorAll(`#${tableId} tr`).forEach((tr, i) => {
+    const cell = tr.querySelector(".order-cell");
+    if (cell) cell.textContent = i + 1;
+  });
+}
+function attachSortables() {
+  if (!window._mainSortable) {
+    window._mainSortable = new Sortable(document.getElementById("mainMedalTable"), {
+      animation:120,
+      onEnd: () => {
+        state.medalOrder.main = [...document.querySelectorAll("#mainMedalTable tr")].map(tr => tr.dataset.id);
+        renumberOrder("mainMedalTable"); saveState();
+      }
+    });
+  }
+  if (!window._catchSortable) {
+    window._catchSortable = new Sortable(document.getElementById("catchMedalTable"), {
+      animation:120,
+      onEnd: () => {
+        state.medalOrder.catch = [...document.querySelectorAll("#catchMedalTable tr")].map(tr => tr.dataset.id);
+        renumberOrder("catchMedalTable"); saveState();
+      }
+    });
+  }
+}
+function renderEntry() {
+  const latest = latestSnapshot(), prev = previousSnapshot(), projectionsById = Object.fromEntries(computeAllProjections().map(p => [p.id, p]));
+  const byId = medalMap();
+  const mainBody = document.getElementById("mainMedalTable");
+  const catchBody = document.getElementById("catchMedalTable");
+  mainBody.innerHTML = "";
+  catchBody.innerHTML = "";
+  state.medalOrder.main.forEach((id, idx) => { if (byId[id]) mainBody.appendChild(makeRow(byId[id], idx, latest, prev, projectionsById)); });
+  state.medalOrder.catch.forEach((id, idx) => { if (byId[id]) catchBody.appendChild(makeRow(byId[id], idx, latest, prev, projectionsById)); });
+  attachSortables();
+  document.getElementById("entryHeaderNote").textContent = `Previous snapshot: ${prev ? fmtDate(prev.date) : "none"} · current total medals: ${getTotalCompletedMedals(latest)}`;
+  Object.keys(liveTierAnnouncements).forEach(k => delete liveTierAnnouncements[k]);
+  bindLiveEntryInputs();
+}
+function getDraftSnapshotFromInputs() {
+  const base = latestSnapshot();
+  const draft = {
+    date: document.getElementById("snapshotDate").value || base.date,
+    xp: parseNumber(document.getElementById("xpInput").value),
+    medals: {}
+  };
+  document.querySelectorAll(".medal-input").forEach(input => {
+    draft.medals[input.dataset.id] = parseNumber(input.value);
+  });
+  return draft;
+}
+function applyLiveRowCalculations() {
+  const prev = previousSnapshot();
+  const draft = getDraftSnapshotFromInputs();
+  const byId = medalMap();
+
+  document.querySelectorAll("#mainMedalTable tr, #catchMedalTable tr").forEach(tr => {
+    const medal = byId[tr.dataset.id];
+    if (!medal) return;
+    const current = Number(draft.medals[medal.id] || 0);
+    const previous = Number(prev?.medals?.[medal.id] ?? current);
+    const delta = current - previous;
+    const vs = getVsAverage(medal.id);
+    const projected = computeMedalProjection(medal, draft);
+    const cells = tr.children;
+
+    if (cells[6]) cells[6].textContent = `${delta >= 0 ? "+" : ""}${fmtNum(delta, delta % 1 ? 1 : 0)}`;
+    if (cells[7]) cells[7].innerHTML = `<span class="status-dot status-${vs.cls}"></span>${vs.label}`;
+    if (cells[8]) cells[8].textContent = `${fmtNum((current / medal.platinum) * 100,1)}%`;
+    if (cells[9]) cells[9].textContent = fmtMonth(projected.projectedDate);
+
+    tr.classList.remove("tier-None","tier-Bronze","tier-Silver","tier-Gold","tier-Platinum");
+    tr.classList.add(`tier-${getTier(current, medal)}`);
+  });
+
+  const liveHidden = parseNumber(document.getElementById("hiddenBonusInput").value);
+  const draftTotal = getVisibleCompletedCount(draft) + Number(liveHidden || 0);
+  document.getElementById("entryHeaderNote").textContent = `Previous snapshot: ${prev ? fmtDate(prev.date) : "none"} · current total medals: ${draftTotal}`;
+
+}
+function bindLiveEntryInputs() {
+  document.querySelectorAll(".medal-input").forEach(input => {
+    input.dataset.startValue = String(parseNumber(input.value));
+    input.addEventListener("focus", () => {
+      input.dataset.startValue = String(parseNumber(input.value));
+    });
+    input.addEventListener("input", () => applyLiveRowCalculations());
+    input.addEventListener("blur", () => {
+      applyLiveRowCalculations();
+      const medal = medalMap()[input.dataset.id];
+      if (!medal) return;
+      const before = Number(input.dataset.startValue || 0);
+      const after = parseNumber(input.value);
+      const oldTier = getTier(before, medal);
+      const newTier = getTier(after, medal);
+      if (newTier !== oldTier && ["Bronze","Silver","Gold","Platinum"].includes(newTier)) {
+        if (newTier === "Platinum") {
+          showCelebrations([{ kind:"platinum", medal, current:after, levelsUnlocked:[] }]);
+        } else {
+          showCelebrations([{ kind:"tier", medal, to:newTier, current:after }]);
+        }
+      }
+      input.dataset.startValue = String(after);
+    });
+  });
+  document.getElementById("xpInput").addEventListener("input", () => applyLiveRowCalculations());
+  document.getElementById("hiddenBonusInput").addEventListener("input", () => applyLiveRowCalculations());
+}
+function computeForecastRows() {
+  const latest = latestSnapshot();
+  const xpRate = computeXpRate();
+  const projections = computeAllProjections();
+  const visible = projections.filter(m => m.type !== "Pokedex").sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"));
+  let prevNonDexNeeded = 0;
+  return state.levels.map(level => {
+    const nonDexReq = Math.max(0, level.medalsRequired - level.dexAssumed);
+    const medalSlotsNeeded = Math.max(0, nonDexReq - Number(state.hiddenBonusMedals || 0));
+    const xpDate = latest.xp >= level.xpRequired ? latest.date : (xpRate.blended > 0 ? addDays(latest.date, (level.xpRequired - latest.xp) / xpRate.blended) : null);
+    const medalDate = medalSlotsNeeded > 0 ? (visible[medalSlotsNeeded - 1]?.projectedDate || null) : latest.date;
+    const readyDate = !xpDate || !medalDate ? null : (xpDate > medalDate ? xpDate : medalDate);
+    const bottleneck = !xpDate || !medalDate ? "Unknown" : (xpDate > medalDate ? "XP" : medalDate > xpDate ? "Medals" : "Tie");
+    const additional = visible.slice(prevNonDexNeeded, medalSlotsNeeded);
+    prevNonDexNeeded = medalSlotsNeeded;
+    return { ...level, nonDexReq, medalSlotsNeeded, xpDate, medalDate, readyDate, bottleneck, additional };
+  });
+}
+function renderForecast() {
+  const rows = computeForecastRows();
+  const tbody = document.getElementById("forecastTable");
+  const additionalWrap = document.getElementById("additionalForecastTables");
+  tbody.innerHTML = "";
+  additionalWrap.innerHTML = "";
+  rows.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${row.level}</strong></td>
+      <td>${row.medalsRequired}</td>
+      <td>${row.dexAssumed}</td>
+      
+      <td>${fmtNum(row.xpRequired)}</td>
+      <td>${fmtMonth(row.xpDate)}</td>
+      <td>${fmtMonth(row.medalDate)}</td>
+      <td><strong>${fmtMonth(row.readyDate)}</strong></td>
+      <td>${row.bottleneck}</td>
+    `;
+    tbody.appendChild(tr);
+
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.innerHTML = `
+      <div class="section-head">
+        <h3>Level ${row.level} additional medals</h3>
+        <div class="small">Only the extra medals for this level, not medals already needed for earlier levels.</div>
+      </div>
+      <div class="mini-table-wrap">
+        <table class="additional-table">
+          <thead><tr><th>#</th><th>Medal</th><th>Type</th><th>Progress</th><th>Expected</th></tr></thead>
+          <tbody>
+            ${
+              row.additional.length
+                ? row.additional.map((m, i) => `<tr><td>${i+1}</td><td class="name">${m.name}</td><td>${m.type}</td><td>${progressText(m.current, m.platinum)}</td><td>${fmtMonth(m.projectedDate)}</td></tr>`).join("")
+                : '<tr><td colspan="5" class="small">No extra shown medals needed for this level.</td></tr>'
+            }
+          </tbody>
+        </table>
+      </div>
+    `;
+    additionalWrap.appendChild(panel);
+  });
+}
+function setupEntryForm() {
+  const latest = latestSnapshot();
+  document.getElementById("snapshotDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("xpInput").value = Number(latest.xp).toLocaleString();
+  document.getElementById("hiddenBonusInput").value = Number(state.hiddenBonusMedals || 0).toLocaleString();
+}
+function celebrationHtml(evt) {
+  if (evt.kind === "platinum") {
+    return `<div style="font-size:16px;font-weight:700;margin-bottom:8px;">🏆 PLATINUM MEDAL</div>
+      <div><strong>${evt.medal.name}</strong></div>
+      <div style="margin-top:4px;">${fmtNum(evt.current)} / ${fmtNum(evt.medal.platinum)}</div>
+      ${evt.levelsUnlocked?.length ? `<div style="margin-top:10px;color:#9bffb2;font-weight:700;">Level ready: ${evt.levelsUnlocked.map(l => "L"+l.level).join(", ")}</div>` : ""}`;
+  }
+  if (evt.kind === "tier") {
+    return `<div style="font-size:16px;font-weight:700;margin-bottom:8px;">✨ ${evt.to.toUpperCase()}</div>
+      <div><strong>${evt.medal.name}</strong></div>
+      <div style="margin-top:4px;">${fmtNum(evt.current)} / ${fmtNum(evt.medal.platinum)}</div>`;
+  }
+  if (evt.kind === "levelReady") {
+    return `<div style="font-size:16px;font-weight:700;margin-bottom:8px;">🎉 LEVEL READY</div>
+      <div>Enough medals for <strong>Level ${evt.level.level}</strong></div>
+      <div style="margin-top:4px;">${evt.count} / ${evt.level.medalsRequired} total medals</div>`;
+  }
+  return "";
+}
+function launchConfetti() { confetti({ particleCount:150, spread:95, origin:{ y:0.6 } }); }
+async function showCelebrations(events) {
+  for (const evt of events) {
+    if (evt.kind === "platinum" || evt.kind === "levelReady") launchConfetti();
+    await Swal.fire({
+      html: celebrationHtml(evt),
+      background:"#0f1730",
+      color:"#eef4ff",
+      width:420,
+      showConfirmButton:true,
+      confirmButtonText:"Nice"
+    });
+  }
+}
+function levelsCrossed(beforeCount, afterCount) {
+  return state.levels.filter(l => beforeCount < l.medalsRequired && afterCount >= l.medalsRequired);
+}
+function handleSaveSnapshot() {
+  const prev = latestSnapshot();
+  const newDate = document.getElementById("snapshotDate").value;
+  const newXp = parseNumber(document.getElementById("xpInput").value);
+  state.hiddenBonusMedals = parseNumber(document.getElementById("hiddenBonusInput").value);
+
+  const medals = {};
+  document.querySelectorAll(".medal-input").forEach(input => {
+    medals[input.dataset.id] = parseNumber(input.value);
+  });
+
+  const beforeCount = getVisibleCompletedCount(prev) + Number(state.hiddenBonusMedals || 0);
+  const tempSnapshot = { date:newDate, xp:newXp, medals };
+  const afterCount = getVisibleCompletedCount(tempSnapshot) + Number(state.hiddenBonusMedals || 0);
+
+  const events = [];
+  const unlockedLevels = levelsCrossed(beforeCount, afterCount);
+
+  state.medals.forEach(m => {
+    const oldVal = Number(prev.medals[m.id] || 0);
+    const newVal = Number(medals[m.id] || 0);
+    const oldTier = getTier(oldVal, m);
+    const newTier = getTier(newVal, m);
+    if (newTier !== oldTier) {
+      if (newTier === "Platinum") {
+        const levelsViaThis = unlockedLevels.length ? unlockedLevels : [];
+        events.push({ kind:"platinum", medal:m, current:newVal, levelsUnlocked: levelsViaThis });
+      } else if (["Bronze","Silver","Gold"].includes(newTier)) {
+        events.push({ kind:"tier", medal:m, to:newTier, current:newVal });
+      }
+    }
+  });
+  unlockedLevels.forEach(level => events.push({ kind:"levelReady", level, count:afterCount }));
+
+  const idx = state.snapshots.findIndex(s => s.date === newDate);
+  if (idx >= 0) state.snapshots.splice(idx, 1);
+  state.snapshots.push(tempSnapshot);
+  state.snapshots.sort((a,b) => a.date.localeCompare(b.date));
+  saveState();
+  renderAll();
+  showCelebrations(events);
+}
+function resetData() {
+  if (!confirm("Reset local data to the seeded version?")) return;
+  state = structuredClone(DEFAULT_DATA);
+  saveState();
+  renderAll();
+}
+function futureProjectionDates() {
+  const rows = computeForecastRows();
+  const latest = latestSnapshot().date;
+  const dates = new Set(snapshotSorted().map(s => s.date));
+  rows.forEach(r => {
+    if (r.xpDate) dates.add(r.xpDate);
+    if (r.medalDate) dates.add(r.medalDate);
+    if (r.readyDate) dates.add(r.readyDate);
+  });
+  const end = rows.at(-1)?.readyDate || rows.at(-1)?.medalDate || rows.at(-1)?.xpDate || latest;
+  monthRange(latest, end).forEach(d => dates.add(d));
+  return [...dates].sort();
+}
+function projectValueAtDate(dateStr, seriesType, id=null) {
+  const sorted = snapshotSorted();
+  const found = sorted.find(s => s.date === dateStr);
+  if (seriesType === "xp") {
+    if (found) return found.xp;
+    const latest = latestSnapshot();
+    const rate = computeXpRate().blended;
+    return latest.xp + Math.max(0, daysBetween(latest.date, dateStr)) * rate;
+  }
+  if (seriesType === "totalMedals") {
+    if (found) return getTotalCompletedMedals(found);
+    const latest = latestSnapshot();
+    const future = state.medals.map(m => {
+      const current = Number(latest.medals[m.id] || 0);
+      if (current >= m.platinum) return 1;
+      const p = computeMedalProjection(m, latest);
+      return p.projectedDate && p.projectedDate <= dateStr ? 1 : 0;
+    }).reduce((a,b)=>a+b,0) + Number(state.hiddenBonusMedals || 0);
+    return future;
+  }
+  if (seriesType === "medalPercent") {
+    const medal = medalMap()[id];
+    if (found) {
+      return 100 * (Number(found.medals[id] || 0) / medal.platinum);
+    }
+    const latest = latestSnapshot();
+    const current = Number(latest.medals[id] || 0);
+    if (["Pokedex","Impossible","Optional"].includes(medal.type)) {
+      if (medal.manualExpected && medal.manualExpected <= dateStr) return 100;
+      return 100 * (current / medal.platinum);
+    }
+    const rate = computeRate(id).blended;
+    const projected = current + Math.max(0, daysBetween(latest.date, dateStr)) * rate;
+    return 100 * Math.min(projected / medal.platinum, 1.5);
+  }
+  return null;
+}
+function lineColor(i, alpha=1) {
+  const palette = [
+    [127,212,255],[155,255,178],[255,215,110],[255,143,157],[188,156,255],[255,173,98],[120,237,255],[255,143,214],
+    [193,255,114],[245,173,255],[133,180,255],[255,205,132],[151,255,238],[255,173,173],[173,255,240],[229,255,173]
+  ];
+  const c = palette[i % palette.length];
+  return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+}
+function levelLineDataset(label, value, axisId) {
+  const dates = futureProjectionDates();
+  return {
+    label,
+    data: dates.map(() => value),
+    borderDash:[5,4],
+    borderWidth:1,
+    pointRadius:0,
+    fill:false,
+    yAxisID:axisId
+  };
+}
+function buildCharts() {
+  const dates = futureProjectionDates();
+  const snapshotDates = new Set(snapshotSorted().map(s => s.date));
+
+  if (combinedChart) combinedChart.destroy();
+  combinedChart = new Chart(document.getElementById("combinedChart"), {
+    type:"line",
+    data:{
+      labels: dates,
+      datasets:[
+        {
+          label:"XP",
+          data: dates.map(d => projectValueAtDate(d, "xp")),
+          yAxisID:"yXp",
+          tension:0.2,
+          borderColor:lineColor(0,1),
+          backgroundColor:lineColor(0,.25),
+          pointRadius: ctx => snapshotDates.has(dates[ctx.dataIndex]) ? 3 : 0,
+          pointHoverRadius:5
+        },
+        {
+          label:"Total medals",
+          data: dates.map(d => projectValueAtDate(d, "totalMedals")),
+          yAxisID:"yMedals",
+          tension:0.15,
+          borderColor:lineColor(1,1),
+          backgroundColor:lineColor(1,.25),
+          pointRadius: ctx => snapshotDates.has(dates[ctx.dataIndex]) ? 3 : 0,
+          pointHoverRadius:5
+        },
+        ...state.levels.flatMap(level => [
+          { ...levelLineDataset(`L${level.level} XP`, level.xpRequired, "yXp"), borderColor:"rgba(255,255,255,.22)" },
+          { ...levelLineDataset(`L${level.level} medals`, level.medalsRequired, "yMedals"), borderColor:"rgba(255,215,110,.25)" }
+        ])
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{ mode:"nearest", intersect:false },
+      plugins:{
+        legend:{ labels:{ color:"#eef4ff", boxWidth:12, filter:(item) => item.text === "XP" || item.text === "Total medals" } },
+        tooltip:{ callbacks:{
+          title:(items) => items[0] ? fmtDate(dates[items[0].dataIndex]) : "",
+          label:(item) => `${item.dataset.label}: ${item.dataset.yAxisID === "yXp" ? fmtNum(item.raw) : fmtNum(item.raw, 1)}`
+        } }
+      },
+      scales:{
+        x:{ type:"category", ticks:{ color:"#dce8ff", maxTicksLimit:12 }, grid:{ color:"rgba(255,255,255,.06)" } },
+        yXp:{ position:"left", ticks:{ color:"#dce8ff" }, grid:{ color:"rgba(255,255,255,.06)" } },
+        yMedals:{ position:"right", ticks:{ color:"#dce8ff" }, grid:{ drawOnChartArea:false } }
+      }
+    }
+  });
+
+  const makePercentDatasets = (group) => state.medals
+    .filter(m => m.group === group)
+    .map((m, idx) => {
+      const latestPct = projectValueAtDate(latestSnapshot().date, "medalPercent", m.id);
+      const isCompleted = latestPct >= 100;
+      return {
+        label:m.name,
+        data: dates.map(d => projectValueAtDate(d, "medalPercent", m.id)),
+        tension:0.15,
+        borderColor:isCompleted ? "rgba(155,165,185,.45)" : lineColor(idx,1),
+        backgroundColor:isCompleted ? "rgba(155,165,185,.18)" : lineColor(idx,.18),
+        borderDash:isCompleted ? [4,4] : [],
+        pointRadius: ctx => snapshotDates.has(dates[ctx.dataIndex]) ? 2 : 0,
+        pointHoverRadius:5
+      };
+    });
+
+  const tooltipLabel = (item) => {
+    const medal = state.medals.find(m => m.name === item.dataset.label);
+    const pct = Number(item.raw || 0);
+    const value = medal ? (pct / 100) * medal.platinum : 0;
+    return `${item.dataset.label}: ${fmtNum(value, value % 1 ? 1 : 0)} / ${fmtNum(medal?.platinum || 0)} (${fmtNum(pct,1)}%)`;
+  };
+
+  if (medalProgressChart) medalProgressChart.destroy();
+  medalProgressChart = new Chart(document.getElementById("medalProgressChart"), {
+    type:"line",
+    data:{ labels: dates, datasets: makePercentDatasets("main") },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"nearest", intersect:false },
+      plugins:{ legend:{ labels:{ color:"#eef4ff", boxWidth:10 } }, tooltip:{ callbacks:{ title:(items) => items[0] ? fmtDate(dates[items[0].dataIndex]) : "", label: tooltipLabel } } },
+      scales:{ x:{ type:"category", ticks:{ color:"#dce8ff", maxTicksLimit:12 }, grid:{ color:"rgba(255,255,255,.06)" } }, y:{ min:0, max:150, ticks:{ color:"#dce8ff", callback:(v)=> v + "%" }, grid:{ color:"rgba(255,255,255,.06)" } } }
+    }
+  });
+
+  if (catchProgressChart) catchProgressChart.destroy();
+  catchProgressChart = new Chart(document.getElementById("catchProgressChart"), {
+    type:"line",
+    data:{ labels: dates, datasets: makePercentDatasets("catch") },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"nearest", intersect:false },
+      plugins:{ legend:{ labels:{ color:"#eef4ff", boxWidth:10 } }, tooltip:{ callbacks:{ title:(items) => items[0] ? fmtDate(dates[items[0].dataIndex]) : "", label: tooltipLabel } } },
+      scales:{ x:{ type:"category", ticks:{ color:"#dce8ff", maxTicksLimit:12 }, grid:{ color:"rgba(255,255,255,.06)" } }, y:{ min:0, max:150, ticks:{ color:"#dce8ff", callback:(v)=> v + "%" }, grid:{ color:"rgba(255,255,255,.06)" } } }
+    }
+  });
+}
+function bindFormatting() {
+  document.querySelectorAll(".format-number").forEach(el => {
+    el.addEventListener("focus", () => {
+      const raw = String(el.value).replace(/,/g,"");
+      el.value = raw;
+      el.select();
+    });
+    el.addEventListener("click", () => el.select());
+    el.addEventListener("blur", () => formatInput(el));
+  });
+}
+function renderAll() {
+  renderTopBar();
+  setupEntryForm();
+  renderEntry();
+  renderForecast();
+  bindFormatting();
+  if (document.getElementById("graphs").classList.contains("active")) buildCharts();
+}
+document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById(btn.dataset.tab).classList.add("active");
+  if (btn.dataset.tab === "graphs") buildCharts();
+}));
+document.getElementById("saveSnapshotBtn").addEventListener("click", handleSaveSnapshot);
+document.getElementById("resetDataBtn").addEventListener("click", resetData);
+renderAll();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+</body>
+</html>
