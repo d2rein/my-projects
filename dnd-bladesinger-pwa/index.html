@@ -106,6 +106,10 @@
     gap:6px;
     align-items:start;
   }
+  .coin-stack{
+    display:grid;
+    gap:4px;
+  }
   .coin-box{
     min-width:96px;
     background:#0a1017;
@@ -119,6 +123,16 @@
     font-size:10px;
   }
   .coin-box strong{text-align:right}
+  .eq-box{
+    background:#0a1017;
+    color:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:4px 7px;
+    text-align:center;
+    font-size:10px;
+    font-weight:800;
+  }
   .chip-grid{
     display:grid;
     grid-template-columns:repeat(5,1fr);
@@ -492,6 +506,13 @@
     grid-template-columns:repeat(2,1fr);
     gap:6px;
   }
+  .extra-inputs{
+    display:grid;
+    grid-template-columns:1fr 1fr auto;
+    gap:6px;
+    margin-top:8px;
+    align-items:end;
+  }
   .count-box{
     background:#0c1219;
     border:1px solid var(--line);
@@ -745,7 +766,10 @@
         </div>
         <div class="top-actions">
           <button class="small-btn" id="editTopBtn">Edit</button>
-          <button class="coin-box" id="coinsBtn" type="button"></button>
+          <div class="coin-stack">
+            <button class="coin-box" id="coinsBtn" type="button"></button>
+            <div class="eq-box" id="eqText"></div>
+          </div>
         </div>
       </div>
       <div class="chip-grid" id="topChips"></div>
@@ -864,6 +888,11 @@
         <div class="slot-grid" id="slotGridBook"></div>
       </div>
       <div class="counts" id="spellCounts"></div>
+      <div class="extra-inputs">
+        <label>Extra Cantrips<input type="number" min="0" id="extraCantripsInput"></label>
+        <label>Extra Spells<input type="number" min="0" id="extraSpellbookInput"></label>
+        <button class="small-btn" id="saveExtrasBtn">Save</button>
+      </div>
     </div>
 
     <div class="book-section">
@@ -1287,6 +1316,7 @@ function renderStatsPage(){
     <div>SP</div><strong>${state.coins.sp}</strong>
     <div>GP</div><strong>${state.coins.gp}</strong>
   `;
+  document.getElementById("eqText").textContent = `Eq ${(((state.coins.cp || 0) / 100) + ((state.coins.sp || 0) / 10) + (state.coins.gp || 0)).toFixed(2)} gp`;
   document.getElementById("topChips").innerHTML = `
     <div class="chip green"><span>HP</span><b>${state.hpCurrent}/${maxHp()}</b></div>
     <div class="chip blue"><span>AC</span><b>${currentAc()}</b></div>
@@ -1360,6 +1390,8 @@ function renderSpellbookPage(){
     <div class="count-box">Spellbook <b>${known.filter(spell => Number(spell.level) > 0).length}/${spellbookAllowance()}</b></div>
     <div class="count-box">Spell DC <b>${spellDc()}</b></div>
   `;
+  document.getElementById("extraCantripsInput").value = state.extraCantrips || 0;
+  document.getElementById("extraSpellbookInput").value = state.extraSpellbook || 0;
   renderBookList("preparedCantripsList", preparedCantrips, true);
   renderBookList("preparedSpellsList", preparedSpells, false, true);
   renderBookList("knownSpellsList", known, null, false, true);
@@ -1511,6 +1543,11 @@ function bindButtons(){
   document.getElementById("thpBtn").onclick = () => applyAmountAction("thp");
   document.getElementById("clearHistoryBtn").onclick = () => { state.history = []; saveState(); };
   document.getElementById("editKnownBtn").onclick = openKnownEditor;
+  document.getElementById("saveExtrasBtn").onclick = () => {
+    state.extraCantrips = Number(document.getElementById("extraCantripsInput").value) || 0;
+    state.extraSpellbook = Number(document.getElementById("extraSpellbookInput").value) || 0;
+    saveState();
+  };
   document.querySelectorAll("[data-slot]").forEach(pip => pip.onclick = () => toggleSlot(Number(pip.dataset.slot), Number(pip.dataset.index)));
   document.querySelectorAll("[data-weapon]").forEach(btn => btn.onclick = () => rollWeapon(btn.dataset.weapon));
   document.querySelectorAll("[data-info-weapon]").forEach(btn => btn.onclick = () => openResult("Weapon", "Uses the v2-style attack breakdown, crit doubles the weapon die, and adv cycles -, adv, dis."));
@@ -1582,10 +1619,11 @@ function applyAmountAction(type){
     }
     if (remaining){
       state.hpCurrent = clamp(state.hpCurrent - remaining, 0, maxHp());
-      flashDelta("hpChip", `-${remaining}`, "loss");
     }
-    pushHistory(`Damage: -${absorbed} THP, -${remaining} HP -> ${state.hpCurrent}/${maxHp()} HP, ${state.thp} THP`);
     saveState();
+    if (absorbed) flashDelta("thpChip", `-${absorbed}`, "loss");
+    if (remaining) flashDelta("hpChip", `-${remaining}`, "loss");
+    pushHistory(`Damage: -${absorbed} THP, -${remaining} HP -> ${state.hpCurrent}/${maxHp()} HP, ${state.thp} THP`);
     if (state.concentrationActive){
       runConcentrationCheck();
     }
@@ -1595,18 +1633,18 @@ function applyAmountAction(type){
     const before = state.hpCurrent;
     state.hpCurrent = clamp(state.hpCurrent + amount, 0, maxHp());
     const gain = state.hpCurrent - before;
+    saveState();
     if (gain) flashDelta("hpChip", `+${gain}`, "gain");
     pushHistory(`Heal: +${gain} HP -> ${state.hpCurrent}/${maxHp()}`);
-    saveState();
     return;
   }
   if (type === "thp"){
     const before = state.thp;
     state.thp = Math.max(state.thp, amount);
     const gain = state.thp - before;
+    saveState();
     if (gain) flashDelta("thpChip", `+${gain}`, "gain");
     pushHistory(`THP: now ${state.thp}`);
-    saveState();
   }
 }
 function rollWeapon(id){
@@ -1646,14 +1684,15 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
 }
 function castSaveSpell(spell, diceSpec, damageType, note = ""){
   const damage = rollSpec(diceSpec);
-  const text = `${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total}\nSave DC ${spellDc()}\nDamage: ${damageType} ${damage.total}${note ? `\n${note}` : ""}`;
+  const half = Math.floor(damage.total / 2);
+  const text = `${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total}\n${note ? `${note.split(".")[0]} (DC ${spellDc()}) half on success (${half})` : `Save DC ${spellDc()} half on success (${half})`}\nDamage: ${damageType} ${damage.total}`;
   finalizeSpellCast(spell, text);
 }
 function castTollTheDead(spell){
   const mode = state.attackModes[spell.name] || { damaged:true, adv:"-" };
   const dice = mode.damaged ? scaleCantrip("1d12") : scaleCantrip("1d8");
   const damage = rollSpec(dice);
-  const text = `${damage.rolls.join(" + ")} = ${damage.total}\nSave DC ${spellDc()}\nDamage: necrotic ${damage.total}`;
+  const text = `${dice} - ${damage.rolls.join(" + ")} = ${damage.total}\nWis Save (DC ${spellDc()})\nDamage: necrotic ${damage.total}`;
   finalizeSpellCast(spell, text);
 }
 function castMagicMissile(spell){
@@ -1812,7 +1851,10 @@ function longRest(){
   state.bladesongUsesSpent = 0;
   state.concentrationActive = "";
   state.arcaneRecoveryUsed = false;
-  syncSlotsToLevel(state);
+  const slots = FULL_CASTER_SLOTS[state.level] || FULL_CASTER_SLOTS[20];
+  for (let level = 1; level <= 9; level++){
+    state.slotCur[level] = slots[level - 1] || 0;
+  }
   pushHistory("Long Rest: HP, spell slots, Bladesong, Arcane Recovery, and concentration reset.");
   saveState();
 }
@@ -2085,10 +2127,71 @@ function openUpcastPicker(name){
 function openKnownEditor(){
   renderKnownEditorModal();
 }
+function bindKnownEditorHandlers(){
+  const rows = Array.from(document.querySelectorAll("[data-spell-row]"));
+  const search = document.getElementById("spellSearch");
+  const classFilter = document.getElementById("spellClassFilter");
+  const sort = document.getElementById("spellSort");
+  const minLevel = document.getElementById("minLevel");
+  const maxLevel = document.getElementById("maxLevel");
+  const grid = document.getElementById("knownSpellGrid");
+  const applyFilters = () => {
+    state.spellFilters.search = search.value || "";
+    state.spellFilters.class = classFilter.value;
+    state.spellFilters.sort = sort.value;
+    state.spellFilters.minLevel = clamp(Number(minLevel.value) || 0, 0, 9);
+    state.spellFilters.maxLevel = clamp(Number(maxLevel.value) || 9, 0, 9);
+    const query = state.spellFilters.search.trim().toLowerCase();
+    const selectedClass = state.spellFilters.class;
+    const low = Math.min(state.spellFilters.minLevel, state.spellFilters.maxLevel);
+    const high = Math.max(state.spellFilters.minLevel, state.spellFilters.maxLevel);
+    rows.forEach(row => {
+      const level = Number(row.dataset.level);
+      const classes = row.dataset.classes || "";
+      const text = row.dataset.search || "";
+      const matchesClass = selectedClass === "all" || classes.includes(selectedClass);
+      const matchesSearch = !query || text.includes(query);
+      const matchesLevel = level >= low && level <= high;
+      row.style.display = matchesClass && matchesSearch && matchesLevel ? "" : "none";
+    });
+    const visible = rows.filter(row => row.style.display !== "none");
+    visible.sort((a, b) => {
+      if (state.spellFilters.sort === "az"){
+        return a.dataset.name.localeCompare(b.dataset.name);
+      }
+      return Number(a.dataset.level) - Number(b.dataset.level) || a.dataset.name.localeCompare(b.dataset.name);
+    }).forEach(row => grid.appendChild(row));
+  };
+  search.oninput = applyFilters;
+  classFilter.onchange = applyFilters;
+  sort.onchange = applyFilters;
+  minLevel.oninput = applyFilters;
+  maxLevel.oninput = applyFilters;
+  document.getElementById("minMinus").onclick = () => { minLevel.value = clamp((Number(minLevel.value) || 0) - 1, 0, 9); applyFilters(); };
+  document.getElementById("minPlus").onclick = () => { minLevel.value = clamp((Number(minLevel.value) || 0) + 1, 0, 9); applyFilters(); };
+  document.getElementById("maxMinus").onclick = () => { maxLevel.value = clamp((Number(maxLevel.value) || 9) - 1, 0, 9); applyFilters(); };
+  document.getElementById("maxPlus").onclick = () => { maxLevel.value = clamp((Number(maxLevel.value) || 9) + 1, 0, 9); applyFilters(); };
+  document.querySelectorAll("[data-spell-info]").forEach(button => button.onclick = () => {
+    const modal = document.getElementById("modal");
+    const previousScroll = modal.scrollTop;
+    openSpellCard(button.dataset.spellInfo, true);
+    const restore = () => {
+      renderKnownEditorModal();
+      requestAnimationFrame(() => {
+        document.getElementById("modal").scrollTop = previousScroll;
+      });
+    };
+    document.querySelectorAll("[data-close]").forEach(closeButton => closeButton.onclick = restore);
+    document.getElementById("modalBack").onclick = event => {
+      if (event.target === document.getElementById("modalBack")) restore();
+    };
+  });
+  applyFilters();
+}
 function renderKnownEditorModal(){
   const spells = filteredSpells();
   const rows = spells.map(spell => `
-    <div class="check-item">
+    <div class="check-item" data-spell-row data-name="${escapeAttr(spell.name)}" data-level="${spell.level}" data-classes="${escapeAttr((spell.classes || "").toLowerCase())}" data-search="${escapeAttr(`${spell.name} ${spell.school || ""} ${spell.classes || ""}`.toLowerCase())}">
       <button class="icon-btn" data-spell-info="${escapeAttr(spell.name)}">i</button>
       <div style="flex:1;min-width:0;">
         <div>${escapeHtml(spell.name)}</div>
@@ -2144,37 +2247,13 @@ function renderKnownEditorModal(){
       <button class="action-btn blue" id="saveKnownBtn">Save Spells</button>
     </div>
   `);
-  document.getElementById("spellSearch").oninput = updateKnownFilterState;
-  document.getElementById("spellClassFilter").onchange = updateKnownFilterState;
-  document.getElementById("spellSort").onchange = updateKnownFilterState;
-  document.getElementById("minLevel").onchange = updateKnownFilterState;
-  document.getElementById("maxLevel").onchange = updateKnownFilterState;
-  document.getElementById("minMinus").onclick = () => adjustFilterLevel("min",-1);
-  document.getElementById("minPlus").onclick = () => adjustFilterLevel("min",1);
-  document.getElementById("maxMinus").onclick = () => adjustFilterLevel("max",-1);
-  document.getElementById("maxPlus").onclick = () => adjustFilterLevel("max",1);
-  document.querySelectorAll("[data-spell-info]").forEach(button => button.onclick = () => openSpellCard(button.dataset.spellInfo, true));
+  bindKnownEditorHandlers();
   document.getElementById("saveKnownBtn").onclick = () => {
     state.knownSpells = Array.from(document.querySelectorAll("[data-known-box]:checked")).map(box => box.dataset.knownBox);
     syncPreparedLists(state);
     closeModal();
     saveState();
   };
-}
-function updateKnownFilterState(){
-  state.spellFilters.search = document.getElementById("spellSearch").value || "";
-  state.spellFilters.class = document.getElementById("spellClassFilter").value;
-  state.spellFilters.sort = document.getElementById("spellSort").value;
-  state.spellFilters.minLevel = clamp(Number(document.getElementById("minLevel").value) || 0, 0, 9);
-  state.spellFilters.maxLevel = clamp(Number(document.getElementById("maxLevel").value) || 9, 0, 9);
-  const currentChecks = Array.from(document.querySelectorAll("[data-known-box]")).filter(box => box.checked).map(box => box.dataset.knownBox);
-  state.knownSpells = unique(currentChecks.concat(state.knownSpells));
-  renderKnownEditorModal();
-}
-function adjustFilterLevel(which, delta){
-  const key = which === "min" ? "minLevel" : "maxLevel";
-  state.spellFilters[key] = clamp((state.spellFilters[key] || 0) + delta, 0, 9);
-  renderKnownEditorModal();
 }
 function filteredSpells(){
   const spells = (window.SPELL_DATA || []).slice();
