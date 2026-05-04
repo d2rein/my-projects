@@ -1,0 +1,2123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bladesinger PWA</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#09111a">
+<style>
+  :root{
+    --bg:#070b10;
+    --panel:#10161f;
+    --panel2:#151d27;
+    --line:#283447;
+    --line2:#35506f;
+    --text:#eef4ff;
+    --muted:#98a9bf;
+    --blue:#1f6ea5;
+    --blue2:#2a9ddd;
+    --green:#1b7e53;
+    --gold:#d0aa3a;
+    --red:#8b3131;
+    --yellow:#ffe052;
+    --shadow:0 12px 30px rgba(0,0,0,.34);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at top, rgba(41,103,155,.24), transparent 28%),
+      linear-gradient(180deg, #09111a 0%, #06090e 100%);
+    color:var(--text);
+    font-family:Arial,Helvetica,sans-serif;
+    min-height:100vh;
+  }
+  button,input,select{
+    font:inherit;
+  }
+  button{
+    cursor:pointer;
+  }
+  .app{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100vh;
+    padding:12px 10px 92px;
+  }
+  .top-nav{
+    position:sticky;
+    top:0;
+    z-index:10;
+    padding:8px 0 10px;
+    backdrop-filter:blur(12px);
+    background:linear-gradient(180deg, rgba(7,11,16,.92), rgba(7,11,16,.66));
+  }
+  .tabs{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .tab{
+    border:1px solid var(--line);
+    background:#0e141c;
+    color:var(--muted);
+    border-radius:999px;
+    padding:10px 8px;
+    font-weight:800;
+  }
+  .tab.active{
+    background:linear-gradient(180deg, #1d557f, #163c5f);
+    border-color:#4f84b3;
+    color:#fff;
+  }
+  .page{
+    display:none;
+    gap:10px;
+  }
+  .page.active{
+    display:grid;
+  }
+  .card{
+    background:linear-gradient(180deg, rgba(19,28,39,.96), rgba(13,19,27,.96));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:10px;
+    box-shadow:var(--shadow);
+  }
+  .card-title,
+  .section-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+    font-size:14px;
+    font-weight:800;
+  }
+  .small-btn,
+  .action-btn,
+  .pill-btn{
+    border:1px solid var(--line2);
+    background:#162231;
+    color:#fff;
+    border-radius:10px;
+    padding:8px 10px;
+    font-weight:700;
+  }
+  .small-btn{
+    padding:6px 8px;
+    font-size:12px;
+  }
+  .action-btn.blue{ background:#18597f; }
+  .action-btn.green{ background:#16653f; }
+  .action-btn.red{ background:#7a2323; }
+  .action-btn.gold{ background:#6b5419; color:#fff4cf; }
+  .action-btn.yellow{
+    background:#e6ca47;
+    color:#1d1703;
+    border-color:#f5e98d;
+  }
+  .muted{ color:var(--muted); }
+  .tiny{ font-size:11px; }
+  .tiny2{ font-size:10px; }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    align-items:flex-start;
+  }
+  .name{
+    font-size:19px;
+    font-weight:900;
+    letter-spacing:.02em;
+  }
+  .subline{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.35;
+  }
+  .identity-actions{
+    display:flex;
+    gap:6px;
+    align-items:flex-start;
+  }
+  .coin-box{
+    min-width:88px;
+    background:#0a1017;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:6px 8px;
+    display:grid;
+    grid-template-columns:auto auto;
+    gap:3px 8px;
+    font-size:11px;
+  }
+  .coin-box strong{
+    text-align:right;
+  }
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+  }
+  .pill{
+    background:#131d28;
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:6px 9px;
+    font-size:12px;
+    font-weight:800;
+  }
+  .pill.green{ background:#13422c; }
+  .pill.blue{ background:#143e60; }
+  .pill.gold{ background:#4d3b13; color:#ffe7a8; }
+  .stats-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+  }
+  .stat{
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:7px 4px;
+    text-align:center;
+  }
+  .stat .abbr{
+    font-size:11px;
+    font-weight:900;
+    color:#d4e7ff;
+  }
+  .stat .score{
+    font-size:22px;
+    font-weight:900;
+    line-height:1.05;
+  }
+  .stat .mod{
+    font-size:12px;
+    color:#bfe2ff;
+    font-weight:800;
+  }
+  .stat .save{
+    font-size:10px;
+    color:#8de0a4;
+  }
+  .skills-groups{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:5px;
+  }
+  .skill-group{
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:4px;
+  }
+  .skill-head{
+    text-align:center;
+    font-size:10px;
+    font-weight:900;
+    color:#9cc6ea;
+    margin-bottom:4px;
+  }
+  .skill-line{
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+    padding:3px 5px;
+    border-radius:7px;
+    background:#131c27;
+    margin-bottom:3px;
+    font-size:11px;
+  }
+  .skill-line:last-child{ margin-bottom:0; }
+  .skill-line.prof{
+    background:#173221;
+    border:1px solid #286643;
+  }
+  .triple{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+  }
+  .mini-box{
+    text-align:center;
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:9px 6px;
+  }
+  .mini-box .value{
+    font-size:20px;
+    font-weight:900;
+  }
+  .resources-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:6px 0;
+    border-top:1px solid rgba(255,255,255,.07);
+  }
+  .row:first-child{
+    border-top:0;
+    padding-top:0;
+  }
+  .empty-slot{
+    display:grid;
+    gap:8px;
+    align-content:center;
+    min-height:112px;
+  }
+  .combat-top{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+  }
+  .combat-chip{
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:7px 4px;
+    text-align:center;
+    font-size:11px;
+  }
+  .combat-chip b{
+    display:block;
+    font-size:14px;
+    color:#fff;
+  }
+  .cluster{
+    display:grid;
+    grid-template-columns:1fr 88px 82px;
+    grid-template-rows:36px 36px 36px;
+    gap:5px;
+    margin-top:8px;
+  }
+  .cluster > *{
+    min-width:0;
+  }
+  .cluster .wide{
+    grid-column:1;
+  }
+  .cluster .pips-box,
+  .slot-cell{
+    background:#0c1118;
+    border:1px solid var(--line);
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    padding:4px;
+  }
+  .pip{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    border:1px solid #6786aa;
+    background:#111822;
+  }
+  .pip.on{
+    background:#2e88c4;
+  }
+  .pip.green.on{
+    background:#2aa85b;
+    border-color:#88e2ac;
+  }
+  .slot-panel{
+    border:1px solid #ffffff;
+    border-radius:12px;
+    background:#06090d;
+    padding:7px;
+  }
+  .slot-head{
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+    align-items:center;
+    font-size:12px;
+    font-weight:800;
+    margin-bottom:6px;
+  }
+  .slot-grid{
+    display:grid;
+    gap:4px;
+  }
+  .slot-row{
+    display:grid;
+    grid-template-columns:28px repeat(6,1fr);
+    gap:4px;
+    align-items:center;
+  }
+  .slot-label{
+    text-align:center;
+    border:1px solid var(--line);
+    background:#111822;
+    border-radius:6px;
+    padding:4px 2px;
+    font-size:10px;
+    font-weight:800;
+  }
+  .slot-cell{
+    min-height:30px;
+    gap:3px;
+    flex-wrap:wrap;
+  }
+  .combat-box{
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    background:#080d13;
+  }
+  .combat-title{
+    padding:7px 8px;
+    font-size:13px;
+    font-weight:800;
+    border-bottom:1px solid var(--line);
+    background:#0d131b;
+  }
+  .combat-table{
+    display:grid;
+    gap:4px;
+    padding:5px;
+  }
+  .combat-head,
+  .attack-row,
+  .spell-row{
+    display:grid;
+    grid-template-columns:22px 1fr 34px 42px 44px 42px;
+    gap:4px;
+    align-items:center;
+  }
+  .combat-head div{
+    font-size:10px;
+    text-align:center;
+    border:1px solid var(--line);
+    background:#101821;
+    border-radius:5px;
+    padding:3px 2px;
+  }
+  .combat-head .label-head{
+    grid-column:1 / span 2;
+    text-align:left;
+    padding-left:6px;
+  }
+  .spell-row,
+  .attack-row{
+    margin-top:2px;
+  }
+  .spell-main,
+  .attack-main{
+    min-width:0;
+  }
+  .spell-action,
+  .attack-action{
+    width:100%;
+    text-align:left;
+    border-radius:8px;
+    border:1px solid #3b6d52;
+    background:#165233;
+    color:#fff;
+    padding:5px 7px;
+    height:34px;
+    overflow:hidden;
+  }
+  .spell-action.blue{
+    background:#175c80;
+    border-color:#468db4;
+  }
+  .spell-action b,
+  .attack-action b{
+    font-size:11px;
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .spell-action span,
+  .attack-action span{
+    font-size:8px;
+    color:#d5ecf7;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:block;
+  }
+  .icon-btn,
+  .mode-btn,
+  .mini-roll-box{
+    border:1px solid var(--line2);
+    border-radius:7px;
+    background:#101922;
+    color:#fff;
+    height:34px;
+    font-size:11px;
+    font-weight:800;
+    padding:0 4px;
+  }
+  .icon-btn{
+    width:22px;
+    padding:0;
+  }
+  .mode-btn.active{
+    background:#305f87;
+  }
+  .mode-btn.warn{
+    background:#77491f;
+  }
+  .history{
+    max-height:180px;
+    overflow:auto;
+    display:grid;
+    gap:5px;
+  }
+  .history-line{
+    font-size:11px;
+    background:#0d131b;
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:9px;
+    padding:7px 8px;
+    line-height:1.35;
+  }
+  .spellbook-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .counts{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .count-box{
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:7px 8px;
+    font-size:12px;
+  }
+  .count-box b{
+    float:right;
+  }
+  .book-section{
+    background:#0a1017;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:7px;
+  }
+  .book-section + .book-section{
+    margin-top:8px;
+  }
+  .book-list{
+    display:grid;
+    gap:4px;
+    max-height:220px;
+    overflow:auto;
+  }
+  .book-spell{
+    display:grid;
+    grid-template-columns:22px 1fr 28px 22px;
+    gap:4px;
+    align-items:center;
+    padding:4px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:#121a23;
+  }
+  .book-spell.cantrip{
+    background:#122334;
+  }
+  .book-spell.prepared{
+    background:#153023;
+  }
+  .book-spell .meta{
+    font-size:9px;
+    color:var(--muted);
+  }
+  .badge{
+    text-align:center;
+    border:1px solid var(--line2);
+    background:#0a1118;
+    border-radius:6px;
+    padding:4px 2px;
+    font-size:10px;
+    font-weight:800;
+  }
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(2,6,10,.78);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:30;
+    padding:12px;
+  }
+  .modal-backdrop.show{
+    display:flex;
+  }
+  .modal{
+    width:min(430px, 100%);
+    max-height:88vh;
+    overflow:auto;
+    background:linear-gradient(180deg, #111a24, #0c1219);
+    border:1px solid var(--line2);
+    border-radius:18px;
+    box-shadow:0 26px 70px rgba(0,0,0,.45);
+    padding:12px;
+  }
+  .modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .modal-title{
+    font-size:16px;
+    font-weight:900;
+  }
+  .form-grid{
+    display:grid;
+    gap:8px;
+  }
+  .form-grid.two{
+    grid-template-columns:1fr 1fr;
+  }
+  label{
+    display:grid;
+    gap:4px;
+    font-size:12px;
+    font-weight:700;
+    color:#dbe7f6;
+  }
+  input[type="number"],
+  input[type="text"],
+  select{
+    width:100%;
+    background:#0a1219;
+    color:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 10px;
+  }
+  .check-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .check-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    padding:7px 8px;
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-size:12px;
+  }
+  .modal-actions{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+  }
+  .modal-actions button{
+    flex:1;
+  }
+  .spell-card{
+    background:#fff;
+    color:#111;
+    border:2px solid #111;
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .spell-card .card-head{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:28px;
+    border-bottom:2px solid #111;
+    padding:4px 28px;
+    font-family:Georgia,"Times New Roman",serif;
+    font-weight:900;
+  }
+  .spell-card .badge-level{
+    position:absolute;
+    right:5px;
+    top:4px;
+    width:19px;
+    height:19px;
+    border-radius:50%;
+    border:2px solid #111;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:900;
+  }
+  .spell-card .meta-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    border-bottom:2px solid #111;
+  }
+  .spell-card .meta-grid div{
+    border-right:1px solid #111;
+    padding:4px 3px;
+    text-align:center;
+  }
+  .spell-card .meta-grid div:last-child{
+    border-right:0;
+  }
+  .spell-card .label{
+    font-size:7px;
+    text-transform:uppercase;
+    font-weight:900;
+  }
+  .spell-card .meta-value{
+    font-size:9px;
+    font-weight:800;
+    margin-top:2px;
+  }
+  .spell-card .body{
+    padding:8px;
+    font-size:11px;
+    white-space:pre-wrap;
+    line-height:1.28;
+  }
+  .spell-card .foot{
+    border-top:1px solid #111;
+    padding:5px 7px;
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    font-family:Georgia,"Times New Roman",serif;
+    font-style:italic;
+    font-size:10px;
+  }
+  .result-box{
+    background:#0a1016;
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:10px;
+    line-height:1.4;
+    font-size:12px;
+    white-space:pre-wrap;
+  }
+  .footer-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    background:linear-gradient(180deg, rgba(11,17,24,.2), rgba(11,17,24,.96));
+    backdrop-filter:blur(10px);
+    padding:10px 12px 14px;
+  }
+  .footer-nav .tabs{
+    max-width:430px;
+    margin:0 auto;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top-nav">
+    <div class="tabs" id="topTabs"></div>
+  </div>
+
+  <section class="page active" data-page="stats">
+    <div class="card">
+      <div class="topbar">
+        <div>
+          <div class="name" id="charName">Wintio</div>
+          <div class="subline" id="charSubtitle"></div>
+        </div>
+        <div class="identity-actions">
+          <button class="small-btn" id="editTopBtn">Edit</button>
+          <button class="coin-box" id="coinsBtn" type="button"></button>
+        </div>
+      </div>
+      <div class="chip-row" id="topChips"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Core Stats</span>
+        <button class="small-btn" id="editAbilitiesBtn">Edit</button>
+      </div>
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Skills</span>
+        <button class="small-btn" id="editSkillsBtn">Edit</button>
+      </div>
+      <div class="skills-groups" id="skillsGroups"></div>
+    </div>
+
+    <div class="triple">
+      <div class="mini-box"><div class="tiny">Passive Perception</div><div class="value" id="passiveText"></div></div>
+      <div class="mini-box"><div class="tiny">Spell DC</div><div class="value" id="spellDcText"></div></div>
+      <div class="mini-box"><div class="tiny">Empty</div><div class="value" id="layText">-</div></div>
+    </div>
+
+    <div class="resources-grid">
+      <div class="card">
+        <div class="card-title"><span>Resources</span></div>
+        <div class="row"><span>Level</span><b id="levelText"></b></div>
+        <div class="row"><span>Hit Dice</span><b id="hitDiceText"></b></div>
+        <div class="row"><span>Armour</span><b id="armourText"></b></div>
+      </div>
+      <div class="card empty-slot">
+        <button class="action-btn gold" id="levelUpBtn">Level Up</button>
+        <div class="tiny muted" id="levelUpHint"></div>
+        <button class="action-btn blue" id="openCombatBtn">Open Combat</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" data-page="combat">
+    <div class="card">
+      <div class="combat-top" id="combatTop"></div>
+      <div class="cluster">
+        <button class="action-btn yellow wide" id="bladesongBtn"></button>
+        <div class="pips-box" id="bladesongPips"></div>
+        <button class="action-btn blue" id="concentrationCheckBtn">Concentration</button>
+        <button class="pill-btn" id="concentrationModeBtn"></button>
+        <button class="action-btn blue wide" id="concentrationActiveBtn"></button>
+        <button class="action-btn blue" id="mageArmorBtn"></button>
+        <div class="row" style="grid-column:1;grid-row:3;gap:5px;padding:0;border:0;">
+          <button class="action-btn green" id="shortRestBtn" style="flex:1;">Short Rest</button>
+          <button class="action-btn blue" id="longRestBtn" style="flex:1;">Long Rest</button>
+        </div>
+        <button class="action-btn gold" id="shieldBtn" style="grid-column:2 / span 2;grid-row:3;"></button>
+      </div>
+    </div>
+
+    <div class="slot-panel">
+      <div class="slot-head">
+        <span>Spell Slots</span>
+        <span id="slotHeadText"></span>
+      </div>
+      <div class="slot-grid" id="slotGrid"></div>
+    </div>
+
+    <div class="combat-box">
+      <div class="combat-title">Weapon Attacks</div>
+      <div class="combat-table">
+        <div class="combat-head">
+          <div class="label-head">Attack</div><div>Slot</div><div>Hit</div><div>Dmg</div><div>Crit</div><div>Adv</div>
+        </div>
+        <div id="weaponRows"></div>
+      </div>
+    </div>
+
+    <div class="combat-box">
+      <div class="combat-title">Cantrips</div>
+      <div class="combat-table">
+        <div class="combat-head">
+          <div class="label-head">Spell</div><div>Lvl</div><div>Hit</div><div>Dmg</div><div>Crit</div><div>Adv</div>
+        </div>
+        <div id="cantripRows"></div>
+      </div>
+    </div>
+
+    <button class="action-btn blue" id="openSpellbookBtn">Spell Book</button>
+
+    <div class="card">
+      <div class="card-title">
+        <span>History</span>
+        <button class="small-btn" id="clearHistoryBtn">Clear</button>
+      </div>
+      <div class="history" id="historyBox"></div>
+    </div>
+  </section>
+
+  <section class="page" data-page="spellbook">
+    <div class="card">
+      <div class="spellbook-top">
+        <div>
+          <div class="name" style="font-size:17px;">Spell Book</div>
+          <div class="subline">Prepared, known, and card popups</div>
+        </div>
+        <button class="small-btn" id="editKnownBtn">Edit Known</button>
+      </div>
+      <div class="slot-panel" style="margin-bottom:8px;">
+        <div class="slot-head">
+          <span>Spell Slots</span>
+          <span id="slotHeadTextBook"></span>
+        </div>
+        <div class="slot-grid" id="slotGridBook"></div>
+      </div>
+      <div class="counts" id="spellCounts"></div>
+    </div>
+
+    <div class="book-section">
+      <div class="section-title">Prepared Cantrips</div>
+      <div class="book-list" id="preparedCantripsList"></div>
+    </div>
+
+    <div class="book-section">
+      <div class="section-title">Prepared Spells</div>
+      <div class="book-list" id="preparedSpellsList"></div>
+    </div>
+
+    <div class="book-section">
+      <div class="section-title">Known Spells</div>
+      <div class="book-list" id="knownSpellsList"></div>
+    </div>
+  </section>
+</div>
+
+<div class="footer-nav">
+  <div class="tabs" id="bottomTabs"></div>
+</div>
+
+<div class="modal-backdrop" id="modalBack">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script src="./spell-data.js"></script>
+<script>
+const STORAGE_KEY = "bladesinger_wizard_pwa_v1";
+const HISTORY_LIMIT = 80;
+const TABS = [
+  { id: "stats", label: "Stats" },
+  { id: "combat", label: "Combat" },
+  { id: "spellbook", label: "Spell Book" }
+];
+const ABILITIES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+const ABILITY_LABELS = {
+  STR: "Strength",
+  DEX: "Dexterity",
+  CON: "Constitution",
+  INT: "Intelligence",
+  WIS: "Wisdom",
+  CHA: "Charisma"
+};
+const SKILLS = [
+  { name: "Athletics", abil: "STR" },
+  { name: "Acrobatics", abil: "DEX" },
+  { name: "Sleight of Hand", abil: "DEX" },
+  { name: "Stealth", abil: "DEX" },
+  { name: "Arcana", abil: "INT" },
+  { name: "History", abil: "INT" },
+  { name: "Investigation", abil: "INT" },
+  { name: "Nature", abil: "INT" },
+  { name: "Religion", abil: "INT" },
+  { name: "Animal Handling", abil: "WIS" },
+  { name: "Insight", abil: "WIS" },
+  { name: "Medicine", abil: "WIS" },
+  { name: "Perception", abil: "WIS" },
+  { name: "Survival", abil: "WIS" },
+  { name: "Deception", abil: "CHA" },
+  { name: "Intimidation", abil: "CHA" },
+  { name: "Performance", abil: "CHA" },
+  { name: "Persuasion", abil: "CHA" }
+];
+const FULL_CASTER_SLOTS = {
+  1:[2,0,0,0,0,0],
+  2:[3,0,0,0,0,0],
+  3:[4,2,0,0,0,0],
+  4:[4,3,0,0,0,0],
+  5:[4,3,2,0,0,0],
+  6:[4,3,3,0,0,0],
+  7:[4,3,3,1,0,0],
+  8:[4,3,3,2,0,0],
+  9:[4,3,3,3,1,0],
+  10:[4,3,3,3,2,0]
+};
+const DEFAULT_KNOWN = [
+  "Toll the Dead","Fire Bolt","Blade Ward","Light","Mage Hand","Minor Illusion",
+  "Guidance","Sacred Flame","Mage Armor","Shield","Magic Missile","Detect Magic",
+  "Find Familiar","Absorb Elements","Alarm","Feather Fall","Silent Image",
+  "Mirror Image","Misty Step","Web","Invisibility","Shadow Blade","Counterspell",
+  "Fireball","Fly","Haste","Lightning Bolt","Greater Invisibility","Polymorph",
+  "Dimension Door","Wall of Force","Animate Objects","Summon Undead","Ray of Frost"
+];
+const DEFAULT_PREPARED = [
+  "Mage Armor","Shield","Magic Missile","Misty Step","Mirror Image","Web","Invisibility",
+  "Counterspell","Fireball","Fly","Haste","Greater Invisibility","Polymorph",
+  "Dimension Door","Wall of Force","Guidance","Toll the Dead"
+];
+const DEFAULT_CANTRIPS = [
+  "Toll the Dead","Fire Bolt","Blade Ward","Light","Mage Hand","Minor Illusion"
+];
+const SAVE_PROF = { WIS:true, CHA:true };
+const SPELL_ACTIONS = {
+  "Fire Bolt": s => rollSpellAttackDamage(s, scaleCantrip("1d10"), "fire"),
+  "Ray of Frost": s => rollSpellAttackDamage(s, scaleCantrip("1d8"), "cold", "Target speed -10 ft until your next turn."),
+  "Chill Touch": s => rollSpellAttackDamage(s, scaleCantrip("1d10"), "necrotic", "Target cannot regain HP until the start of your next turn."),
+  "Shocking Grasp": s => rollSpellAttackDamage(s, scaleCantrip("1d8"), "lightning", "Target cannot take reactions until the start of its next turn."),
+  "Toll the Dead": s => rollTollTheDead(s),
+  "Sacred Flame": s => rollSaveDamage(s, scaleCantrip("1d8"), "radiant", "Dexterity save."),
+  "Magic Missile": s => castMagicMissile(s),
+  "Fireball": s => rollSaveDamage(s, s.castLevel > 3 ? `${8 + (s.castLevel - 3)}d6` : "8d6", "fire", "Dexterity save, half on success."),
+  "Mage Armor": s => castMageArmor(s),
+  "Shield": s => castShield(s),
+  "Mirror Image": s => castUtilitySpell(s, "Mirror Image active."),
+  "Misty Step": s => castUtilitySpell(s, "Teleport up to 30 ft."),
+  "Counterspell": s => castUtilitySpell(s, "Reaction spell. Interrupts a spell of level 3 or lower automatically."),
+  "Web": s => castUtilitySpell(s, "Concentration started: Web."),
+  "Fly": s => castUtilitySpell(s, "Concentration started: Fly."),
+  "Haste": s => castUtilitySpell(s, "Concentration started: Haste."),
+  "Greater Invisibility": s => castUtilitySpell(s, "Concentration started: Greater Invisibility."),
+  "Polymorph": s => castUtilitySpell(s, "Concentration started: Polymorph."),
+  "Wall of Force": s => castUtilitySpell(s, "Concentration started: Wall of Force."),
+  "Blade Ward": s => castUtilitySpell(s, "Resistance against bludgeoning, piercing, and slashing until the end of your next turn."),
+  "Light": s => castUtilitySpell(s, "Object glows with bright light 20 ft and dim light 20 ft."),
+  "Mage Hand": s => castUtilitySpell(s, "Spectral hand appears."),
+  "Minor Illusion": s => castUtilitySpell(s, "Create a sound or image within range."),
+  "Guidance": s => castUtilitySpell(s, "Concentration started: Guidance. Add 1d4 to one ability check."),
+  "Detect Magic": s => castUtilitySpell(s, "Concentration started: Detect Magic."),
+  "Find Familiar": s => castUtilitySpell(s, "Summoning ritual or standard cast."),
+  "Absorb Elements": s => castUtilitySpell(s, "Reaction spell. Resistance to triggering element until the start of your next turn."),
+  "Invisibility": s => castUtilitySpell(s, "Concentration started: Invisibility."),
+  "Dimension Door": s => castUtilitySpell(s, "Teleport yourself and one willing creature up to 500 ft."),
+  "Shadow Blade": s => rollSpellAttackDamage(s, s.castLevel >= 5 ? "4d8" : s.castLevel >= 3 ? "3d8" : "2d8", "psychic", "Advantage in dim light or darkness.")
+};
+const DEFAULT_STATE = {
+  activePage: "stats",
+  level: 1,
+  abilityScores: { STR:8, DEX:16, CON:14, INT:17, WIS:14, CHA:10 },
+  coins: { cp:42, sp:13, gp:7 },
+  hpLog: [],
+  hpCurrent: 10,
+  thp: 0,
+  customBaseAc: null,
+  initBonus: 0,
+  speed: 30,
+  profOverride: null,
+  armourName: "Unarmoured",
+  armourLongPressBonus: 0,
+  mageArmorActive: false,
+  shieldActive: false,
+  bladesongActive: false,
+  bladesongUsesSpent: 0,
+  concentrationMode: "-",
+  concentrationActive: "",
+  arcaneRecoveryUsed: false,
+  knownSpells: DEFAULT_KNOWN,
+  preparedSpells: DEFAULT_PREPARED,
+  preparedCantrips: DEFAULT_CANTRIPS,
+  proficientSkills: ["Arcana","History","Investigation","Perception","Insight","Religion"],
+  slotCur: {},
+  attackModes: {
+    handCrossbow: { crit:false, adv:"-" },
+    bonusCrossbow: { crit:false, adv:"-" },
+    "Toll the Dead": { crit:false, adv:"-" },
+    "Fire Bolt": { crit:false, adv:"-" },
+    "Blade Ward": { crit:false, adv:"-" },
+    "Light": { crit:false, adv:"-" },
+    "Mage Hand": { crit:false, adv:"-" },
+    "Minor Illusion": { crit:false, adv:"-" }
+  },
+  history: []
+};
+let state = loadState();
+
+function loadState(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (!parsed) return ensureState(structuredClone(DEFAULT_STATE));
+    return ensureState(Object.assign(structuredClone(DEFAULT_STATE), parsed));
+  }catch{
+    return ensureState(structuredClone(DEFAULT_STATE));
+  }
+}
+function ensureState(raw){
+  raw.knownSpells = Array.from(new Set((raw.knownSpells || []).filter(Boolean)));
+  raw.preparedSpells = Array.from(new Set((raw.preparedSpells || []).filter(Boolean)));
+  raw.preparedCantrips = Array.from(new Set((raw.preparedCantrips || []).filter(Boolean)));
+  raw.proficientSkills = Array.from(new Set((raw.proficientSkills || []).filter(Boolean)));
+  raw.hpLog = Array.isArray(raw.hpLog) ? raw.hpLog.slice(0, 9) : [];
+  raw.history = Array.isArray(raw.history) ? raw.history.slice(0, HISTORY_LIMIT) : [];
+  raw.slotCur = raw.slotCur || {};
+  raw.attackModes = Object.assign({}, DEFAULT_STATE.attackModes, raw.attackModes || {});
+  syncSlotsToLevel(raw);
+  syncPreparedLists(raw);
+  syncHpToMax(raw);
+  return raw;
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  render();
+}
+function pushHistory(line){
+  state.history.unshift(`${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}  ${line}`);
+  state.history = state.history.slice(0, HISTORY_LIMIT);
+  saveState();
+}
+function fmtMod(n){
+  return n >= 0 ? `+${n}` : `${n}`;
+}
+function abilityMod(score){
+  return Math.floor((score - 10) / 2);
+}
+function getProgression(level = state.level){
+  return {
+    cleric: level >= 1 ? 1 : 0,
+    wizard: Math.max(0, level - 1)
+  };
+}
+function getClassSubtitle(){
+  const prog = getProgression();
+  return `Level ${state.level} · Bladesinger Wizard ${prog.wizard} / Death Cleric ${prog.cleric}`;
+}
+function profBonus(){
+  return state.profOverride || (state.level >= 9 ? 4 : state.level >= 5 ? 3 : 2);
+}
+function spellAttackMod(){
+  return abilityMod(state.abilityScores.INT) + profBonus();
+}
+function spellDc(){
+  return 8 + abilityMod(state.abilityScores.INT) + profBonus();
+}
+function passivePerception(){
+  return 10 + skillMod("Perception");
+}
+function skillMod(name){
+  const info = SKILLS.find(skill => skill.name === name);
+  if (!info) return 0;
+  return abilityMod(state.abilityScores[info.abil]) + (state.proficientSkills.includes(name) ? profBonus() : 0);
+}
+function saveMod(abil){
+  return abilityMod(state.abilityScores[abil]) + (SAVE_PROF[abil] ? profBonus() : 0);
+}
+function getBaseAc(){
+  const dex = abilityMod(state.abilityScores.DEX);
+  let base = state.customBaseAc !== null && state.customBaseAc !== ""
+    ? Number(state.customBaseAc) || 0
+    : 10 + dex;
+  if (state.mageArmorActive){
+    base = Math.max(base, 13 + dex);
+  }
+  return base + Number(state.armourLongPressBonus || 0);
+}
+function currentAc(){
+  let ac = getBaseAc();
+  if (state.bladesongActive){
+    ac += Math.max(1, abilityMod(state.abilityScores.INT));
+  }
+  if (state.shieldActive){
+    ac += 5;
+  }
+  return ac;
+}
+function currentSpeed(){
+  return Number(state.speed || 30) + (state.bladesongActive ? 10 : 0);
+}
+function currentInit(){
+  return abilityMod(state.abilityScores.DEX) + Number(state.initBonus || 0);
+}
+function bladesongUsesMax(){
+  return profBonus();
+}
+function bladesongUsesRemaining(){
+  return Math.max(0, bladesongUsesMax() - state.bladesongUsesSpent);
+}
+function maxHp(){
+  const con = abilityMod(state.abilityScores.CON);
+  const base = 8 + con;
+  const extra = state.hpLog.reduce((sum, item) => sum + item.gain, 0);
+  return Math.max(1, base + extra);
+}
+function syncHpToMax(target){
+  const max = maxHpFromState(target);
+  if (!target.hpCurrent || target.hpCurrent > max) target.hpCurrent = max;
+}
+function maxHpFromState(target){
+  const con = abilityMod(target.abilityScores.CON);
+  return Math.max(1, 8 + con + (target.hpLog || []).reduce((sum, item) => sum + item.gain, 0));
+}
+function syncSlotsToLevel(target){
+  const slots = FULL_CASTER_SLOTS[target.level] || FULL_CASTER_SLOTS[10];
+  for (let lvl = 1; lvl <= 6; lvl++){
+    const max = slots[lvl - 1] || 0;
+    const cur = target.slotCur[lvl];
+    target.slotCur[lvl] = max === 0 ? 0 : cur == null ? max : Math.min(cur, max);
+  }
+}
+function syncPreparedLists(target){
+  target.preparedCantrips = target.preparedCantrips.filter(name => target.knownSpells.includes(name));
+  target.preparedSpells = target.preparedSpells.filter(name => target.knownSpells.includes(name));
+}
+function getSpellByName(name){
+  const all = window.SPELL_DATA || [];
+  return all.find(spell => spell.name === name) || {
+    name,
+    level: 0,
+    classes: "",
+    school: "",
+    range: "",
+    components: "",
+    duration: "",
+    concentration: false,
+    casting_time: "",
+    description: "No spell card data available."
+  };
+}
+function spellLevel(name){
+  return Number(getSpellByName(name).level || 0);
+}
+function casterLevel(){
+  return state.level;
+}
+function preparedLimit(){
+  const prog = getProgression();
+  return Math.max(1, prog.wizard + abilityMod(state.abilityScores.INT)) + Math.max(1, prog.cleric + abilityMod(state.abilityScores.WIS));
+}
+function wizardRecoveryLimit(){
+  return Math.ceil(getProgression().wizard / 2);
+}
+function scaleCantrip(base){
+  const level = state.level;
+  const [count, die] = base.split("d").map(Number);
+  let mult = 1;
+  if (level >= 17) mult = 4;
+  else if (level >= 11) mult = 3;
+  else if (level >= 5) mult = 2;
+  return `${count * mult}d${die}`;
+}
+function rollDie(size){
+  return Math.floor(Math.random() * size) + 1;
+}
+function rollSpec(spec){
+  const [countStr, dieStr] = spec.toLowerCase().split("d");
+  const count = Number(countStr || 0);
+  const die = Number(dieStr || 0);
+  const rolls = Array.from({ length: count }, () => rollDie(die));
+  const total = rolls.reduce((sum, roll) => sum + roll, 0);
+  return { spec, rolls, total, max: count * die };
+}
+function rollD20(mode){
+  const a = rollDie(20);
+  if (mode === "adv" || mode === "dis"){
+    const b = rollDie(20);
+    return {
+      chosen: mode === "adv" ? Math.max(a, b) : Math.min(a, b),
+      text: `${mode === "adv" ? "max" : "min"}(${a}, ${b})`
+    };
+  }
+  return { chosen: a, text: `${a}` };
+}
+function modeCycle(mode){
+  if (mode === "-") return "adv";
+  if (mode === "adv") return "dis";
+  return "-";
+}
+function spendSlot(level){
+  if (!level) return true;
+  if ((state.slotCur[level] || 0) <= 0){
+    openResult("No Slot Available", `No level ${level} spell slots remain.`);
+    pushHistory(`No L${level} spell slots remaining.`);
+    return false;
+  }
+  state.slotCur[level] -= 1;
+  return true;
+}
+function restoreSlot(level){
+  const max = (FULL_CASTER_SLOTS[state.level] || [])[level - 1] || 0;
+  state.slotCur[level] = Math.min(max, (state.slotCur[level] || 0) + 1);
+}
+function setConcentrationFromSpell(spell){
+  if (spell.concentration){
+    state.concentrationActive = spell.name;
+  }
+}
+function clearTransientEffects(){
+  state.shieldActive = false;
+}
+function resetForLongRest(){
+  state.hpCurrent = maxHp();
+  state.thp = 0;
+  state.mageArmorActive = false;
+  state.shieldActive = false;
+  state.bladesongActive = false;
+  state.bladesongUsesSpent = 0;
+  state.concentrationActive = "";
+  state.arcaneRecoveryUsed = false;
+  syncSlotsToLevel(state);
+}
+function renderTabs(){
+  for (const id of ["topTabs","bottomTabs"]){
+    const host = document.getElementById(id);
+    host.innerHTML = "";
+    TABS.forEach(tab => {
+      const button = document.createElement("button");
+      button.className = `tab ${state.activePage === tab.id ? "active" : ""}`;
+      button.textContent = tab.label;
+      button.onclick = () => {
+        state.activePage = tab.id;
+        saveState();
+      };
+      host.appendChild(button);
+    });
+  }
+}
+function renderPages(){
+  document.querySelectorAll(".page").forEach(page => {
+    page.classList.toggle("active", page.dataset.page === state.activePage);
+  });
+}
+function renderStatsPage(){
+  document.getElementById("charSubtitle").textContent = getClassSubtitle();
+  document.getElementById("coinsBtn").innerHTML = `
+    <div>CP</div><strong>${state.coins.cp}</strong>
+    <div>SP</div><strong>${state.coins.sp}</strong>
+    <div>GP</div><strong>${state.coins.gp}</strong>
+  `;
+  document.getElementById("topChips").innerHTML = `
+    <span class="pill green">HP ${state.hpCurrent}/${maxHp()}</span>
+    <span class="pill blue">AC ${currentAc()}</span>
+    <span class="pill">Init ${fmtMod(currentInit())}</span>
+    <span class="pill">Speed ${currentSpeed()}</span>
+    <span class="pill gold">Prof ${fmtMod(profBonus())}</span>
+  `;
+  const statsGrid = document.getElementById("statsGrid");
+  statsGrid.innerHTML = "";
+  ABILITIES.forEach(abil => {
+    const stat = document.createElement("div");
+    stat.className = "stat";
+    stat.innerHTML = `
+      <div class="abbr">${abil}</div>
+      <div class="score">${state.abilityScores[abil]}</div>
+      <div class="mod">${fmtMod(abilityMod(state.abilityScores[abil]))}</div>
+      <div class="save">Sv ${fmtMod(saveMod(abil))}</div>
+    `;
+    statsGrid.appendChild(stat);
+  });
+  const groups = document.getElementById("skillsGroups");
+  groups.innerHTML = "";
+  ABILITIES.forEach(abil => {
+    const group = document.createElement("div");
+    group.className = "skill-group";
+    const lines = SKILLS.filter(skill => skill.abil === abil).map(skill => {
+      const prof = state.proficientSkills.includes(skill.name);
+      return `<div class="skill-line ${prof ? "prof" : ""}"><b>${skill.name.replace(" of Hand","")}</b><span>${fmtMod(skillMod(skill.name))}</span></div>`;
+    }).join("");
+    group.innerHTML = `<div class="skill-head">${abil}</div>${lines || `<div class="skill-line"><b>-</b><span>-</span></div>`}`;
+    groups.appendChild(group);
+  });
+  document.getElementById("passiveText").textContent = `${passivePerception()}`;
+  document.getElementById("spellDcText").textContent = `${spellDc()}`;
+  document.getElementById("levelText").textContent = `${state.level} (${getProgression().wizard} Wiz / ${getProgression().cleric} Cleric)`;
+  document.getElementById("hitDiceText").textContent = `${getProgression().wizard}d6 + ${getProgression().cleric}d8`;
+  document.getElementById("armourText").textContent = `${state.armourName}`;
+  document.getElementById("levelUpHint").textContent = state.level >= 10
+    ? "Maximum planned build reached."
+    : `Next level: Wizard ${getProgression(state.level + 1).wizard}. Roll d6 and take the higher of the roll or 4, then add CON.`;
+}
+function renderCombatPage(){
+  document.getElementById("combatTop").innerHTML = `
+    <div class="combat-chip"><span>HP</span><b>${state.hpCurrent}/${maxHp()}</b></div>
+    <div class="combat-chip"><span>THP</span><b>${state.thp}</b></div>
+    <div class="combat-chip"><span>AC</span><b>${currentAc()}</b></div>
+    <div class="combat-chip"><span>Init</span><b>${fmtMod(currentInit())}</b></div>
+    <button class="action-btn blue" id="initRollBtn">INIT<br>Roll</button>
+  `;
+  document.getElementById("slotHeadText").textContent = `Caster ${casterLevel()} · Max HP ${maxHp()}`;
+  document.getElementById("slotHeadTextBook").textContent = `Caster ${casterLevel()} · Max HP ${maxHp()}`;
+  document.getElementById("bladesongBtn").textContent = state.bladesongActive ? "BLADESONG ACTIVE" : "BLADESONG";
+  document.getElementById("bladesongBtn").className = `action-btn yellow wide`;
+  renderPips("bladesongPips", bladesongUsesRemaining(), bladesongUsesMax(), "green");
+  document.getElementById("concentrationModeBtn").textContent = state.concentrationMode === "-" ? "-" : state.concentrationMode.toUpperCase();
+  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive ? `Concentration: ${state.concentrationActive}` : "Concentration - Off";
+  document.getElementById("mageArmorBtn").textContent = state.mageArmorActive ? `Mage Armor On` : "Mage Armor";
+  document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield +5 AC" : "Shield (Lvl 1)";
+  renderSlots("slotGrid");
+  renderSlots("slotGridBook");
+  renderWeapons();
+  renderCantrips();
+  renderHistory();
+  wireCombatButtons();
+}
+function renderSpellbookPage(){
+  const preparedCantrips = state.preparedCantrips
+    .map(getSpellByName)
+    .sort((a,b) => a.name.localeCompare(b.name));
+  const preparedSpells = state.preparedSpells
+    .map(getSpellByName)
+    .filter(spell => Number(spell.level) > 0)
+    .sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const known = state.knownSpells
+    .map(getSpellByName)
+    .sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  document.getElementById("spellCounts").innerHTML = `
+    <div class="count-box">Cantrips <b>${preparedCantrips.length}</b></div>
+    <div class="count-box">Prepared <b>${preparedSpells.length}/${preparedLimit()}</b></div>
+    <div class="count-box">Known <b>${known.length}</b></div>
+    <div class="count-box">Spell DC <b>${spellDc()}</b></div>
+  `;
+  renderBookList("preparedCantripsList", preparedCantrips, { cantrip:true, prepared:true });
+  renderBookList("preparedSpellsList", preparedSpells, { prepared:true });
+  renderBookList("knownSpellsList", known, { known:true });
+}
+function renderBookList(id, spells, options = {}){
+  const host = document.getElementById(id);
+  host.innerHTML = "";
+  spells.forEach(spell => {
+    const row = document.createElement("div");
+    const level = Number(spell.level || 0);
+    row.className = `book-spell ${level === 0 ? "cantrip" : ""} ${options.prepared ? "prepared" : ""}`;
+    const prepared = level === 0
+      ? state.preparedCantrips.includes(spell.name)
+      : state.preparedSpells.includes(spell.name);
+    row.innerHTML = `
+      <button class="icon-btn" data-info="${spell.name}">i</button>
+      <button class="spell-action blue" data-cast="${spell.name}">
+        <b>${spell.name}</b>
+        <span>${spell.range || "-"} · ${spell.components || "-"} · ${spell.school || "-"}</span>
+      </button>
+      <div class="badge">${level}</div>
+      <input type="checkbox" ${prepared ? "checked" : ""} data-prep="${spell.name}">
+    `;
+    host.appendChild(row);
+  });
+  host.querySelectorAll("[data-info]").forEach(btn => btn.onclick = () => openSpellCard(btn.dataset.info));
+  host.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
+  host.querySelectorAll("[data-prep]").forEach(box => {
+    box.onchange = () => togglePrepared(box.dataset.prep, box.checked);
+  });
+}
+function renderSlots(id){
+  const host = document.getElementById(id);
+  host.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = "slot-row";
+  let html = `<div></div>`;
+  for (let level = 1; level <= 6; level++){
+    html += `<div class="slot-label">${level}</div>`;
+  }
+  header.innerHTML = html;
+  host.appendChild(header);
+  const row = document.createElement("div");
+  row.className = "slot-row";
+  let body = `<div></div>`;
+  for (let level = 1; level <= 6; level++){
+    const max = (FULL_CASTER_SLOTS[state.level] || [])[level - 1] || 0;
+    const pips = Array.from({ length: max }, (_, idx) => `<span class="pip ${idx < (state.slotCur[level] || 0) ? "on" : ""}" data-slot="${level}" data-index="${idx}"></span>`).join("");
+    body += `<div class="slot-cell">${pips}</div>`;
+  }
+  row.innerHTML = body;
+  host.appendChild(row);
+  host.querySelectorAll("[data-slot]").forEach(pip => {
+    pip.onclick = () => toggleSlot(Number(pip.dataset.slot), Number(pip.dataset.index));
+  });
+}
+function renderPips(id, current, max, extraClass){
+  const host = document.getElementById(id);
+  host.innerHTML = "";
+  for (let i = 0; i < max; i++){
+    const pip = document.createElement("span");
+    pip.className = `pip ${extraClass || ""} ${i < current ? "on" : ""}`;
+    host.appendChild(pip);
+  }
+}
+function renderWeapons(){
+  const weapons = [
+    {
+      id: "handCrossbow",
+      name: "Hand Crossbow",
+      detail: "Ranged weapon · 120 ft · 1d6 piercing",
+      hit: abilityMod(state.abilityScores.DEX) + profBonus(),
+      dmg: `1d6${abilityMod(state.abilityScores.DEX) >= 0 ? "+" : ""}${abilityMod(state.abilityScores.DEX)}`
+    },
+    {
+      id: "bonusCrossbow",
+      name: "Bonus Crossbow",
+      detail: "Bonus action · 120 ft · 1d6 piercing",
+      hit: abilityMod(state.abilityScores.DEX) + profBonus(),
+      dmg: `1d6${abilityMod(state.abilityScores.DEX) >= 0 ? "+" : ""}${abilityMod(state.abilityScores.DEX)}`
+    }
+  ];
+  const host = document.getElementById("weaponRows");
+  host.innerHTML = "";
+  weapons.forEach(weapon => {
+    const mode = state.attackModes[weapon.id] || { crit:false, adv:"-" };
+    const row = document.createElement("div");
+    row.className = "attack-row";
+    row.innerHTML = `
+      <button class="icon-btn" data-info-weapon="${weapon.id}">!</button>
+      <button class="attack-action" data-weapon="${weapon.id}">
+        <b>${weapon.name}</b>
+        <span>${weapon.detail}</span>
+      </button>
+      <div class="mini-roll-box">${fmtMod(0)}</div>
+      <div class="mini-roll-box">${fmtMod(weapon.hit)}</div>
+      <button class="mode-btn ${mode.crit ? "warn active" : ""}" data-crit="${weapon.id}">${mode.crit ? "Crit" : "-"}</button>
+      <button class="mode-btn ${mode.adv !== "-" ? "active" : ""}" data-adv="${weapon.id}">${mode.adv === "-" ? "-" : mode.adv.toUpperCase()}</button>
+    `;
+    host.appendChild(row);
+  });
+  host.querySelectorAll("[data-weapon]").forEach(btn => btn.onclick = () => rollWeaponAttack(btn.dataset.weapon));
+  host.querySelectorAll("[data-crit]").forEach(btn => btn.onclick = () => toggleCrit(btn.dataset.crit));
+  host.querySelectorAll("[data-adv]").forEach(btn => btn.onclick = () => toggleAdv(btn.dataset.adv));
+  host.querySelectorAll("[data-info-weapon]").forEach(btn => btn.onclick = () => openResult("Weapon", "Uses the V2-style attack roll breakdown. Crit doubles the weapon dice, and adv cycles -, adv, dis."));
+}
+function renderCantrips(){
+  const host = document.getElementById("cantripRows");
+  host.innerHTML = "";
+  state.preparedCantrips
+    .map(getSpellByName)
+    .sort((a,b) => a.name.localeCompare(b.name))
+    .forEach(spell => {
+      const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
+      const attackType = inferSpellAttackDisplay(spell);
+      const row = document.createElement("div");
+      row.className = "spell-row";
+      row.innerHTML = `
+        <button class="icon-btn" data-info="${spell.name}">i</button>
+        <button class="spell-action blue" data-cast="${spell.name}">
+          <b>${spell.name}</b>
+          <span>${attackType.detail}</span>
+        </button>
+        <div class="badge">0</div>
+        <div class="mini-roll-box">${attackType.hit}</div>
+        <button class="mode-btn ${mode.crit ? "warn active" : ""}" data-crit="${spell.name}">${mode.crit ? "Crit" : "-"}</button>
+        <button class="mode-btn ${mode.adv !== "-" ? "active" : ""}" data-adv="${spell.name}">${mode.adv === "-" ? "-" : mode.adv.toUpperCase()}</button>
+      `;
+      host.appendChild(row);
+    });
+  host.querySelectorAll("[data-info]").forEach(btn => btn.onclick = () => openSpellCard(btn.dataset.info));
+  host.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
+  host.querySelectorAll("[data-crit]").forEach(btn => btn.onclick = () => toggleCrit(btn.dataset.crit));
+  host.querySelectorAll("[data-adv]").forEach(btn => btn.onclick = () => toggleAdv(btn.dataset.adv));
+}
+function inferSpellAttackDisplay(spell){
+  const name = spell.name;
+  if (["Fire Bolt","Ray of Frost","Chill Touch","Shocking Grasp"].includes(name)){
+    return { hit: fmtMod(spellAttackMod()), detail: `${spell.range || "-"} · spell attack` };
+  }
+  if (["Toll the Dead","Sacred Flame"].includes(name)){
+    return { hit: `DC${spellDc()}`, detail: `${spell.range || "-"} · save` };
+  }
+  return { hit: "-", detail: `${spell.range || "-"} · utility` };
+}
+function renderHistory(){
+  const box = document.getElementById("historyBox");
+  box.innerHTML = state.history.length
+    ? state.history.map(line => `<div class="history-line">${escapeHtml(line)}</div>`).join("")
+    : `<div class="history-line muted">No rolls yet.</div>`;
+}
+function wireCombatButtons(){
+  document.getElementById("initRollBtn").onclick = rollInitiative;
+}
+function toggleSlot(level, idx){
+  const max = (FULL_CASTER_SLOTS[state.level] || [])[level - 1] || 0;
+  if (!max) return;
+  const filled = state.slotCur[level] || 0;
+  state.slotCur[level] = idx < filled ? idx : Math.min(max, idx + 1);
+  saveState();
+}
+function toggleCrit(key){
+  state.attackModes[key] ||= { crit:false, adv:"-" };
+  state.attackModes[key].crit = !state.attackModes[key].crit;
+  saveState();
+}
+function toggleAdv(key){
+  state.attackModes[key] ||= { crit:false, adv:"-" };
+  state.attackModes[key].adv = modeCycle(state.attackModes[key].adv || "-");
+  saveState();
+}
+function rollWeaponAttack(id){
+  const mode = state.attackModes[id] || { crit:false, adv:"-" };
+  const hitMod = abilityMod(state.abilityScores.DEX) + profBonus();
+  const damageFlat = abilityMod(state.abilityScores.DEX);
+  const attackRoll = rollD20(mode.adv);
+  const toHit = attackRoll.chosen + hitMod;
+  const dmg = rollSpec("1d6");
+  let totalDamage = dmg.total + damageFlat;
+  let text = `${attackRoll.text} + HIT(${hitMod}) = ${toHit}\n${dmg.rolls.join(" + ")} + DEX(${damageFlat})`;
+  if (mode.crit){
+    totalDamage += dmg.max;
+    text += ` + Crit(${dmg.max})`;
+  }
+  text += ` = ${totalDamage}\nDamage: piercing ${totalDamage}`;
+  const title = id === "bonusCrossbow" ? "Bonus Crossbow" : "Hand Crossbow";
+  openResult(title, text);
+  pushHistory(`${title}: ${text.replace(/\n/g, " | ")}`);
+}
+function rollSpellAttackDamage(spell, diceSpec, damageType, extraText = ""){
+  const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
+  const hit = rollD20(mode.adv);
+  const toHit = hit.chosen + spellAttackMod();
+  const dmg = rollSpec(diceSpec);
+  let total = dmg.total;
+  let text = `${hit.text} + Spell(${spellAttackMod()}) = ${toHit}\n${dmg.rolls.join(" + ")}`;
+  if (mode.crit){
+    total += dmg.max;
+    text += ` + Crit(${dmg.max})`;
+  }
+  text += ` = ${total}\nDamage: ${damageType} ${total}`;
+  if (extraText) text += `\n${extraText}`;
+  finalizeSpellCast(spell, spell.level, text);
+}
+function rollSaveDamage(spell, diceSpec, damageType, note = ""){
+  const dmg = rollSpec(diceSpec);
+  const text = `${dmg.rolls.join(" + ")} = ${dmg.total}\nSave DC ${spellDc()}\nDamage: ${damageType} ${dmg.total}${note ? `\n${note}` : ""}`;
+  finalizeSpellCast(spell, spell.level, text);
+}
+function rollTollTheDead(spell){
+  openPrompt({
+    title: "Toll the Dead",
+    fields: [
+      { name: "injured", label: "Target already injured?", type: "select", options: [
+        { value: "yes", label: "Yes · d12" },
+        { value: "no", label: "No · d8" }
+      ], value: "yes" }
+    ],
+    onSubmit(values){
+      const spec = values.injured === "yes" ? scaleCantrip("1d12") : scaleCantrip("1d8");
+      const dmg = rollSpec(spec);
+      finalizeSpellCast(spell, 0, `${dmg.rolls.join(" + ")} = ${dmg.total}\nSave DC ${spellDc()}\nDamage: necrotic ${dmg.total}`);
+    }
+  });
+}
+function castMagicMissile(spell){
+  openPrompt({
+    title: "Magic Missile",
+    fields: [
+      { name: "level", label: "Cast level", type: "number", min: 1, max: 5, value: 1 }
+    ],
+    onSubmit(values){
+      const castLevel = clampNum(Number(values.level), 1, 5);
+      if (!spendSlot(castLevel)) return saveState();
+      const darts = 3 + (castLevel - 1);
+      const rolls = [];
+      let total = 0;
+      for (let i = 0; i < darts; i++){
+        const r = rollSpec("1d4");
+        rolls.push(`${r.rolls[0]}+1`);
+        total += r.rolls[0] + 1;
+      }
+      const text = `${darts} darts\n${rolls.join(" | ")}\nForce damage total ${total}`;
+      openResult(spell.name, text);
+      pushHistory(`${spell.name} L${castLevel}: ${text.replace(/\n/g, " | ")}`);
+      saveState();
+    }
+  });
+}
+function castMageArmor(spell){
+  if (state.mageArmorActive){
+    state.mageArmorActive = false;
+    openResult(spell.name, "Mage Armor toggled off.");
+    pushHistory("Mage Armor toggled off.");
+    saveState();
+    return;
+  }
+  if (!spendSlot(1)) return saveState();
+  state.mageArmorActive = true;
+  state.shieldActive = false;
+  const text = `Base AC is now ${13 + abilityMod(state.abilityScores.DEX)} until long rest or until you turn Mage Armor off manually.`;
+  openResult(spell.name, text);
+  pushHistory(`${spell.name}: ${text}`);
+  saveState();
+}
+function castShield(spell){
+  if (state.shieldActive){
+    state.shieldActive = false;
+    openResult(spell.name, "Shield toggled off.");
+    pushHistory("Shield toggled off.");
+    saveState();
+    return;
+  }
+  if (!spendSlot(1)) return saveState();
+  state.shieldActive = true;
+  const text = `AC is now ${currentAc()} until the start of your next turn.`;
+  openResult(spell.name, text);
+  pushHistory(`${spell.name}: ${text}`);
+  saveState();
+}
+function castUtilitySpell(spell, text){
+  const level = Number(spell.level || 0);
+  if (level > 0 && !spendSlot(level)) return saveState();
+  setConcentrationFromSpell(spell);
+  openResult(spell.name, text);
+  pushHistory(`${spell.name}: ${text}`);
+  saveState();
+}
+function finalizeSpellCast(spell, baseLevel, text){
+  const level = Number(baseLevel || 0);
+  if (level > 0 && !spendSlot(level)) return saveState();
+  setConcentrationFromSpell(spell);
+  openResult(spell.name, text);
+  pushHistory(`${spell.name}: ${text.replace(/\n/g, " | ")}`);
+  saveState();
+}
+function castSpellByName(name){
+  const spell = getSpellByName(name);
+  const action = SPELL_ACTIONS[name];
+  if (action){
+    action(Object.assign({}, spell, { castLevel: Number(spell.level || 0) }));
+    return;
+  }
+  const level = Number(spell.level || 0);
+  if (level > 0 && !spendSlot(level)) return saveState();
+  setConcentrationFromSpell(spell);
+  const text = `${spell.casting_time || "Action"} · ${spell.range || "-"}\n${spell.description || "Spell cast."}`;
+  openResult(spell.name, text);
+  pushHistory(`${spell.name}: cast${level ? ` using L${level} slot` : ""}.`);
+  saveState();
+}
+function togglePrepared(name, checked){
+  const level = spellLevel(name);
+  if (level === 0){
+    if (checked && !state.preparedCantrips.includes(name)) state.preparedCantrips.push(name);
+    if (!checked) state.preparedCantrips = state.preparedCantrips.filter(item => item !== name);
+    saveState();
+    return;
+  }
+  if (checked){
+    if (!state.preparedSpells.includes(name)){
+      if (state.preparedSpells.length >= preparedLimit()){
+        openResult("Prepared Limit", `You are already at ${preparedLimit()} prepared spells.`);
+        render();
+        return;
+      }
+      state.preparedSpells.push(name);
+    }
+  }else{
+    state.preparedSpells = state.preparedSpells.filter(item => item !== name);
+  }
+  saveState();
+}
+function rollInitiative(){
+  const roll = rollD20("-");
+  const total = roll.chosen + currentInit();
+  const text = `${roll.text} + Init(${currentInit()}) = ${total}`;
+  openResult("Initiative", text);
+  pushHistory(`Initiative: ${text}`);
+}
+function runConcentrationCheck(){
+  openPrompt({
+    title: "Concentration Check",
+    fields: [
+      { name: "damage", label: "Damage taken", type: "number", min: 0, value: 0 }
+    ],
+    onSubmit(values){
+      const damage = Math.max(0, Number(values.damage) || 0);
+      const dc = Math.max(10, Math.ceil(damage / 2));
+      const conSave = saveMod("CON") + (state.bladesongActive ? Math.max(1, abilityMod(state.abilityScores.INT)) : 0);
+      const roll = rollD20(state.concentrationMode);
+      const total = roll.chosen + conSave;
+      const text = `${roll.text} + CON Save(${conSave}) = ${total}\nDC ${dc} from ${damage} damage`;
+      openResult("Concentration Check", text);
+      pushHistory(`Concentration: ${text.replace(/\n/g, " | ")}`);
+    }
+  });
+}
+function toggleBladesong(){
+  if (state.bladesongActive){
+    state.bladesongActive = false;
+    pushHistory("Bladesong deactivated.");
+    saveState();
+    return;
+  }
+  if (bladesongUsesRemaining() <= 0){
+    openResult("Bladesong", "No Bladesong uses remaining until long rest.");
+    return;
+  }
+  state.bladesongActive = true;
+  state.bladesongUsesSpent += 1;
+  const intBonus = Math.max(1, abilityMod(state.abilityScores.INT));
+  openResult("Bladesong Active", `AC +${intBonus}\nSpeed +10 ft\nAdvantage on Acrobatics checks\nAdd INT mod to concentration saves`);
+  pushHistory("Bladesong activated.");
+  saveState();
+}
+function shortRest(){
+  state.bladesongActive = false;
+  state.shieldActive = false;
+  pushHistory("Short Rest: Bladesong deactivated.");
+  saveState();
+  openArcaneRecovery();
+}
+function longRest(){
+  resetForLongRest();
+  pushHistory("Long Rest: HP, spell slots, Bladesong, Arcane Recovery, and concentration reset.");
+  saveState();
+}
+function openArcaneRecovery(){
+  const available = wizardRecoveryLimit();
+  const disabled = state.arcaneRecoveryUsed || available <= 0;
+  const rows = [];
+  for (let level = 1; level <= 6; level++){
+    const max = (FULL_CASTER_SLOTS[state.level] || [])[level - 1] || 0;
+    if (level >= 6) {
+      rows.push(`<div class="check-item"><span>Level ${level}</span><span class="muted">Not eligible</span></div>`);
+      continue;
+    }
+    rows.push(`
+      <label class="check-item">
+        <span>Level ${level} (${state.slotCur[level] || 0}/${max})</span>
+        <input type="number" min="0" max="${Math.max(0, max - (state.slotCur[level] || 0))}" value="0" data-recover="${level}" ${disabled ? "disabled" : ""}>
+      </label>
+    `);
+  }
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Arcane Recovery</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="result-box">Once per day after a short rest, recover spell slots with a combined level up to ${available}. No slot can be 6th level or higher.</div>
+    <div class="form-grid" style="margin-top:10px;">${rows.join("")}</div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="recoverSlotsBtn" ${disabled ? "disabled" : ""}>Recover Slots</button>
+    </div>
+  `);
+  const button = document.getElementById("recoverSlotsBtn");
+  if (button){
+    button.onclick = () => {
+      const picks = Array.from(document.querySelectorAll("[data-recover]")).map(input => ({
+        level: Number(input.dataset.recover),
+        amount: Math.max(0, Number(input.value) || 0)
+      }));
+      const cost = picks.reduce((sum, item) => sum + item.level * item.amount, 0);
+      if (cost > available){
+        openResult("Arcane Recovery", `That selection costs ${cost}, but your maximum is ${available}.`);
+        return;
+      }
+      picks.forEach(item => {
+        for (let i = 0; i < item.amount; i++) restoreSlot(item.level);
+      });
+      state.arcaneRecoveryUsed = cost > 0 ? true : state.arcaneRecoveryUsed;
+      pushHistory(cost > 0 ? `Arcane Recovery: restored slots costing ${cost}.` : "Arcane Recovery opened with no slots recovered.");
+      closeModal();
+      saveState();
+    };
+  }
+}
+function openSpellCard(name){
+  const spell = getSpellByName(name);
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">${escapeHtml(spell.name)}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="spell-card">
+      <div class="card-head">${escapeHtml(spell.name)}<span class="badge-level">${spell.level}</span></div>
+      <div class="meta-grid">
+        <div><div class="label">Range</div><div class="meta-value">${escapeHtml(spell.range || "-")}</div></div>
+        <div><div class="label">Components</div><div class="meta-value">${escapeHtml(spell.components || "-")}</div></div>
+        <div><div class="label">Duration</div><div class="meta-value">${escapeHtml(spell.duration || "-")}</div></div>
+        <div><div class="label">Cast</div><div class="meta-value">${escapeHtml(spell.casting_time || "-")}</div></div>
+      </div>
+      <div class="body">${escapeHtml(spell.description || "")}</div>
+      <div class="foot"><span>${escapeHtml(spell.school || "-")}</span><span>${escapeHtml(spell.classes || "-")}</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="castFromCardBtn">Cast</button>
+    </div>
+  `);
+  document.getElementById("castFromCardBtn").onclick = () => castSpellByName(name);
+}
+function openCoinsEditor(){
+  openPrompt({
+    title: "Coins",
+    fields: [
+      { name: "cp", label: "Copper", type: "number", value: state.coins.cp },
+      { name: "sp", label: "Silver", type: "number", value: state.coins.sp },
+      { name: "gp", label: "Gold", type: "number", value: state.coins.gp },
+      { name: "convert", label: "Convert 10 lower to 1 higher", type: "select", options: [
+        { value: "none", label: "No conversion" },
+        { value: "cp-sp", label: "CP to SP" },
+        { value: "sp-gp", label: "SP to GP" }
+      ], value: "none" }
+    ],
+    onSubmit(values){
+      state.coins.cp = Math.max(0, Number(values.cp) || 0);
+      state.coins.sp = Math.max(0, Number(values.sp) || 0);
+      state.coins.gp = Math.max(0, Number(values.gp) || 0);
+      if (values.convert === "cp-sp"){
+        const can = Math.floor(state.coins.cp / 10);
+        state.coins.cp -= can * 10;
+        state.coins.sp += can;
+      }
+      if (values.convert === "sp-gp"){
+        const can = Math.floor(state.coins.sp / 10);
+        state.coins.sp -= can * 10;
+        state.coins.gp += can;
+      }
+      pushHistory(`Coins updated: ${state.coins.cp} cp, ${state.coins.sp} sp, ${state.coins.gp} gp.`);
+      saveState();
+    }
+  });
+}
+function openAbilitiesEditor(){
+  const inputs = ABILITIES.map(abil => ({
+    name: abil,
+    label: ABILITY_LABELS[abil],
+    type: "number",
+    value: state.abilityScores[abil]
+  }));
+  openPrompt({
+    title: "Edit Core Stats",
+    fields: inputs,
+    onSubmit(values){
+      ABILITIES.forEach(abil => state.abilityScores[abil] = Number(values[abil]) || 10);
+      syncHpToMax(state);
+      saveState();
+    }
+  });
+}
+function openSkillsEditor(){
+  const items = SKILLS.map(skill => `
+    <label class="check-item">
+      <span>${skill.name} <span class="muted tiny">${skill.abil}</span></span>
+      <input type="checkbox" data-skill-box="${skill.name}" ${state.proficientSkills.includes(skill.name) ? "checked" : ""}>
+    </label>
+  `).join("");
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Proficient Skills</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">${items}</div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveSkillsBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveSkillsBtn").onclick = () => {
+    state.proficientSkills = Array.from(document.querySelectorAll("[data-skill-box]:checked")).map(box => box.dataset.skillBox);
+    closeModal();
+    saveState();
+  };
+}
+function openTopEditor(){
+  openPrompt({
+    title: "Edit Top Box",
+    fields: [
+      { name: "hpCurrent", label: "Current HP", type: "number", value: state.hpCurrent },
+      { name: "baseAc", label: "Base AC", type: "number", value: state.customBaseAc == null ? getBaseAc() : state.customBaseAc },
+      { name: "initBonus", label: "Init Bonus", type: "number", value: state.initBonus },
+      { name: "speed", label: "Speed", type: "number", value: state.speed },
+      { name: "prof", label: "Proficiency Bonus", type: "number", value: profBonus() }
+    ],
+    onSubmit(values){
+      state.hpCurrent = clampNum(Number(values.hpCurrent) || maxHp(), 0, maxHp());
+      state.customBaseAc = Number(values.baseAc) || 0;
+      state.initBonus = Number(values.initBonus) || 0;
+      state.speed = Number(values.speed) || 30;
+      state.profOverride = Number(values.prof) || null;
+      saveState();
+    }
+  });
+}
+function openArmourEditor(){
+  openPrompt({
+    title: "Armour",
+    fields: [
+      { name: "armourName", label: "Armour Label", type: "text", value: state.armourName },
+      { name: "bonus", label: "Base AC adjustment", type: "number", value: state.armourLongPressBonus || 0 }
+    ],
+    onSubmit(values){
+      state.armourName = values.armourName || "Unarmoured";
+      state.armourLongPressBonus = Number(values.bonus) || 0;
+      saveState();
+    }
+  });
+}
+function openLevelUpModal(){
+  if (state.level >= 10){
+    openResult("Level Up", "This build is capped at level 10: Wizard 9 / Cleric 1.");
+    return;
+  }
+  const nextLevel = state.level + 1;
+  const wizardLevel = getProgression(nextLevel).wizard;
+  const roll = rollDie(6);
+  const chosen = Math.max(roll, 4);
+  const con = abilityMod(state.abilityScores.CON);
+  const gain = chosen + con;
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Level Up to ${nextLevel}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="result-box">Wizard level ${wizardLevel}\nRolled d6: ${roll}\nChosen hit die result: ${chosen}\nCON mod: ${fmtMod(con)}\nHP gain: ${gain}</div>
+    <div class="modal-actions">
+      <button class="action-btn green" id="confirmLevelBtn">Apply Level Up</button>
+    </div>
+  `);
+  document.getElementById("confirmLevelBtn").onclick = () => {
+    state.level = nextLevel;
+    state.hpLog.push({ class: "wizard", roll, chosen, gain });
+    syncSlotsToLevel(state);
+    state.hpCurrent = Math.min(maxHp(), state.hpCurrent + gain);
+    pushHistory(`Level up: Wizard ${wizardLevel}. d6 rolled ${roll}, used ${chosen}, gained ${gain} HP.`);
+    closeModal();
+    saveState();
+  };
+}
+function openKnownSpellsEditor(){
+  const spells = (window.SPELL_DATA || []).slice().sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const rows = spells.map(spell => `
+    <label class="check-item">
+      <span>${escapeHtml(spell.name)} <span class="muted tiny">L${spell.level} · ${escapeHtml(spell.school || "")}</span></span>
+      <input type="checkbox" data-known-box="${escapeAttr(spell.name)}" ${state.knownSpells.includes(spell.name) ? "checked" : ""}>
+    </label>
+  `).join("");
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Known Spells</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <input type="text" id="knownSearch" placeholder="Search spells">
+    <div class="form-grid" id="knownSpellGrid" style="margin-top:8px;max-height:60vh;overflow:auto;">${rows}</div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveKnownBtn">Save Known Spells</button>
+    </div>
+  `);
+  const search = document.getElementById("knownSearch");
+  search.oninput = () => {
+    const query = search.value.trim().toLowerCase();
+    document.querySelectorAll("[data-known-box]").forEach(box => {
+      const label = box.closest(".check-item");
+      label.style.display = label.textContent.toLowerCase().includes(query) ? "" : "none";
+    });
+  };
+  document.getElementById("saveKnownBtn").onclick = () => {
+    state.knownSpells = Array.from(document.querySelectorAll("[data-known-box]:checked")).map(box => box.dataset.knownBox);
+    syncPreparedLists(state);
+    closeModal();
+    saveState();
+  };
+}
+function bindLongPress(){
+  const armour = document.getElementById("armourText");
+  let timer = null;
+  armour.onpointerdown = () => {
+    timer = setTimeout(openArmourEditor, 550);
+  };
+  const clear = () => {
+    if (timer){
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+  armour.onpointerup = clear;
+  armour.onpointerleave = clear;
+}
+function bindStaticButtons(){
+  document.getElementById("coinsBtn").onclick = openCoinsEditor;
+  document.getElementById("editAbilitiesBtn").onclick = openAbilitiesEditor;
+  document.getElementById("editSkillsBtn").onclick = openSkillsEditor;
+  document.getElementById("editTopBtn").onclick = openTopEditor;
+  document.getElementById("levelUpBtn").onclick = openLevelUpModal;
+  document.getElementById("openCombatBtn").onclick = () => { state.activePage = "combat"; saveState(); };
+  document.getElementById("openSpellbookBtn").onclick = () => { state.activePage = "spellbook"; saveState(); };
+  document.getElementById("editKnownBtn").onclick = openKnownSpellsEditor;
+  document.getElementById("clearHistoryBtn").onclick = () => { state.history = []; saveState(); };
+  document.getElementById("bladesongBtn").onclick = toggleBladesong;
+  document.getElementById("concentrationModeBtn").onclick = () => { state.concentrationMode = modeCycle(state.concentrationMode); saveState(); };
+  document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
+  document.getElementById("concentrationActiveBtn").onclick = () => {
+    state.concentrationActive = state.concentrationActive ? "" : "Manual";
+    saveState();
+  };
+  document.getElementById("mageArmorBtn").onclick = () => castSpellByName("Mage Armor");
+  document.getElementById("shieldBtn").onclick = () => castSpellByName("Shield");
+  document.getElementById("shortRestBtn").onclick = shortRest;
+  document.getElementById("longRestBtn").onclick = longRest;
+}
+function render(){
+  syncSlotsToLevel(state);
+  state.hpCurrent = Math.min(state.hpCurrent, maxHp());
+  renderTabs();
+  renderPages();
+  renderStatsPage();
+  renderCombatPage();
+  renderSpellbookPage();
+  bindStaticButtons();
+  bindLongPress();
+}
+function openModal(html){
+  const back = document.getElementById("modalBack");
+  document.getElementById("modal").innerHTML = html;
+  back.classList.add("show");
+  document.querySelectorAll("[data-close]").forEach(btn => btn.onclick = closeModal);
+  back.onclick = event => {
+    if (event.target === back) closeModal();
+  };
+}
+function closeModal(){
+  document.getElementById("modalBack").classList.remove("show");
+}
+function openResult(title, text){
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">${escapeHtml(title)}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="result-box">${escapeHtml(text)}</div>
+  `);
+}
+function openPrompt({ title, fields, onSubmit }){
+  const body = fields.map(field => {
+    if (field.type === "select"){
+      return `
+        <label>${escapeHtml(field.label)}
+          <select name="${escapeAttr(field.name)}">
+            ${field.options.map(option => `<option value="${escapeAttr(option.value)}" ${option.value === field.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+          </select>
+        </label>
+      `;
+    }
+    return `
+      <label>${escapeHtml(field.label)}
+        <input type="${field.type}" name="${escapeAttr(field.name)}" value="${escapeAttr(String(field.value ?? ""))}" ${field.min != null ? `min="${field.min}"` : ""} ${field.max != null ? `max="${field.max}"` : ""}>
+      </label>
+    `;
+  }).join("");
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">${escapeHtml(title)}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">${body}</div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="promptSaveBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("promptSaveBtn").onclick = () => {
+    const values = {};
+    fields.forEach(field => {
+      const el = document.querySelector(`[name="${field.name}"]`);
+      values[field.name] = el.value;
+    });
+    closeModal();
+    onSubmit(values);
+  };
+}
+function escapeHtml(value){
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function escapeAttr(value){
+  return escapeHtml(value).replace(/'/g, "&#39;");
+}
+function clampNum(value, min, max){
+  return Math.max(min, Math.min(max, value));
+}
+render();
+if ("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
