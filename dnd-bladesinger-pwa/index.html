@@ -109,6 +109,7 @@
   .coin-box{
     min-width:96px;
     background:#0a1017;
+    color:#fff;
     border:1px solid var(--line);
     border-radius:10px;
     padding:5px 7px;
@@ -195,7 +196,7 @@
   .stat-foot .save{color:#8fe0a8}
   .skills-grid{
     display:grid;
-    grid-template-columns:repeat(2,1fr);
+    grid-template-columns:repeat(3,1fr);
     gap:5px;
   }
   .skill-col{
@@ -287,11 +288,27 @@
   }
   .action-cluster{
     display:grid;
-    grid-template-columns:1.2fr 72px 88px;
+    grid-template-columns:1.2fr 82px 82px;
+    grid-template-areas:
+      "blade pips concheck"
+      "rests mage adv"
+      "active shield .";
     gap:5px;
     margin-top:7px;
   }
-  .action-cluster .full{grid-column:1 / -1}
+  .cell-blade{grid-area:blade}
+  .cell-pips{grid-area:pips}
+  .cell-concheck{grid-area:concheck}
+  .cell-rests{grid-area:rests}
+  .cell-mage{grid-area:mage}
+  .cell-adv{grid-area:adv}
+  .cell-active{grid-area:active}
+  .cell-shield{grid-area:shield}
+  .rest-pair{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+  }
   .pips-box{
     background:#0c1118;
     border:1px solid var(--line);
@@ -447,7 +464,8 @@
   .icon-btn{
     border:1px solid var(--line2);
     border-radius:7px;
-    padding:0;
+    width:26px;
+    padding:0 4px;
   }
   .mode-btn.active{background:#305f87}
   .mode-btn.warn{background:#77491f}
@@ -775,15 +793,17 @@
     <div class="card">
       <div class="combat-top" id="combatTop"></div>
       <div class="action-cluster">
-        <button class="action-btn yellow" id="bladesongBtn"></button>
-        <div class="pips-box" id="bladesongPips"></div>
-        <button class="action-btn blue" id="concentrationCheckBtn">Con</button>
-        <button class="action-btn blue" id="concentrationActiveBtn"></button>
-        <button class="action-btn green" id="shortRestBtn">Short Rest</button>
-        <button class="action-btn blue" id="mageArmorBtn"></button>
-        <button class="action-btn blue" id="longRestBtn">Long Rest</button>
-        <button class="mode-btn" id="concentrationModeBtn"></button>
-        <button class="action-btn gold" id="shieldBtn"></button>
+        <button class="action-btn yellow cell-blade" id="bladesongBtn"></button>
+        <div class="pips-box cell-pips" id="bladesongPips"></div>
+        <button class="action-btn blue cell-concheck" id="concentrationCheckBtn">Con</button>
+        <div class="rest-pair cell-rests">
+          <button class="action-btn green" id="shortRestBtn">Short Rest</button>
+          <button class="action-btn blue" id="longRestBtn">Long Rest</button>
+        </div>
+        <button class="action-btn blue cell-mage" id="mageArmorBtn"></button>
+        <button class="mode-btn cell-adv" id="concentrationModeBtn"></button>
+        <button class="action-btn blue cell-active" id="concentrationActiveBtn"></button>
+        <button class="action-btn gold cell-shield" id="shieldBtn"></button>
       </div>
       <div class="amount-row">
         <input type="number" id="amountInput" placeholder="Amt">
@@ -1031,7 +1051,7 @@ function ensureState(raw){
   raw.preparedSpells = unique((raw.preparedSpells || DEFAULT_PREPARED_SPELLS).filter(name => spellLevel(name) > 0));
   raw.proficientSkills = unique(raw.proficientSkills || []);
   raw.history = Array.isArray(raw.history) ? raw.history.slice(0, HISTORY_LIMIT) : [];
-  raw.hpLog = Array.isArray(raw.hpLog) ? raw.hpLog : [];
+  raw.hpLog = Array.isArray(raw.hpLog) ? raw.hpLog.map((item, index) => Object.assign({ level:index + 2 }, item)) : [];
   raw.attackModes = Object.assign({}, DEFAULT_STATE.attackModes, raw.attackModes || {});
   raw.spellUpcast = raw.spellUpcast || {};
   raw.spellFilters = Object.assign({}, DEFAULT_STATE.spellFilters, raw.spellFilters || {});
@@ -1114,7 +1134,7 @@ function bladesongUsesRemaining(){
 }
 function maxHpFrom(target){
   const base = 8 + abilityMod(target.abilityScores.CON);
-  return Math.max(1, base + target.hpLog.reduce((sum, item) => sum + item.gain, 0));
+  return Math.max(1, base + target.hpLog.filter(item => !item.level || item.level <= target.level).reduce((sum, item) => sum + item.gain, 0));
 }
 function maxHp(){
   return maxHpFrom(state);
@@ -1288,17 +1308,14 @@ function renderStatsPage(){
   });
   const skillsGrid = document.getElementById("skillsGrid");
   skillsGrid.innerHTML = "";
-  const grouped = [["STR","DEX","CON"],["INT","WIS","CHA"]];
-  grouped.forEach(group => {
+  ABILITIES.forEach(abil => {
     const col = document.createElement("div");
     col.className = "skill-col";
-    col.innerHTML = group.map(abil => {
-      const lines = SKILLS.filter(skill => skill.abil === abil).map(skill => {
-        const prof = state.proficientSkills.includes(skill.name);
-        return `<div class="skill-line ${prof ? "prof" : ""}"><span>${escapeHtml(shortSkill(skill.name))}</span><span>${fmtMod(skillMod(skill.name))}</span></div>`;
-      }).join("");
-      return `<div class="skill-col-title">${abil}</div>${lines}`;
+    const lines = SKILLS.filter(skill => skill.abil === abil).map(skill => {
+      const prof = state.proficientSkills.includes(skill.name);
+      return `<div class="skill-line ${prof ? "prof" : ""}"><span>${escapeHtml(shortSkill(skill.name))}</span><span>${fmtMod(skillMod(skill.name))}</span></div>`;
     }).join("");
+    col.innerHTML = `<div class="skill-col-title">${abil}</div>${lines || `<div class="skill-line"><span>-</span><span>-</span></div>`}`;
     skillsGrid.appendChild(col);
   });
   document.getElementById("passiveText").textContent = 10 + skillMod("Perception");
@@ -1600,10 +1617,11 @@ function rollWeapon(id){
   const toHit = attack.chosen + hitMod;
   const damage = rollSpec("1d6");
   let total = damage.total + damageMod;
-  let text = `${attack.text} + HIT(${hitMod}) = ${toHit}\n${damage.rolls.join(" + ")} + DEX(${damageMod})`;
+  let text = `1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n1d6${damageMod >= 0 ? "+" : ""}${damageMod}`;
+  text += ` - ${damage.rolls.join(" + ")}${damageMod >= 0 ? "+" : ""}${damageMod}`;
   if (mode.crit){
     total += damage.max;
-    text += ` + Crit(${damage.max})`;
+    text += `+Crit(${damage.max})`;
   }
   text += ` = ${total}\nDamage: piercing ${total}`;
   const title = id === "bonusCrossbow" ? "Bonus Crossbow" : "Hand Crossbow";
@@ -1616,10 +1634,11 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
   const toHit = attack.chosen + spellAttackMod();
   const damage = rollSpec(diceSpec);
   let total = damage.total;
-  let text = `${attack.text} + Spell(${spellAttackMod()}) = ${toHit}\n${damage.rolls.join(" + ")}`;
+  let text = `1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n${diceSpec}`;
+  text += ` - ${damage.rolls.join(" + ")}`;
   if (mode.crit){
     total += damage.max;
-    text += ` + Crit(${damage.max})`;
+    text += `+Crit(${damage.max})`;
   }
   text += ` = ${total}\nDamage: ${damageType} ${total}`;
   if (extraText) text += `\n${extraText}`;
@@ -1627,7 +1646,7 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
 }
 function castSaveSpell(spell, diceSpec, damageType, note = ""){
   const damage = rollSpec(diceSpec);
-  const text = `${damage.rolls.join(" + ")} = ${damage.total}\nSave DC ${spellDc()}\nDamage: ${damageType} ${damage.total}${note ? `\n${note}` : ""}`;
+  const text = `${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total}\nSave DC ${spellDc()}\nDamage: ${damageType} ${damage.total}${note ? `\n${note}` : ""}`;
   finalizeSpellCast(spell, text);
 }
 function castTollTheDead(spell){
@@ -1648,7 +1667,7 @@ function castMagicMissile(spell){
     parts.push(`${die.rolls[0]}+1`);
     total += die.rolls[0] + 1;
   }
-  const text = `${darts} darts\n${parts.join(" | ")}\nForce damage ${total}`;
+  const text = `${darts} x (1d4+1)\n${parts.join(" | ")}\nForce damage ${total}`;
   openResult(spell.name, text);
   pushHistory(`${spell.name} L${level}: ${text.replace(/\n/g, " | ")}`);
   saveState();
@@ -1849,22 +1868,25 @@ function levelUp(){
   }
   const nextLevel = state.level + 1;
   const wizardLevel = getProgression(nextLevel).wizard;
-  const roll = rollDie(6);
-  const chosen = Math.max(roll, 4);
-  const gain = chosen + abilityMod(state.abilityScores.CON);
+  const existing = state.hpLog.find(item => item.level === nextLevel);
+  const roll = existing ? existing.roll : rollDie(6);
+  const chosen = existing ? existing.chosen : Math.max(roll, 4);
+  const gain = existing ? existing.gain : chosen + abilityMod(state.abilityScores.CON);
   openModal(`
     <div class="modal-head">
       <div class="modal-title">Level Up to ${nextLevel}</div>
       <button class="small-btn" data-close>Close</button>
     </div>
-    <div class="result-box">Wizard level ${wizardLevel}\nRolled d6: ${roll}\nUsed: ${chosen}\nCON mod: ${fmtMod(abilityMod(state.abilityScores.CON))}\nHP gain: ${gain}</div>
+    <div class="result-box">Wizard level ${wizardLevel}\nRolled d6: ${roll}\nUsed: ${chosen}\nCON mod: ${fmtMod(abilityMod(state.abilityScores.CON))}\nHP gain: ${gain}${existing ? `\nLocked roll from your first time reaching this level.` : ""}</div>
     <div class="modal-actions">
       <button class="action-btn green" id="confirmLevelBtn">Apply Level Up</button>
     </div>
   `);
   document.getElementById("confirmLevelBtn").onclick = () => {
     state.level = nextLevel;
-    state.hpLog.push({ class:"wizard", roll, chosen, gain });
+    if (!existing){
+      state.hpLog.push({ level:nextLevel, class:"wizard", roll, chosen, gain });
+    }
     syncSlotsToLevel(state);
     state.hpCurrent = Math.min(maxHp(), state.hpCurrent + gain);
     pushHistory(`Level up: Wizard ${wizardLevel}. d6 rolled ${roll}, used ${chosen}, gained ${gain} HP.`);
@@ -1873,21 +1895,36 @@ function levelUp(){
   };
 }
 function levelDown(){
-  if (state.level <= 1 || state.hpLog.length === 0){
+  const available = state.hpLog.filter(item => item.level < state.level).sort((a,b) => b.level - a.level);
+  if (state.level <= 1 || available.length === 0){
     openResult("Previous Level", "No previous wizard level to roll back to.");
     return;
   }
-  const removed = state.hpLog.pop();
-  state.level -= 1;
-  syncSlotsToLevel(state);
-  state.hpCurrent = clamp(state.hpCurrent - removed.gain, 0, maxHp());
-  if (state.bladesongUsesSpent > bladesongUsesMax()){
-    state.bladesongUsesSpent = bladesongUsesMax();
-  }
-  pushHistory(`Rolled back level ${state.level + 1}. Removed ${removed.gain} HP from the last wizard level.`);
-  saveState();
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Previous Level</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">
+      ${available.map(item => `<button class="action-btn blue" data-level-pick="${item.level}">Level ${item.level}</button>`).join("")}
+    </div>
+  `);
+  document.querySelectorAll("[data-level-pick]").forEach(button => {
+    button.onclick = () => {
+      const targetLevel = Number(button.dataset.levelPick);
+      state.level = targetLevel;
+      syncSlotsToLevel(state);
+      state.hpCurrent = Math.min(state.hpCurrent, maxHp());
+      if (state.bladesongUsesSpent > bladesongUsesMax()){
+        state.bladesongUsesSpent = bladesongUsesMax();
+      }
+      pushHistory(`Returned to level ${targetLevel}. Previous HP rolls remain locked.`);
+      closeModal();
+      saveState();
+    };
+  });
 }
-function openSpellCard(name){
+function openSpellCard(name, returnToKnownEditor = false){
   const spell = getSpellByName(name);
   openModal(`
     <div class="modal-head">
@@ -1909,6 +1946,17 @@ function openSpellCard(name){
       <button class="action-btn blue" id="castFromCardBtn">Cast</button>
     </div>
   `);
+  if (returnToKnownEditor){
+    document.querySelectorAll("[data-close]").forEach(button => button.onclick = renderKnownEditorModal);
+    document.getElementById("modalBack").onclick = event => {
+      if (event.target === document.getElementById("modalBack")) renderKnownEditorModal();
+    };
+    document.getElementById("castFromCardBtn").onclick = () => {
+      castSpellByName(name);
+      renderKnownEditorModal();
+    };
+    return;
+  }
   document.getElementById("castFromCardBtn").onclick = () => castSpellByName(name);
 }
 function openCoinsEditor(){
@@ -2062,9 +2110,14 @@ function renderKnownEditorModal(){
         <span>CLASS:</span>
         <select id="spellClassFilter">
           <option value="all" ${state.spellFilters.class === "all" ? "selected" : ""}>All Classes</option>
+          <option value="bard" ${state.spellFilters.class === "bard" ? "selected" : ""}>Bard</option>
           <option value="wizard" ${state.spellFilters.class === "wizard" ? "selected" : ""}>Wizard</option>
           <option value="cleric" ${state.spellFilters.class === "cleric" ? "selected" : ""}>Cleric</option>
-          <option value="both" ${state.spellFilters.class === "both" ? "selected" : ""}>Wizard + Cleric</option>
+          <option value="druid" ${state.spellFilters.class === "druid" ? "selected" : ""}>Druid</option>
+          <option value="paladin" ${state.spellFilters.class === "paladin" ? "selected" : ""}>Paladin</option>
+          <option value="ranger" ${state.spellFilters.class === "ranger" ? "selected" : ""}>Ranger</option>
+          <option value="sorcerer" ${state.spellFilters.class === "sorcerer" ? "selected" : ""}>Sorcerer</option>
+          <option value="warlock" ${state.spellFilters.class === "warlock" ? "selected" : ""}>Warlock</option>
         </select>
       </div>
       <div class="spell-filter-row">
@@ -2085,13 +2138,6 @@ function renderKnownEditorModal(){
           <option value="az" ${state.spellFilters.sort === "az" ? "selected" : ""}>A-Z</option>
         </select>
       </div>
-      <div class="spell-filter-row">
-        <span>EXTRAS:</span>
-        <div class="form-grid two">
-          <input id="extraCantrips" type="number" min="0" value="${state.extraCantrips || 0}" placeholder="Cantrips">
-          <input id="extraSpellbook" type="number" min="0" value="${state.extraSpellbook || 0}" placeholder="Spells">
-        </div>
-      </div>
     </div>
     <div class="form-grid" id="knownSpellGrid" style="margin-top:8px;max-height:48vh;overflow:auto;">${rows}</div>
     <div class="modal-actions">
@@ -2107,11 +2153,9 @@ function renderKnownEditorModal(){
   document.getElementById("minPlus").onclick = () => adjustFilterLevel("min",1);
   document.getElementById("maxMinus").onclick = () => adjustFilterLevel("max",-1);
   document.getElementById("maxPlus").onclick = () => adjustFilterLevel("max",1);
-  document.querySelectorAll("[data-spell-info]").forEach(button => button.onclick = () => openSpellCard(button.dataset.spellInfo));
+  document.querySelectorAll("[data-spell-info]").forEach(button => button.onclick = () => openSpellCard(button.dataset.spellInfo, true));
   document.getElementById("saveKnownBtn").onclick = () => {
     state.knownSpells = Array.from(document.querySelectorAll("[data-known-box]:checked")).map(box => box.dataset.knownBox);
-    state.extraCantrips = Number(document.getElementById("extraCantrips").value) || 0;
-    state.extraSpellbook = Number(document.getElementById("extraSpellbook").value) || 0;
     syncPreparedLists(state);
     closeModal();
     saveState();
@@ -2125,10 +2169,6 @@ function updateKnownFilterState(){
   state.spellFilters.maxLevel = clamp(Number(document.getElementById("maxLevel").value) || 9, 0, 9);
   const currentChecks = Array.from(document.querySelectorAll("[data-known-box]")).filter(box => box.checked).map(box => box.dataset.knownBox);
   state.knownSpells = unique(currentChecks.concat(state.knownSpells));
-  const extraCantrips = document.getElementById("extraCantrips");
-  const extraSpellbook = document.getElementById("extraSpellbook");
-  if (extraCantrips) state.extraCantrips = Number(extraCantrips.value) || 0;
-  if (extraSpellbook) state.extraSpellbook = Number(extraSpellbook.value) || 0;
   renderKnownEditorModal();
 }
 function adjustFilterLevel(which, delta){
@@ -2145,11 +2185,7 @@ function filteredSpells(){
   let filtered = spells.filter(spell => {
     const text = `${spell.name} ${spell.school} ${spell.classes}`.toLowerCase();
     if (query && !text.includes(query)) return false;
-    const isWizard = (spell.classes || "").includes("Wizard");
-    const isCleric = (spell.classes || "").includes("Cleric");
-    if (selectedClass === "wizard" && !isWizard) return false;
-    if (selectedClass === "cleric" && !isCleric) return false;
-    if (selectedClass === "both" && !(isWizard && isCleric)) return false;
+    if (selectedClass !== "all" && !(spell.classes || "").toLowerCase().includes(selectedClass)) return false;
     const level = Number(spell.level || 0);
     return level >= minLevel && level <= maxLevel;
   });
