@@ -192,26 +192,39 @@
     padding:5px 4px;
   }
   .stat-head{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+    display:block;
     font-size:10px;
     font-weight:900;
     color:#cce4ff;
+    text-align:left;
+    padding-left:2px;
   }
   .stat-score{
     text-align:center;
     font-size:20px;
     font-weight:900;
     line-height:1;
-    margin:2px 0;
+    margin:3px 0 4px;
   }
   .stat-foot{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:10px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+    font-size:9px;
     font-weight:800;
+  }
+  .stat-pair{
+    display:grid;
+    gap:1px;
+    justify-items:start;
+  }
+  .stat-pair:last-child{
+    justify-items:end;
+  }
+  .stat-pair b{
+    font-size:14px;
+    line-height:1;
+    color:#fff;
   }
   .stat-foot .save{color:#8fe0a8}
   .skills-grid{
@@ -239,9 +252,16 @@
     padding:3px 5px;
     border-radius:6px;
     background:#121c27;
-    font-size:10px;
+    border:1px solid #33495d;
+    font-size:9px;
     margin-bottom:3px;
+    color:#fff;
+    width:100%;
+    min-width:0;
+    appearance:none;
   }
+  .skill-line span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .skill-line span:last-child{flex:none;white-space:nowrap}
   .skill-line:last-child{margin-bottom:0}
   .skill-line.prof{
     background:#183322;
@@ -327,7 +347,7 @@
     grid-template-areas:
       "blade pips concheck"
       "rests mage adv"
-      "haste minor active";
+      "spells shield active";
     gap:5px;
     margin-top:7px;
   }
@@ -335,13 +355,17 @@
   .cell-pips{grid-area:pips}
   .cell-concheck{grid-area:concheck}
   .cell-rests{grid-area:rests}
+  .cell-spells{grid-area:spells}
   .cell-mage{grid-area:mage}
   .cell-adv{grid-area:adv}
   .cell-active{grid-area:active}
   .cell-shield{grid-area:shield}
-  .cell-haste{grid-area:haste}
-  .cell-minor{grid-area:minor}
   .rest-pair{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+  }
+  .spell-pair{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:5px;
@@ -466,8 +490,9 @@
     background:#165233;
     color:#fff;
     text-align:left;
-    padding:4px 6px;
+    padding:4px 28px 4px 6px;
     min-height:34px;
+    position:relative;
   }
   .combat-action.blue{
     background:#175c80;
@@ -487,6 +512,23 @@
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
+  }
+  .spell-corner{
+    position:absolute;
+    right:5px;
+    top:4px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.45);
+    background:rgba(6,10,16,.55);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:9px;
+    font-weight:900;
+    line-height:1;
   }
   .icon-btn,.mode-btn,.tag{
     min-height:34px;
@@ -887,10 +929,13 @@
           <button class="action-btn green" id="shortRestBtn">Short Rest</button>
           <button class="action-btn blue" id="longRestBtn">Long Rest</button>
         </div>
+        <div class="spell-pair cell-spells">
+          <button class="action-btn blue" id="hasteBtn"></button>
+          <button class="action-btn gold" id="minorElementalsBtn"></button>
+        </div>
         <button class="action-btn blue cell-mage" id="mageArmorBtn"></button>
+        <button class="action-btn gold cell-shield" id="shieldBtn"></button>
         <button class="mode-btn cell-adv" id="concentrationModeBtn"></button>
-        <button class="action-btn blue cell-haste" id="hasteBtn"></button>
-        <button class="action-btn gold cell-minor" id="minorElementalsBtn"></button>
         <button class="action-btn blue cell-active" id="concentrationActiveBtn"></button>
       </div>
       <div class="amount-row">
@@ -1054,6 +1099,21 @@ const DEFAULT_PREPARED_SPELLS = [
   "Mirror Image","Misty Step","Web","Invisibility","Shadow Blade","Counterspell",
   "Fireball","Fly","Haste"
 ];
+const EXTRA_SPELL_DATA = [
+  {
+    name:"Toll the Dead",
+    level:0,
+    ritual:false,
+    range:"60 ft",
+    components:"V, S",
+    duration:"Instantaneous",
+    concentration:false,
+    casting_time:"1 Action",
+    school:"Necromancy",
+    classes:"Cleric, Warlock, Wizard",
+    description:"You point at one creature you can see within range, and the sound of a dolorous bell fills the air around it for a moment. The target must succeed on a Wisdom saving throw or take 1d8 Necrotic damage. If the target is missing any Hit Points, it instead takes 1d12 Necrotic damage. Cantrip Upgrade. The damage increases by 1d8 or 1d12 when you reach levels 5 (2d8 or 2d12), 11 (3d8 or 3d12), and 17 (4d8 or 4d12)."
+  }
+];
 const DEFAULT_STATE = {
   activePage:"stats",
   name:"Alaric",
@@ -1088,6 +1148,7 @@ const DEFAULT_STATE = {
   hitDiceCur:{ d6:null, d8:null },
   spellUpcast:{},
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
+  dataVersion:1,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1111,6 +1172,7 @@ const SPELL_ACTIONS = {
   "Toll the Dead": spell => castTollTheDead(spell),
   "Sacred Flame": spell => castSaveSpell(spell, scaleCantrip("1d8"), "radiant", "Dexterity save."),
   "Magic Missile": spell => castMagicMissile(spell),
+  "Scorching Ray": spell => castScorchingRay(spell),
   "Fireball": spell => castSaveSpell(spell, `${8 + getUpcastLevel(spell.name)}d6`, "fire", "Dexterity save, half on success."),
   "Mage Armor": spell => castMageArmor(spell),
   "Shield": spell => castShield(spell),
@@ -1154,8 +1216,14 @@ function ensureState(raw){
   raw.attackModes = Object.assign({}, DEFAULT_STATE.attackModes, raw.attackModes || {});
   raw.spellUpcast = raw.spellUpcast || {};
   raw.spellFilters = Object.assign({}, DEFAULT_STATE.spellFilters, raw.spellFilters || {});
+  raw.dataVersion = Number(raw.dataVersion || 0);
   raw.slotCur = raw.slotCur || {};
   raw.hitDiceCur = Object.assign({}, DEFAULT_STATE.hitDiceCur, raw.hitDiceCur || {});
+  if (raw.dataVersion < 1){
+    if (!raw.knownSpells.includes("Toll the Dead")) raw.knownSpells.push("Toll the Dead");
+    if (!raw.preparedCantrips.includes("Toll the Dead")) raw.preparedCantrips.push("Toll the Dead");
+    raw.dataVersion = 1;
+  }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
   syncHitDice(raw);
@@ -1273,8 +1341,16 @@ function syncPreparedLists(target){
 function spellLevel(name){
   return Number(getSpellByName(name).level || 0);
 }
+function allSpellEntries(){
+  const merged = new Map();
+  (window.SPELL_DATA || []).forEach(spell => merged.set(spell.name, spell));
+  EXTRA_SPELL_DATA.forEach(spell => {
+    if (!merged.has(spell.name)) merged.set(spell.name, spell);
+  });
+  return Array.from(merged.values());
+}
 function getSpellByName(name){
-  const spells = window.SPELL_DATA || [];
+  const spells = allSpellEntries();
   return spells.find(spell => spell.name === name) || {
     name, level:0, range:"-", components:"-", duration:"-", concentration:false,
     casting_time:"-", school:"-", classes:"-", description:"No spell card data available."
@@ -1299,6 +1375,10 @@ function wizardRecoveryLimit(){
 }
 function getUpcastLevel(name){
   return Number(state.spellUpcast[name] || 0);
+}
+function displaySpellLevel(spell){
+  const base = Number(spell.level || 0);
+  return base === 0 ? "0" : String(spellCastLevel(spell));
 }
 function spellCastLevel(spell){
   return Number(spell.level || 0) + getUpcastLevel(spell.name);
@@ -1326,6 +1406,61 @@ function rollSpec(spec){
   const die = Number(dieStr);
   const rolls = Array.from({ length: count }, () => rollDie(die));
   return { rolls, total: rolls.reduce((sum, roll) => sum + roll, 0), max: count * die };
+}
+function parseDiceSpec(spec){
+  const match = String(spec || "").toLowerCase().match(/(\d+)d(\d+)/);
+  if (!match) return null;
+  return { count:Number(match[1]), die:Number(match[2]) };
+}
+function addDiceSpecs(baseSpec, extraSpec, times){
+  const base = parseDiceSpec(baseSpec);
+  const extra = parseDiceSpec(extraSpec);
+  if (!base || !extra || !times) return baseSpec;
+  if (base.die !== extra.die) return `${base.count + (extra.count * times)}d${base.die}`;
+  return `${base.count + (extra.count * times)}d${base.die}`;
+}
+function formatRollBreakdown(prefix, rolls, modifier = 0, extra = ""){
+  let line = prefix;
+  if (modifier){
+    line += modifier >= 0 ? `+${modifier}` : `${modifier}`;
+  }
+  line += ` - ${rolls.join(" + ")}`;
+  if (modifier){
+    line += modifier >= 0 ? ` + ${modifier}` : ` - ${Math.abs(modifier)}`;
+  }
+  if (extra) line += ` + ${extra}`;
+  return line;
+}
+function titleCase(value){
+  return String(value || "").replace(/\b[a-z]/g, char => char.toUpperCase());
+}
+function inferSpellAction(spell){
+  const description = String(spell.description || "");
+  if (!description) return null;
+  if (/make a (ranged|melee) spell attack/i.test(description)){
+    const damageMatch = description.match(/takes? (\d+d\d+) ([A-Za-z]+) damage/i);
+    if (!damageMatch) return null;
+    const upcastMatch = description.match(/damage increases by (\d+d\d+) for each spell slot level above (\d+)/i);
+    let diceSpec = Number(spell.level || 0) === 0 ? scaleCantrip(damageMatch[1]) : damageMatch[1];
+    if (upcastMatch){
+      const step = Math.max(0, spellCastLevel(spell) - Number(upcastMatch[2]));
+      diceSpec = addDiceSpecs(diceSpec, upcastMatch[1], step);
+    }
+    return () => castAttackSpell(spell, diceSpec, damageMatch[2].toLowerCase());
+  }
+  const saveMatch = description.match(/must succeed on a ([A-Za-z]+) saving throw/i);
+  const saveDamageMatch = description.match(/take(?:s)? (\d+d\d+) ([A-Za-z]+) damage/i);
+  if (saveMatch && saveDamageMatch){
+    const upcastMatch = description.match(/damage increases by (\d+d\d+) for each spell slot level above (\d+)/i);
+    let diceSpec = Number(spell.level || 0) === 0 ? scaleCantrip(saveDamageMatch[1]) : saveDamageMatch[1];
+    if (upcastMatch){
+      const step = Math.max(0, spellCastLevel(spell) - Number(upcastMatch[2]));
+      diceSpec = addDiceSpecs(diceSpec, upcastMatch[1], step);
+    }
+    const note = `${titleCase(saveMatch[1])} save${/half as much damage on a successful/i.test(description) ? ", half on success." : "."}`;
+    return () => castSaveSpell(spell, diceSpec, saveDamageMatch[2].toLowerCase(), note);
+  }
+  return null;
 }
 function rollD20(mode){
   const first = rollDie(20);
@@ -1417,14 +1552,15 @@ function renderStatsPage(){
   const statsGrid = document.getElementById("statsGrid");
   statsGrid.innerHTML = "";
   ABILITIES.forEach(abil => {
-    const isSave = state.coreRollType === "save";
-    const rollMod = isSave ? saveMod(abil) : abilityMod(state.abilityScores[abil]);
     const stat = document.createElement("div");
     stat.className = "stat";
     stat.innerHTML = `
-      <div class="stat-head"><span>${abil}</span><span>${fmtMod(abilityMod(state.abilityScores[abil]))}</span></div>
+      <div class="stat-head">${abil}</div>
       <div class="stat-score">${state.abilityScores[abil]}</div>
-      <div class="stat-foot"><span class="muted">${isSave ? "save" : "check"}</span><span class="save">${isSave ? "Sv" : "Chk"} ${fmtMod(rollMod)}</span></div>
+      <div class="stat-foot">
+        <span class="stat-pair"><span class="muted">MOD</span><b>${fmtMod(abilityMod(state.abilityScores[abil]))}</b></span>
+        <span class="stat-pair save"><span class="muted">SAVE</span><b>${fmtMod(saveMod(abil))}</b></span>
+      </div>
     `;
     stat.onclick = () => rollAbility(abil);
     statsGrid.appendChild(stat);
@@ -1468,8 +1604,9 @@ function renderCombatPage(){
   document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive ? `Con: ${state.concentrationActive}` : "Concentration - Off";
   document.getElementById("concentrationModeBtn").textContent = state.concentrationMode === "-" ? "-" : state.concentrationMode.toUpperCase();
   document.getElementById("mageArmorBtn").textContent = state.mageArmorActive ? "Mage Armor On" : "Mage Armor";
-  document.getElementById("hasteBtn").textContent = state.hasteActive ? "Haste On" : "Haste";
-  document.getElementById("minorElementalsBtn").textContent = state.minorElementalsActive ? "Minor Elementals On" : "Minor Elementals";
+  document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield +5" : "Shield (Lvl 1)";
+  document.getElementById("hasteBtn").textContent = state.hasteActive ? `Haste L${spellCastLevel(getSpellByName("Haste"))}` : `Haste L${spellCastLevel(getSpellByName("Haste"))}`;
+  document.getElementById("minorElementalsBtn").textContent = state.minorElementalsActive ? `Minor Elem L${spellCastLevel(getSpellByName("Conjure Minor Elementals"))}` : `Minor Elem L${spellCastLevel(getSpellByName("Conjure Minor Elementals"))}`;
   renderPips("bladesongPips", bladesongUsesRemaining(), bladesongUsesMax(), "green");
   document.getElementById("slotHeadText").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
   document.getElementById("slotHeadTextBook").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
@@ -1506,11 +1643,12 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
     row.innerHTML = `
       <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
       <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}">
+        <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
         <b>${escapeHtml(spell.name)}</b>
         <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
       </button>
       ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
-      <div class="badge">${spell.level}</div>
+      <div class="badge">${displaySpellLevel(spell)}</div>
       <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""}>
     `;
     host.appendChild(row);
@@ -1581,7 +1719,7 @@ function renderCantripRows(){
   host.innerHTML = "";
   state.preparedCantrips.map(getSpellByName).sort((a,b) => a.name.localeCompare(b.name)).forEach(spell => {
     const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
-    const display = cantripDisplay(spell.name);
+    const display = spellCombatDisplay(spell.name);
     const special = spell.name === "Toll the Dead"
       ? `<button class="mode-btn ${mode.damaged ? "damaged active" : ""}" data-damaged="${escapeAttr(spell.name)}">${mode.damaged ? "DMG" : "-"}</button>`
       : `<button class="mode-btn ${mode.crit ? "warn active" : ""}" data-crit="${escapeAttr(spell.name)}">${display.allowCrit ? (mode.crit ? "Crit" : "-") : "-"}</button>`;
@@ -1590,6 +1728,7 @@ function renderCantripRows(){
     row.innerHTML = `
       <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
       <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}">
+        <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
         <b>${escapeHtml(spell.name)}</b>
         <span>${escapeHtml(display.detail)}</span>
       </button>
@@ -1599,6 +1738,22 @@ function renderCantripRows(){
     `;
     host.appendChild(row);
   });
+}
+function spellCombatDisplay(name){
+  const spell = getSpellByName(name);
+  if (["Fire Bolt","Ray of Frost","Chill Touch","Shocking Grasp"].includes(name)){
+    return { hit:fmtMod(spellAttackMod()), detail:`${spell.range} Â· spell attack`, allowCrit:true };
+  }
+  if (["Toll the Dead","Sacred Flame"].includes(name)){
+    return { hit:`DC${spellDc()}`, detail:`${spell.range} Â· save`, allowCrit:false };
+  }
+  if (/make a (ranged|melee) spell attack/i.test(spell.description || "")){
+    return { hit:fmtMod(spellAttackMod()), detail:`${spell.range} Â· spell attack`, allowCrit:true };
+  }
+  if (/saving throw/i.test(spell.description || "") && /damage/i.test(spell.description || "")){
+    return { hit:`DC${spellDc()}`, detail:`${spell.range} Â· save`, allowCrit:false };
+  }
+  return { hit:"-", detail:`${spell.range} Â· utility`, allowCrit:false };
 }
 function cantripDisplay(name){
   if (["Fire Bolt","Ray of Frost","Chill Touch","Shocking Grasp"].includes(name)){
@@ -1646,6 +1801,7 @@ function bindButtons(){
     saveState();
   };
   document.getElementById("mageArmorBtn").onclick = () => castSpellByName("Mage Armor");
+  document.getElementById("shieldBtn").onclick = () => castSpellByName("Shield");
   document.getElementById("hasteBtn").onclick = () => toggleConcentrationSpell("Haste", "hasteActive", 3);
   document.getElementById("minorElementalsBtn").onclick = () => toggleConcentrationSpell("Conjure Minor Elementals", "minorElementalsActive", 4);
   document.getElementById("shortRestBtn").onclick = shortRest;
@@ -1768,20 +1924,18 @@ function rollWeapon(id){
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + hitMod;
   const damage = rollSpec("1d6");
-  let total = damage.total + damageMod;
+  const critBonus = mode.crit ? damage.max : 0;
+  const baseTotal = damage.total + damageMod + critBonus;
+  let cmeTotal = 0;
   let cmeText = "";
-  let text = `1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n1d6${damageMod >= 0 ? "+" : ""}${damageMod}`;
-  text += ` - ${damage.rolls.join(" + ")}${damageMod >= 0 ? "+" : ""}${damageMod}`;
+  let text = `1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n`;
+  text += `${formatRollBreakdown("1d6", damage.rolls, damageMod, critBonus ? `Crit(${damage.max})` : "")} = ${baseTotal}`;
   if (state.minorElementalsActive){
     const cme = rollSpec("2d8");
-    total += cme.total;
+    cmeTotal = cme.total;
     cmeText = `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
   }
-  if (mode.crit){
-    total += damage.max;
-    text += `+Crit(${damage.max})`;
-  }
-  text += `${cmeText} = ${total}\nDamage: piercing ${total}`;
+  text += `${cmeText}\nDamage: ${baseTotal} Piercing${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
   const title = id === "bonusCrossbow" ? "Bonus Crossbow" : "Hand Crossbow";
   openResult(title, text);
   pushHistory(`${title}: ${text.replace(/\n/g, " | ")}`);
@@ -1791,35 +1945,61 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + spellAttackMod();
   const damage = rollSpec(diceSpec);
-  let total = damage.total;
+  const critBonus = mode.crit ? damage.max : 0;
+  const baseTotal = damage.total + critBonus;
+  let cmeTotal = 0;
   let cmeText = "";
-  let text = `1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n${diceSpec}`;
-  text += ` - ${damage.rolls.join(" + ")}`;
+  let text = `1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n`;
+  text += `${formatRollBreakdown(diceSpec, damage.rolls, 0, critBonus ? `Crit(${damage.max})` : "")} = ${baseTotal}`;
   if (state.minorElementalsActive){
     const cme = rollSpec("2d8");
-    total += cme.total;
+    cmeTotal = cme.total;
     cmeText = `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
   }
-  if (mode.crit){
-    total += damage.max;
-    text += `+Crit(${damage.max})`;
-  }
-  text += `${cmeText} = ${total}\nDamage: ${damageType} ${total}`;
+  text += `${cmeText}\nDamage: ${baseTotal} ${titleCase(damageType)}${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
   if (extraText) text += `\n${extraText}`;
   finalizeSpellCast(spell, text);
 }
 function castSaveSpell(spell, diceSpec, damageType, note = ""){
   const damage = rollSpec(diceSpec);
   const half = Math.floor(damage.total / 2);
-  const text = `${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total}\n${note ? `${note.split(".")[0]} (DC ${spellDc()}) half on success (${half})` : `Save DC ${spellDc()} half on success (${half})`}\nDamage: ${damageType} ${damage.total}`;
+  const text = `${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total}\n${note ? `${note.split(".")[0]} (DC ${spellDc()}) half on success (${half})` : `Save DC ${spellDc()} half on success (${half})`}\nDamage: ${damage.total} ${titleCase(damageType)}`;
   finalizeSpellCast(spell, text);
 }
 function castTollTheDead(spell){
   const mode = state.attackModes[spell.name] || { damaged:true, adv:"-" };
   const dice = mode.damaged ? scaleCantrip("1d12") : scaleCantrip("1d8");
   const damage = rollSpec(dice);
-  const text = `${dice} - ${damage.rolls.join(" + ")} = ${damage.total}\nWis Save (DC ${spellDc()})\nDamage: necrotic ${damage.total}`;
+  const text = `${dice} - ${damage.rolls.join(" + ")} = ${damage.total}\nWis Save (DC ${spellDc()})\nDamage: ${damage.total} Necrotic`;
   finalizeSpellCast(spell, text);
+}
+function castScorchingRay(spell){
+  const castLevel = spellCastLevel(spell);
+  if (!spendSlot(castLevel)) return saveState();
+  const rays = 3 + Math.max(0, castLevel - 2);
+  const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
+  const sections = [];
+  for (let i = 0; i < rays; i++){
+    const attack = rollD20(mode.adv);
+    const toHit = attack.chosen + spellAttackMod();
+    const damage = rollSpec("2d6");
+    const critBonus = mode.crit ? damage.max : 0;
+    const fireTotal = damage.total + critBonus;
+    let text = `Ray ${i + 1}\n1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n`;
+    text += `${formatRollBreakdown("2d6", damage.rolls, 0, critBonus ? `Crit(${damage.max})` : "")} = ${fireTotal}`;
+    if (state.minorElementalsActive){
+      const cme = rollSpec("2d8");
+      text += `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
+      text += `\nDamage: ${fireTotal} Fire + ${cme.total} Acid/Cold/Fire/Lightning`;
+    }else{
+      text += `\nDamage: ${fireTotal} Fire`;
+    }
+    sections.push(text);
+  }
+  const text = sections.join("\n\n");
+  openResult(`${spell.name} L${castLevel}`, text);
+  pushHistory(`${spell.name} L${castLevel}: ${text.replace(/\n/g, " | ")}`);
+  saveState();
 }
 function castMagicMissile(spell){
   const level = spellCastLevel(spell);
@@ -1920,6 +2100,8 @@ function spendHitDie(type, event){
   saveState();
 }
 function toggleConcentrationSpell(name, flagKey, slotLevel){
+  const spell = getSpellByName(name);
+  const castLevel = Math.max(slotLevel || 0, spellCastLevel(spell) || 0);
   if (state[flagKey]){
     state[flagKey] = false;
     if (state.concentrationActive === name) state.concentrationActive = "";
@@ -1928,14 +2110,14 @@ function toggleConcentrationSpell(name, flagKey, slotLevel){
     saveState();
     return;
   }
-  if (!spendSlot(slotLevel)) return saveState();
+  if (!spendSlot(castLevel)) return saveState();
   state.hasteActive = false;
   state.minorElementalsActive = false;
   state[flagKey] = true;
   state.concentrationActive = name;
   const text = name === "Haste"
-    ? `Concentration active.\nAC +2 while Haste is active.`
-    : `Concentration active.\nAdd 2d8 Acid/Cold/Fire/Lightning damage to attacks within 15 ft.`;
+    ? `Concentration active at level ${castLevel}.\nAC +2 while Haste is active.`
+    : `Concentration active at level ${castLevel}.\nAdd 2d8 Acid/Cold/Fire/Lightning damage to attacks within 15 ft.`;
   openResult(name, text);
   pushHistory(`${name}: ${text.replace(/\n/g, " | ")}`);
   saveState();
@@ -1962,6 +2144,11 @@ function castSpellByName(name){
   const action = SPELL_ACTIONS[name];
   if (action){
     action(spell);
+    return;
+  }
+  const inferred = inferSpellAction(spell);
+  if (inferred){
+    inferred();
     return;
   }
   const baseLevel = Number(spell.level || 0);
@@ -2422,7 +2609,7 @@ function bindKnownEditorHandlers(){
   applyFilters();
 }
 function renderKnownEditorModal(){
-  const spells = (window.SPELL_DATA || []).slice().sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const spells = allSpellEntries().slice().sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   const rows = spells.map(spell => `
     <div class="check-item" data-spell-row data-name="${escapeAttr(spell.name)}" data-level="${spell.level}" data-classes="${escapeAttr((spell.classes || "").toLowerCase())}" data-search="${escapeAttr(`${spell.name} ${spell.school || ""} ${spell.classes || ""}`.toLowerCase())}">
       <button class="icon-btn" data-spell-info="${escapeAttr(spell.name)}">i</button>
@@ -2493,7 +2680,7 @@ function renderKnownEditorModal(){
   };
 }
 function filteredSpells(){
-  const spells = (window.SPELL_DATA || []).slice();
+  const spells = allSpellEntries().slice();
   const query = state.spellFilters.search.trim().toLowerCase();
   const selectedClass = state.spellFilters.class;
   const minLevel = Math.min(state.spellFilters.minLevel, state.spellFilters.maxLevel);
