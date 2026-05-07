@@ -2026,7 +2026,7 @@ function spellEditorWarnings(counts){
   if (counts.clericPrepared > clericPreparedLimit()) warnings.push(`Cleric prepared spells exceed the limit (${counts.clericPrepared}/${clericPreparedLimit()}).`);
   return warnings;
 }
-function renderSpellEditorView(){
+function renderSpellEditorView(options = {}){
   const host = document.getElementById("spellbookEditorView");
   const oldGrid = document.getElementById("spellEditorGrid");
   const previousScroll = oldGrid ? oldGrid.scrollTop : 0;
@@ -2045,7 +2045,6 @@ function renderSpellEditorView(){
   }).sort((a,b) => state.spellFilters.sort === "az"
     ? a.name.localeCompare(b.name)
     : Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
-  const previewSpell = spellEditorPreview ? getSpellByName(spellEditorPreview) : null;
   host.innerHTML = `
     <div class="book-section editor-shell">
       <div class="counts">
@@ -2057,10 +2056,6 @@ function renderSpellEditorView(){
         <div class="count-box">Matches <b>${spells.length}</b></div>
       </div>
       ${warnings.length ? `<div class="editor-warning">${warnings.join("\n")}</div>` : `<div class="editor-note">Selections can overflow limits. Save still works, and you can fix counts afterward.</div>`}
-      <div class="editor-preview ${previewSpell ? "" : "hidden"}" id="spellEditorPreviewWrap">
-        <div class="section-title">Spell Preview</div>
-        ${previewSpell ? spellCardMarkup(previewSpell) : ""}
-      </div>
       <div class="spell-filter">
         <div class="spell-filter-top">
           <div class="search-wrap">
@@ -2135,46 +2130,52 @@ function renderSpellEditorView(){
   `;
   const newGrid = document.getElementById("spellEditorGrid");
   newGrid.scrollTop = previousScroll;
+  if (options.focusSearch){
+    const search = document.getElementById("spellSearch");
+    search.focus();
+    const start = Number.isFinite(options.selectionStart) ? options.selectionStart : search.value.length;
+    const end = Number.isFinite(options.selectionEnd) ? options.selectionEnd : start;
+    search.setSelectionRange(start, end);
+  }
   document.getElementById("spellSearch").oninput = event => {
     state.spellFilters.search = event.target.value;
-    renderSpellbookPage();
+    renderSpellEditorView({ focusSearch:true, selectionStart:event.target.selectionStart, selectionEnd:event.target.selectionEnd });
   };
   document.getElementById("spellSearchClear").onclick = () => {
     state.spellFilters.search = "";
-    renderSpellbookPage();
-    document.getElementById("spellSearch").focus();
+    renderSpellEditorView({ focusSearch:true, selectionStart:0, selectionEnd:0 });
   };
   document.getElementById("spellClassFilter").onchange = event => {
     state.spellFilters.class = event.target.value;
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("spellSort").onchange = event => {
     state.spellFilters.sort = event.target.value;
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("minLevel").oninput = event => {
     state.spellFilters.minLevel = clamp(Number(event.target.value) || 0, 0, 9);
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("maxLevel").oninput = event => {
     state.spellFilters.maxLevel = clamp(Number(event.target.value) || 9, 0, 9);
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("minMinus").onclick = () => {
     state.spellFilters.minLevel = clamp((Number(state.spellFilters.minLevel) || 0) - 1, 0, 9);
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("minPlus").onclick = () => {
     state.spellFilters.minLevel = clamp((Number(state.spellFilters.minLevel) || 0) + 1, 0, 9);
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("maxMinus").onclick = () => {
     state.spellFilters.maxLevel = clamp((Number(state.spellFilters.maxLevel) || 9) - 1, 0, 9);
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   document.getElementById("maxPlus").onclick = () => {
     state.spellFilters.maxLevel = clamp((Number(state.spellFilters.maxLevel) || 9) + 1, 0, 9);
-    renderSpellbookPage();
+    renderSpellEditorView();
   };
   host.querySelectorAll("[data-editor-wizard]").forEach(box => {
     box.onchange = () => {
@@ -2182,7 +2183,7 @@ function renderSpellEditorView(){
       draft.wizard = box.checked
         ? unique([...draft.wizard, box.dataset.editorWizard])
         : draft.wizard.filter(name => name !== box.dataset.editorWizard);
-      renderSpellbookPage();
+      renderSpellEditorView();
     };
   });
   host.querySelectorAll("[data-editor-cleric]").forEach(box => {
@@ -2191,13 +2192,12 @@ function renderSpellEditorView(){
       draft.cleric = box.checked
         ? unique([...draft.cleric, box.dataset.editorCleric])
         : draft.cleric.filter(name => name !== box.dataset.editorCleric);
-      renderSpellbookPage();
+      renderSpellEditorView();
     };
   });
   host.querySelectorAll("[data-editor-info]").forEach(button => {
     button.onclick = () => {
-      spellEditorPreview = button.dataset.editorInfo;
-      renderSpellbookPage();
+      openSpellCard(button.dataset.editorInfo);
     };
   });
   document.getElementById("saveKnownBtn").onclick = () => {
