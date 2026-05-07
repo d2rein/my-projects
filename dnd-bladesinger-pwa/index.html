@@ -600,6 +600,26 @@
     padding:7px;
   }
   .book-section + .book-section{margin-top:8px}
+  .book-subtabs{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
+    margin:8px 0;
+  }
+  .book-subtab{
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:#0d141c;
+    color:var(--muted);
+    padding:10px 12px;
+    font-size:12px;
+    font-weight:900;
+  }
+  .book-subtab.active{
+    background:#1f5e88;
+    color:#fff;
+    border-color:#4f96c0;
+  }
   .book-list{
     display:grid;
     gap:4px;
@@ -717,6 +737,84 @@
   }
   .class-picks.readonly .class-pick{
     opacity:.92;
+  }
+  .count-box.warn{
+    border-color:#c28a36;
+    background:#2b2010;
+  }
+  .count-box.warn b{
+    color:#ffd487;
+  }
+  .editor-shell{
+    display:grid;
+    gap:8px;
+  }
+  .editor-note{
+    color:#c8d7ea;
+    font-size:11px;
+  }
+  .editor-warning{
+    background:#2b2010;
+    border:1px solid #c28a36;
+    color:#ffe1a7;
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:11px;
+    line-height:1.35;
+  }
+  .editor-preview{
+    display:grid;
+    gap:8px;
+  }
+  .editor-preview.hidden{
+    display:none;
+  }
+  .editor-grid{
+    display:grid;
+    gap:6px;
+    max-height:52vh;
+    overflow:auto;
+    padding-right:2px;
+  }
+  .editor-row{
+    display:grid;
+    grid-template-columns:22px 1fr 54px;
+    gap:6px;
+    align-items:center;
+  }
+  .editor-row-main{
+    min-width:0;
+  }
+  .editor-row-title{
+    font-size:14px;
+    font-weight:900;
+    color:#fff;
+  }
+  .editor-row-meta{
+    font-size:11px;
+    color:#c6dbef;
+    line-height:1.3;
+  }
+  .spell-tags{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin:8px 0 0;
+  }
+  .spell-tag{
+    border:1px solid #111;
+    border-radius:999px;
+    padding:2px 7px;
+    font-size:10px;
+    font-weight:900;
+    background:#f2f2f2;
+    color:#111;
+  }
+  .spell-tag.ritual{
+    background:#f7e6b8;
+  }
+  .spell-tag.concentration{
+    background:#d9eefc;
   }
   .modal-actions{
     display:flex;
@@ -1064,26 +1162,31 @@
         <button class="small-btn" id="saveExtrasBtn">Save</button>
       </div>
     </div>
+    <div class="book-subtabs" id="spellbookSubtabs"></div>
 
-    <div class="book-section">
-      <div class="section-title">Prepared Cantrips</div>
-      <div class="book-list" id="preparedCantripsList"></div>
+    <div id="spellbookMainView">
+      <div class="book-section">
+        <div class="section-title">Prepared Cantrips</div>
+        <div class="book-list" id="preparedCantripsList"></div>
+      </div>
+
+      <div class="book-section">
+        <div class="section-title">Prepared Spells</div>
+        <div class="book-list" id="preparedSpellsList"></div>
+      </div>
+
+      <div class="book-section">
+        <div class="section-title">Ritual Spells</div>
+        <div class="book-list" id="ritualSpellsList"></div>
+      </div>
+
+      <div class="book-section">
+        <div class="section-title">Known Spells</div>
+        <div class="book-list" id="knownSpellsList"></div>
+      </div>
     </div>
 
-    <div class="book-section">
-      <div class="section-title">Prepared Spells</div>
-      <div class="book-list" id="preparedSpellsList"></div>
-    </div>
-
-    <div class="book-section">
-      <div class="section-title">Ritual Spells</div>
-      <div class="book-list" id="ritualSpellsList"></div>
-    </div>
-
-    <div class="book-section">
-      <div class="section-title">Known Spells</div>
-      <div class="book-list" id="knownSpellsList"></div>
-    </div>
+    <div id="spellbookEditorView"></div>
   </section>
 </div>
 
@@ -1153,19 +1256,18 @@ const FULL_CASTER_SLOTS = {
   20:[4,3,3,3,3,2,2,1,1]
 };
 const DEFAULT_KNOWN = [
-  "Guidance","Light","Mage Hand","Minor Illusion","Fire Bolt","Toll the Dead",
-  "Mage Armor","Shield","Magic Missile","Absorb Elements","Detect Magic","Find Familiar",
-  "Feather Fall","Alarm","Silent Image","Mirror Image","Misty Step","Web",
-  "Invisibility","Shadow Blade","Counterspell","Fireball","Fly","Haste",
-  "Lightning Bolt","Greater Invisibility","Polymorph","Dimension Door","Wall of Force"
+  "Acid Splash","Blade Ward","Fire Bolt","Mage Hand",
+  "Detect Magic","Feather Fall","Find Familiar","Mage Armor","Magic Missile","Shield",
+  "Misty Step","Scorching Ray","Web","Counterspell","Fear","Fireball","Fly","Haste",
+  "Hypnotic Pattern","Conjure Minor Elementals","Dimension Door","Polymorph","Wall of Fire","Wall of Force"
 ];
-const DEFAULT_PREPARED_CANTRIPS = ["Guidance","Light","Mage Hand","Minor Illusion","Fire Bolt","Toll the Dead"];
+const DEFAULT_PREPARED_CANTRIPS = ["Acid Splash","Blade Ward","Fire Bolt","Mage Hand","Guidance","Light","Toll the Dead"];
 const DEFAULT_PREPARED_SPELLS = [
-  "Mage Armor","Shield","Magic Missile","Absorb Elements","Detect Magic","Find Familiar",
-  "Mirror Image","Misty Step","Web","Invisibility","Shadow Blade","Counterspell",
-  "Fireball","Fly","Haste"
+  "Feather Fall","Mage Armor","Shield","Scorching Ray","Web","Counterspell",
+  "Fireball","Haste","Hypnotic Pattern","Conjure Minor Elementals",
+  "Dimension Door","Wall of Fire","Wall of Force"
 ];
-const DEFAULT_CLERIC_SPELLS = ["Guidance","Light","Toll the Dead"];
+const DEFAULT_CLERIC_SPELLS = ["Guidance","Light","Toll the Dead","Bless","Guiding Bolt","Shield of Faith"];
 const EXTRA_SPELL_DATA = [
   {
     name:"Toll the Dead",
@@ -1210,15 +1312,16 @@ const DEFAULT_STATE = {
   knownSpells:DEFAULT_KNOWN,
   preparedCantrips:DEFAULT_PREPARED_CANTRIPS,
   preparedSpells:DEFAULT_PREPARED_SPELLS,
-  clericPreparedSpells:DEFAULT_CLERIC_SPELLS.filter(name => spellLevel(name) > 0),
+  clericPreparedSpells:["Bless","Shield of Faith"],
   proficientSkills:["Arcana","History","Investigation","Perception","Insight","Religion"],
   extraCantrips:0,
   extraSpellbook:0,
+  spellbookView:"book",
   slotCur:{},
   hitDiceCur:{ d6:null, d8:null },
   spellUpcast:{},
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
-  dataVersion:3,
+  dataVersion:4,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1267,6 +1370,8 @@ const SPELL_ACTIONS = {
 };
 
 let state = loadState();
+let spellEditorDraft = null;
+let spellEditorPreview = null;
 
 function loadState(){
   try{
@@ -1289,6 +1394,7 @@ function ensureState(raw){
   raw.attackModes = Object.assign({}, DEFAULT_STATE.attackModes, raw.attackModes || {});
   raw.spellUpcast = raw.spellUpcast || {};
   raw.spellFilters = Object.assign({}, DEFAULT_STATE.spellFilters, raw.spellFilters || {});
+  raw.spellbookView = raw.spellbookView === "edit" ? "edit" : "book";
   raw.dataVersion = Number(raw.dataVersion || 0);
   raw.slotCur = raw.slotCur || {};
   raw.hitDiceCur = Object.assign({}, DEFAULT_STATE.hitDiceCur, raw.hitDiceCur || {});
@@ -1305,6 +1411,10 @@ function ensureState(raw){
   if (raw.dataVersion < 3){
     raw.clericPreparedSpells = unique((raw.clericPreparedSpells || raw.clericSpells || DEFAULT_CLERIC_SPELLS).filter(name => spellLevel(name) > 0));
     raw.dataVersion = 3;
+  }
+  if (raw.dataVersion < 4){
+    raw.spellbookView = "book";
+    raw.dataVersion = 4;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -1502,8 +1612,6 @@ function syncPreparedLists(target){
   target.preparedCantrips = availableCantripNames(target);
   target.preparedSpells = unique((target.preparedSpells || []).filter(name => wizardSpellNames(target).includes(name) && spellLevel(name) > 0));
   target.clericPreparedSpells = unique((target.clericPreparedSpells || []).filter(name => clericSpellNames(target).includes(name) && spellLevel(name) > 0));
-  target.preparedSpells = target.preparedSpells.slice(0, wizardPreparedLimit(target));
-  target.clericPreparedSpells = target.clericPreparedSpells.slice(0, clericPreparedLimit(target));
 }
 function spellLevel(name){
   return Number(getSpellByName(name).level || 0);
@@ -1558,6 +1666,44 @@ function getUpcastLevel(name){
 function displaySpellLevel(spell){
   const base = Number(spell.level || 0);
   return base === 0 ? "0" : String(spellCastLevel(spell));
+}
+function spellTagList(spell){
+  const tags = [];
+  if (spell.ritual) tags.push({ label:"Ritual", className:"ritual" });
+  if (spell.concentration) tags.push({ label:"Concentration", className:"concentration" });
+  return tags;
+}
+function spellSearchText(spell){
+  return [
+    spell.name || "",
+    spell.school || "",
+    spell.classes || "",
+    spell.range || "",
+    spell.components || "",
+    spell.duration || "",
+    spell.casting_time || "",
+    spell.description || "",
+    spell.ritual ? "ritual" : "",
+    spell.concentration ? "concentration concentration tag" : "",
+    Number(spell.level || 0) === 0 ? "cantrip level 0" : `level ${spell.level || 0}`
+  ].join(" ").toLowerCase();
+}
+function spellCardMarkup(spell){
+  const tags = spellTagList(spell);
+  return `
+    <div class="spell-card">
+      <div class="spell-card-head">${escapeHtml(spell.name)}<span class="spell-level">${spell.level}</span></div>
+      ${tags.length ? `<div class="spell-tags">${tags.map(tag => `<span class="spell-tag ${tag.className}">${escapeHtml(tag.label)}</span>`).join("")}</div>` : ""}
+      <div class="spell-meta">
+        <div><div class="spell-meta-label">Range</div><div class="spell-meta-value">${escapeHtml(spell.range || "-")}</div></div>
+        <div><div class="spell-meta-label">Comp</div><div class="spell-meta-value">${escapeHtml(spell.components || "-")}</div></div>
+        <div><div class="spell-meta-label">Dur</div><div class="spell-meta-value">${escapeHtml(spell.duration || "-")}</div></div>
+        <div><div class="spell-meta-label">Cast</div><div class="spell-meta-value">${escapeHtml(spell.casting_time || "-")}</div></div>
+      </div>
+      <div class="spell-body">${escapeHtml(spell.description || "")}</div>
+      <div class="spell-foot"><span>${escapeHtml(spell.school || "-")}</span><span>${escapeHtml(spell.classes || "-")}</span></div>
+    </div>
+  `;
 }
 function spellCastLevel(spell){
   return Number(spell.level || 0) + getUpcastLevel(spell.name);
@@ -1807,19 +1953,269 @@ function renderSpellbookPage(){
   const wizardPreparedCount = state.preparedSpells.length;
   const clericPreparedCount = clericPreparedSpellNames().length;
   document.getElementById("spellCounts").innerHTML = `
-    <div class="count-box">Cantrips Wiz <b>${wizardCantripCount}/${wizardCantripKnownAllowance()}</b></div>
-    <div class="count-box">Cantrips Clr <b>${clericCantripCount}/${clericCantripKnownAllowance()}</b></div>
-    <div class="count-box">Prepared Wiz <b>${wizardPreparedCount}/${wizardPreparedLimit()}</b></div>
-    <div class="count-box">Prepared Clr <b>${clericPreparedCount}/${clericPreparedLimit()}</b></div>
-    <div class="count-box">Spellbook Wiz <b>${wizardBookCount}/${spellbookAllowance()}</b></div>
+    <div class="count-box ${wizardCantripCount > wizardCantripKnownAllowance() ? "warn" : ""}">Cantrips Wiz <b>${wizardCantripCount}/${wizardCantripKnownAllowance()}</b></div>
+    <div class="count-box ${clericCantripCount > clericCantripKnownAllowance() ? "warn" : ""}">Cantrips Clr <b>${clericCantripCount}/${clericCantripKnownAllowance()}</b></div>
+    <div class="count-box ${wizardPreparedCount > wizardPreparedLimit() ? "warn" : ""}">Prepared Wiz <b>${wizardPreparedCount}/${wizardPreparedLimit()}</b></div>
+    <div class="count-box ${clericPreparedCount > clericPreparedLimit() ? "warn" : ""}">Prepared Clr <b>${clericPreparedCount}/${clericPreparedLimit()}</b></div>
+    <div class="count-box ${wizardBookCount > spellbookAllowance() ? "warn" : ""}">Spellbook Wiz <b>${wizardBookCount}/${spellbookAllowance()}</b></div>
     <div class="count-box">Spell DC <b>${spellDc()}</b></div>
   `;
   document.getElementById("extraCantripsInput").value = state.extraCantrips || 0;
   document.getElementById("extraSpellbookInput").value = state.extraSpellbook || 0;
+  document.getElementById("spellbookSubtabs").innerHTML = `
+    <button class="book-subtab ${state.spellbookView !== "edit" ? "active" : ""}" data-spellbook-view="book">Spellbook</button>
+    <button class="book-subtab ${state.spellbookView === "edit" ? "active" : ""}" data-spellbook-view="edit">Edit Spells</button>
+  `;
+  const showingEditor = state.spellbookView === "edit";
+  document.getElementById("spellbookMainView").style.display = showingEditor ? "none" : "";
+  document.getElementById("spellbookEditorView").style.display = showingEditor ? "" : "none";
   renderBookList("preparedCantripsList", preparedCantrips, true);
   renderBookList("preparedSpellsList", preparedSpells, false, true);
   renderBookList("ritualSpellsList", ritualSpells, false, false, false, true);
   renderBookList("knownSpellsList", known, null, false, true);
+  document.querySelectorAll("[data-spellbook-view]").forEach(button => {
+    button.onclick = () => {
+      state.spellbookView = button.dataset.spellbookView;
+      if (state.spellbookView === "edit") ensureSpellEditorDraft();
+      saveState();
+    };
+  });
+  if (showingEditor){
+    renderSpellEditorView();
+  }else{
+    document.getElementById("spellbookEditorView").innerHTML = "";
+  }
+}
+function createSpellEditorDraft(){
+  return {
+    wizard:[...wizardSpellNames()],
+    cleric:[...clericSpellNames()]
+  };
+}
+function ensureSpellEditorDraft(){
+  if (!spellEditorDraft){
+    spellEditorDraft = createSpellEditorDraft();
+  }
+  return spellEditorDraft;
+}
+function spellEditorSelections(){
+  const draft = ensureSpellEditorDraft();
+  return {
+    wizard: unique((draft.wizard || []).filter(name => canUseSpellForClass(getSpellByName(name), "wizard"))),
+    cleric: unique((draft.cleric || []).filter(name => canUseSpellForClass(getSpellByName(name), "cleric")))
+  };
+}
+function spellEditorCounts(){
+  const draft = spellEditorSelections();
+  const wizardCantrips = draft.wizard.filter(name => spellLevel(name) === 0).length;
+  const clericCantrips = draft.cleric.filter(name => spellLevel(name) === 0).length;
+  const wizardBook = draft.wizard.filter(name => spellLevel(name) > 0).length;
+  const wizardPrepared = state.preparedSpells.filter(name => draft.wizard.includes(name)).length;
+  const clericPrepared = state.clericPreparedSpells.filter(name => draft.cleric.includes(name)).length;
+  return { draft, wizardCantrips, clericCantrips, wizardBook, wizardPrepared, clericPrepared };
+}
+function editorCountBox(label, current, limit){
+  return `<div class="count-box ${current > limit ? "warn" : ""}">${label} <b>${current}/${limit}</b></div>`;
+}
+function spellEditorWarnings(counts){
+  const warnings = [];
+  if (counts.wizardCantrips > wizardCantripKnownAllowance()) warnings.push(`Wizard cantrips exceed the limit (${counts.wizardCantrips}/${wizardCantripKnownAllowance()}).`);
+  if (counts.clericCantrips > clericCantripKnownAllowance()) warnings.push(`Cleric cantrips exceed the limit (${counts.clericCantrips}/${clericCantripKnownAllowance()}).`);
+  if (counts.wizardBook > spellbookAllowance()) warnings.push(`Wizard spellbook exceeds the limit (${counts.wizardBook}/${spellbookAllowance()}).`);
+  if (counts.wizardPrepared > wizardPreparedLimit()) warnings.push(`Wizard prepared spells exceed the limit (${counts.wizardPrepared}/${wizardPreparedLimit()}).`);
+  if (counts.clericPrepared > clericPreparedLimit()) warnings.push(`Cleric prepared spells exceed the limit (${counts.clericPrepared}/${clericPreparedLimit()}).`);
+  return warnings;
+}
+function renderSpellEditorView(){
+  const host = document.getElementById("spellbookEditorView");
+  const oldGrid = document.getElementById("spellEditorGrid");
+  const previousScroll = oldGrid ? oldGrid.scrollTop : 0;
+  const counts = spellEditorCounts();
+  const warnings = spellEditorWarnings(counts);
+  const query = state.spellFilters.search.trim().toLowerCase();
+  const selectedClass = state.spellFilters.class;
+  const minLevel = Math.min(state.spellFilters.minLevel, state.spellFilters.maxLevel);
+  const maxLevel = Math.max(state.spellFilters.minLevel, state.spellFilters.maxLevel);
+  const spells = allSpellEntries().filter(spell => {
+    if (selectedClass !== "all" && !(spell.classes || "").toLowerCase().includes(selectedClass)) return false;
+    const level = Number(spell.level || 0);
+    if (level < minLevel || level > maxLevel) return false;
+    if (query && !spellSearchText(spell).includes(query)) return false;
+    return true;
+  }).sort((a,b) => state.spellFilters.sort === "az"
+    ? a.name.localeCompare(b.name)
+    : Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const previewSpell = spellEditorPreview ? getSpellByName(spellEditorPreview) : null;
+  host.innerHTML = `
+    <div class="book-section editor-shell">
+      <div class="counts">
+        ${editorCountBox("Wiz Cantrips", counts.wizardCantrips, wizardCantripKnownAllowance())}
+        ${editorCountBox("Clr Cantrips", counts.clericCantrips, clericCantripKnownAllowance())}
+        ${editorCountBox("Wiz Book", counts.wizardBook, spellbookAllowance())}
+        ${editorCountBox("Prep Wiz", counts.wizardPrepared, wizardPreparedLimit())}
+        ${editorCountBox("Prep Clr", counts.clericPrepared, clericPreparedLimit())}
+        <div class="count-box">Matches <b>${spells.length}</b></div>
+      </div>
+      ${warnings.length ? `<div class="editor-warning">${warnings.join("\n")}</div>` : `<div class="editor-note">Selections can overflow limits. Save still works, and you can fix counts afterward.</div>`}
+      <div class="editor-preview ${previewSpell ? "" : "hidden"}" id="spellEditorPreviewWrap">
+        <div class="section-title">Spell Preview</div>
+        ${previewSpell ? spellCardMarkup(previewSpell) : ""}
+      </div>
+      <div class="spell-filter">
+        <div class="spell-filter-top">
+          <div class="search-wrap">
+            <input type="text" id="spellSearch" placeholder="Search all spell text, including ritual and concentration" value="${escapeAttr(state.spellFilters.search)}">
+            <button class="search-clear" id="spellSearchClear">X</button>
+          </div>
+        </div>
+        <div class="spell-filter-row">
+          <span>CLASS:</span>
+          <select id="spellClassFilter">
+            <option value="all" ${state.spellFilters.class === "all" ? "selected" : ""}>All Classes</option>
+            <option value="bard" ${state.spellFilters.class === "bard" ? "selected" : ""}>Bard</option>
+            <option value="wizard" ${state.spellFilters.class === "wizard" ? "selected" : ""}>Wizard</option>
+            <option value="cleric" ${state.spellFilters.class === "cleric" ? "selected" : ""}>Cleric</option>
+            <option value="druid" ${state.spellFilters.class === "druid" ? "selected" : ""}>Druid</option>
+            <option value="paladin" ${state.spellFilters.class === "paladin" ? "selected" : ""}>Paladin</option>
+            <option value="ranger" ${state.spellFilters.class === "ranger" ? "selected" : ""}>Ranger</option>
+            <option value="sorcerer" ${state.spellFilters.class === "sorcerer" ? "selected" : ""}>Sorcerer</option>
+            <option value="warlock" ${state.spellFilters.class === "warlock" ? "selected" : ""}>Warlock</option>
+            <option value="artificer" ${state.spellFilters.class === "artificer" ? "selected" : ""}>Artificer</option>
+          </select>
+        </div>
+        <div class="spell-filter-row">
+          <span>LEVEL:</span>
+          <div class="level-filter">
+            <input id="minLevel" type="number" min="0" max="9" value="${state.spellFilters.minLevel}">
+            <button class="small-btn" id="minMinus">-</button>
+            <button class="small-btn" id="minPlus">+</button>
+            <input id="maxLevel" type="number" min="0" max="9" value="${state.spellFilters.maxLevel}">
+            <button class="small-btn" id="maxMinus">-</button>
+            <button class="small-btn" id="maxPlus">+</button>
+          </div>
+        </div>
+        <div class="spell-filter-row">
+          <span>SORT:</span>
+          <select id="spellSort">
+            <option value="level" ${state.spellFilters.sort === "level" ? "selected" : ""}>Level</option>
+            <option value="az" ${state.spellFilters.sort === "az" ? "selected" : ""}>A-Z</option>
+          </select>
+        </div>
+      </div>
+      <div class="editor-grid" id="spellEditorGrid">
+        ${spells.map(spell => {
+          const inWizard = counts.draft.wizard.includes(spell.name);
+          const inCleric = counts.draft.cleric.includes(spell.name);
+          return `
+            <div class="check-item editor-row">
+              <button class="icon-btn" data-editor-info="${escapeAttr(spell.name)}">i</button>
+              <div class="editor-row-main">
+                <div class="editor-row-title">${escapeHtml(spell.name)}</div>
+                <div class="editor-row-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+              </div>
+              <div class="class-picks">
+                <label class="class-pick">
+                  <span>W</span>
+                  <input type="checkbox" data-editor-wizard="${escapeAttr(spell.name)}" ${inWizard ? "checked" : ""} ${canUseSpellForClass(spell, "wizard") ? "" : "disabled"}>
+                </label>
+                <label class="class-pick">
+                  <span>C</span>
+                  <input type="checkbox" data-editor-cleric="${escapeAttr(spell.name)}" ${inCleric ? "checked" : ""} ${canUseSpellForClass(spell, "cleric") ? "" : "disabled"}>
+                </label>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn blue" id="saveKnownBtn">Save Spells</button>
+        <button class="action-btn gold" id="cancelKnownBtn">Cancel</button>
+      </div>
+    </div>
+  `;
+  const newGrid = document.getElementById("spellEditorGrid");
+  newGrid.scrollTop = previousScroll;
+  document.getElementById("spellSearch").oninput = event => {
+    state.spellFilters.search = event.target.value;
+    renderSpellbookPage();
+  };
+  document.getElementById("spellSearchClear").onclick = () => {
+    state.spellFilters.search = "";
+    renderSpellbookPage();
+    document.getElementById("spellSearch").focus();
+  };
+  document.getElementById("spellClassFilter").onchange = event => {
+    state.spellFilters.class = event.target.value;
+    renderSpellbookPage();
+  };
+  document.getElementById("spellSort").onchange = event => {
+    state.spellFilters.sort = event.target.value;
+    renderSpellbookPage();
+  };
+  document.getElementById("minLevel").oninput = event => {
+    state.spellFilters.minLevel = clamp(Number(event.target.value) || 0, 0, 9);
+    renderSpellbookPage();
+  };
+  document.getElementById("maxLevel").oninput = event => {
+    state.spellFilters.maxLevel = clamp(Number(event.target.value) || 9, 0, 9);
+    renderSpellbookPage();
+  };
+  document.getElementById("minMinus").onclick = () => {
+    state.spellFilters.minLevel = clamp((Number(state.spellFilters.minLevel) || 0) - 1, 0, 9);
+    renderSpellbookPage();
+  };
+  document.getElementById("minPlus").onclick = () => {
+    state.spellFilters.minLevel = clamp((Number(state.spellFilters.minLevel) || 0) + 1, 0, 9);
+    renderSpellbookPage();
+  };
+  document.getElementById("maxMinus").onclick = () => {
+    state.spellFilters.maxLevel = clamp((Number(state.spellFilters.maxLevel) || 9) - 1, 0, 9);
+    renderSpellbookPage();
+  };
+  document.getElementById("maxPlus").onclick = () => {
+    state.spellFilters.maxLevel = clamp((Number(state.spellFilters.maxLevel) || 9) + 1, 0, 9);
+    renderSpellbookPage();
+  };
+  host.querySelectorAll("[data-editor-wizard]").forEach(box => {
+    box.onchange = () => {
+      const draft = ensureSpellEditorDraft();
+      draft.wizard = box.checked
+        ? unique([...draft.wizard, box.dataset.editorWizard])
+        : draft.wizard.filter(name => name !== box.dataset.editorWizard);
+      renderSpellbookPage();
+    };
+  });
+  host.querySelectorAll("[data-editor-cleric]").forEach(box => {
+    box.onchange = () => {
+      const draft = ensureSpellEditorDraft();
+      draft.cleric = box.checked
+        ? unique([...draft.cleric, box.dataset.editorCleric])
+        : draft.cleric.filter(name => name !== box.dataset.editorCleric);
+      renderSpellbookPage();
+    };
+  });
+  host.querySelectorAll("[data-editor-info]").forEach(button => {
+    button.onclick = () => {
+      spellEditorPreview = button.dataset.editorInfo;
+      renderSpellbookPage();
+    };
+  });
+  document.getElementById("saveKnownBtn").onclick = () => {
+    const draft = spellEditorSelections();
+    state.wizardSpells = draft.wizard;
+    state.clericSpells = draft.cleric;
+    syncPreparedLists(state);
+    spellEditorDraft = null;
+    spellEditorPreview = null;
+    state.spellbookView = "book";
+    saveState();
+  };
+  document.getElementById("cancelKnownBtn").onclick = () => {
+    spellEditorDraft = null;
+    spellEditorPreview = null;
+    state.spellbookView = "book";
+    saveState();
+  };
 }
 function renderBookList(id, spells, cantripOnly = false, preparedSection = false, knownSection = false, ritualSection = false){
   const host = document.getElementById(id);
@@ -2605,17 +3001,7 @@ function openSpellCard(name, returnToKnownEditor = false){
       <div class="modal-title">${escapeHtml(spell.name)}</div>
       <button class="small-btn" data-close>Close</button>
     </div>
-    <div class="spell-card">
-      <div class="spell-card-head">${escapeHtml(spell.name)}<span class="spell-level">${spell.level}</span></div>
-      <div class="spell-meta">
-        <div><div class="spell-meta-label">Range</div><div class="spell-meta-value">${escapeHtml(spell.range || "-")}</div></div>
-        <div><div class="spell-meta-label">Comp</div><div class="spell-meta-value">${escapeHtml(spell.components || "-")}</div></div>
-        <div><div class="spell-meta-label">Dur</div><div class="spell-meta-value">${escapeHtml(spell.duration || "-")}</div></div>
-        <div><div class="spell-meta-label">Cast</div><div class="spell-meta-value">${escapeHtml(spell.casting_time || "-")}</div></div>
-      </div>
-      <div class="spell-body">${escapeHtml(spell.description || "")}</div>
-      <div class="spell-foot"><span>${escapeHtml(spell.school || "-")}</span><span>${escapeHtml(spell.classes || "-")}</span></div>
-    </div>
+    ${spellCardMarkup(spell)}
     <div class="modal-actions">
       <button class="action-btn blue" id="castFromCardBtn">Cast</button>
     </div>
@@ -2763,7 +3149,9 @@ function openUpcastPicker(name){
   });
 }
 function openKnownEditor(){
-  renderKnownEditorModal();
+  ensureSpellEditorDraft();
+  state.spellbookView = "edit";
+  saveState();
 }
 function bindKnownEditorHandlers(){
   const rows = Array.from(document.querySelectorAll("[data-spell-row]"));
@@ -2937,7 +3325,7 @@ function filteredSpells(){
   const minLevel = Math.min(state.spellFilters.minLevel, state.spellFilters.maxLevel);
   const maxLevel = Math.max(state.spellFilters.minLevel, state.spellFilters.maxLevel);
   let filtered = spells.filter(spell => {
-    const text = `${spell.name} ${spell.school} ${spell.classes}`.toLowerCase();
+    const text = spellSearchText(spell);
     if (query && !text.includes(query)) return false;
     if (selectedClass !== "all" && !(spell.classes || "").toLowerCase().includes(selectedClass)) return false;
     const level = Number(spell.level || 0);

@@ -325,6 +325,22 @@
     font-size:11px;
     font-weight:900;
   }
+  .spell-tags{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    padding:6px 8px 0;
+  }
+  .spell-tag{
+    border:1px solid #111;
+    border-radius:999px;
+    padding:1px 7px;
+    font-size:9px;
+    font-weight:900;
+    background:#f3f3f3;
+  }
+  .spell-tag.ritual{background:#f7e6b8}
+  .spell-tag.concentration{background:#d9eefc}
   .spell-meta{
     display:grid;
     grid-template-columns:repeat(4,1fr);
@@ -552,8 +568,30 @@ function allClasses(){
   return Array.from(classes).sort((a,b) => a.localeCompare(b));
 }
 
+function searchTextForSpell(spell){
+  return [
+    spell.name || "",
+    spell.school || "",
+    spell.classes || "",
+    spell.range || "",
+    spell.components || "",
+    spell.duration || "",
+    spell.casting_time || "",
+    spell.description || "",
+    spell.ritual ? "ritual" : "",
+    spell.concentration ? "concentration concentration tag" : ""
+  ].join(" ").toLowerCase();
+}
+
+function spellTags(spell){
+  const tags = [];
+  if (spell.ritual) tags.push({ label:"Ritual", className:"ritual" });
+  if (spell.concentration) tags.push({ label:"Concentration", className:"concentration" });
+  return tags;
+}
+
 function spellMatchesFilters(spell){
-  const nameMatch = !state.search || spell.name.toLowerCase().includes(state.search.toLowerCase());
+  const nameMatch = !state.search || searchTextForSpell(spell).includes(state.search.toLowerCase());
   const classMatch = state.className === "all" || classesForSpell(spell).includes(state.className);
   const level = Number(spell.level || 0);
   const levelMatch = level >= state.minLevel && level <= state.maxLevel;
@@ -620,9 +658,11 @@ function renderCardHost(){
 }
 
 function renderSpellCard(spell){
+  const tags = spellTags(spell);
   return `
     <article class="spell-card">
       <div class="spell-card-head">${escapeHtml(spell.name)}<span class="spell-level">${escapeHtml(spell.level)}</span></div>
+      ${tags.length ? `<div class="spell-tags">${tags.map(tag => `<span class="spell-tag ${tag.className}">${escapeHtml(tag.label)}</span>`).join("")}</div>` : ""}
       <div class="spell-meta">
         <div><div class="spell-meta-label">Range</div><div class="spell-meta-value">${escapeHtml(spell.range || "-")}</div></div>
         <div><div class="spell-meta-label">Comp</div><div class="spell-meta-value">${escapeHtml(spell.components || "-")}</div></div>
