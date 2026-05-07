@@ -81,6 +81,16 @@
   .small-btn{padding:5px 8px;font-size:12px}
   .action-btn.blue{background:#1b5d84}
   .action-btn.green{background:#166542}
+  .action-btn.soft-green{
+    background:rgba(22,101,66,.35);
+    color:#bfe6d3;
+    border-color:rgba(109,185,150,.5);
+  }
+  .action-btn.soft-blue{
+    background:rgba(27,93,132,.35);
+    color:#c8def0;
+    border-color:rgba(106,159,194,.5);
+  }
   .action-btn.red{background:#7d2525}
   .action-btn.gold{background:#7c601b;color:#fff2c8}
   .action-btn.yellow{
@@ -554,8 +564,34 @@
     padding:0 4px;
   }
   .mode-btn.active{background:#305f87}
+  .mode-btn.inactive{
+    color:var(--muted);
+    background:#101922;
+  }
   .mode-btn.warn{background:#77491f}
   .mode-btn.damaged{background:#674420}
+  .spell-badges{
+    position:absolute;
+    top:4px;
+    right:28px;
+    display:flex;
+    gap:3px;
+    align-items:center;
+  }
+  .spell-mini-tag{
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.45);
+    background:rgba(6,10,16,.55);
+    color:#d6edf8;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:9px;
+    font-weight:900;
+    line-height:1;
+  }
   .tag{
     background:#0c131b;
   }
@@ -1673,6 +1709,12 @@ function spellTagList(spell){
   if (spell.concentration) tags.push({ label:"Concentration", className:"concentration" });
   return tags;
 }
+function spellButtonBadgeMarkup(spell){
+  const tags = [];
+  if (spell.ritual) tags.push(`<span class="spell-mini-tag">R</span>`);
+  if (spell.concentration) tags.push(`<span class="spell-mini-tag">C</span>`);
+  return tags.length ? `<span class="spell-badges">${tags.join("")}</span>` : "";
+}
 function spellSearchText(spell){
   return [
     spell.name || "",
@@ -1687,6 +1729,35 @@ function spellSearchText(spell){
     spell.concentration ? "concentration concentration tag" : "",
     Number(spell.level || 0) === 0 ? "cantrip level 0" : `level ${spell.level || 0}`
   ].join(" ").toLowerCase();
+}
+function spellBenefitsFromUpcast(spell){
+  if (!spell || Number(spell.level || 0) <= 0) return false;
+  const text = String(spell.description || "").toLowerCase();
+  return /using a higher-level spell slot|higher-level spell slot|spell slot level above|for each spell slot level above|level [2-9]\+ spell slot|slot of level [2-9]/i.test(text);
+}
+function nextAvailableSlotAbove(level){
+  for (let slot = level + 1; slot <= 9; slot++){
+    if ((state.slotCur[slot] || 0) > 0) return slot;
+  }
+  return 0;
+}
+function canShowUpcastControl(spell){
+  return Number(spell.level || 0) > 0;
+}
+function upcastControlMarkup(spell){
+  if (!canShowUpcastControl(spell)) return `<div class="tag">-</div>`;
+  const beneficial = spellBenefitsFromUpcast(spell);
+  const extra = getUpcastLevel(spell.name);
+  return `<button class="mode-btn ${beneficial ? (extra ? "active" : "inactive") : "inactive"}" data-upcast="${escapeAttr(spell.name)}" ${beneficial ? "" : "disabled"}>${beneficial ? `+${extra}` : "N/A"}</button>`;
+}
+function advLabel(mode){
+  if (mode === "adv") return "ADV";
+  if (mode === "dis") return "DIS";
+  return "Adv";
+}
+function statusButtonClass(isActive, family = "green"){
+  if (isActive) return "yellow";
+  return family === "blue" ? "soft-blue" : "soft-green";
 }
 function spellCardMarkup(spell){
   const tags = spellTagList(spell);
@@ -1813,6 +1884,39 @@ function spendSlot(level){
   state.slotCur[level] -= 1;
   return true;
 }
+function spendSlotForSpell(level, spell){
+  if (!level) return true;
+  if ((state.slotCur[level] || 0) > 0){
+    state.slotCur[level] -= 1;
+    return true;
+  }
+  const nextSlot = nextAvailableSlotAbove(level);
+  if (nextSlot){
+    const benefitNote = spellBenefitsFromUpcast(spell) ? "" : "\nThis spell gains no extra benefit from a higher slot.";
+    openModal(`
+      <div class="modal-head">
+        <div class="modal-title">No Slot Available</div>
+        <button class="small-btn" data-close>Close</button>
+      </div>
+      <div class="result-box">No level ${level} slots remain for ${escapeHtml(spell.name)}.\nCast with L${nextSlot} instead?${benefitNote}</div>
+      <div class="modal-actions">
+        <button class="action-btn blue" id="confirmUpcastBtn">Yes</button>
+        <button class="action-btn gold" data-close>No</button>
+      </div>
+    `);
+    document.getElementById("confirmUpcastBtn").onclick = () => {
+      state.spellUpcast[spell.name] = Math.max(0, nextSlot - Number(spell.level || 0));
+      closeModal();
+      saveState();
+      setTimeout(() => castSpellByName(spell.name), 0);
+    };
+    pushHistory(`No L${level} spell slots remaining for ${spell.name}; offered L${nextSlot} upcast.`);
+    return false;
+  }
+  openResult("No Slot Available", `No level ${level} spell slots remain.`);
+  pushHistory(`No L${level} spell slots remaining.`);
+  return false;
+}
 function restoreSlot(level){
   const max = (FULL_CASTER_SLOTS[state.level] || [])[level - 1] || 0;
   state.slotCur[level] = clamp((state.slotCur[level] || 0) + 1, 0, max);
@@ -1926,12 +2030,17 @@ function renderCombatPage(){
   `;
   document.getElementById("bladesongBtn").textContent = state.bladesongActive ? "BLADESONG ACTIVE" : "BLADESONG";
   document.getElementById("concentrationCheckBtn").textContent = "Con Check";
-  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive ? `Con: ${state.concentrationActive}` : "Concentration - Off";
+  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive ? "Concentration On" : "Concentration";
   document.getElementById("concentrationModeBtn").textContent = state.concentrationMode === "-" ? "-" : state.concentrationMode.toUpperCase();
   document.getElementById("mageArmorBtn").textContent = state.mageArmorActive ? "Mage Armor On" : "Mage Armor";
-  document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield +5" : "Shield (Lvl 1)";
-  document.getElementById("hasteBtn").textContent = state.hasteActive ? `Haste L${spellCastLevel(getSpellByName("Haste"))}` : `Haste L${spellCastLevel(getSpellByName("Haste"))}`;
-  document.getElementById("minorElementalsBtn").textContent = state.minorElementalsActive ? `Minor Elem L${spellCastLevel(getSpellByName("Conjure Minor Elementals"))}` : `Minor Elem L${spellCastLevel(getSpellByName("Conjure Minor Elementals"))}`;
+  document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield On" : "Shield";
+  document.getElementById("hasteBtn").textContent = state.hasteActive ? "Haste On" : "Haste";
+  document.getElementById("minorElementalsBtn").textContent = state.minorElementalsActive ? "CME On" : "CME";
+  document.getElementById("mageArmorBtn").className = `action-btn ${statusButtonClass(state.mageArmorActive, "green")} cell-mage`;
+  document.getElementById("shieldBtn").className = `action-btn ${statusButtonClass(state.shieldActive, "green")} cell-shield`;
+  document.getElementById("hasteBtn").className = `action-btn ${statusButtonClass(state.hasteActive, "green")}`;
+  document.getElementById("minorElementalsBtn").className = `action-btn ${statusButtonClass(state.minorElementalsActive, "green")}`;
+  document.getElementById("concentrationActiveBtn").className = `action-btn ${statusButtonClass(Boolean(state.concentrationActive), "blue")} cell-active`;
   renderPips("bladesongPips", bladesongUsesRemaining(), bladesongUsesMax(), "green");
   document.getElementById("slotHeadText").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
   document.getElementById("slotHeadTextBook").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
@@ -2233,6 +2342,7 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
       row.innerHTML = `
         <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
         <div class="combat-action gold ritual-display">
+          ${spellButtonBadgeMarkup(spell)}
           <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
           <b>${escapeHtml(spell.name)}</b>
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
@@ -2244,11 +2354,12 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
       row.innerHTML = `
         <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
         <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}" ${canCast ? "" : "disabled"}>
+          ${spellButtonBadgeMarkup(spell)}
           <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
           <b>${escapeHtml(spell.name)}</b>
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </button>
-        ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
+        ${upcastControlMarkup(spell)}
         ${prepPickMarkup(spell, sources)}
       `;
     }
@@ -2311,8 +2422,8 @@ function renderWeaponRows(){
         <span>${weapon.detail}</span>
       </button>
       <div class="tag">${fmtMod(hit)}</div>
-      <button class="mode-btn ${mode.crit ? "warn active" : ""}" data-crit="${weapon.id}">${mode.crit ? "Crit" : "-"}</button>
-      <button class="mode-btn ${mode.adv !== "-" ? "active" : ""}" data-adv="${weapon.id}">${mode.adv === "-" ? "-" : mode.adv.toUpperCase()}</button>
+      <button class="mode-btn ${mode.crit ? "active" : "inactive"}" data-crit="${weapon.id}">Crit</button>
+      <button class="mode-btn ${mode.adv !== "-" ? "active" : "inactive"}" data-adv="${weapon.id}">${advLabel(mode.adv)}</button>
     `;
     host.appendChild(row);
   });
@@ -2325,19 +2436,20 @@ function renderCantripRows(){
     const display = spellCombatDisplay(spell.name);
     const special = spell.name === "Toll the Dead"
       ? `<button class="mode-btn ${mode.damaged ? "damaged active" : ""}" data-damaged="${escapeAttr(spell.name)}">${mode.damaged ? "DMG" : "-"}</button>`
-      : `<button class="mode-btn ${mode.crit ? "warn active" : ""}" data-crit="${escapeAttr(spell.name)}">${display.allowCrit ? (mode.crit ? "Crit" : "-") : "-"}</button>`;
+      : `<button class="mode-btn ${display.allowCrit ? (mode.crit ? "active" : "inactive") : "inactive"}" data-crit="${escapeAttr(spell.name)}" ${display.allowCrit ? "" : "disabled"}>Crit</button>`;
     const row = document.createElement("div");
     row.className = "row-grid";
     row.innerHTML = `
       <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
       <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}">
+        ${spellButtonBadgeMarkup(spell)}
         <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
         <b>${escapeHtml(spell.name)}</b>
         <span>${escapeHtml(display.detail)}</span>
       </button>
       <div class="tag">${escapeHtml(display.hit)}</div>
       ${special}
-      <button class="mode-btn ${mode.adv !== "-" ? "active" : ""}" data-adv="${escapeAttr(spell.name)}">${mode.adv === "-" ? "-" : mode.adv.toUpperCase()}</button>
+      <button class="mode-btn ${mode.adv !== "-" ? "active" : "inactive"}" data-adv="${escapeAttr(spell.name)}">${advLabel(mode.adv)}</button>
     `;
     host.appendChild(row);
   });
@@ -2578,7 +2690,7 @@ function castTollTheDead(spell){
 }
 function castScorchingRay(spell){
   const castLevel = spellCastLevel(spell);
-  if (!spendSlot(castLevel)) return saveState();
+  if (!spendSlotForSpell(castLevel, spell)) return saveState();
   const rays = 3 + Math.max(0, castLevel - 2);
   const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
   const sections = [];
@@ -2606,7 +2718,7 @@ function castScorchingRay(spell){
 }
 function castMagicMissile(spell){
   const level = spellCastLevel(spell);
-  if (!spendSlot(level)) return saveState();
+  if (!spendSlotForSpell(level, spell)) return saveState();
   const darts = 3 + (level - 1);
   const parts = [];
   let total = 0;
@@ -2628,7 +2740,7 @@ function castMageArmor(spell){
     saveState();
     return;
   }
-  if (!spendSlot(1)) return saveState();
+  if (!spendSlotForSpell(1, spell)) return saveState();
   state.mageArmorActive = true;
   state.shieldActive = false;
   const text = `Base AC is now ${13 + abilityMod(state.abilityScores.DEX)} until long rest or until you turn Mage Armor off manually.`;
@@ -2644,7 +2756,7 @@ function castShield(spell){
     saveState();
     return;
   }
-  if (!spendSlot(1)) return saveState();
+  if (!spendSlotForSpell(1, spell)) return saveState();
   state.shieldActive = true;
   const text = `AC is now ${currentAc()} until the start of your next turn.`;
   openResult(spell.name, text);
@@ -2713,7 +2825,7 @@ function toggleConcentrationSpell(name, flagKey, slotLevel){
     saveState();
     return;
   }
-  if (!spendSlot(castLevel)) return saveState();
+  if (!spendSlotForSpell(castLevel, spell)) return saveState();
   state.hasteActive = false;
   state.minorElementalsActive = false;
   state[flagKey] = true;
@@ -2727,7 +2839,7 @@ function toggleConcentrationSpell(name, flagKey, slotLevel){
 }
 function castUtilitySpell(spell, text){
   const level = spellCastLevel(spell);
-  if (Number(spell.level) > 0 && !spendSlot(level)) return saveState();
+  if (Number(spell.level) > 0 && !spendSlotForSpell(level, spell)) return saveState();
   setConcentrationFromSpell(spell);
   openResult(spell.name, text);
   pushHistory(`${spell.name}: ${text}`);
@@ -2736,7 +2848,7 @@ function castUtilitySpell(spell, text){
 function finalizeSpellCast(spell, text){
   const baseLevel = Number(spell.level || 0);
   const castLevel = spellCastLevel(spell);
-  if (baseLevel > 0 && !spendSlot(castLevel)) return saveState();
+  if (baseLevel > 0 && !spendSlotForSpell(castLevel, spell)) return saveState();
   setConcentrationFromSpell(spell);
   openResult(spell.name, text);
   pushHistory(`${spell.name}${baseLevel ? ` L${castLevel}` : ""}: ${text.replace(/\n/g, " | ")}`);
@@ -2756,7 +2868,7 @@ function castSpellByName(name){
   }
   const baseLevel = Number(spell.level || 0);
   const castLevel = spellCastLevel(spell);
-  if (baseLevel > 0 && !spendSlot(castLevel)) return saveState();
+  if (baseLevel > 0 && !spendSlotForSpell(castLevel, spell)) return saveState();
   setConcentrationFromSpell(spell);
   const text = `${spell.casting_time || "Action"} / ${spell.range || "-"}\n${spell.description || "Spell cast."}`;
   openResult(spell.name, text);
