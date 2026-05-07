@@ -606,7 +606,7 @@
   }
   .book-row{
     display:grid;
-    grid-template-columns:22px 1fr 42px 28px 22px;
+    grid-template-columns:22px 1fr 42px 54px;
     gap:4px;
     align-items:center;
     padding:4px;
@@ -617,7 +617,7 @@
   .book-row.cantrip{background:#122334}
   .book-row.prepared{background:#153023}
   .book-row.ritual{
-    grid-template-columns:22px 1fr 56px 44px;
+    grid-template-columns:22px 1fr 56px 54px;
     background:#2b2210;
   }
   .ritual-display{
@@ -1210,6 +1210,7 @@ const DEFAULT_STATE = {
   knownSpells:DEFAULT_KNOWN,
   preparedCantrips:DEFAULT_PREPARED_CANTRIPS,
   preparedSpells:DEFAULT_PREPARED_SPELLS,
+  clericPreparedSpells:DEFAULT_CLERIC_SPELLS.filter(name => spellLevel(name) > 0),
   proficientSkills:["Arcana","History","Investigation","Perception","Insight","Religion"],
   extraCantrips:0,
   extraSpellbook:0,
@@ -1217,7 +1218,7 @@ const DEFAULT_STATE = {
   hitDiceCur:{ d6:null, d8:null },
   spellUpcast:{},
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
-  dataVersion:2,
+  dataVersion:3,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1281,6 +1282,7 @@ function ensureState(raw){
   raw.knownSpells = unique(raw.knownSpells || DEFAULT_KNOWN);
   raw.preparedCantrips = unique((raw.preparedCantrips || DEFAULT_PREPARED_CANTRIPS).filter(name => spellLevel(name) === 0));
   raw.preparedSpells = unique((raw.preparedSpells || DEFAULT_PREPARED_SPELLS).filter(name => spellLevel(name) > 0));
+  raw.clericPreparedSpells = unique((raw.clericPreparedSpells || raw.clericSpells || DEFAULT_CLERIC_SPELLS).filter(name => spellLevel(name) > 0));
   raw.proficientSkills = unique(raw.proficientSkills || []);
   raw.history = Array.isArray(raw.history) ? raw.history.slice(0, HISTORY_LIMIT) : [];
   raw.hpLog = Array.isArray(raw.hpLog) ? raw.hpLog.map((item, index) => Object.assign({ level:index + 2 }, item)) : [];
@@ -1299,6 +1301,10 @@ function ensureState(raw){
     raw.wizardSpells = unique(raw.wizardSpells || raw.knownSpells || DEFAULT_KNOWN);
     raw.clericSpells = unique(raw.clericSpells || DEFAULT_CLERIC_SPELLS.filter(name => raw.knownSpells.includes(name) || raw.preparedCantrips.includes(name)));
     raw.dataVersion = 2;
+  }
+  if (raw.dataVersion < 3){
+    raw.clericPreparedSpells = unique((raw.clericPreparedSpells || raw.clericSpells || DEFAULT_CLERIC_SPELLS).filter(name => spellLevel(name) > 0));
+    raw.dataVersion = 3;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -1347,7 +1353,8 @@ function fullCasterSpellLevel(classLevel){
   return 0;
 }
 function getProgression(level = state.level){
-  return { cleric: level >= 1 ? 1 : 0, wizard: Math.max(0, level - 1) };
+  const total = Number(level) || 0;
+  return { cleric: total >= 1 ? 1 : 0, wizard: Math.max(0, total - 1) };
 }
 function maxSpellLevelForClass(className, target = state){
   return fullCasterSpellLevel(getProgression(target.level)[className] || 0);
@@ -1450,7 +1457,7 @@ function availableCantripNames(target = state){
   ]);
 }
 function clericPreparedSpellNames(target = state){
-  return clericSpellNames(target).filter(name => spellLevel(name) > 0);
+  return unique((target.clericPreparedSpells || []).filter(name => clericSpellNames(target).includes(name) && spellLevel(name) > 0));
 }
 function combinedSpellNames(target = state){
   return unique([...wizardSpellNames(target), ...clericSpellNames(target)]);
@@ -1465,16 +1472,25 @@ function canUseSpellForClass(spell, className, target = state){
   const level = Number(spell.level || 0);
   return spellHasClassName(spell, className) && (level === 0 || level <= maxSpellLevelForClass(className, target));
 }
-function sourcePickMarkup(sources){
+function prepPickMarkup(spell, sources, options = {}){
+  const cantrip = Number(spell.level || 0) === 0;
+  const checkedWizard = options.readonly
+    ? sources.wizard
+    : sources.wizard && (cantrip || state.preparedSpells.includes(spell.name));
+  const checkedCleric = options.readonly
+    ? sources.cleric
+    : sources.cleric && (cantrip || clericPreparedSpellNames().includes(spell.name));
+  const disableWizard = !sources.wizard || cantrip || options.readonly;
+  const disableCleric = !sources.cleric || cantrip || options.readonly;
   return `
-    <div class="class-picks readonly">
+    <div class="class-picks ${options.readonly ? "readonly" : ""}">
       <label class="class-pick">
         <span>W</span>
-        <input type="checkbox" ${sources.wizard ? "checked" : ""} disabled>
+        <input type="checkbox" data-prep-class="${escapeAttr(spell.name)}" data-prep-source="wizard" ${checkedWizard ? "checked" : ""} ${disableWizard ? "disabled" : ""}>
       </label>
       <label class="class-pick">
         <span>C</span>
-        <input type="checkbox" ${sources.cleric ? "checked" : ""} disabled>
+        <input type="checkbox" data-prep-class="${escapeAttr(spell.name)}" data-prep-source="cleric" ${checkedCleric ? "checked" : ""} ${disableCleric ? "disabled" : ""}>
       </label>
     </div>
   `;
@@ -1483,10 +1499,11 @@ function syncPreparedLists(target){
   target.wizardSpells = wizardSpellNames(target);
   target.clericSpells = clericSpellNames(target);
   target.knownSpells = combinedSpellNames(target);
-  target.preparedCantrips = unique((target.preparedCantrips || []).filter(name => availableCantripNames(target).includes(name)));
+  target.preparedCantrips = availableCantripNames(target);
   target.preparedSpells = unique((target.preparedSpells || []).filter(name => wizardSpellNames(target).includes(name) && spellLevel(name) > 0));
-  target.preparedCantrips = target.preparedCantrips.slice(0, cantripKnownAllowance(target));
+  target.clericPreparedSpells = unique((target.clericPreparedSpells || []).filter(name => clericSpellNames(target).includes(name) && spellLevel(name) > 0));
   target.preparedSpells = target.preparedSpells.slice(0, wizardPreparedLimit(target));
+  target.clericPreparedSpells = target.clericPreparedSpells.slice(0, clericPreparedLimit(target));
 }
 function spellLevel(name){
   return Number(getSpellByName(name).level || 0);
@@ -1813,6 +1830,7 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
     const wizardPrepared = state.preparedSpells.includes(spell.name);
     const clericPrepared = clericPreparedSpellNames().includes(spell.name);
     const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : wizardPrepared || clericPrepared;
+    const canCast = !knownSection || isCantrip || prepared;
     const row = document.createElement("div");
     row.className = `book-row ${isCantrip ? "cantrip" : ""} ${prepared ? "prepared" : ""} ${ritualSection ? "ritual" : ""}`;
     if (ritualSection){
@@ -1824,19 +1842,18 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </div>
         <div class="tag">Ritual</div>
-        ${sourcePickMarkup(sources)}
+        ${prepPickMarkup(spell, sources, { readonly:true })}
       `;
     }else{
       row.innerHTML = `
         <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
-        <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}">
+        <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}" ${canCast ? "" : "disabled"}>
           <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
           <b>${escapeHtml(spell.name)}</b>
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </button>
         ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
-        ${sourcePickMarkup(sources)}
-        <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""} ${(!isCantrip && clericPrepared && !wizardPrepared) ? "disabled" : ""}>
+        ${prepPickMarkup(spell, sources)}
       `;
     }
     host.appendChild(row);
@@ -1845,8 +1862,8 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
   if (!ritualSection){
     host.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
     host.querySelectorAll("[data-upcast]").forEach(btn => btn.onclick = () => openUpcastPicker(btn.dataset.upcast));
-    host.querySelectorAll("[data-prep]").forEach(box => {
-      box.onchange = () => togglePrepared(box.dataset.prep, box.checked);
+    host.querySelectorAll("[data-prep-class]").forEach(box => {
+      box.onchange = () => toggleClassPrepared(box.dataset.prepClass, box.dataset.prepSource, box.checked);
     });
   }
 }
@@ -2350,36 +2367,46 @@ function castSpellByName(name){
   pushHistory(`${spell.name}${baseLevel ? ` L${castLevel}` : ""}: cast.`);
   saveState();
 }
-function togglePrepared(name, checked){
-  const level = spellLevel(name);
-  if (level === 0){
+function toggleClassPrepared(name, source, checked){
+  if (spellLevel(name) === 0){
+    render();
+    return;
+  }
+  if (source === "wizard"){
+    if (!wizardSpellNames().includes(name)){
+      render();
+      return;
+    }
     if (checked){
-      if (!state.preparedCantrips.includes(name)){
-        if (state.preparedCantrips.length >= cantripKnownAllowance()){
-          openResult("Cantrip Limit", `You are already at ${cantripKnownAllowance()} cantrips.`);
+      if (!state.preparedSpells.includes(name)){
+        if (state.preparedSpells.length >= wizardPreparedLimit()){
+          openResult("Prepared Wizard Limit", `Wizard prepared spells are already at ${wizardPreparedLimit()}.`);
           render();
           return;
         }
-        state.preparedCantrips.push(name);
+        state.preparedSpells.push(name);
       }
     }else{
-      state.preparedCantrips = state.preparedCantrips.filter(item => item !== name);
+      state.preparedSpells = state.preparedSpells.filter(item => item !== name);
     }
     saveState();
     return;
   }
-  const preparedCount = state.preparedSpells.length;
+  if (!clericSpellNames().includes(name)){
+    render();
+    return;
+  }
   if (checked){
-    if (!state.preparedSpells.includes(name)){
-      if (preparedCount >= wizardPreparedLimit()){
-        openResult("Prepared Limit", `You are already at ${wizardPreparedLimit()} wizard prepared spells.`);
+    if (!state.clericPreparedSpells.includes(name)){
+      if (state.clericPreparedSpells.length >= clericPreparedLimit()){
+        openResult("Prepared Cleric Limit", `Cleric prepared spells are already at ${clericPreparedLimit()}.`);
         render();
         return;
       }
-      state.preparedSpells.push(name);
+      state.clericPreparedSpells.push(name);
     }
   }else{
-    state.preparedSpells = state.preparedSpells.filter(item => item !== name);
+    state.clericPreparedSpells = state.clericPreparedSpells.filter(item => item !== name);
   }
   saveState();
 }
@@ -2884,7 +2911,6 @@ function renderKnownEditorModal(){
     const wizardCantrips = wizardSelection.filter(name => spellLevel(name) === 0);
     const clericCantrips = clericSelection.filter(name => spellLevel(name) === 0);
     const wizardBookSpells = wizardSelection.filter(name => spellLevel(name) > 0);
-    const clericPrepared = clericSelection.filter(name => spellLevel(name) > 0);
     if (wizardCantrips.length > wizardCantripKnownAllowance()){
       openResult("Wizard Cantrip Limit", `Wizard cantrips exceed the limit of ${wizardCantripKnownAllowance()}.`);
       return;
@@ -2895,10 +2921,6 @@ function renderKnownEditorModal(){
     }
     if (wizardBookSpells.length > spellbookAllowance()){
       openResult("Spellbook Limit", `Wizard spellbook exceeds the limit of ${spellbookAllowance()} spells.`);
-      return;
-    }
-    if (clericPrepared.length > clericPreparedLimit()){
-      openResult("Cleric Prepared Limit", `Cleric prepared spells exceed the limit of ${clericPreparedLimit()}.`);
       return;
     }
     state.wizardSpells = wizardSelection;
