@@ -521,18 +521,21 @@
     position:absolute;
     right:5px;
     top:4px;
-    width:18px;
-    height:18px;
+    width:20px;
+    height:20px;
     border-radius:50%;
     border:1px solid rgba(255,255,255,.45);
     background:rgba(6,10,16,.55);
     color:#fff;
-    display:grid;
-    place-items:center;
-    font-size:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:10px;
     font-weight:900;
-    line-height:1;
-    padding:0;
+    line-height:20px;
+    padding:0 !important;
+    font-variant-numeric:tabular-nums;
   }
   .icon-btn,.mode-btn,.tag{
     min-height:34px;
@@ -614,7 +617,7 @@
   .book-row.cantrip{background:#122334}
   .book-row.prepared{background:#153023}
   .book-row.ritual{
-    grid-template-columns:22px 1fr 56px 28px;
+    grid-template-columns:22px 1fr 56px 44px;
     background:#2b2210;
   }
   .ritual-display{
@@ -692,21 +695,28 @@
   .class-picks{
     display:flex;
     align-items:center;
-    gap:8px;
+    justify-content:center;
+    gap:6px;
     flex:0 0 auto;
   }
   .class-pick{
     display:flex;
     align-items:center;
-    gap:4px;
+    gap:3px;
     font-size:10px;
     font-weight:900;
     color:#dbe7f6;
   }
   .class-pick input{
-    width:15px;
-    height:15px;
+    width:13px;
+    height:13px;
     margin:0;
+  }
+  .class-picks.readonly{
+    pointer-events:none;
+  }
+  .class-picks.readonly .class-pick{
+    opacity:.92;
   }
   .modal-actions{
     display:flex;
@@ -750,16 +760,19 @@
     position:absolute;
     right:5px;
     top:4px;
-    width:19px;
-    height:19px;
+    width:21px;
+    height:21px;
     border:2px solid #111;
     border-radius:50%;
-    display:grid;
-    place-items:center;
-    font-size:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:12px;
     font-weight:900;
-    line-height:1;
-    padding:0;
+    line-height:21px;
+    padding:0 !important;
+    font-variant-numeric:tabular-nums;
   }
   .spell-meta{
     display:grid;
@@ -1452,6 +1465,20 @@ function canUseSpellForClass(spell, className, target = state){
   const level = Number(spell.level || 0);
   return spellHasClassName(spell, className) && (level === 0 || level <= maxSpellLevelForClass(className, target));
 }
+function sourcePickMarkup(sources){
+  return `
+    <div class="class-picks readonly">
+      <label class="class-pick">
+        <span>W</span>
+        <input type="checkbox" ${sources.wizard ? "checked" : ""} disabled>
+      </label>
+      <label class="class-pick">
+        <span>C</span>
+        <input type="checkbox" ${sources.cleric ? "checked" : ""} disabled>
+      </label>
+    </div>
+  `;
+}
 function syncPreparedLists(target){
   target.wizardSpells = wizardSpellNames(target);
   target.clericSpells = clericSpellNames(target);
@@ -1758,10 +1785,16 @@ function renderSpellbookPage(){
   const known = combinedSpellNames().map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   const ritualSpells = unique([...combinedSpellNames().filter(name => spellLevel(name) > 0 && getSpellByName(name).ritual)]).map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   const wizardBookCount = wizardSpellNames().filter(name => spellLevel(name) > 0).length;
+  const wizardCantripCount = wizardSpellNames().filter(name => spellLevel(name) === 0).length;
+  const clericCantripCount = clericSpellNames().filter(name => spellLevel(name) === 0).length;
+  const wizardPreparedCount = state.preparedSpells.length;
+  const clericPreparedCount = clericPreparedSpellNames().length;
   document.getElementById("spellCounts").innerHTML = `
-    <div class="count-box">Cantrips <b>${state.preparedCantrips.length}/${cantripKnownAllowance()}</b></div>
-    <div class="count-box">Prepared <b>${preparedSpellNames.length}/${preparedLimit()}</b></div>
-    <div class="count-box">Spellbook <b>${wizardBookCount}/${spellbookAllowance()}</b></div>
+    <div class="count-box">Cantrips Wiz <b>${wizardCantripCount}/${wizardCantripKnownAllowance()}</b></div>
+    <div class="count-box">Cantrips Clr <b>${clericCantripCount}/${clericCantripKnownAllowance()}</b></div>
+    <div class="count-box">Prepared Wiz <b>${wizardPreparedCount}/${wizardPreparedLimit()}</b></div>
+    <div class="count-box">Prepared Clr <b>${clericPreparedCount}/${clericPreparedLimit()}</b></div>
+    <div class="count-box">Spellbook Wiz <b>${wizardBookCount}/${spellbookAllowance()}</b></div>
     <div class="count-box">Spell DC <b>${spellDc()}</b></div>
   `;
   document.getElementById("extraCantripsInput").value = state.extraCantrips || 0;
@@ -1780,7 +1813,6 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
     const wizardPrepared = state.preparedSpells.includes(spell.name);
     const clericPrepared = clericPreparedSpellNames().includes(spell.name);
     const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : wizardPrepared || clericPrepared;
-    const sourceTag = sources.wizard && sources.cleric ? "W+C" : sources.cleric ? "Clr" : "Wiz";
     const row = document.createElement("div");
     row.className = `book-row ${isCantrip ? "cantrip" : ""} ${prepared ? "prepared" : ""} ${ritualSection ? "ritual" : ""}`;
     if (ritualSection){
@@ -1792,7 +1824,7 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </div>
         <div class="tag">Ritual</div>
-        <div class="badge">${sourceTag}</div>
+        ${sourcePickMarkup(sources)}
       `;
     }else{
       row.innerHTML = `
@@ -1803,7 +1835,7 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </button>
         ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
-        <div class="badge">${sourceTag}</div>
+        ${sourcePickMarkup(sources)}
         <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""} ${(!isCantrip && clericPrepared && !wizardPrepared) ? "disabled" : ""}>
       `;
     }
