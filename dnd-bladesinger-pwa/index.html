@@ -527,12 +527,12 @@
     border:1px solid rgba(255,255,255,.45);
     background:rgba(6,10,16,.55);
     color:#fff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    display:grid;
+    place-items:center;
     font-size:9px;
     font-weight:900;
     line-height:1;
+    padding:0;
   }
   .icon-btn,.mode-btn,.tag{
     min-height:34px;
@@ -689,6 +689,25 @@
     border-radius:9px;
     font-size:12px;
   }
+  .class-picks{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:0 0 auto;
+  }
+  .class-pick{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    font-size:10px;
+    font-weight:900;
+    color:#dbe7f6;
+  }
+  .class-pick input{
+    width:15px;
+    height:15px;
+    margin:0;
+  }
   .modal-actions{
     display:flex;
     gap:8px;
@@ -735,11 +754,12 @@
     height:19px;
     border:2px solid #111;
     border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    display:grid;
+    place-items:center;
     font-size:11px;
     font-weight:900;
+    line-height:1;
+    padding:0;
   }
   .spell-meta{
     display:grid;
@@ -1132,6 +1152,7 @@ const DEFAULT_PREPARED_SPELLS = [
   "Mirror Image","Misty Step","Web","Invisibility","Shadow Blade","Counterspell",
   "Fireball","Fly","Haste"
 ];
+const DEFAULT_CLERIC_SPELLS = ["Guidance","Light","Toll the Dead"];
 const EXTRA_SPELL_DATA = [
   {
     name:"Toll the Dead",
@@ -1171,6 +1192,8 @@ const DEFAULT_STATE = {
   concentrationMode:"-",
   concentrationActive:"",
   arcaneRecoveryUsed:false,
+  wizardSpells:DEFAULT_KNOWN,
+  clericSpells:DEFAULT_CLERIC_SPELLS,
   knownSpells:DEFAULT_KNOWN,
   preparedCantrips:DEFAULT_PREPARED_CANTRIPS,
   preparedSpells:DEFAULT_PREPARED_SPELLS,
@@ -1181,7 +1204,7 @@ const DEFAULT_STATE = {
   hitDiceCur:{ d6:null, d8:null },
   spellUpcast:{},
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
-  dataVersion:1,
+  dataVersion:2,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1240,6 +1263,8 @@ function loadState(){
   }
 }
 function ensureState(raw){
+  raw.wizardSpells = unique(raw.wizardSpells || raw.knownSpells || DEFAULT_KNOWN);
+  raw.clericSpells = unique(raw.clericSpells || DEFAULT_CLERIC_SPELLS.filter(name => (raw.knownSpells || []).includes(name) || DEFAULT_CLERIC_SPELLS.includes(name)));
   raw.knownSpells = unique(raw.knownSpells || DEFAULT_KNOWN);
   raw.preparedCantrips = unique((raw.preparedCantrips || DEFAULT_PREPARED_CANTRIPS).filter(name => spellLevel(name) === 0));
   raw.preparedSpells = unique((raw.preparedSpells || DEFAULT_PREPARED_SPELLS).filter(name => spellLevel(name) > 0));
@@ -1256,6 +1281,11 @@ function ensureState(raw){
     if (!raw.knownSpells.includes("Toll the Dead")) raw.knownSpells.push("Toll the Dead");
     if (!raw.preparedCantrips.includes("Toll the Dead")) raw.preparedCantrips.push("Toll the Dead");
     raw.dataVersion = 1;
+  }
+  if (raw.dataVersion < 2){
+    raw.wizardSpells = unique(raw.wizardSpells || raw.knownSpells || DEFAULT_KNOWN);
+    raw.clericSpells = unique(raw.clericSpells || DEFAULT_CLERIC_SPELLS.filter(name => raw.knownSpells.includes(name) || raw.preparedCantrips.includes(name)));
+    raw.dataVersion = 2;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -1285,8 +1315,29 @@ function fmtMod(value){
 function clamp(value, min, max){
   return Math.max(min, Math.min(max, value));
 }
+function spellHasClassName(spell, className){
+  const classes = String(spell.classes || "").toLowerCase();
+  if (!classes) return false;
+  if (classes.includes("all spellcasters")) return true;
+  return classes.includes(className.toLowerCase());
+}
+function fullCasterSpellLevel(classLevel){
+  if (classLevel >= 17) return 9;
+  if (classLevel >= 15) return 8;
+  if (classLevel >= 13) return 7;
+  if (classLevel >= 11) return 6;
+  if (classLevel >= 9) return 5;
+  if (classLevel >= 7) return 4;
+  if (classLevel >= 5) return 3;
+  if (classLevel >= 3) return 2;
+  if (classLevel >= 1) return 1;
+  return 0;
+}
 function getProgression(level = state.level){
   return { cleric: level >= 1 ? 1 : 0, wizard: Math.max(0, level - 1) };
+}
+function maxSpellLevelForClass(className, target = state){
+  return fullCasterSpellLevel(getProgression(target.level)[className] || 0);
 }
 function profBonus(){
   if (state.profOverride) return state.profOverride;
@@ -1367,9 +1418,48 @@ function syncHitDice(target){
   target.hitDiceCur.d6 = clamp(target.hitDiceCur.d6, 0, maxD6);
   target.hitDiceCur.d8 = clamp(target.hitDiceCur.d8, 0, maxD8);
 }
+function wizardSpellNames(target = state){
+  return unique((target.wizardSpells || []).filter(name => {
+    const spell = getSpellByName(name);
+    return spellHasClassName(spell, "wizard") && (Number(spell.level || 0) === 0 || Number(spell.level || 0) <= maxSpellLevelForClass("wizard", target));
+  }));
+}
+function clericSpellNames(target = state){
+  return unique((target.clericSpells || []).filter(name => {
+    const spell = getSpellByName(name);
+    return spellHasClassName(spell, "cleric") && (Number(spell.level || 0) === 0 || Number(spell.level || 0) <= maxSpellLevelForClass("cleric", target));
+  }));
+}
+function availableCantripNames(target = state){
+  return unique([
+    ...wizardSpellNames(target).filter(name => spellLevel(name) === 0),
+    ...clericSpellNames(target).filter(name => spellLevel(name) === 0)
+  ]);
+}
+function clericPreparedSpellNames(target = state){
+  return clericSpellNames(target).filter(name => spellLevel(name) > 0);
+}
+function combinedSpellNames(target = state){
+  return unique([...wizardSpellNames(target), ...clericSpellNames(target)]);
+}
+function sourceFlagsForSpell(name, target = state){
+  return {
+    wizard: wizardSpellNames(target).includes(name),
+    cleric: clericSpellNames(target).includes(name)
+  };
+}
+function canUseSpellForClass(spell, className, target = state){
+  const level = Number(spell.level || 0);
+  return spellHasClassName(spell, className) && (level === 0 || level <= maxSpellLevelForClass(className, target));
+}
 function syncPreparedLists(target){
-  target.preparedCantrips = target.preparedCantrips.filter(name => target.knownSpells.includes(name) && spellLevel(name) === 0);
-  target.preparedSpells = target.preparedSpells.filter(name => target.knownSpells.includes(name) && spellLevel(name) > 0);
+  target.wizardSpells = wizardSpellNames(target);
+  target.clericSpells = clericSpellNames(target);
+  target.knownSpells = combinedSpellNames(target);
+  target.preparedCantrips = unique((target.preparedCantrips || []).filter(name => availableCantripNames(target).includes(name)));
+  target.preparedSpells = unique((target.preparedSpells || []).filter(name => wizardSpellNames(target).includes(name) && spellLevel(name) > 0));
+  target.preparedCantrips = target.preparedCantrips.slice(0, cantripKnownAllowance(target));
+  target.preparedSpells = target.preparedSpells.slice(0, wizardPreparedLimit(target));
 }
 function spellLevel(name){
   return Number(getSpellByName(name).level || 0);
@@ -1389,19 +1479,31 @@ function getSpellByName(name){
     casting_time:"-", school:"-", classes:"-", description:"No spell card data available."
   };
 }
-function cantripKnownAllowance(){
-  const wizard = getProgression().wizard;
-  const cleric = getProgression().cleric;
-  return (wizard >= 10 ? 5 : wizard >= 4 ? 4 : wizard >= 1 ? 3 : 0) + (cleric ? 3 : 0) + Number(state.extraCantrips || 0);
+function wizardCantripKnownAllowance(target = state){
+  const wizard = getProgression(target.level).wizard;
+  return wizard >= 10 ? 5 : wizard >= 4 ? 4 : wizard >= 1 ? 3 : 0;
 }
-function spellbookAllowance(){
-  const wizard = getProgression().wizard;
+function clericCantripKnownAllowance(target = state){
+  return getProgression(target.level).cleric ? 3 : 0;
+}
+function cantripKnownAllowance(target = state){
+  return wizardCantripKnownAllowance(target) + clericCantripKnownAllowance(target) + Number(target.extraCantrips || 0);
+}
+function spellbookAllowance(target = state){
+  const wizard = getProgression(target.level).wizard;
   const base = wizard > 0 ? 6 + Math.max(0, wizard - 1) * 2 : 0;
-  return base + Number(state.extraSpellbook || 0);
+  return base + Number(target.extraSpellbook || 0);
 }
-function preparedLimit(){
-  const prog = getProgression();
-  return Math.max(0, prog.wizard + abilityMod(state.abilityScores.INT)) + Math.max(0, prog.cleric + abilityMod(state.abilityScores.WIS));
+function wizardPreparedLimit(target = state){
+  const wizard = getProgression(target.level).wizard;
+  return Math.max(0, wizard + abilityMod(target.abilityScores.INT));
+}
+function clericPreparedLimit(target = state){
+  const cleric = getProgression(target.level).cleric;
+  return cleric ? Math.max(0, cleric + abilityMod(target.abilityScores.WIS)) : 0;
+}
+function preparedLimit(target = state){
+  return wizardPreparedLimit(target) + clericPreparedLimit(target);
 }
 function wizardRecoveryLimit(){
   return Math.ceil(getProgression().wizard / 2);
@@ -1651,13 +1753,15 @@ function renderCombatPage(){
 }
 function renderSpellbookPage(){
   const preparedCantrips = state.preparedCantrips.map(getSpellByName).sort((a,b) => a.name.localeCompare(b.name));
-  const preparedSpells = state.preparedSpells.map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
-  const known = state.knownSpells.map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
-  const ritualSpells = known.filter(spell => Number(spell.level) > 0 && !!spell.ritual);
+  const preparedSpellNames = unique([...state.preparedSpells, ...clericPreparedSpellNames()]);
+  const preparedSpells = preparedSpellNames.map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const known = combinedSpellNames().map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const ritualSpells = unique([...combinedSpellNames().filter(name => spellLevel(name) > 0 && getSpellByName(name).ritual)]).map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const wizardBookCount = wizardSpellNames().filter(name => spellLevel(name) > 0).length;
   document.getElementById("spellCounts").innerHTML = `
     <div class="count-box">Cantrips <b>${state.preparedCantrips.length}/${cantripKnownAllowance()}</b></div>
-    <div class="count-box">Prepared <b>${state.preparedSpells.length}/${preparedLimit()}</b></div>
-    <div class="count-box">Spellbook <b>${known.filter(spell => Number(spell.level) > 0).length}/${spellbookAllowance()}</b></div>
+    <div class="count-box">Prepared <b>${preparedSpellNames.length}/${preparedLimit()}</b></div>
+    <div class="count-box">Spellbook <b>${wizardBookCount}/${spellbookAllowance()}</b></div>
     <div class="count-box">Spell DC <b>${spellDc()}</b></div>
   `;
   document.getElementById("extraCantripsInput").value = state.extraCantrips || 0;
@@ -1672,7 +1776,11 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
   host.innerHTML = "";
   spells.forEach(spell => {
     const isCantrip = Number(spell.level) === 0;
-    const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : state.preparedSpells.includes(spell.name);
+    const sources = sourceFlagsForSpell(spell.name);
+    const wizardPrepared = state.preparedSpells.includes(spell.name);
+    const clericPrepared = clericPreparedSpellNames().includes(spell.name);
+    const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : wizardPrepared || clericPrepared;
+    const sourceTag = sources.wizard && sources.cleric ? "W+C" : sources.cleric ? "Clr" : "Wiz";
     const row = document.createElement("div");
     row.className = `book-row ${isCantrip ? "cantrip" : ""} ${prepared ? "prepared" : ""} ${ritualSection ? "ritual" : ""}`;
     if (ritualSection){
@@ -1684,7 +1792,7 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </div>
         <div class="tag">Ritual</div>
-        <div class="badge">${displaySpellLevel(spell)}</div>
+        <div class="badge">${sourceTag}</div>
       `;
     }else{
       row.innerHTML = `
@@ -1695,8 +1803,8 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
           <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
         </button>
         ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
-        <div class="badge">${displaySpellLevel(spell)}</div>
-        <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""}>
+        <div class="badge">${sourceTag}</div>
+        <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""} ${(!isCantrip && clericPrepared && !wizardPrepared) ? "disabled" : ""}>
       `;
     }
     host.appendChild(row);
@@ -2214,7 +2322,14 @@ function togglePrepared(name, checked){
   const level = spellLevel(name);
   if (level === 0){
     if (checked){
-      if (!state.preparedCantrips.includes(name)) state.preparedCantrips.push(name);
+      if (!state.preparedCantrips.includes(name)){
+        if (state.preparedCantrips.length >= cantripKnownAllowance()){
+          openResult("Cantrip Limit", `You are already at ${cantripKnownAllowance()} cantrips.`);
+          render();
+          return;
+        }
+        state.preparedCantrips.push(name);
+      }
     }else{
       state.preparedCantrips = state.preparedCantrips.filter(item => item !== name);
     }
@@ -2224,8 +2339,8 @@ function togglePrepared(name, checked){
   const preparedCount = state.preparedSpells.length;
   if (checked){
     if (!state.preparedSpells.includes(name)){
-      if (preparedCount >= preparedLimit()){
-        openResult("Prepared Limit", `You are already at ${preparedLimit()} prepared spells.`);
+      if (preparedCount >= wizardPreparedLimit()){
+        openResult("Prepared Limit", `You are already at ${wizardPreparedLimit()} wizard prepared spells.`);
         render();
         return;
       }
@@ -2667,7 +2782,16 @@ function renderKnownEditorModal(){
         <div>${escapeHtml(spell.name)}</div>
         <div class="tiny muted">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
       </div>
-      <input type="checkbox" data-known-box="${escapeAttr(spell.name)}" ${state.knownSpells.includes(spell.name) ? "checked" : ""}>
+      <div class="class-picks">
+        <label class="class-pick">
+          <span>W</span>
+          <input type="checkbox" data-wizard-box="${escapeAttr(spell.name)}" ${sourceFlagsForSpell(spell.name).wizard ? "checked" : ""} ${canUseSpellForClass(spell, "wizard") ? "" : "disabled"}>
+        </label>
+        <label class="class-pick">
+          <span>C</span>
+          <input type="checkbox" data-cleric-box="${escapeAttr(spell.name)}" ${sourceFlagsForSpell(spell.name).cleric ? "checked" : ""} ${canUseSpellForClass(spell, "cleric") ? "" : "disabled"}>
+        </label>
+      </div>
     </div>
   `).join("");
   openModal(`
@@ -2723,7 +2847,30 @@ function renderKnownEditorModal(){
   `);
   bindKnownEditorHandlers();
   document.getElementById("saveKnownBtn").onclick = () => {
-    state.knownSpells = Array.from(document.querySelectorAll("[data-known-box]:checked")).map(box => box.dataset.knownBox);
+    const wizardSelection = Array.from(document.querySelectorAll("[data-wizard-box]:checked")).map(box => box.dataset.wizardBox);
+    const clericSelection = Array.from(document.querySelectorAll("[data-cleric-box]:checked")).map(box => box.dataset.clericBox);
+    const wizardCantrips = wizardSelection.filter(name => spellLevel(name) === 0);
+    const clericCantrips = clericSelection.filter(name => spellLevel(name) === 0);
+    const wizardBookSpells = wizardSelection.filter(name => spellLevel(name) > 0);
+    const clericPrepared = clericSelection.filter(name => spellLevel(name) > 0);
+    if (wizardCantrips.length > wizardCantripKnownAllowance()){
+      openResult("Wizard Cantrip Limit", `Wizard cantrips exceed the limit of ${wizardCantripKnownAllowance()}.`);
+      return;
+    }
+    if (clericCantrips.length > clericCantripKnownAllowance()){
+      openResult("Cleric Cantrip Limit", `Cleric cantrips exceed the limit of ${clericCantripKnownAllowance()}.`);
+      return;
+    }
+    if (wizardBookSpells.length > spellbookAllowance()){
+      openResult("Spellbook Limit", `Wizard spellbook exceeds the limit of ${spellbookAllowance()} spells.`);
+      return;
+    }
+    if (clericPrepared.length > clericPreparedLimit()){
+      openResult("Cleric Prepared Limit", `Cleric prepared spells exceed the limit of ${clericPreparedLimit()}.`);
+      return;
+    }
+    state.wizardSpells = wizardSelection;
+    state.clericSpells = clericSelection;
     syncPreparedLists(state);
     closeModal();
     saveState();
