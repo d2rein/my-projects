@@ -73,6 +73,10 @@
     color:#fff;
     padding:7px 9px;
     font-weight:700;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
   }
   .small-btn{padding:5px 8px;font-size:12px}
   .action-btn.blue{background:#1b5d84}
@@ -987,7 +991,10 @@
     <div class="card">
       <div class="card-title">
         <span>Spell Book</span>
-        <button class="small-btn" id="editKnownBtn">Edit Spells</button>
+        <div class="title-actions">
+          <a class="small-btn" href="./spells.html">Card Browser</a>
+          <button class="small-btn" id="editKnownBtn">Edit Spells</button>
+        </div>
       </div>
       <div class="slot-panel" style="margin-bottom:8px;">
         <div class="slot-head">
