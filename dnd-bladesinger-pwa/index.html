@@ -613,6 +613,13 @@
   }
   .book-row.cantrip{background:#122334}
   .book-row.prepared{background:#153023}
+  .book-row.ritual{
+    grid-template-columns:22px 1fr 56px 28px;
+    background:#2b2210;
+  }
+  .ritual-display{
+    opacity:.9;
+  }
   .badge{
     border:1px solid var(--line2);
     background:#0a1118;
@@ -688,6 +695,20 @@
     margin-top:12px;
   }
   .modal-actions button{flex:1}
+  .modal-actions.sticky-actions{
+    position:sticky;
+    bottom:-12px;
+    margin:12px -12px -12px;
+    padding:10px 12px 12px;
+    background:linear-gradient(180deg, rgba(17,26,36,.92), rgba(12,18,25,1));
+    border-top:1px solid var(--line);
+  }
+  .known-editor-grid{
+    margin-top:8px;
+    max-height:45vh;
+    overflow:auto;
+    padding-right:2px;
+  }
   .spell-card{
     background:#fff;
     color:#111;
@@ -1019,6 +1040,11 @@
     <div class="book-section">
       <div class="section-title">Prepared Spells</div>
       <div class="book-list" id="preparedSpellsList"></div>
+    </div>
+
+    <div class="book-section">
+      <div class="section-title">Ritual Spells</div>
+      <div class="book-list" id="ritualSpellsList"></div>
     </div>
 
     <div class="book-section">
@@ -1627,6 +1653,7 @@ function renderSpellbookPage(){
   const preparedCantrips = state.preparedCantrips.map(getSpellByName).sort((a,b) => a.name.localeCompare(b.name));
   const preparedSpells = state.preparedSpells.map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   const known = state.knownSpells.map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const ritualSpells = known.filter(spell => Number(spell.level) > 0 && !!spell.ritual);
   document.getElementById("spellCounts").innerHTML = `
     <div class="count-box">Cantrips <b>${state.preparedCantrips.length}/${cantripKnownAllowance()}</b></div>
     <div class="count-box">Prepared <b>${state.preparedSpells.length}/${preparedLimit()}</b></div>
@@ -1637,35 +1664,51 @@ function renderSpellbookPage(){
   document.getElementById("extraSpellbookInput").value = state.extraSpellbook || 0;
   renderBookList("preparedCantripsList", preparedCantrips, true);
   renderBookList("preparedSpellsList", preparedSpells, false, true);
+  renderBookList("ritualSpellsList", ritualSpells, false, false, false, true);
   renderBookList("knownSpellsList", known, null, false, true);
 }
-function renderBookList(id, spells, cantripOnly = false, preparedSection = false, knownSection = false){
+function renderBookList(id, spells, cantripOnly = false, preparedSection = false, knownSection = false, ritualSection = false){
   const host = document.getElementById(id);
   host.innerHTML = "";
   spells.forEach(spell => {
     const isCantrip = Number(spell.level) === 0;
     const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : state.preparedSpells.includes(spell.name);
     const row = document.createElement("div");
-    row.className = `book-row ${isCantrip ? "cantrip" : ""} ${prepared ? "prepared" : ""}`;
-    row.innerHTML = `
-      <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
-      <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}">
-        <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
-        <b>${escapeHtml(spell.name)}</b>
-        <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
-      </button>
-      ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
-      <div class="badge">${displaySpellLevel(spell)}</div>
-      <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""}>
-    `;
+    row.className = `book-row ${isCantrip ? "cantrip" : ""} ${prepared ? "prepared" : ""} ${ritualSection ? "ritual" : ""}`;
+    if (ritualSection){
+      row.innerHTML = `
+        <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
+        <div class="combat-action gold ritual-display">
+          <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
+          <b>${escapeHtml(spell.name)}</b>
+          <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
+        </div>
+        <div class="tag">Ritual</div>
+        <div class="badge">${displaySpellLevel(spell)}</div>
+      `;
+    }else{
+      row.innerHTML = `
+        <button class="icon-btn" data-info="${escapeAttr(spell.name)}">i</button>
+        <button class="combat-action blue" data-cast="${escapeAttr(spell.name)}">
+          <span class="spell-corner">${escapeHtml(displaySpellLevel(spell))}</span>
+          <b>${escapeHtml(spell.name)}</b>
+          <span>${escapeHtml(spell.range || "-")} / ${escapeHtml(spell.components || "-")} / ${escapeHtml(spell.school || "-")}</span>
+        </button>
+        ${isCantrip ? `<div class="tag">-</div>` : `<button class="mode-btn ${getUpcastLevel(spell.name) ? "active" : ""}" data-upcast="${escapeAttr(spell.name)}">+${getUpcastLevel(spell.name)}</button>`}
+        <div class="badge">${displaySpellLevel(spell)}</div>
+        <input type="checkbox" data-prep="${escapeAttr(spell.name)}" ${prepared ? "checked" : ""}>
+      `;
+    }
     host.appendChild(row);
   });
   host.querySelectorAll("[data-info]").forEach(btn => btn.onclick = () => openSpellCard(btn.dataset.info));
-  host.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
-  host.querySelectorAll("[data-upcast]").forEach(btn => btn.onclick = () => openUpcastPicker(btn.dataset.upcast));
-  host.querySelectorAll("[data-prep]").forEach(box => {
-    box.onchange = () => togglePrepared(box.dataset.prep, box.checked);
-  });
+  if (!ritualSection){
+    host.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
+    host.querySelectorAll("[data-upcast]").forEach(btn => btn.onclick = () => openUpcastPicker(btn.dataset.upcast));
+    host.querySelectorAll("[data-prep]").forEach(box => {
+      box.onchange = () => togglePrepared(box.dataset.prep, box.checked);
+    });
+  }
 }
 function renderSlots(id){
   const host = document.getElementById(id);
@@ -2673,8 +2716,8 @@ function renderKnownEditorModal(){
         </select>
       </div>
     </div>
-    <div class="form-grid" id="knownSpellGrid" style="margin-top:8px;">${rows}</div>
-    <div class="modal-actions">
+    <div class="form-grid known-editor-grid" id="knownSpellGrid">${rows}</div>
+    <div class="modal-actions sticky-actions">
       <button class="action-btn blue" id="saveKnownBtn">Save Spells</button>
     </div>
   `);
