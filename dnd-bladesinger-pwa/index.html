@@ -639,6 +639,11 @@
     padding:7px;
   }
   .book-section + .book-section{margin-top:8px}
+  .spellbook-sticky{
+    position:sticky;
+    top:8px;
+    z-index:8;
+  }
   .book-subtabs{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -1187,7 +1192,7 @@
           <button class="small-btn" id="editKnownBtn">Edit Spells</button>
         </div>
       </div>
-      <div class="slot-panel" style="margin-bottom:8px;">
+      <div class="slot-panel spellbook-sticky" style="margin-bottom:8px;">
         <div class="slot-head">
           <span>Spell Slots</span>
           <span id="slotHeadTextBook"></span>
@@ -1865,12 +1870,21 @@ function rollD20(mode){
   const first = rollDie(20);
   if (mode === "adv" || mode === "dis"){
     const second = rollDie(20);
+    const chosen = mode === "adv" ? Math.max(first, second) : Math.min(first, second);
     return {
-      chosen: mode === "adv" ? Math.max(first, second) : Math.min(first, second),
-      text: `${mode === "adv" ? "max" : "min"}(${first}, ${second})`
+      chosen,
+      text: `${mode === "adv" ? "max" : "min"}(${first}, ${second})`,
+      natural: chosen,
+      isCrit: chosen === 20,
+      isCritFail: chosen === 1
     };
   }
-  return { chosen:first, text:`${first}` };
+  return { chosen:first, text:`${first}`, natural:first, isCrit:first === 20, isCritFail:first === 1 };
+}
+function critText(roll){
+  if (roll.isCrit) return "CRIT";
+  if (roll.isCritFail) return "CRIT Fail";
+  return "";
 }
 function nextMode(mode){
   if (mode === "-") return "adv";
@@ -2642,11 +2656,13 @@ function rollWeapon(id){
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + hitMod;
   const damage = rollSpec("1d6");
-  const critBonus = mode.crit ? damage.max : 0;
+  const critApplied = mode.crit || attack.isCrit;
+  const critBonus = critApplied ? damage.max : 0;
   const baseTotal = damage.total + damageMod + critBonus;
   let cmeTotal = 0;
   let cmeText = "";
   let text = `1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n`;
+  if (critText(attack)) text += `${critText(attack)}\n`;
   text += `${formatRollBreakdown("1d6", damage.rolls, damageMod, critBonus ? `Crit(${damage.max})` : "")} = ${baseTotal}`;
   if (state.minorElementalsActive){
     const cme = rollSpec("2d8");
@@ -2663,11 +2679,13 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + spellAttackMod();
   const damage = rollSpec(diceSpec);
-  const critBonus = mode.crit ? damage.max : 0;
+  const critApplied = mode.crit || attack.isCrit;
+  const critBonus = critApplied ? damage.max : 0;
   const baseTotal = damage.total + critBonus;
   let cmeTotal = 0;
   let cmeText = "";
   let text = `1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n`;
+  if (critText(attack)) text += `${critText(attack)}\n`;
   text += `${formatRollBreakdown(diceSpec, damage.rolls, 0, critBonus ? `Crit(${damage.max})` : "")} = ${baseTotal}`;
   if (state.minorElementalsActive){
     const cme = rollSpec("2d8");
@@ -2701,9 +2719,11 @@ function castScorchingRay(spell){
     const attack = rollD20(mode.adv);
     const toHit = attack.chosen + spellAttackMod();
     const damage = rollSpec("2d6");
-    const critBonus = mode.crit ? damage.max : 0;
+    const critApplied = mode.crit || attack.isCrit;
+    const critBonus = critApplied ? damage.max : 0;
     const fireTotal = damage.total + critBonus;
     let text = `Ray ${i + 1}\n1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n`;
+    if (critText(attack)) text += `${critText(attack)}\n`;
     text += `${formatRollBreakdown("2d6", damage.rolls, 0, critBonus ? `Crit(${damage.max})` : "")} = ${fireTotal}`;
     if (state.minorElementalsActive){
       const cme = rollSpec("2d8");
