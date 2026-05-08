@@ -2092,7 +2092,16 @@ function canUseSpellForClass(spell, className, target = state){
   const level = Number(spell.level || 0);
   return spellHasClassName(spell, className) && (level === 0 || level <= maxSpellLevelForClass(className, target));
 }
-function prepPickMarkup(spell, sources, options = {}){
+function spellMatchesClassFilter(spell, className){
+  if (!spell) return false;
+  if (className === "all") return true;
+  const classes = String(spell.classes || "").toLowerCase();
+  if (!classes) return false;
+  if (classes.includes("all spellcasters")) return true;
+  if (classes.includes(className)) return true;
+  return classes.includes(`${className} (optional)`);
+}
+function prepPickMarkup(spell, sources, options = {}){ 
   const cantrip = Number(spell.level || 0) === 0;
   const checkedWizard = options.readonly
     ? sources.wizard
@@ -2735,7 +2744,7 @@ function renderSpellEditorView(options = {}){
   const minLevel = Math.min(state.spellFilters.minLevel, state.spellFilters.maxLevel);
   const maxLevel = Math.max(state.spellFilters.minLevel, state.spellFilters.maxLevel);
   const spells = allSpellEntries().filter(spell => {
-    if (selectedClass !== "all" && !(spell.classes || "").toLowerCase().includes(selectedClass)) return false;
+    if (!spellMatchesClassFilter(spell, selectedClass)) return false;
     const level = Number(spell.level || 0);
     if (level < minLevel || level > maxLevel) return false;
     if (query && !spellSearchText(spell).includes(query)) return false;
@@ -4039,7 +4048,8 @@ function bindKnownEditorHandlers(){
       const level = Number(row.dataset.level);
       const classes = row.dataset.classes || "";
       const text = row.dataset.search || "";
-      const matchesClass = selectedClass === "all" || classes.includes(selectedClass);
+      const spell = getSpellByName(row.dataset.name);
+      const matchesClass = spellMatchesClassFilter(spell, selectedClass);
       const matchesSearch = !query || text.includes(query);
       const matchesLevel = level >= low && level <= high;
       row.style.display = matchesClass && matchesSearch && matchesLevel ? "" : "none";
@@ -4190,7 +4200,7 @@ function filteredSpells(){
   let filtered = spells.filter(spell => {
     const text = spellSearchText(spell);
     if (query && !text.includes(query)) return false;
-    if (selectedClass !== "all" && !(spell.classes || "").toLowerCase().includes(selectedClass)) return false;
+    if (!spellMatchesClassFilter(spell, selectedClass)) return false;
     const level = Number(spell.level || 0);
     return level >= minLevel && level <= maxLevel;
   });
