@@ -182,7 +182,7 @@
   }
   .backup-actions{
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(2,1fr);
     gap:6px;
     margin-top:8px;
   }
@@ -1172,6 +1172,7 @@
         <button class="small-btn" id="exportSaveBtn">Export Save</button>
         <button class="small-btn" id="copySaveBtn">Copy Save</button>
         <button class="small-btn" id="importSaveBtn">Import Save</button>
+        <button class="small-btn" id="cloudSyncBtn">Cloud Sync</button>
       </div>
     </div>
 
@@ -1378,6 +1379,7 @@
 <script src="./spell-data.js"></script>
 <script>
 const STORAGE_KEY = "bladesinger_alaric_pwa_v2";
+const CLOUD_SYNC_KEY = `${STORAGE_KEY}_cloud_sync`;
 const HISTORY_LIMIT = 80;
 const TABS = [
   { id:"stats", label:"Stats" },
@@ -1594,6 +1596,7 @@ const SPELL_ACTIONS = {
 };
 
 let state = loadState();
+let cloudSync = loadCloudSyncMeta();
 let spellEditorDraft = null;
 let spellEditorPreview = null;
 
@@ -1604,6 +1607,21 @@ function loadState(){
   }catch{
     return ensureState(structuredClone(DEFAULT_STATE));
   }
+}
+function loadCloudSyncMeta(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(CLOUD_SYNC_KEY) || "null") || {};
+    return {
+      syncId: String(raw.syncId || ""),
+      lastPushedAt: String(raw.lastPushedAt || ""),
+      lastPulledAt: String(raw.lastPulledAt || "")
+    };
+  }catch{
+    return { syncId:"", lastPushedAt:"", lastPulledAt:"" };
+  }
+}
+function saveCloudSyncMeta(){
+  localStorage.setItem(CLOUD_SYNC_KEY, JSON.stringify(cloudSync));
 }
 function ensureState(raw){
   raw.wizardSpells = unique(raw.wizardSpells || raw.knownSpells || DEFAULT_KNOWN);
@@ -1679,6 +1697,12 @@ function ensureState(raw){
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
+}
+function randomSyncId(){
+  if (crypto && crypto.randomUUID){
+    return `alaric-${crypto.randomUUID().replace(/-/g, "")}`;
+  }
+  return `alaric-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
 }
 function backupFileName(){
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -1781,6 +1805,103 @@ function openImportSaveModal(){
   };
   document.getElementById("chooseSaveFileBtn").onclick = () => {
     document.getElementById("importSaveInput").click();
+  };
+}
+async function cloudSyncRequest(method, syncId, body = null){
+  const response = await fetch(`/api/alaric-sync?id=${encodeURIComponent(syncId)}`, {
+    method,
+    headers: body ? { "Content-Type":"application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await response.text();
+  let json = null;
+  try{ json = text ? JSON.parse(text) : null; }catch{}
+  if (!response.ok){
+    throw new Error((json && json.error) || text || `Cloud sync failed (${response.status}).`);
+  }
+  return json;
+}
+function formatSyncTime(value){
+  if (!value) return "Never";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+function openCloudSyncModal(prefill = ""){
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Cloud Sync</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="result-box">${cloudSync.syncId
+      ? `Connected Sync ID:\n${escapeHtml(cloudSync.syncId)}\n\nLast push: ${escapeHtml(formatSyncTime(cloudSync.lastPushedAt))}\nLast pull: ${escapeHtml(formatSyncTime(cloudSync.lastPulledAt))}`
+      : "Create a sync ID from this device to upload the current local character as your first cloud save, or connect an existing sync ID from another device."}</div>
+    <div class="form-grid">
+      <label>Sync ID
+        <input type="text" id="cloudSyncIdInput" value="${escapeAttr(prefill || cloudSync.syncId || "")}" placeholder="alaric-...">
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="createCloudSyncBtn">Create From This Device</button>
+      <button class="action-btn blue" id="connectCloudSyncBtn">Connect</button>
+      <button class="action-btn green" id="pushCloudSyncBtn" ${cloudSync.syncId ? "" : "disabled"}>Push Local</button>
+      <button class="action-btn gold" id="pullCloudSyncBtn" ${cloudSync.syncId ? "" : "disabled"}>Pull Cloud</button>
+      <button class="action-btn red" id="disconnectCloudSyncBtn" ${cloudSync.syncId ? "" : "disabled"}>Disconnect</button>
+    </div>
+  `);
+  document.getElementById("createCloudSyncBtn").onclick = async () => {
+    const syncId = randomSyncId();
+    try{
+      await cloudSyncRequest("PUT", syncId, exportPayload());
+      cloudSync.syncId = syncId;
+      cloudSync.lastPushedAt = new Date().toISOString();
+      saveCloudSyncMeta();
+      openCloudSyncModal(syncId);
+      pushHistory("Created cloud sync from current device.");
+    }catch(error){
+      openResult("Cloud Sync Failed", error && error.message ? error.message : "Could not create cloud sync.");
+    }
+  };
+  document.getElementById("connectCloudSyncBtn").onclick = async () => {
+    const syncId = (document.getElementById("cloudSyncIdInput").value || "").trim();
+    if (!syncId){
+      openResult("Cloud Sync", "Enter a sync ID first.");
+      return;
+    }
+    try{
+      await cloudSyncRequest("GET", syncId);
+      cloudSync.syncId = syncId;
+      saveCloudSyncMeta();
+      openCloudSyncModal(syncId);
+    }catch(error){
+      openResult("Connect Failed", error && error.message ? error.message : "That sync ID could not be found.");
+    }
+  };
+  document.getElementById("pushCloudSyncBtn").onclick = async () => {
+    try{
+      await cloudSyncRequest("PUT", cloudSync.syncId, exportPayload());
+      cloudSync.lastPushedAt = new Date().toISOString();
+      saveCloudSyncMeta();
+      openCloudSyncModal(cloudSync.syncId);
+      pushHistory("Pushed local save to cloud.");
+    }catch(error){
+      openResult("Push Failed", error && error.message ? error.message : "Could not push local save.");
+    }
+  };
+  document.getElementById("pullCloudSyncBtn").onclick = async () => {
+    try{
+      const payload = await cloudSyncRequest("GET", cloudSync.syncId);
+      applyImportedSave(payload && payload.payload ? payload.payload : payload);
+      cloudSync.lastPulledAt = new Date().toISOString();
+      saveCloudSyncMeta();
+    }catch(error){
+      openResult("Pull Failed", error && error.message ? error.message : "Could not pull cloud save.");
+    }
+  };
+  document.getElementById("disconnectCloudSyncBtn").onclick = () => {
+    cloudSync = { syncId:"", lastPushedAt:"", lastPulledAt:"" };
+    saveCloudSyncMeta();
+    closeModal();
+    pushHistory("Disconnected cloud sync on this device.");
   };
 }
 function unique(list){
@@ -2944,6 +3065,7 @@ function bindButtons(){
   document.getElementById("exportSaveBtn").onclick = exportSaveToFile;
   document.getElementById("copySaveBtn").onclick = () => { copySaveCode(); };
   document.getElementById("importSaveBtn").onclick = openImportSaveModal;
+  document.getElementById("cloudSyncBtn").onclick = () => openCloudSyncModal();
   document.getElementById("editAbilitiesBtn").onclick = openAbilitiesEditor;
   document.getElementById("editSkillsBtn").onclick = openSkillsEditor;
   document.getElementById("coreRollTypeBtn").onclick = () => {
