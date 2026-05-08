@@ -1308,10 +1308,9 @@
       </button>
       <div class="limits-panel" id="spellbookLimitsPanel">
         <div class="counts" id="spellCounts"></div>
-        <div class="extra-inputs">
-          <label>Extra Cantrips<input type="number" min="0" id="extraCantripsInput"></label>
-          <label>Extra Spells<input type="number" min="0" id="extraSpellbookInput"></label>
-          <button class="small-btn" id="saveExtrasBtn">Save</button>
+        <div class="extra-inputs" style="grid-template-columns:1fr auto;">
+          <div class="count-box" id="bonusSpellSummary"></div>
+          <button class="small-btn" id="editBonusSpellsBtn">Add Extra Spells</button>
         </div>
       </div>
     </div>
@@ -1473,6 +1472,12 @@ const DEFAULT_NOTES = [
     expanded:true
   }
 ];
+const DEFAULT_BONUS_SPELLS = [
+  { name:"Toll the Dead", known:true, prepared:true },
+  { name:"Mage Hand", known:true, prepared:true },
+  { name:"Misty Step", known:true, prepared:true },
+  { name:"Identify", known:true, prepared:true }
+];
 const EXTRA_SPELL_DATA = [
   {
     name:"Toll the Dead",
@@ -1520,8 +1525,7 @@ const DEFAULT_STATE = {
   clericPreparedSpells:["Bless","Shield of Faith"],
   saveProficiencies:[...DEFAULT_SAVE_PROFICIENCIES],
   proficientSkills:["Arcana","History","Investigation","Perception","Insight","Religion"],
-  extraCantrips:0,
-  extraSpellbook:0,
+  bonusSpells:DEFAULT_BONUS_SPELLS.map(spell => ({ ...spell })),
   spellbookView:"book",
   slotCur:{},
   hitDiceCur:{ d6:null, d8:null },
@@ -1529,7 +1533,7 @@ const DEFAULT_STATE = {
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
   spellbookLimitsCollapsed:false,
   notes:DEFAULT_NOTES.map(note => ({ ...note })),
-  dataVersion:6,
+  dataVersion:7,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1598,6 +1602,11 @@ function ensureState(raw){
   raw.clericPreparedSpells = unique((raw.clericPreparedSpells || raw.clericSpells || DEFAULT_CLERIC_SPELLS).filter(name => spellLevel(name) > 0));
   raw.proficientSkills = unique(raw.proficientSkills || []);
   raw.saveProficiencies = unique((Array.isArray(raw.saveProficiencies) ? raw.saveProficiencies : DEFAULT_SAVE_PROFICIENCIES).filter(abil => ABILITIES.includes(abil)));
+  raw.bonusSpells = Array.isArray(raw.bonusSpells)
+    ? raw.bonusSpells
+        .filter(item => item && item.name)
+        .map(item => ({ name:item.name, known:item.known !== false, prepared:Boolean(item.prepared) }))
+    : DEFAULT_BONUS_SPELLS.map(spell => ({ ...spell }));
   raw.notes = Array.isArray(raw.notes) && raw.notes.length
     ? raw.notes.map((note, index) => ({
         id: note.id || `note-${index + 1}`,
@@ -1642,6 +1651,12 @@ function ensureState(raw){
   if (raw.dataVersion < 6){
     raw.spellbookLimitsCollapsed = false;
     raw.dataVersion = 6;
+  }
+  if (raw.dataVersion < 7){
+    raw.bonusSpells = Array.isArray(raw.bonusSpells) && raw.bonusSpells.length
+      ? raw.bonusSpells
+      : DEFAULT_BONUS_SPELLS.map(spell => ({ ...spell }));
+    raw.dataVersion = 7;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -1790,19 +1805,35 @@ function clericSpellNames(target = state){
 function availableCantripNames(target = state){
   return unique([
     ...wizardSpellNames(target).filter(name => spellLevel(name) === 0),
-    ...clericSpellNames(target).filter(name => spellLevel(name) === 0)
+    ...clericSpellNames(target).filter(name => spellLevel(name) === 0),
+    ...bonusKnownSpellNames(target).filter(name => spellLevel(name) === 0)
   ]);
 }
 function clericPreparedSpellNames(target = state){
   return unique((target.clericPreparedSpells || []).filter(name => clericSpellNames(target).includes(name) && spellLevel(name) > 0));
 }
+function bonusSpellEntries(target = state){
+  return unique((target.bonusSpells || []).map(item => item.name)).map(name => {
+    const entry = (target.bonusSpells || []).find(item => item.name === name) || { name, known:true, prepared:false };
+    return { name, known:entry.known !== false, prepared:Boolean(entry.prepared) };
+  }).filter(entry => entry.known || entry.prepared);
+}
+function bonusKnownSpellNames(target = state){
+  return bonusSpellEntries(target).filter(entry => entry.known).map(entry => entry.name);
+}
+function bonusPreparedSpellNames(target = state){
+  return bonusSpellEntries(target)
+    .filter(entry => entry.prepared && spellLevel(entry.name) > 0)
+    .map(entry => entry.name);
+}
 function combinedSpellNames(target = state){
-  return unique([...wizardSpellNames(target), ...clericSpellNames(target)]);
+  return unique([...wizardSpellNames(target), ...clericSpellNames(target), ...bonusKnownSpellNames(target)]);
 }
 function sourceFlagsForSpell(name, target = state){
   return {
     wizard: wizardSpellNames(target).includes(name),
-    cleric: clericSpellNames(target).includes(name)
+    cleric: clericSpellNames(target).includes(name),
+    bonus: bonusKnownSpellNames(target).includes(name)
   };
 }
 function canUseSpellForClass(spell, className, target = state){
@@ -1866,12 +1897,12 @@ function clericCantripKnownAllowance(target = state){
   return getProgression(target.level).cleric ? 3 : 0;
 }
 function cantripKnownAllowance(target = state){
-  return wizardCantripKnownAllowance(target) + clericCantripKnownAllowance(target) + Number(target.extraCantrips || 0);
+  return wizardCantripKnownAllowance(target) + clericCantripKnownAllowance(target) + bonusKnownSpellNames(target).filter(name => spellLevel(name) === 0).length;
 }
 function spellbookAllowance(target = state){
   const wizard = getProgression(target.level).wizard;
   const base = wizard > 0 ? 6 + Math.max(0, wizard - 1) * 2 : 0;
-  return base + Number(target.extraSpellbook || 0);
+  return base + bonusKnownSpellNames(target).filter(name => spellLevel(name) > 0).length;
 }
 function wizardPreparedLimit(target = state){
   const wizard = getProgression(target.level).wizard;
@@ -2253,7 +2284,7 @@ function renderCombatPage(){
 }
 function renderSpellbookPage(){
   const preparedCantrips = state.preparedCantrips.map(getSpellByName).sort((a,b) => a.name.localeCompare(b.name));
-  const preparedSpellNames = unique([...state.preparedSpells, ...clericPreparedSpellNames()]);
+  const preparedSpellNames = unique([...state.preparedSpells, ...clericPreparedSpellNames(), ...bonusPreparedSpellNames()]);
   const preparedSpells = preparedSpellNames.map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   const known = combinedSpellNames().map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   const ritualSpells = unique([...combinedSpellNames().filter(name => spellLevel(name) > 0 && getSpellByName(name).ritual)]).map(getSpellByName).sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
@@ -2262,6 +2293,8 @@ function renderSpellbookPage(){
   const clericCantripCount = clericSpellNames().filter(name => spellLevel(name) === 0).length;
   const wizardPreparedCount = state.preparedSpells.length;
   const clericPreparedCount = clericPreparedSpellNames().length;
+  const bonusKnownCount = bonusKnownSpellNames().length;
+  const bonusPreparedCount = bonusPreparedSpellNames().length;
   document.getElementById("spellCounts").innerHTML = `
     <div class="count-box ${wizardCantripCount > wizardCantripKnownAllowance() ? "warn" : ""}">Cantrips Wiz <b>${wizardCantripCount}/${wizardCantripKnownAllowance()}</b></div>
     <div class="count-box ${clericCantripCount > clericCantripKnownAllowance() ? "warn" : ""}">Cantrips Clr <b>${clericCantripCount}/${clericCantripKnownAllowance()}</b></div>
@@ -2270,8 +2303,7 @@ function renderSpellbookPage(){
     <div class="count-box ${wizardBookCount > spellbookAllowance() ? "warn" : ""}">Spellbook Wiz <b>${wizardBookCount}/${spellbookAllowance()}</b></div>
     <div class="count-box">Spell DC <b>${spellDc()}</b></div>
   `;
-  document.getElementById("extraCantripsInput").value = state.extraCantrips || 0;
-  document.getElementById("extraSpellbookInput").value = state.extraSpellbook || 0;
+  document.getElementById("bonusSpellSummary").innerHTML = `Extra spells <b>${bonusKnownCount} known / ${bonusPreparedCount} prepared</b>`;
   document.getElementById("spellbookLimitsPanel").classList.toggle("collapsed", state.spellbookLimitsCollapsed);
   document.getElementById("spellbookLimitsToggleText").textContent = state.spellbookLimitsCollapsed ? "+" : "-";
   document.getElementById("spellbookSubtabs").innerHTML = `
@@ -2639,7 +2671,8 @@ function renderBookList(id, spells, cantripOnly = false, preparedSection = false
     const sources = sourceFlagsForSpell(spell.name);
     const wizardPrepared = state.preparedSpells.includes(spell.name);
     const clericPrepared = clericPreparedSpellNames().includes(spell.name);
-    const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : wizardPrepared || clericPrepared;
+    const bonusPrepared = bonusPreparedSpellNames().includes(spell.name);
+    const prepared = isCantrip ? state.preparedCantrips.includes(spell.name) : wizardPrepared || clericPrepared || bonusPrepared;
     const canCast = !knownSection || isCantrip || prepared;
     const row = document.createElement("div");
     row.className = `book-row ${isCantrip ? "cantrip" : ""} ${prepared ? "prepared" : ""} ${ritualSection ? "ritual" : ""}`;
@@ -2831,11 +2864,10 @@ function bindButtons(){
   document.getElementById("thpBtn").onclick = () => applyAmountAction("thp");
   document.getElementById("clearHistoryBtn").onclick = () => { state.history = []; saveState(); };
   document.getElementById("editKnownBtn").onclick = openKnownEditor;
-  document.getElementById("saveExtrasBtn").onclick = () => {
-    state.extraCantrips = Number(document.getElementById("extraCantripsInput").value) || 0;
-    state.extraSpellbook = Number(document.getElementById("extraSpellbookInput").value) || 0;
-    saveState();
-  };
+  const editBonusSpellsBtn = document.getElementById("editBonusSpellsBtn");
+  if (editBonusSpellsBtn){
+    editBonusSpellsBtn.onclick = openBonusSpellEditor;
+  }
   const toggleSpellbookLimitsBtn = document.getElementById("toggleSpellbookLimitsBtn");
   if (toggleSpellbookLimitsBtn){
     toggleSpellbookLimitsBtn.onclick = () => {
@@ -3609,6 +3641,107 @@ function openUpcastPicker(name){
       saveState();
     };
   });
+}
+function buildBonusSpellDraft(){
+  const draft = {};
+  bonusSpellEntries().forEach(entry => {
+    draft[entry.name] = { known:entry.known, prepared:entry.prepared };
+  });
+  return draft;
+}
+function openBonusSpellEditor(){
+  const draft = buildBonusSpellDraft();
+  const renderBonusEditor = (search = "", selectionStart = null, selectionEnd = null) => {
+    const query = search.trim().toLowerCase();
+    const spells = allSpellEntries()
+      .filter(spell => !query || spellSearchText(spell).includes(query))
+      .sort((a,b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+    openModal(`
+      <div class="modal-head">
+        <div class="modal-title">Extra Spells</div>
+        <button class="small-btn" data-close>Close</button>
+      </div>
+      <div class="spell-filter">
+        <div class="spell-filter-top">
+          <div class="search-wrap">
+            <input type="text" id="bonusSpellSearch" placeholder="Search spells" value="${escapeAttr(search)}">
+            <button class="search-clear" id="bonusSpellSearchClear">X</button>
+          </div>
+        </div>
+      </div>
+      <div class="counts">
+        <div class="count-box">Extra Cantrips <b>${Object.entries(draft).filter(([name, flags]) => flags.known && spellLevel(name) === 0).length}</b></div>
+        <div class="count-box">Extra Spells <b>${Object.entries(draft).filter(([name, flags]) => flags.known && spellLevel(name) > 0).length}</b></div>
+      </div>
+      <div class="form-grid known-editor-grid">
+        ${spells.map(spell => {
+          const flags = draft[spell.name] || { known:false, prepared:false };
+          const cantrip = Number(spell.level || 0) === 0;
+          return `
+            <div class="check-item">
+              <button class="icon-btn" data-bonus-info="${escapeAttr(spell.name)}">i</button>
+              <div style="flex:1;min-width:0;">
+                <div>${escapeHtml(spell.name)}</div>
+                <div class="tiny muted">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+              </div>
+              <div class="class-picks">
+                <label class="class-pick">
+                  <span>K</span>
+                  <input type="checkbox" data-bonus-known="${escapeAttr(spell.name)}" ${flags.known ? "checked" : ""}>
+                </label>
+                <label class="class-pick">
+                  <span>P</span>
+                  <input type="checkbox" data-bonus-prepared="${escapeAttr(spell.name)}" ${flags.prepared ? "checked" : ""} ${cantrip ? "disabled" : ""}>
+                </label>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn blue" id="saveBonusSpellsBtn">Save</button>
+      </div>
+    `);
+    const searchInput = document.getElementById("bonusSpellSearch");
+    searchInput.oninput = event => renderBonusEditor(event.target.value, event.target.selectionStart, event.target.selectionEnd);
+    document.getElementById("bonusSpellSearchClear").onclick = () => renderBonusEditor("", 0, 0);
+    searchInput.focus();
+    const start = Number.isFinite(selectionStart) ? selectionStart : searchInput.value.length;
+    const end = Number.isFinite(selectionEnd) ? selectionEnd : start;
+    searchInput.setSelectionRange(start, end);
+    document.querySelectorAll("[data-bonus-known]").forEach(box => {
+      box.onchange = () => {
+        const name = box.dataset.bonusKnown;
+        draft[name] ||= { known:false, prepared:false };
+        draft[name].known = box.checked;
+        if (!box.checked) draft[name].prepared = false;
+        renderBonusEditor(document.getElementById("bonusSpellSearch").value);
+      };
+    });
+    document.querySelectorAll("[data-bonus-prepared]").forEach(box => {
+      box.onchange = () => {
+        const name = box.dataset.bonusPrepared;
+        draft[name] ||= { known:false, prepared:false };
+        draft[name].prepared = box.checked;
+        if (box.checked) draft[name].known = true;
+        renderBonusEditor(document.getElementById("bonusSpellSearch").value);
+      };
+    });
+    document.querySelectorAll("[data-bonus-info]").forEach(button => {
+      button.onclick = () => {
+        const currentSearch = document.getElementById("bonusSpellSearch").value;
+        openSpellCard(button.dataset.bonusInfo, () => renderBonusEditor(currentSearch));
+      };
+    });
+    document.getElementById("saveBonusSpellsBtn").onclick = () => {
+      state.bonusSpells = Object.entries(draft)
+        .filter(([, flags]) => flags.known || flags.prepared)
+        .map(([name, flags]) => ({ name, known:flags.known, prepared:flags.prepared }));
+      closeModal();
+      saveState();
+    };
+  };
+  renderBonusEditor("");
 }
 function openKnownEditor(){
   ensureSpellEditorDraft();

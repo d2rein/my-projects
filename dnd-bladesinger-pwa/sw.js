@@ -1,11 +1,13 @@
-const CACHE_NAME = "bladesinger-pwa-v5";
+const CACHE_NAME = "bladesinger-pwa-v6";
 const ASSETS = [
   "./",
   "./index.html",
   "./spells.html",
   "./manifest.webmanifest",
   "./spell-data.js",
-  "./alaric-headshot.png"
+  "./alaric-headshot.png",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {
