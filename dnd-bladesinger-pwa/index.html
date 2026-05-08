@@ -1023,7 +1023,7 @@
     max-width:430px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(4,1fr);
     gap:8px;
   }
   .tab{
@@ -1038,6 +1038,71 @@
     background:linear-gradient(180deg, #1d557f, #163c5f);
     border-color:#4f84b3;
     color:#fff;
+  }
+  textarea{
+    width:100%;
+    min-height:140px;
+    resize:vertical;
+    background:#0a1219;
+    color:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 9px;
+    font:inherit;
+  }
+  .notes-toolbar{
+    display:flex;
+    gap:8px;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .notes-list{
+    display:grid;
+    gap:8px;
+  }
+  .note-card{
+    background:linear-gradient(180deg, rgba(18,27,38,.98), rgba(12,18,27,.98));
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px;
+    box-shadow:var(--shadow);
+    cursor:pointer;
+  }
+  .note-card.collapsed .note-body{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .note-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .note-title{
+    font-size:14px;
+    font-weight:900;
+    line-height:1.2;
+  }
+  .note-actions{
+    display:flex;
+    gap:6px;
+    flex:0 0 auto;
+  }
+  .note-body{
+    margin-top:6px;
+    color:#d7e4f3;
+    font-size:12px;
+    line-height:1.45;
+    white-space:pre-wrap;
+  }
+  .note-meta{
+    margin-top:6px;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:700;
   }
 </style>
 </head>
@@ -1232,6 +1297,19 @@
 
     <div id="spellbookEditorView"></div>
   </section>
+
+  <section class="page" data-page="notes">
+    <div class="card">
+      <div class="card-title">
+        <span>Notes</span>
+        <div class="title-actions">
+          <button class="small-btn" id="addNoteBtn">+ Add Note</button>
+          <button class="small-btn" id="toggleAllNotesBtn">Collapse All</button>
+        </div>
+      </div>
+      <div class="notes-list" id="notesList"></div>
+    </div>
+  </section>
 </div>
 
 <div class="footer-nav">
@@ -1249,7 +1327,8 @@ const HISTORY_LIMIT = 80;
 const TABS = [
   { id:"stats", label:"Stats" },
   { id:"combat", label:"Combat" },
-  { id:"spellbook", label:"Spell Book" }
+  { id:"spellbook", label:"Spell Book" },
+  { id:"notes", label:"Notes" }
 ];
 const ABILITIES = ["STR","DEX","CON","INT","WIS","CHA"];
 const ABILITY_LABELS = {
@@ -1276,7 +1355,7 @@ const SKILLS = [
   { name:"Performance", abil:"CHA" },
   { name:"Persuasion", abil:"CHA" }
 ];
-const SAVE_PROF = { WIS:true, CHA:true };
+const DEFAULT_SAVE_PROFICIENCIES = ["INT","WIS"];
 const FULL_CASTER_SLOTS = {
   1:[2,0,0,0,0,0,0,0,0],
   2:[3,0,0,0,0,0,0,0,0],
@@ -1312,6 +1391,44 @@ const DEFAULT_PREPARED_SPELLS = [
   "Dimension Door","Wall of Fire","Wall of Force"
 ];
 const DEFAULT_CLERIC_SPELLS = ["Guidance","Light","Toll the Dead","Bless","Guiding Bolt","Shield of Faith"];
+const DEFAULT_NOTES = [
+  {
+    id:"note-1",
+    title:"#1. Species",
+    body:"Custom Human +2 INT/+1 DEX. Feat - Telekinetic. Trait - Darkvision. Languages - Common, Draconic. ASIs 16+2INT/15+1DEX/15CON/14WIS/13CHA/10STR.",
+    expanded:true
+  },
+  {
+    id:"note-2",
+    title:"#2. Wizard skills",
+    body:"Saving Throws: Intelligence, Wisdom. Skills: History, Insight.",
+    expanded:true
+  },
+  {
+    id:"note-3",
+    title:"#3. Background",
+    body:"Haunted One - Arcana and Investigation, Languages: Sylvan and Deep Speech.",
+    expanded:true
+  },
+  {
+    id:"note-4",
+    title:"#4. Telekinetic Details",
+    body:"Increase INT, WIS, or CHA by 1. You learn Mage Hand if you do not already know it, and your Mage Hand can be invisible. If you already know it, its range becomes 60 feet. As a bonus action, you can telekinetically shove one creature you can see within 30 feet; it must succeed on a Strength save or be moved 5 feet toward or away from you.",
+    expanded:true
+  },
+  {
+    id:"note-5",
+    title:"#5. Level 4 Feat - Fey Touched",
+    body:"Increase INT, WIS, or CHA by 1. Learn Misty Step and one 1st-level Divination or Enchantment spell. Each can be cast once without a slot per long rest, and afterward can be cast with spell slots as normal.",
+    expanded:true
+  },
+  {
+    id:"note-6",
+    title:"#6. Level 8 Feat - Crossbow Expert (2014)",
+    body:"You ignore the loading property of crossbows you are proficient with. Being within 5 feet of a hostile creature does not impose disadvantage on your ranged attack rolls. When you use the Attack action with a one-handed weapon, you can use a bonus action to attack with a hand crossbow you are holding.",
+    expanded:true
+  }
+];
 const EXTRA_SPELL_DATA = [
   {
     name:"Toll the Dead",
@@ -1357,6 +1474,7 @@ const DEFAULT_STATE = {
   preparedCantrips:DEFAULT_PREPARED_CANTRIPS,
   preparedSpells:DEFAULT_PREPARED_SPELLS,
   clericPreparedSpells:["Bless","Shield of Faith"],
+  saveProficiencies:[...DEFAULT_SAVE_PROFICIENCIES],
   proficientSkills:["Arcana","History","Investigation","Perception","Insight","Religion"],
   extraCantrips:0,
   extraSpellbook:0,
@@ -1365,7 +1483,8 @@ const DEFAULT_STATE = {
   hitDiceCur:{ d6:null, d8:null },
   spellUpcast:{},
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
-  dataVersion:4,
+  notes:DEFAULT_NOTES.map(note => ({ ...note })),
+  dataVersion:5,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1433,6 +1552,15 @@ function ensureState(raw){
   raw.preparedSpells = unique((raw.preparedSpells || DEFAULT_PREPARED_SPELLS).filter(name => spellLevel(name) > 0));
   raw.clericPreparedSpells = unique((raw.clericPreparedSpells || raw.clericSpells || DEFAULT_CLERIC_SPELLS).filter(name => spellLevel(name) > 0));
   raw.proficientSkills = unique(raw.proficientSkills || []);
+  raw.saveProficiencies = unique((Array.isArray(raw.saveProficiencies) ? raw.saveProficiencies : DEFAULT_SAVE_PROFICIENCIES).filter(abil => ABILITIES.includes(abil)));
+  raw.notes = Array.isArray(raw.notes) && raw.notes.length
+    ? raw.notes.map((note, index) => ({
+        id: note.id || `note-${index + 1}`,
+        title: note.title || `Note ${index + 1}`,
+        body: note.body || "",
+        expanded: note.expanded !== false
+      }))
+    : DEFAULT_NOTES.map(note => ({ ...note }));
   raw.history = Array.isArray(raw.history) ? raw.history.slice(0, HISTORY_LIMIT) : [];
   raw.hpLog = Array.isArray(raw.hpLog) ? raw.hpLog.map((item, index) => Object.assign({ level:index + 2 }, item)) : [];
   raw.attackModes = Object.assign({}, DEFAULT_STATE.attackModes, raw.attackModes || {});
@@ -1459,6 +1587,11 @@ function ensureState(raw){
   if (raw.dataVersion < 4){
     raw.spellbookView = "book";
     raw.dataVersion = 4;
+  }
+  if (raw.dataVersion < 5){
+    raw.saveProficiencies = unique((raw.saveProficiencies || DEFAULT_SAVE_PROFICIENCIES).filter(abil => ABILITIES.includes(abil)));
+    raw.notes = Array.isArray(raw.notes) && raw.notes.length ? raw.notes : DEFAULT_NOTES.map(note => ({ ...note }));
+    raw.dataVersion = 5;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -1533,7 +1666,7 @@ function skillMod(name){
   return abilityMod(state.abilityScores[skill.abil]) + (state.proficientSkills.includes(name) ? profBonus() : 0);
 }
 function saveMod(abil){
-  return abilityMod(state.abilityScores[abil]) + (SAVE_PROF[abil] ? profBonus() : 0);
+  return abilityMod(state.abilityScores[abil]) + (state.saveProficiencies.includes(abil) ? profBonus() : 0);
 }
 function getBaseAc(){
   const dex = abilityMod(state.abilityScores.DEX);
@@ -1976,6 +2109,7 @@ function render(){
   renderStatsPage();
   renderCombatPage();
   renderSpellbookPage();
+  renderNotesPage();
   bindButtons();
   bindArmourLongPress();
 }
@@ -2111,6 +2245,108 @@ function renderSpellbookPage(){
   }else{
     document.getElementById("spellbookEditorView").innerHTML = "";
   }
+}
+function allNotesExpanded(){
+  return (state.notes || []).every(note => note.expanded !== false);
+}
+function renderNotesPage(){
+  const host = document.getElementById("notesList");
+  const notes = state.notes || [];
+  const toggleAllButton = document.getElementById("toggleAllNotesBtn");
+  if (toggleAllButton){
+    toggleAllButton.textContent = allNotesExpanded() ? "Collapse All" : "Expand All";
+  }
+  host.innerHTML = notes.map(note => `
+    <div class="note-card ${note.expanded === false ? "collapsed" : ""}" data-note-card="${escapeAttr(note.id)}">
+      <div class="note-head">
+        <div style="min-width:0;">
+          <div class="note-title">${escapeHtml(note.title)}</div>
+          <div class="note-body">${escapeHtml(note.body)}</div>
+        </div>
+        <div class="note-actions">
+          <button class="small-btn" data-note-edit="${escapeAttr(note.id)}">Edit</button>
+          <button class="small-btn" data-note-delete="${escapeAttr(note.id)}">Delete</button>
+        </div>
+      </div>
+      <div class="note-meta">${note.expanded === false ? "Tap to expand" : "Tap to collapse"}</div>
+    </div>
+  `).join("") || `<div class="note-meta">No notes yet. Tap + Add Note to create one.</div>`;
+  host.querySelectorAll("[data-note-card]").forEach(card => {
+    card.onclick = () => {
+      const note = state.notes.find(item => item.id === card.dataset.noteCard);
+      if (!note) return;
+      note.expanded = note.expanded === false;
+      saveState();
+    };
+  });
+  host.querySelectorAll("[data-note-edit]").forEach(button => {
+    button.onclick = event => {
+      event.stopPropagation();
+      openNoteEditor(button.dataset.noteEdit);
+    };
+  });
+  host.querySelectorAll("[data-note-delete]").forEach(button => {
+    button.onclick = event => {
+      event.stopPropagation();
+      openDeleteNoteConfirm(button.dataset.noteDelete);
+    };
+  });
+}
+function nextNoteId(){
+  return `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+function openNoteEditor(noteId = ""){
+  const existing = noteId ? (state.notes || []).find(note => note.id === noteId) : null;
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">${existing ? "Edit Note" : "Add Note"}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">
+      <label>Title
+        <input type="text" id="noteTitleInput" value="${escapeAttr(existing ? existing.title : "")}">
+      </label>
+      <label>Body
+        <textarea id="noteBodyInput">${escapeHtml(existing ? existing.body : "")}</textarea>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveNoteBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveNoteBtn").onclick = () => {
+    const title = (document.getElementById("noteTitleInput").value || "").trim() || "Untitled Note";
+    const body = (document.getElementById("noteBodyInput").value || "").trim();
+    if (existing){
+      existing.title = title;
+      existing.body = body;
+      existing.expanded = true;
+    }else{
+      state.notes.push({ id:nextNoteId(), title, body, expanded:true });
+    }
+    closeModal();
+    saveState();
+  };
+}
+function openDeleteNoteConfirm(noteId){
+  const note = (state.notes || []).find(item => item.id === noteId);
+  if (!note) return;
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Delete Note?</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="result-box">Are you sure you want to delete ${escapeHtml(note.title)}?</div>
+    <div class="modal-actions">
+      <button class="action-btn red" id="confirmDeleteNoteBtn">Delete</button>
+      <button class="action-btn gold" data-close>Cancel</button>
+    </div>
+  `);
+  document.getElementById("confirmDeleteNoteBtn").onclick = () => {
+    state.notes = state.notes.filter(item => item.id !== noteId);
+    closeModal();
+    saveState();
+  };
 }
 function createSpellEditorDraft(){
   return {
@@ -2548,6 +2784,18 @@ function bindButtons(){
     state.extraSpellbook = Number(document.getElementById("extraSpellbookInput").value) || 0;
     saveState();
   };
+  const addNoteBtn = document.getElementById("addNoteBtn");
+  if (addNoteBtn){
+    addNoteBtn.onclick = () => openNoteEditor();
+  }
+  const toggleAllNotesBtn = document.getElementById("toggleAllNotesBtn");
+  if (toggleAllNotesBtn){
+    toggleAllNotesBtn.onclick = () => {
+      const expand = !allNotesExpanded();
+      state.notes.forEach(note => { note.expanded = expand; });
+      saveState();
+    };
+  }
   document.querySelectorAll("[data-slot]").forEach(pip => pip.onclick = () => toggleSlot(Number(pip.dataset.slot), Number(pip.dataset.index)));
   document.querySelectorAll("[data-skill-roll]").forEach(btn => btn.onclick = () => rollSkill(btn.dataset.skillRoll));
   document.querySelectorAll("[data-weapon]").forEach(btn => btn.onclick = () => rollWeapon(btn.dataset.weapon));
@@ -3209,21 +3457,48 @@ function openTopEditor(){
   });
 }
 function openAbilitiesEditor(){
-  openPrompt({
-    title:"Edit Core Stats",
-    fields:ABILITIES.map(abil => ({ name:abil, label:ABILITY_LABELS[abil], type:"number", value:state.abilityScores[abil] })),
-    onSubmit(values){
-      const oldCon = abilityMod(state.abilityScores.CON);
-      ABILITIES.forEach(abil => state.abilityScores[abil] = Number(values[abil]) || 10);
-      const newCon = abilityMod(state.abilityScores.CON);
-      const conDelta = newCon - oldCon;
-      if (conDelta !== 0){
-        state.hpCurrent = clamp(state.hpCurrent + (conDelta * state.level), 0, maxHpFrom(state));
-      }
-      syncHp(state);
-      saveState();
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Edit Core Stats</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">
+      ${ABILITIES.map(abil => `
+        <label>${escapeHtml(ABILITY_LABELS[abil])}
+          <input type="number" id="abil-${escapeAttr(abil)}" value="${state.abilityScores[abil]}">
+        </label>
+      `).join("")}
+      <div>
+        <div style="font-weight:800;margin-bottom:6px;">Saving Throw Proficiencies</div>
+        <div class="form-grid">
+          ${ABILITIES.map(abil => `
+            <label class="check-item">
+              <span>${escapeHtml(abil)}</span>
+              <input type="checkbox" data-save-prof="${escapeAttr(abil)}" ${state.saveProficiencies.includes(abil) ? "checked" : ""}>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveAbilitiesBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveAbilitiesBtn").onclick = () => {
+    const oldCon = abilityMod(state.abilityScores.CON);
+    ABILITIES.forEach(abil => {
+      state.abilityScores[abil] = Number(document.getElementById(`abil-${abil}`).value) || 10;
+    });
+    state.saveProficiencies = Array.from(document.querySelectorAll("[data-save-prof]:checked")).map(box => box.dataset.saveProf);
+    const newCon = abilityMod(state.abilityScores.CON);
+    const conDelta = newCon - oldCon;
+    if (conDelta !== 0){
+      state.hpCurrent = clamp(state.hpCurrent + (conDelta * state.level), 0, maxHpFrom(state));
     }
-  });
+    closeModal();
+    syncHp(state);
+    saveState();
+  };
 }
 function openSkillsEditor(){
   const items = SKILLS.map(skill => `
