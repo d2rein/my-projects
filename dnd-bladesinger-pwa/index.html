@@ -180,6 +180,12 @@
     gap:5px;
     margin-top:6px;
   }
+  .backup-actions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    margin-top:8px;
+  }
   .chip{
     background:#101925;
     padding:5px 4px;
@@ -1162,6 +1168,11 @@
         </div>
       </div>
       <div class="chip-grid" id="topChips"></div>
+      <div class="backup-actions">
+        <button class="small-btn" id="exportSaveBtn">Export Save</button>
+        <button class="small-btn" id="copySaveBtn">Copy Save</button>
+        <button class="small-btn" id="importSaveBtn">Import Save</button>
+      </div>
     </div>
 
     <div class="card">
@@ -1362,6 +1373,7 @@
 <div class="modal-backdrop" id="modalBack">
   <div class="modal" id="modal"></div>
 </div>
+<input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js"></script>
 <script>
@@ -1667,6 +1679,109 @@ function ensureState(raw){
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
+}
+function backupFileName(){
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `alaric-save-${stamp}.json`;
+}
+function exportPayload(){
+  return {
+    app:"bladesinger-alaric",
+    version:1,
+    exportedAt:new Date().toISOString(),
+    storageKey:STORAGE_KEY,
+    data:state
+  };
+}
+function utf8ToBase64(text){
+  return btoa(unescape(encodeURIComponent(text)));
+}
+function base64ToUtf8(text){
+  return decodeURIComponent(escape(atob(text)));
+}
+function exportSaveToFile(){
+  const payload = exportPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = backupFileName();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  pushHistory("Exported character save file.");
+}
+async function copySaveCode(){
+  const payload = exportPayload();
+  const code = `ALARIC1:${utf8ToBase64(JSON.stringify(payload))}`;
+  try{
+    await navigator.clipboard.writeText(code);
+    openResult("Save Copied", "A portable save code is on your clipboard. You can paste it into chat or import it on another device.");
+    pushHistory("Copied save code to clipboard.");
+  }catch{
+    openModal(`
+      <div class="modal-head">
+        <div class="modal-title">Copy Save Code</div>
+        <button class="small-btn" data-close>Close</button>
+      </div>
+      <div class="form-grid">
+        <label>Save Code
+          <textarea id="manualSaveCode">${escapeHtml(code)}</textarea>
+        </label>
+      </div>
+    `);
+  }
+}
+function parseImportedPayload(text){
+  const trimmed = (text || "").trim();
+  if (!trimmed) throw new Error("No save data provided.");
+  if (trimmed.startsWith("ALARIC1:")){
+    const raw = base64ToUtf8(trimmed.slice("ALARIC1:".length));
+    return JSON.parse(raw);
+  }
+  return JSON.parse(trimmed);
+}
+function applyImportedSave(payload){
+  const imported = payload && payload.data ? payload.data : payload;
+  if (!imported || typeof imported !== "object") throw new Error("Save data format not recognized.");
+  localStorage.setItem(`${STORAGE_KEY}_backup_before_import`, JSON.stringify(state));
+  state = ensureState(Object.assign(structuredClone(DEFAULT_STATE), imported));
+  saveState();
+  openResult("Import Complete", "Character data imported. A backup of the previous local save was stored on this device before the import.");
+  pushHistory("Imported character save data.");
+}
+function importSaveFromText(text){
+  try{
+    const payload = parseImportedPayload(text);
+    applyImportedSave(payload);
+  }catch(error){
+    openResult("Import Failed", error && error.message ? error.message : "The save data could not be read.");
+  }
+}
+function openImportSaveModal(){
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Import Save</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="result-box">Importing replaces the current local save on this device. A local pre-import backup will be stored automatically.</div>
+    <div class="form-grid">
+      <label>Paste Save Code or JSON
+        <textarea id="importSaveText" placeholder="Paste a save code starting with ALARIC1: or full exported JSON"></textarea>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="importPastedSaveBtn">Import Pasted Save</button>
+      <button class="action-btn gold" id="chooseSaveFileBtn">Choose File</button>
+    </div>
+  `);
+  document.getElementById("importPastedSaveBtn").onclick = () => {
+    importSaveFromText(document.getElementById("importSaveText").value);
+  };
+  document.getElementById("chooseSaveFileBtn").onclick = () => {
+    document.getElementById("importSaveInput").click();
+  };
 }
 function unique(list){
   return Array.from(new Set(list.filter(Boolean)));
@@ -2826,6 +2941,9 @@ function renderHistory(){
 function bindButtons(){
   document.getElementById("coinsBtn").onclick = openCoinsEditor;
   document.getElementById("editTopBtn").onclick = openTopEditor;
+  document.getElementById("exportSaveBtn").onclick = exportSaveToFile;
+  document.getElementById("copySaveBtn").onclick = () => { copySaveCode(); };
+  document.getElementById("importSaveBtn").onclick = openImportSaveModal;
   document.getElementById("editAbilitiesBtn").onclick = openAbilitiesEditor;
   document.getElementById("editSkillsBtn").onclick = openSkillsEditor;
   document.getElementById("coreRollTypeBtn").onclick = () => {
@@ -2898,6 +3016,18 @@ function bindButtons(){
   document.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
   document.querySelectorAll("[data-upcast]").forEach(btn => btn.onclick = () => openUpcastPicker(btn.dataset.upcast));
   bindHitDice();
+  const importSaveInput = document.getElementById("importSaveInput");
+  if (importSaveInput){
+    importSaveInput.onchange = event => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => importSaveFromText(String(reader.result || ""));
+      reader.onerror = () => openResult("Import Failed", "That file could not be read.");
+      reader.readAsText(file);
+      importSaveInput.value = "";
+    };
+  }
 }
 function bindArmourLongPress(){
   const armour = document.getElementById("armourText");
