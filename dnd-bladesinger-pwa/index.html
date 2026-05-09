@@ -1579,6 +1579,7 @@ const SPELL_ACTIONS = {
   "Mirror Image": spell => castUtilitySpell(spell, "Mirror Image active."),
   "Misty Step": spell => castUtilitySpell(spell, "Teleport up to 30 ft."),
   "Counterspell": spell => castUtilitySpell(spell, "Reaction spell. Interrupts a spell of level 3 or lower automatically."),
+  "Dispel Magic": spell => castDispelMagic(spell),
   "Web": spell => castUtilitySpell(spell, "Concentration started: Web."),
   "Fly": spell => castUtilitySpell(spell, "Concentration started: Fly."),
   "Haste": spell => castUtilitySpell(spell, "Concentration started: Haste."),
@@ -3483,6 +3484,14 @@ function castUtilitySpell(spell, text){
   openResult(spell.name, text);
   pushHistory(`${spell.name}: ${text}`);
   saveState();
+}
+function castDispelMagic(spell){
+  const intMod = abilityMod(state.abilityScores.INT);
+  const roll = rollD20("-");
+  const total = roll.chosen + intMod;
+  const highestDismissedLevel = clamp(Math.max(3, total - 10), 3, 9);
+  const text = `Spellcasting ability check (INT)\n1d20${intMod >= 0 ? "+" : ""}${intMod} - ${roll.text}${intMod >= 0 ? "+" : ""}${intMod} = ${total}\nDismisses spells up to level ${highestDismissedLevel}`;
+  finalizeSpellCast(spell, text);
 }
 function finalizeSpellCast(spell, text){
   const baseLevel = Number(spell.level || 0);
