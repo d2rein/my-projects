@@ -1568,6 +1568,7 @@ const SPELL_ACTIONS = {
   "Ray of Frost": spell => castAttackSpell(spell, scaleCantrip("1d8"), "cold", "Target speed -10 ft until your next turn."),
   "Chill Touch": spell => castAttackSpell(spell, scaleCantrip("1d10"), "necrotic", "Target cannot regain HP until the start of your next turn."),
   "Shocking Grasp": spell => castAttackSpell(spell, scaleCantrip("1d8"), "lightning", "Target cannot take reactions until the start of your next turn."),
+  "True Strike": spell => castTrueStrike(spell),
   "Toll the Dead": spell => castTollTheDead(spell),
   "Sacred Flame": spell => castSaveSpell(spell, scaleCantrip("1d8"), "radiant", "Dexterity save."),
   "Magic Missile": spell => castMagicMissile(spell),
@@ -2524,8 +2525,8 @@ function renderCombatPage(){
   `;
   document.getElementById("bladesongBtn").textContent = state.bladesongActive ? "BLADESONG ACTIVE" : "BLADESONG";
   document.getElementById("concentrationCheckBtn").textContent = "Con Check";
-  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive ? "Concentration On" : "Concentration";
-  document.getElementById("concentrationModeBtn").textContent = state.concentrationMode === "-" ? "-" : state.concentrationMode.toUpperCase();
+  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive || "Concentration";
+  document.getElementById("concentrationModeBtn").textContent = advLabel(state.concentrationMode);
   document.getElementById("mageArmorBtn").textContent = state.mageArmorActive ? "Mage Armor On" : "Mage Armor";
   document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield On" : "Shield";
   document.getElementById("hasteBtn").textContent = state.hasteActive ? "Haste On" : "Haste";
@@ -2535,6 +2536,7 @@ function renderCombatPage(){
   document.getElementById("hasteBtn").className = `action-btn ${statusButtonClass(state.hasteActive, "green")}`;
   document.getElementById("minorElementalsBtn").className = `action-btn ${statusButtonClass(state.minorElementalsActive, "green")}`;
   document.getElementById("concentrationActiveBtn").className = `action-btn ${statusButtonClass(Boolean(state.concentrationActive), "blue")} cell-active`;
+  document.getElementById("concentrationModeBtn").className = `mode-btn ${state.concentrationMode !== "-" ? "active" : "inactive"} cell-adv`;
   renderPips("bladesongPips", bladesongUsesRemaining(), bladesongUsesMax(), "green");
   document.getElementById("slotHeadText").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
   document.getElementById("slotHeadTextBook").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
@@ -3311,6 +3313,29 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
   }
   text += `${cmeText}\nDamage: ${baseTotal} ${titleCase(damageType)}${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
   if (extraText) text += `\n${extraText}`;
+  finalizeSpellCast(spell, text);
+}
+function castTrueStrike(spell){
+  const mode = state.attackModes[spell.name] || state.attackModes.handCrossbow || { crit:false, adv:"-" };
+  const hitMod = abilityMod(state.abilityScores.DEX) + profBonus();
+  const damageMod = abilityMod(state.abilityScores.DEX);
+  const attack = rollD20(mode.adv);
+  const toHit = attack.chosen + hitMod;
+  const damage = rollSpec("1d6");
+  const critApplied = mode.crit || attack.isCrit;
+  const critBonus = critApplied ? damage.max : 0;
+  const baseTotal = damage.total + damageMod + critBonus;
+  let cmeTotal = 0;
+  let cmeText = "";
+  let text = `Hand Crossbow\n1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n`;
+  if (critText(attack)) text += `${critText(attack)}\n`;
+  text += `${formatRollBreakdown("1d6", damage.rolls, damageMod, critBonus ? `Crit(${damage.max})` : "")} = ${baseTotal}`;
+  if (state.minorElementalsActive){
+    const cme = rollSpec("2d8");
+    cmeTotal = cme.total;
+    cmeText = `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
+  }
+  text += `${cmeText}\nDamage: ${baseTotal} Piercing${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
   finalizeSpellCast(spell, text);
 }
 function castSaveSpell(spell, diceSpec, damageType, note = ""){
