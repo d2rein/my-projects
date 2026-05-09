@@ -364,7 +364,7 @@
   }
   .combat-top{
     display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr)) 124px;
+    grid-template-columns:repeat(4,minmax(0,1fr)) 104px;
     gap:5px;
   }
   .combat-chip{
@@ -388,8 +388,7 @@
     grid-template-areas:
       "blade pips concheck"
       "rests mage adv"
-      "spells shield active"
-      "extra extra extra";
+      "spells shield active";
     gap:5px;
     margin-top:7px;
   }
@@ -402,7 +401,6 @@
   .cell-adv{grid-area:adv}
   .cell-active{grid-area:active}
   .cell-shield{grid-area:shield}
-  .cell-extra{grid-area:extra}
   .rest-pair{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -417,34 +415,12 @@
     font-size:11px;
     padding:6px 6px;
     white-space:nowrap;
-    width:100%;
   }
   #concentrationActiveBtn{
     font-size:11px;
     line-height:1.1;
     padding:6px 8px;
     text-align:center;
-  }
-  #bladesongBtn{
-    font-size:11px;
-    padding:6px 6px;
-    white-space:nowrap;
-  }
-  .extra-combat-row{
-    display:grid;
-    grid-template-columns:repeat(5, minmax(0,1fr));
-    gap:5px;
-  }
-  .extra-combat-row .action-btn,
-  .extra-combat-row .mode-btn{
-    min-height:34px;
-    font-size:10px;
-    padding:6px 4px;
-    line-height:1.1;
-    text-align:center;
-  }
-  .extra-combat-row .placeholder-btn{
-    opacity:.45;
   }
   .pips-box{
     background:#0c1118;
@@ -1287,13 +1263,6 @@
         <button class="action-btn gold cell-shield" id="shieldBtn"></button>
         <button class="mode-btn cell-adv" id="concentrationModeBtn"></button>
         <button class="action-btn blue cell-active" id="concentrationActiveBtn"></button>
-        <div class="extra-combat-row cell-extra">
-          <button class="mode-btn inactive placeholder-btn" id="extraSpellBtn1" disabled>-</button>
-          <button class="mode-btn inactive placeholder-btn" id="extraSpellBtn2" disabled>-</button>
-          <button class="action-btn blue" id="shieldFaithBtn"></button>
-          <button class="action-btn blue" id="animateObjectsBtn"></button>
-          <button class="action-btn blue" id="animateObjectsCountBtn"></button>
-        </div>
       </div>
       <div class="amount-row">
         <input type="number" id="amountInput" placeholder="Amt">
@@ -1566,11 +1535,8 @@ const DEFAULT_STATE = {
   armourLongPressBonus:0,
   mageArmorActive:false,
   shieldActive:false,
-  shieldOfFaithActive:false,
   hasteActive:false,
   minorElementalsActive:false,
-  animateObjectsSize:"Tiny",
-  animateObjectsCount:10,
   bladesongActive:false,
   bladesongUsesSpent:0,
   concentrationMode:"-",
@@ -1592,7 +1558,7 @@ const DEFAULT_STATE = {
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
   spellbookLimitsCollapsed:false,
   notes:DEFAULT_NOTES.map(note => ({ ...note })),
-  dataVersion:8,
+  dataVersion:7,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1621,7 +1587,6 @@ const SPELL_ACTIONS = {
   "Fireball": spell => castSaveSpell(spell, `${8 + getUpcastLevel(spell.name)}d6`, "fire", "Dexterity save, half on success."),
   "Mage Armor": spell => castMageArmor(spell),
   "Shield": spell => castShield(spell),
-  "Shield of Faith": spell => castShieldOfFaith(spell),
   "Shadow Blade": spell => castAttackSpell(spell, shadowBladeDice(spell.name), "psychic", "Advantage in dim light or darkness."),
   "Mirror Image": spell => castUtilitySpell(spell, "Mirror Image active."),
   "Misty Step": spell => castUtilitySpell(spell, "Teleport up to 30 ft."),
@@ -1631,7 +1596,6 @@ const SPELL_ACTIONS = {
   "Fly": spell => castUtilitySpell(spell, "Concentration started: Fly."),
   "Haste": spell => castUtilitySpell(spell, "Concentration started: Haste."),
   "Greater Invisibility": spell => castUtilitySpell(spell, "Concentration started: Greater Invisibility."),
-  "Animate Objects": spell => castAnimateObjects(spell),
   "Polymorph": spell => castUtilitySpell(spell, "Concentration started: Polymorph."),
   "Wall of Force": spell => castUtilitySpell(spell, "Concentration started: Wall of Force."),
   "Guidance": spell => castUtilitySpell(spell, "Concentration started: Guidance. Add 1d4 to one ability check."),
@@ -1669,12 +1633,6 @@ function loadCloudSyncMeta(){
     return { characterCode:"", lastPushedAt:"", lastPulledAt:"" };
   }
 }
-const ANIMATE_OBJECT_STATS = {
-  Tiny:{ hit:8, dice:"1d4", mod:4 },
-  Medium:{ hit:5, dice:"2d6", mod:1 },
-  Large:{ hit:6, dice:"2d10", mod:2 },
-  Huge:{ hit:8, dice:"2d12", mod:4 }
-};
 function saveCloudSyncMeta(){
   localStorage.setItem(CLOUD_SYNC_KEY, JSON.stringify(cloudSync));
 }
@@ -1710,9 +1668,6 @@ function ensureState(raw){
   raw.dataVersion = Number(raw.dataVersion || 0);
   raw.slotCur = raw.slotCur || {};
   raw.hitDiceCur = Object.assign({}, DEFAULT_STATE.hitDiceCur, raw.hitDiceCur || {});
-  raw.shieldOfFaithActive = Boolean(raw.shieldOfFaithActive);
-  raw.animateObjectsSize = ANIMATE_OBJECT_STATS[raw.animateObjectsSize] ? raw.animateObjectsSize : "Tiny";
-  raw.animateObjectsCount = clamp(Number(raw.animateObjectsCount) || 10, 1, 10);
   if (raw.dataVersion < 1){
     if (!raw.knownSpells.includes("Toll the Dead")) raw.knownSpells.push("Toll the Dead");
     if (!raw.preparedCantrips.includes("Toll the Dead")) raw.preparedCantrips.push("Toll the Dead");
@@ -1745,12 +1700,6 @@ function ensureState(raw){
       ? raw.bonusSpells
       : DEFAULT_BONUS_SPELLS.map(spell => ({ ...spell }));
     raw.dataVersion = 7;
-  }
-  if (raw.dataVersion < 8){
-    raw.shieldOfFaithActive = false;
-    raw.animateObjectsSize = ANIMATE_OBJECT_STATS[raw.animateObjectsSize] ? raw.animateObjectsSize : "Tiny";
-    raw.animateObjectsCount = clamp(Number(raw.animateObjectsCount) || 10, 1, 10);
-    raw.dataVersion = 8;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -2060,7 +2009,6 @@ function currentAc(){
   if (state.bladesongActive) total += Math.max(1, abilityMod(state.abilityScores.INT));
   if (state.shieldActive) total += 5;
   if (state.hasteActive) total += 2;
-  if (state.shieldOfFaithActive) total += 2;
   return total;
 }
 function currentInit(){
@@ -2327,18 +2275,6 @@ function spellCardMarkup(spell){
 function spellCastLevel(spell){
   return Number(spell.level || 0) + getUpcastLevel(spell.name);
 }
-function isAnimateObjectsActive(){
-  return state.concentrationActive === "Animate Objects";
-}
-function setConcentrationState(name = ""){
-  state.concentrationActive = name;
-  state.hasteActive = name === "Haste";
-  state.minorElementalsActive = name === "Conjure Minor Elementals";
-  state.shieldOfFaithActive = name === "Shield of Faith";
-  if (name === "Animate Objects"){
-    state.animateObjectsSize = ANIMATE_OBJECT_STATS[state.animateObjectsSize] ? state.animateObjectsSize : "Tiny";
-  }
-}
 function shadowBladeDice(name){
   const castLevel = 2 + getUpcastLevel(name);
   if (castLevel >= 5) return "4d8";
@@ -2498,7 +2434,9 @@ function restoreSlot(level){
 }
 function setConcentrationFromSpell(spell){
   if (!spell.concentration) return;
-  setConcentrationState(spell.name);
+  state.concentrationActive = spell.name;
+  state.hasteActive = spell.name === "Haste";
+  state.minorElementalsActive = spell.name === "Conjure Minor Elementals";
 }
 function clearRestEffects(){
   state.shieldActive = false;
@@ -2610,16 +2548,10 @@ function renderCombatPage(){
   document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield On" : "Shield";
   document.getElementById("hasteBtn").textContent = state.hasteActive ? "Haste On" : "Haste";
   document.getElementById("minorElementalsBtn").textContent = state.minorElementalsActive ? "CME On" : "CME";
-  document.getElementById("shieldFaithBtn").textContent = state.shieldOfFaithActive ? "SoF On" : "Shield of Faith";
-  document.getElementById("animateObjectsBtn").textContent = isAnimateObjectsActive() ? state.animateObjectsSize : "Animate Obj";
-  document.getElementById("animateObjectsCountBtn").textContent = `${state.animateObjectsCount}`;
   document.getElementById("mageArmorBtn").className = `action-btn ${statusButtonClass(state.mageArmorActive, "green")} cell-mage`;
   document.getElementById("shieldBtn").className = `action-btn ${statusButtonClass(state.shieldActive, "green")} cell-shield`;
   document.getElementById("hasteBtn").className = `action-btn ${statusButtonClass(state.hasteActive, "green")}`;
   document.getElementById("minorElementalsBtn").className = `action-btn ${statusButtonClass(state.minorElementalsActive, "green")}`;
-  document.getElementById("shieldFaithBtn").className = `action-btn ${statusButtonClass(state.shieldOfFaithActive, "green")}`;
-  document.getElementById("animateObjectsBtn").className = `action-btn ${statusButtonClass(isAnimateObjectsActive(), "green")}`;
-  document.getElementById("animateObjectsCountBtn").className = `action-btn ${statusButtonClass(isAnimateObjectsActive(), "green")}`;
   document.getElementById("concentrationActiveBtn").className = `action-btn ${statusButtonClass(Boolean(state.concentrationActive), "blue")} cell-active`;
   document.getElementById("concentrationModeBtn").className = `mode-btn ${state.concentrationMode !== "-" ? "active" : "inactive"} cell-adv`;
   renderPips("bladesongPips", bladesongUsesRemaining(), bladesongUsesMax(), "green");
@@ -3199,7 +3131,7 @@ function bindButtons(){
   document.getElementById("bladesongBtn").onclick = toggleBladesong;
   document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
   document.getElementById("concentrationActiveBtn").onclick = () => {
-    setConcentrationState(state.concentrationActive ? "" : "Manual");
+    state.concentrationActive = state.concentrationActive ? "" : "Manual";
     saveState();
   };
   document.getElementById("concentrationModeBtn").onclick = () => {
@@ -3210,12 +3142,6 @@ function bindButtons(){
   document.getElementById("shieldBtn").onclick = () => castSpellByName("Shield");
   document.getElementById("hasteBtn").onclick = () => toggleConcentrationSpell("Haste", "hasteActive", 3);
   document.getElementById("minorElementalsBtn").onclick = () => toggleConcentrationSpell("Conjure Minor Elementals", "minorElementalsActive", 4);
-  document.getElementById("shieldFaithBtn").onclick = () => toggleConcentrationSpell("Shield of Faith", "shieldOfFaithActive", 1);
-  document.getElementById("animateObjectsCountBtn").onclick = () => {
-    state.animateObjectsCount = state.animateObjectsCount <= 1 ? 10 : state.animateObjectsCount - 1;
-    saveState();
-  };
-  bindAnimateObjectsButton();
   document.getElementById("shortRestBtn").onclick = shortRest;
   document.getElementById("longRestBtn").onclick = longRest;
   document.getElementById("damageBtn").onclick = () => applyAmountAction("damage");
@@ -3284,33 +3210,6 @@ function bindArmourLongPress(){
   };
   armour.onpointerup = clear;
   armour.onpointerleave = clear;
-}
-function bindAnimateObjectsButton(){
-  const button = document.getElementById("animateObjectsBtn");
-  if (!button) return;
-  let timer = null;
-  let held = false;
-  const clear = () => {
-    if (timer){
-      clearTimeout(timer);
-      timer = null;
-    }
-  };
-  button.onclick = event => event.preventDefault();
-  button.onpointerdown = () => {
-    held = false;
-    clear();
-    timer = setTimeout(() => {
-      held = true;
-      openAnimateObjectsSizePicker();
-    }, 450);
-  };
-  button.onpointerup = () => {
-    clear();
-    if (!held) runAnimateObjectsAction();
-  };
-  button.onpointerleave = clear;
-  button.onpointercancel = clear;
 }
 function toggleSlot(level, index){
   const max = (FULL_CASTER_SLOTS[state.level] || [])[level - 1] || 0;
@@ -3553,82 +3452,6 @@ function castShield(spell){
   pushHistory(`${spell.name}: ${text}`);
   saveState();
 }
-function castShieldOfFaith(spell){
-  toggleConcentrationSpell(spell.name, "shieldOfFaithActive", 1);
-}
-function castAnimateObjects(spell){
-  if (isAnimateObjectsActive()){
-    openResult(spell.name, `Animate Objects is already active as ${state.animateObjectsSize}.\nUse the combat button to roll attacks, or hold it to change size/end the spell.`);
-    return;
-  }
-  const castLevel = Math.max(5, spellCastLevel(spell) || 5);
-  if (!spendSlotForSpell(castLevel, spell)) return saveState();
-  setConcentrationState("Animate Objects");
-  state.animateObjectsSize = ANIMATE_OBJECT_STATS[state.animateObjectsSize] ? state.animateObjectsSize : "Tiny";
-  state.animateObjectsCount = clamp(Number(state.animateObjectsCount) || 10, 1, 10);
-  const text = `Concentration active at level ${castLevel}.\nCurrent size: ${state.animateObjectsSize}.\nUse the combat button to roll attacks for ${state.animateObjectsCount} objects.`;
-  openResult(spell.name, text);
-  pushHistory(`${spell.name}: ${text.replace(/\n/g, " | ")}`);
-  saveState();
-}
-function openAnimateObjectsSizePicker(){
-  const active = isAnimateObjectsActive();
-  const options = Object.keys(ANIMATE_OBJECT_STATS)
-    .map(size => `<button class="action-btn ${state.animateObjectsSize === size ? "blue" : ""}" data-animate-size="${escapeAttr(size)}">${escapeHtml(size)}</button>`)
-    .join("");
-  openModal(`
-    <div class="modal-head">
-      <div class="modal-title">Animate Objects</div>
-      <button class="small-btn" data-close>Close</button>
-    </div>
-    <div class="modal-actions">
-      ${options}
-    </div>
-    ${active ? `<div class="modal-actions"><button class="action-btn red" id="endAnimateObjectsBtn">End Spell</button></div>` : `<div class="tiny muted">Pick the size to track when you cast Animate Objects.</div>`}
-  `);
-  document.querySelectorAll("[data-animate-size]").forEach(button => {
-    button.onclick = () => {
-      state.animateObjectsSize = button.dataset.animateSize;
-      closeModal();
-      saveState();
-    };
-  });
-  const endBtn = document.getElementById("endAnimateObjectsBtn");
-  if (endBtn){
-    endBtn.onclick = () => {
-      setConcentrationState("");
-      closeModal();
-      openResult("Animate Objects", "Animate Objects ended.");
-      pushHistory("Animate Objects toggled off.");
-      saveState();
-    };
-  }
-}
-function runAnimateObjectsAction(){
-  if (!isAnimateObjectsActive()){
-    castSpellByName("Animate Objects");
-    return;
-  }
-  const config = ANIMATE_OBJECT_STATS[state.animateObjectsSize] || ANIMATE_OBJECT_STATS.Tiny;
-  const count = clamp(Number(state.animateObjectsCount) || 10, 1, 10);
-  let totalDamage = 0;
-  const sections = [];
-  for (let i = 0; i < count; i++){
-    const attack = rollD20("-");
-    const toHit = attack.chosen + config.hit;
-    const damage = rollSpec(config.dice);
-    const critBonus = attack.isCrit ? damage.max : 0;
-    const damageTotal = damage.total + config.mod + critBonus;
-    totalDamage += damageTotal;
-    let line = `Object ${i + 1}\n1d20+${config.hit} - ${attack.text}+${config.hit} = ${toHit}`;
-    if (critText(attack)) line += `\n${critText(attack)}`;
-    line += `\n${formatRollBreakdown(config.dice, damage.rolls, config.mod, critBonus ? `Crit(${damage.max})` : "")} = ${damageTotal}`;
-    sections.push(line);
-  }
-  const text = `${state.animateObjectsSize} x${count}\n\n${sections.join("\n\n")}\n\nTotal Damage: ${totalDamage}`;
-  openResult("Animate Objects", text);
-  pushHistory(`Animate Objects ${state.animateObjectsSize} x${count}: ${text.replace(/\n/g, " | ")}`);
-}
 function rollAbility(abil){
   const isSave = state.coreRollType === "save";
   const mode = state.coreAdvMode;
@@ -3684,20 +3507,21 @@ function toggleConcentrationSpell(name, flagKey, slotLevel){
   const spell = getSpellByName(name);
   const castLevel = Math.max(slotLevel || 0, spellCastLevel(spell) || 0);
   if (state[flagKey]){
-    if (state.concentrationActive === name) setConcentrationState("");
-    else state[flagKey] = false;
+    state[flagKey] = false;
+    if (state.concentrationActive === name) state.concentrationActive = "";
     openResult(name, `${name} toggled off.`);
     pushHistory(`${name} toggled off.`);
     saveState();
     return;
   }
   if (!spendSlotForSpell(castLevel, spell)) return saveState();
-  setConcentrationState(name);
+  state.hasteActive = false;
+  state.minorElementalsActive = false;
+  state[flagKey] = true;
+  state.concentrationActive = name;
   const text = name === "Haste"
     ? `Concentration active at level ${castLevel}.\nAC +2 while Haste is active.`
-    : name === "Shield of Faith"
-      ? `Concentration active at level ${castLevel}.\nAC +2 while Shield of Faith is active.`
-      : `Concentration active at level ${castLevel}.\nAdd 2d8 Acid/Cold/Fire/Lightning damage to attacks within 15 ft.`;
+    : `Concentration active at level ${castLevel}.\nAdd 2d8 Acid/Cold/Fire/Lightning damage to attacks within 15 ft.`;
   openResult(name, text);
   pushHistory(`${name}: ${text.replace(/\n/g, " | ")}`);
   saveState();
@@ -3828,7 +3652,9 @@ function toggleBladesong(){
 function shortRest(){
   state.bladesongActive = false;
   state.shieldActive = false;
-  setConcentrationState("");
+  state.hasteActive = false;
+  state.minorElementalsActive = false;
+  state.concentrationActive = "";
   pushHistory("Short Rest: Bladesong and concentration effects cleared.");
   saveState();
   openArcaneRecovery();
@@ -3838,9 +3664,11 @@ function longRest(){
   state.thp = 0;
   state.mageArmorActive = false;
   state.shieldActive = false;
+  state.hasteActive = false;
+  state.minorElementalsActive = false;
   state.bladesongActive = false;
   state.bladesongUsesSpent = 0;
-  setConcentrationState("");
+  state.concentrationActive = "";
   state.arcaneRecoveryUsed = false;
   const slots = FULL_CASTER_SLOTS[state.level] || FULL_CASTER_SLOTS[20];
   for (let level = 1; level <= 9; level++){
