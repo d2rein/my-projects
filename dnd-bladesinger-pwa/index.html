@@ -364,27 +364,27 @@
   }
   .combat-top{
     display:grid;
-    grid-template-columns:repeat(5,1fr);
+    grid-template-columns:repeat(4,minmax(0,1fr)) 104px;
     gap:5px;
   }
   .combat-chip{
     background:#0d131c;
     border:1px solid var(--line2);
     border-radius:10px;
-    padding:5px 4px;
+    padding:4px 3px;
     text-align:center;
-    font-size:10px;
+    font-size:9px;
     font-weight:800;
     position:relative;
     overflow:hidden;
   }
   .combat-chip b{
     display:block;
-    font-size:14px;
+    font-size:13px;
   }
   .action-cluster{
     display:grid;
-    grid-template-columns:1.2fr 82px 82px;
+    grid-template-columns:1.1fr 82px 124px;
     grid-template-areas:
       "blade pips concheck"
       "rests mage adv"
@@ -410,6 +410,17 @@
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:5px;
+  }
+  #initRollBtn,#concentrationCheckBtn{
+    font-size:11px;
+    padding:6px 6px;
+    white-space:nowrap;
+  }
+  #concentrationActiveBtn{
+    font-size:11px;
+    line-height:1.1;
+    padding:6px 8px;
+    text-align:center;
   }
   .pips-box{
     background:#0c1118;
@@ -2278,6 +2289,12 @@ function scaleCantrip(base){
   else if (state.level >= 5) mult = 2;
   return `${count * mult}d${die}`;
 }
+function trueStrikeBonusDice(){
+  if (state.level >= 17) return "3d6";
+  if (state.level >= 11) return "2d6";
+  if (state.level >= 5) return "1d6";
+  return "";
+}
 function rollDie(size){
   return Math.floor(Math.random() * size) + 1;
 }
@@ -2525,7 +2542,7 @@ function renderCombatPage(){
   `;
   document.getElementById("bladesongBtn").textContent = state.bladesongActive ? "BLADESONG ACTIVE" : "BLADESONG";
   document.getElementById("concentrationCheckBtn").textContent = "Con Check";
-  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive || "Concentration";
+  document.getElementById("concentrationActiveBtn").textContent = state.concentrationActive ? `Concentration: ${state.concentrationActive}` : "Concentration";
   document.getElementById("concentrationModeBtn").textContent = advLabel(state.concentrationMode);
   document.getElementById("mageArmorBtn").textContent = state.mageArmorActive ? "Mage Armor On" : "Mage Armor";
   document.getElementById("shieldBtn").textContent = state.shieldActive ? "Shield On" : "Shield";
@@ -3316,26 +3333,33 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
   finalizeSpellCast(spell, text);
 }
 function castTrueStrike(spell){
-  const mode = state.attackModes[spell.name] || state.attackModes.handCrossbow || { crit:false, adv:"-" };
-  const hitMod = abilityMod(state.abilityScores.DEX) + profBonus();
-  const damageMod = abilityMod(state.abilityScores.DEX);
+  const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
+  const hitMod = abilityMod(state.abilityScores.INT) + profBonus();
+  const damageMod = abilityMod(state.abilityScores.INT);
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + hitMod;
-  const damage = rollSpec("1d6");
+  const weaponDamage = rollSpec("1d6");
+  const bonusDice = trueStrikeBonusDice();
+  const bonusDamage = bonusDice ? rollSpec(bonusDice) : null;
   const critApplied = mode.crit || attack.isCrit;
-  const critBonus = critApplied ? damage.max : 0;
-  const baseTotal = damage.total + damageMod + critBonus;
+  const critBonus = critApplied ? weaponDamage.max : 0;
+  const bonusCrit = critApplied && bonusDamage ? bonusDamage.max : 0;
+  const baseTotal = weaponDamage.total + damageMod + critBonus;
+  const bonusTotal = bonusDamage ? bonusDamage.total + bonusCrit : 0;
   let cmeTotal = 0;
   let cmeText = "";
   let text = `Hand Crossbow\n1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n`;
   if (critText(attack)) text += `${critText(attack)}\n`;
-  text += `${formatRollBreakdown("1d6", damage.rolls, damageMod, critBonus ? `Crit(${damage.max})` : "")} = ${baseTotal}`;
+  text += `${formatRollBreakdown("1d6", weaponDamage.rolls, damageMod, critBonus ? `Crit(${weaponDamage.max})` : "")} = ${baseTotal}`;
+  if (bonusDamage){
+    text += `\n${formatRollBreakdown(bonusDice, bonusDamage.rolls, 0, bonusCrit ? `Crit(${bonusDamage.max})` : "")} = ${bonusTotal} Radiant`;
+  }
   if (state.minorElementalsActive){
     const cme = rollSpec("2d8");
     cmeTotal = cme.total;
     cmeText = `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
   }
-  text += `${cmeText}\nDamage: ${baseTotal} Piercing${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
+  text += `${cmeText}\nDamage: ${baseTotal} Piercing or Radiant${bonusTotal ? ` + ${bonusTotal} Radiant` : ""}${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
   finalizeSpellCast(spell, text);
 }
 function castSaveSpell(spell, diceSpec, damageType, note = ""){
