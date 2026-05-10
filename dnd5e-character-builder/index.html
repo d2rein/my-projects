@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DND 5e Character Builder</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#09111a">
+<style>
+  :root{
+    --bg:#070b10;
+    --panel:#0f1722;
+    --panel2:#141e2c;
+    --line:#304158;
+    --line2:#4b6b92;
+    --text:#eef4ff;
+    --muted:#98a9bf;
+    --blue:#1d6ea5;
+    --green:#1b7e53;
+    --gold:#8a6820;
+    --red:#872c2c;
+    --yellow:#f0d246;
+    --shadow:0 10px 28px rgba(0,0,0,.28);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    color:var(--text);
+    font-family:Arial,Helvetica,sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(41,103,155,.22), transparent 28%),
+      linear-gradient(180deg, #09111a 0%, #06090e 100%);
+  }
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  .app{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100vh;
+    padding:10px 10px 86px;
+  }
+  .page{display:none;gap:8px}
+  .page.active{display:grid}
+  .card{
+    background:linear-gradient(180deg, rgba(18,27,38,.98), rgba(12,18,27,.98));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px;
+    box-shadow:var(--shadow);
+  }
+  .card-title,.section-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:8px;
+    font-size:13px;
+    font-weight:800;
+  }
+  .title-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .small-btn,.action-btn,.mode-btn,.chip,.mini-box,.slot-label,.slot-cell,.tag,.select-btn,.icon-btn{
+    border:1px solid var(--line2);
+    border-radius:10px;
+  }
+  .small-btn,.action-btn,.mode-btn,.select-btn,.icon-btn{
+    background:#172537;
+    color:#fff;
+    padding:7px 9px;
+    font-weight:700;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+  }
+  .small-btn{padding:5px 8px;font-size:12px}
+  .action-btn.blue{background:#1b5d84}
+  .action-btn.green{background:#166542}
+  .action-btn.gold{background:#7c601b;color:#fff2c8}
+  .action-btn.red{background:#7d2525}
+  .action-btn.yellow{background:#ead04d;color:#1b1504;border-color:#f3e58b}
+  .mode-btn.active{background:#305f87}
+  .mode-btn.inactive{background:#101922;color:var(--muted)}
+  .tiny{font-size:11px}
+  .muted{color:var(--muted)}
+  .top-card{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:8px;
+    align-items:start;
+  }
+  .top-identity{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    min-width:0;
+  }
+  .portrait{
+    width:42px;
+    height:42px;
+    border-radius:10px;
+    border:1px solid var(--line2);
+    object-fit:cover;
+    object-position:center;
+    box-shadow:0 3px 10px rgba(0,0,0,.35);
+  }
+  .name{font-size:20px;font-weight:900;line-height:1}
+  .subtitle{
+    margin-top:3px;
+    font-size:11px;
+    color:var(--muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .top-actions{
+    display:grid;
+    grid-template-columns:repeat(2,auto);
+    gap:6px;
+    align-items:start;
+  }
+  .profile-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:8px;
+  }
+  .profile-row select,
+  input[type="text"],
+  input[type="number"],
+  textarea{
+    width:100%;
+    background:#0a1219;
+    color:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 9px;
+  }
+  textarea{min-height:110px;resize:vertical}
+  .chip-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+    margin-top:6px;
+  }
+  .chip{
+    background:#101925;
+    padding:5px 4px;
+    text-align:center;
+    font-size:10px;
+    font-weight:800;
+  }
+  .chip b{
+    display:block;
+    font-size:14px;
+    color:#fff;
+  }
+  .chip.green{background:#113625}
+  .chip.blue{background:#133d5b}
+  .chip.gold{background:#4d3b13;color:#ffe7a8}
+  .backup-actions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    margin-top:8px;
+  }
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .stack{display:grid;gap:6px}
+  .stats-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:5px;
+  }
+  .stat{
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:5px 4px;
+  }
+  .stat-head{font-size:10px;font-weight:900;color:#cce4ff;text-align:left;padding-left:2px}
+  .stat-score{text-align:center;font-size:20px;font-weight:900;line-height:1;margin:3px 0 4px}
+  .stat-foot{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+    font-size:9px;
+    font-weight:800;
+  }
+  .stat-pair{display:grid;gap:1px}
+  .stat-pair:last-child{justify-items:end}
+  .stat-pair b{font-size:14px;line-height:1;color:#fff}
+  .stat-controls{
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:4px;
+    margin-top:5px;
+  }
+  .stat-controls .small-btn{padding:4px 6px}
+  .bonus-line{
+    margin-top:3px;
+    text-align:center;
+    font-size:10px;
+    color:#81e0a4;
+    font-weight:800;
+  }
+  .skills-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:5px;
+  }
+  .skill-col{
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:4px;
+  }
+  .skill-col-title{
+    text-align:center;
+    font-size:10px;
+    font-weight:900;
+    color:#9cc6ea;
+    margin-bottom:3px;
+  }
+  .skill-line{
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+    padding:3px 5px;
+    border-radius:6px;
+    background:#121c27;
+    border:1px solid #33495d;
+    font-size:9px;
+    margin-bottom:3px;
+    color:#fff;
+  }
+  .skill-line.prof{background:#183322;border-color:#2d734a}
+  .skill-line:last-child{margin-bottom:0}
+  .triple{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:5px;
+  }
+  .mini-box{
+    background:#0d131c;
+    padding:6px 5px;
+    text-align:center;
+  }
+  .mini-box b{
+    display:block;
+    font-size:18px;
+    margin-top:2px;
+  }
+  .detail-box{
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px;
+    font-size:11px;
+    line-height:1.45;
+    white-space:pre-wrap;
+  }
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{
+    background:#0c131b;
+    color:#fff;
+    min-height:28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+    font-weight:800;
+    padding:4px 7px;
+  }
+  .detail-group{
+    display:grid;
+    gap:5px;
+  }
+  .detail-item{
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:7px 8px;
+    font-size:12px;
+  }
+  .builder-select-row{
+    display:grid;
+    grid-template-columns:1fr 34px;
+    gap:6px;
+    align-items:center;
+  }
+  .select-btn{width:100%;justify-content:space-between}
+  .icon-btn{width:34px;height:34px;padding:0}
+  .progression-head,.progression-row{
+    display:grid;
+    grid-template-columns:38px 1.3fr 54px 54px 1fr;
+    gap:4px;
+    align-items:center;
+  }
+  .progression-head div{
+    background:#101821;
+    border:1px solid var(--line);
+    border-radius:6px;
+    text-align:center;
+    font-size:10px;
+    padding:3px 2px;
+    font-weight:800;
+  }
+  .progression-list{
+    display:grid;
+    gap:4px;
+    max-height:56vh;
+    overflow:auto;
+  }
+  .progression-row{
+    background:#101821;
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:4px;
+  }
+  .progression-row select{padding:6px 7px;font-size:12px}
+  .feature-btn{
+    width:100%;
+    min-height:34px;
+    text-align:left;
+    justify-content:flex-start;
+  }
+  .combat-top{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr)) 110px;
+    gap:5px;
+  }
+  .combat-chip{
+    background:#0d131c;
+    border:1px solid var(--line2);
+    border-radius:10px;
+    padding:4px 3px;
+    text-align:center;
+    font-size:9px;
+    font-weight:800;
+  }
+  .combat-chip b{
+    display:block;
+    font-size:13px;
+  }
+  .amount-row{
+    display:grid;
+    grid-template-columns:1.2fr 1fr 1fr 1fr;
+    gap:6px;
+    margin-top:7px;
+  }
+  .combat-box{
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    background:#080d13;
+  }
+  .combat-title{
+    padding:6px 8px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+    font-weight:800;
+    background:#0d131b;
+  }
+  .combat-table{
+    padding:5px;
+    display:grid;
+    gap:4px;
+  }
+  .combat-head,.row-grid{
+    display:grid;
+    grid-template-columns:22px 1fr 42px 42px 42px;
+    gap:4px;
+    align-items:center;
+  }
+  .combat-head div{
+    background:#101821;
+    border:1px solid var(--line);
+    border-radius:6px;
+    text-align:center;
+    font-size:10px;
+    padding:3px 2px;
+  }
+  .combat-head .head-main{
+    grid-column:1 / span 2;
+    text-align:left;
+    padding-left:6px;
+  }
+  .combat-action{
+    width:100%;
+    border-radius:8px;
+    border:1px solid #3b6d52;
+    background:#165233;
+    color:#fff;
+    text-align:left;
+    padding:4px 8px;
+    min-height:34px;
+  }
+  .combat-action.blue{
+    background:#175c80;
+    border-color:#468db4;
+  }
+  .combat-action b{display:block;font-size:11px}
+  .combat-action span{display:block;font-size:8px;color:#d6edf8}
+  .slot-panel{
+    border:1px solid #ffffff;
+    border-radius:12px;
+    background:#06090d;
+    padding:7px;
+  }
+  .slot-head{
+    display:flex;
+    justify-content:space-between;
+    gap:6px;
+    align-items:center;
+    font-size:12px;
+    font-weight:800;
+    margin-bottom:5px;
+  }
+  .slot-grid{display:grid;gap:4px}
+  .slot-row{
+    display:grid;
+    grid-template-columns:repeat(9,1fr);
+    gap:4px;
+  }
+  .slot-label{
+    background:#111822;
+    padding:4px 2px;
+    text-align:center;
+    font-size:10px;
+    font-weight:800;
+  }
+  .slot-cell{
+    min-height:28px;
+    background:#0c1118;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    padding:4px 2px;
+  }
+  .pip{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    border:1px solid #6786aa;
+    background:#111822;
+  }
+  .pip.on{background:#2e88c4}
+  .pip.green.on{background:#2aa85b;border-color:#88e2ac}
+  .resource-pips{display:flex;gap:4px;flex-wrap:wrap}
+  .history{
+    display:grid;
+    gap:5px;
+    max-height:180px;
+    overflow:auto;
+  }
+  .history-line{
+    background:#0d131b;
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:9px;
+    padding:6px 7px;
+    font-size:11px;
+    line-height:1.35;
+    white-space:pre-wrap;
+  }
+  .footer-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(4,8,14,.96);
+    border-top:1px solid rgba(255,255,255,.08);
+    backdrop-filter:blur(10px);
+    z-index:25;
+  }
+  .tabs{
+    max-width:430px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:6px;
+    padding:8px 10px 10px;
+  }
+  .tab{
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:#0d141c;
+    color:var(--muted);
+    padding:10px 6px;
+    font-size:11px;
+    font-weight:900;
+  }
+  .tab.active{
+    background:#1f5e88;
+    color:#fff;
+    border-color:#4f96c0;
+  }
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(2,6,10,.78);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:30;
+    padding:10px;
+  }
+  .modal-backdrop.show{display:flex}
+  .modal{
+    width:min(430px,100%);
+    max-height:90vh;
+    overflow:auto;
+    background:linear-gradient(180deg, #111a24, #0c1219);
+    border:1px solid var(--line2);
+    border-radius:18px;
+    box-shadow:0 26px 70px rgba(0,0,0,.45);
+    padding:12px;
+  }
+  .modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .modal-title{font-size:16px;font-weight:900}
+  .form-grid{display:grid;gap:8px}
+  .search-wrap{display:grid;grid-template-columns:1fr auto;gap:6px}
+  .list-grid{display:grid;gap:6px;max-height:56vh;overflow:auto}
+  .list-item{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    gap:8px;
+    align-items:center;
+    padding:7px 8px;
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:9px;
+  }
+  .list-item-main{min-width:0}
+  .list-title{font-size:13px;font-weight:900}
+  .list-meta{font-size:11px;color:#c6dbef;line-height:1.3}
+  .modal-actions{display:flex;gap:8px;margin-top:12px}
+  .modal-actions button{flex:1}
+  .empty{font-size:11px;color:var(--muted)}
+  @media (max-width:400px){
+    .tabs{grid-template-columns:repeat(3,1fr)}
+    .combat-top{grid-template-columns:repeat(2,1fr)}
+    .progression-head,.progression-row{grid-template-columns:30px 1fr 42px 42px 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="page active" data-page="builder">
+    <div class="card">
+      <div class="top-card">
+        <div class="top-identity">
+          <img class="portrait" src="./alaric-headshot.png" alt="DND character portrait" id="charPortrait">
+          <div style="min-width:0;flex:1 1 auto;">
+            <div class="name" id="charName">5e Builder</div>
+            <div class="subtitle" id="charSubtitle"></div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="small-btn" id="createNewBtn">Create New</button>
+          <button class="small-btn" id="editTopBtn">Edit</button>
+        </div>
+      </div>
+      <div class="profile-row" style="margin-top:8px;">
+        <select id="profileSelect"></select>
+        <button class="small-btn" id="duplicateProfileBtn">Clone</button>
+      </div>
+      <div class="chip-grid" id="topChips"></div>
+      <div class="backup-actions">
+        <button class="small-btn" id="exportSaveBtn">Export Save</button>
+        <button class="small-btn" id="importSaveBtn">Import Save</button>
+        <button class="small-btn" id="syncStatusBtn">Sync</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Identity</span></div>
+      <div class="form-grid">
+        <label>Character Name
+          <input type="text" id="builderNameInput" placeholder="Enter character name">
+        </label>
+        <div class="grid-2">
+          <div class="builder-select-row">
+            <button class="select-btn" id="speciesSelectBtn">Select Species</button>
+            <button class="icon-btn" id="speciesInfoBtn">i</button>
+          </div>
+          <div class="builder-select-row">
+            <button class="select-btn" id="backgroundSelectBtn">Select Background</button>
+            <button class="icon-btn" id="backgroundInfoBtn">i</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Species Details</span></div>
+      <div class="stack" id="speciesDetails"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Background Details</span></div>
+      <div class="stack" id="backgroundDetails"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Stats</span>
+        <div class="title-actions">
+          <div class="tag" id="pointBuyRemaining">PB 27</div>
+          <button class="small-btn" id="rollStatsBtn">Roll</button>
+        </div>
+      </div>
+      <div class="stats-grid" id="builderStatsGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Progression</span></div>
+      <div class="progression-head">
+        <div>Lvl</div>
+        <div>Class</div>
+        <div>Pri</div>
+        <div>Sec</div>
+        <div>Feature</div>
+      </div>
+      <div class="progression-list" id="progressionList"></div>
+      <div class="grid-2" style="margin-top:8px;">
+        <label>Target Level
+          <input type="number" id="targetLevelInput" min="1" max="20" value="1">
+        </label>
+        <label>Populate Rolls
+          <input type="number" id="populateSeedInput" min="1" max="5" value="1">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn blue" id="populateBuilderBtn">Populate</button>
+      </div>
+      <div class="empty" id="populateHint"></div>
+    </div>
+  </section>
+
+  <section class="page" data-page="stats">
+    <div class="card">
+      <div class="card-title"><span>Core Stats</span></div>
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Skills</span></div>
+      <div class="skills-grid" id="skillsGrid"></div>
+    </div>
+    <div class="triple">
+      <div class="mini-box"><span class="tiny">Passive Perception</span><b id="passiveText"></b></div>
+      <div class="mini-box"><span class="tiny">Spell DC</span><b id="spellDcText"></b></div>
+      <div class="mini-box"><span class="tiny">Pact Slots</span><b id="pactSlotText"></b></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Derived</span></div>
+      <div class="detail-group" id="derivedDetails"></div>
+    </div>
+  </section>
+
+  <section class="page" data-page="combat">
+    <div class="card">
+      <div class="combat-top" id="combatTop"></div>
+      <div class="amount-row">
+        <input type="number" id="amountInput" min="0" placeholder="Amount">
+        <button class="action-btn red" id="damageBtn">DMG</button>
+        <button class="action-btn green" id="healBtn">+HP</button>
+        <button class="action-btn gold" id="thpBtn">+THP</button>
+      </div>
+    </div>
+    <div class="slot-panel">
+      <div class="slot-head"><span>Spell Slots</span><span id="slotHeadText"></span></div>
+      <div class="slot-grid" id="slotGrid"></div>
+    </div>
+    <div class="combat-box">
+      <div class="combat-title">Ability Buttons</div>
+      <div class="combat-table" id="abilityButtons"></div>
+    </div>
+    <div class="combat-box">
+      <div class="combat-title">Weapon Attacks</div>
+      <div class="combat-table">
+        <div class="combat-head">
+          <div class="head-main">Attack</div><div>Hit</div><div>Crit</div><div>Adv</div>
+        </div>
+        <div id="weaponRows"></div>
+      </div>
+    </div>
+    <div class="combat-box">
+      <div class="combat-title">Spells</div>
+      <div class="combat-table">
+        <div class="combat-head">
+          <div class="head-main">Spell</div><div>Hit</div><div>Mode</div><div>Adv</div>
+        </div>
+        <div id="spellRows"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>History</span><button class="small-btn" id="clearHistoryBtn">Clear</button></div>
+      <div class="history" id="historyBox"></div>
+    </div>
+  </section>
+
+  <section class="page" data-page="equipment">
+    <div class="card">
+      <div class="card-title"><span>Equipment</span></div>
+      <div class="form-grid">
+        <label>Armour
+          <select id="armorSelect"></select>
+        </label>
+        <label>Shield
+          <select id="shieldSelect"></select>
+        </label>
+        <label>Weapon 1
+          <select id="weapon1Select"></select>
+        </label>
+        <label>Weapon 2
+          <select id="weapon2Select"></select>
+        </label>
+        <label>Weapon 3
+          <select id="weapon3Select"></select>
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Loadout</span></div>
+      <div class="stack" id="equipmentSummary"></div>
+    </div>
+  </section>
+
+  <section class="page" data-page="spells">
+    <div class="card">
+      <div class="card-title">
+        <span>Spellbook</span>
+        <div class="title-actions">
+          <button class="small-btn" id="editSpellsBtn">Edit Spells</button>
+        </div>
+      </div>
+      <div class="stack" id="spellbookSummary"></div>
+    </div>
+  </section>
+
+  <section class="page" data-page="notes">
+    <div class="card">
+      <div class="card-title"><span>Notes</span></div>
+      <label>Notes
+        <textarea id="notesInput" placeholder="Build notes, assumptions, optional features, attunement details..."></textarea>
+      </label>
+    </div>
+  </section>
+</div>
+
+<div class="footer-nav">
+  <div class="tabs" id="bottomTabs"></div>
+</div>
+
+<div class="modal-backdrop" id="modalBack">
+  <div class="modal" id="modal"></div>
+</div>
+
+<input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
+
+<script src="./spell-data.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
