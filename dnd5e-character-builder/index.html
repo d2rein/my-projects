@@ -647,7 +647,13 @@
 
   <section class="page" data-page="stats">
     <div class="card">
-      <div class="card-title"><span>Core Stats</span></div>
+      <div class="card-title">
+        <span>Core Stats</span>
+        <div class="title-actions">
+          <button class="small-btn" id="levelUpBtn">Level Up</button>
+          <button class="small-btn" id="repopulateBtn">Repopulate</button>
+        </div>
+      </div>
       <div class="stats-grid" id="statsGrid"></div>
     </div>
     <div class="card">
@@ -668,6 +674,10 @@
   <section class="page" data-page="combat">
     <div class="card">
       <div class="combat-top" id="combatTop"></div>
+      <div class="grid-2" style="margin-top:7px;">
+        <button class="action-btn green" id="shortRestBtn">Short Rest</button>
+        <button class="action-btn blue" id="longRestBtn">Long Rest</button>
+      </div>
       <div class="amount-row">
         <input type="number" id="amountInput" min="0" placeholder="Amount">
         <button class="action-btn red" id="damageBtn">DMG</button>
