@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon GO Pokedex Tracker</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Pokemon GO</p>
+        <h1>Pokedex Scanner and Release Tracker</h1>
+        <p class="lede">
+          Live-capture your Pokedex pages, classify each visible entry as owned, seen, or missing, and compare your gaps against upcoming release opportunities.
+        </p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-stat">
+          <span class="hero-stat-label">Lists</span>
+          <strong id="heroListCount">10</strong>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-label">Tracked Entries</span>
+          <strong id="heroTrackedCount">0</strong>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-label">Missing</span>
+          <strong id="heroMissingCount">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel capture-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Capture</p>
+            <h2>Live Scanner</h2>
+          </div>
+          <div class="pill-row">
+            <span class="pill" id="captureStatePill">Idle</span>
+            <span class="pill" id="motionPill">Motion: n/a</span>
+            <span class="pill" id="ocrPill">OCR: not ready</span>
+          </div>
+        </div>
+
+        <div class="control-grid">
+          <label>
+            <span>List</span>
+            <select id="listTypeSelect"></select>
+          </label>
+          <label>
+            <span>Mode</span>
+            <select id="scanModeSelect">
+              <option value="auto">Auto-scan when stable</option>
+              <option value="manual">Manual frame scans</option>
+            </select>
+          </label>
+          <label>
+            <span>Motion Threshold</span>
+            <input id="motionThresholdInput" type="range" min="4" max="50" value="18">
+          </label>
+          <label>
+            <span>Tile Rows to Read</span>
+            <input id="rowCountInput" type="range" min="3" max="6" value="5">
+          </label>
+          <button id="startCaptureBtn" class="primary">Start Screen Share</button>
+          <button id="stopCaptureBtn" class="secondary">Stop</button>
+          <button id="scanFrameBtn" class="secondary">Scan Current Frame</button>
+          <button id="scanUploadBtn" class="secondary">Scan Image File</button>
+          <input id="uploadInput" type="file" accept="image/*" hidden>
+        </div>
+
+        <div class="calibration-grid">
+          <label>
+            <span>Grid Left %</span>
+            <input id="gridLeftInput" type="range" min="0" max="40" value="4.5" step="0.1">
+          </label>
+          <label>
+            <span>Grid Top %</span>
+            <input id="gridTopInput" type="range" min="5" max="40" value="18.5" step="0.1">
+          </label>
+          <label>
+            <span>Grid Width %</span>
+            <input id="gridWidthInput" type="range" min="50" max="96" value="92" step="0.1">
+          </label>
+          <label>
+            <span>Grid Height %</span>
+            <input id="gridHeightInput" type="range" min="30" max="80" value="71" step="0.1">
+          </label>
+          <label>
+            <span>Number Band %</span>
+            <input id="numberBandInput" type="range" min="12" max="32" value="22" step="0.5">
+          </label>
+          <label>
+            <span>Sprite Band %</span>
+            <input id="spriteBandInput" type="range" min="40" max="85" value="64" step="0.5">
+          </label>
+        </div>
+
+        <div class="preview-wrap">
+          <video id="captureVideo" playsinline muted hidden></video>
+          <canvas id="previewCanvas" width="540" height="960"></canvas>
+        </div>
+
+        <div class="status-grid">
+          <div class="mini-card">
+            <span class="mini-label">Scroll Feedback</span>
+            <strong id="scrollFeedback">Waiting for capture</strong>
+            <p id="scrollHint">Move slowly enough that rows settle for a moment before the app samples them.</p>
+          </div>
+          <div class="mini-card">
+            <span class="mini-label">Last Scan</span>
+            <strong id="lastScanSummary">No frames scanned yet</strong>
+            <p id="lastScanDetail">Visible dex numbers and tile states will appear here after each pass.</p>
+          </div>
+        </div>
+
+        <div class="section-head log-head">
+          <div>
+            <p class="eyebrow">Debug</p>
+            <h2>Session Log</h2>
+          </div>
+          <div class="button-row">
+            <button id="exportLogsBtn" class="secondary">Export Logs</button>
+            <button id="clearLogsBtn" class="secondary">Clear Logs</button>
+          </div>
+        </div>
+        <div id="logPanel" class="log-panel"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">State</p>
+            <h2>Tracked Lists</h2>
+          </div>
+          <div class="button-row">
+            <button id="exportStateBtn" class="secondary">Export JSON</button>
+            <button id="importStateBtn" class="secondary">Import JSON</button>
+            <button id="publishStateBtn" class="secondary">Publish to Site API</button>
+            <input id="importInput" type="file" accept="application/json" hidden>
+          </div>
+        </div>
+
+        <div id="listSummaryCards" class="summary-cards"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Dex</th>
+                <th>Name</th>
+                <th>Pokemon</th>
+                <th>Shiny</th>
+                <th>Lucky</th>
+                <th>XXL</th>
+                <th>XXS</th>
+                <th>G-Max</th>
+                <th>Mega</th>
+                <th>Shadow</th>
+                <th>Purified</th>
+                <th>100%</th>
+              </tr>
+            </thead>
+            <tbody id="dexTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Planning</p>
+            <h2>Upcoming Availability Matches</h2>
+          </div>
+          <div class="button-row">
+            <button id="loadFeedBtn" class="secondary">Load Feed</button>
+            <button id="publishFeedBtn" class="secondary">Publish Feed</button>
+          </div>
+        </div>
+
+        <div class="note-block">
+          The release feed uses a simple JSON format so we can seed data now and later wire in official Pokemon GO news parsing for events, eggs, shiny boosts, and Rocket line-ups.
+        </div>
+
+        <textarea id="feedEditor" class="feed-editor" spellcheck="false"></textarea>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pokemon</th>
+                <th>Needed Lists</th>
+                <th>Upcoming Opportunity</th>
+                <th>Window</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="matchesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

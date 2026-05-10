@@ -1,0 +1,50 @@
+{
+  "updatedAt": "2026-05-10",
+  "sources": [
+    {
+      "name": "Official Pokemon GO news",
+      "url": "https://pokemongolive.com/"
+    }
+  ],
+  "releases": [
+    {
+      "id": "sample-may-spotlight",
+      "title": "Sample Spotlight Hour",
+      "startsAt": "2026-05-19T18:00:00+10:00",
+      "endsAt": "2026-05-19T19:00:00+10:00",
+      "source": "Add official post URL here",
+      "opportunities": [
+        {
+          "list": "shiny",
+          "dex": 133,
+          "label": "Shiny chance featured",
+          "boost": "boosted odds"
+        },
+        {
+          "list": "pokemon",
+          "dex": 137,
+          "label": "Wild debut"
+        }
+      ]
+    },
+    {
+      "id": "sample-rocket-rotation",
+      "title": "Sample Rocket Rotation",
+      "startsAt": "2026-05-24T10:00:00+10:00",
+      "endsAt": "2026-06-15T20:00:00+10:00",
+      "source": "Add official post URL here",
+      "opportunities": [
+        {
+          "list": "shadow",
+          "dex": 74,
+          "label": "Shadow in grunt lineup"
+        },
+        {
+          "list": "purified",
+          "dex": 74,
+          "label": "Purify after rescue"
+        }
+      ]
+    }
+  ]
+}
