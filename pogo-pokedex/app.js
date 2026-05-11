@@ -114,6 +114,8 @@ let lastStableHash = "";
 let tesseractWorkerPromise = null;
 let isWorkerBusy = false;
 let previewHasFrame = false;
+let lastOverlayRect = null;
+let lastScanTiles = [];
 
 setup();
 
@@ -145,6 +147,7 @@ function bindEvents() {
   document.querySelector("#scanFrameBtn").addEventListener("click", () => scanCurrentFrame("manual"));
   document.querySelector("#scanUploadBtn").addEventListener("click", () => uploadInput.click());
   document.querySelector("#uploadInput").addEventListener("change", handleUpload);
+  document.querySelector("#clearCurrentListBtn").addEventListener("click", clearCurrentList);
   document.querySelector("#exportStateBtn").addEventListener("click", exportState);
   document.querySelector("#importStateBtn").addEventListener("click", () => importInput.click());
   document.querySelector("#importInput").addEventListener("change", importState);
@@ -357,7 +360,8 @@ function renderPreviewFrame() {
   previewCanvas.height = srcH;
   previewCtx.drawImage(captureVideo, 0, 0, srcW, srcH);
 
-  const rect = getCalibrationRect(srcW, srcH);
+  const rect = detectSnappedGridRect(previewCanvas, getCalibrationRect(srcW, srcH));
+  lastOverlayRect = rect;
   drawOverlay(rect);
   updateMotionStats(rect);
 }
@@ -402,6 +406,16 @@ function drawOverlay(rect) {
   previewCtx.fillStyle = "rgba(63,49,18,0.8)";
   previewCtx.font = "700 18px Trebuchet MS";
   previewCtx.fillText(`${LIST_TYPES.find(entry => entry.id === state.activeList)?.label || "List"} overlay`, rect.x + 10, Math.max(26, rect.y - 12));
+
+  if (lastScanTiles.length) {
+    previewCtx.fillStyle = "rgba(57, 157, 96, 0.92)";
+    previewCtx.font = `700 ${Math.max(18, Math.round(tileHeight * 0.15))}px Trebuchet MS`;
+    lastScanTiles.forEach(tile => {
+      const x = rect.x + tile.col * tileWidth + tileWidth - 24;
+      const y = rect.y + tile.row * tileHeight + 28;
+      previewCtx.fillText("✓", x, y);
+    });
+  }
   previewCtx.restore();
 }
 
@@ -457,7 +471,8 @@ async function scanCurrentFrame(mode) {
   frameCanvas.height = previewCanvas.height;
   frameCtx.drawImage(previewCanvas, 0, 0);
 
-  const rect = getCalibrationRect(frameCanvas.width, frameCanvas.height);
+  const rect = detectSnappedGridRect(frameCanvas, getCalibrationRect(frameCanvas.width, frameCanvas.height));
+  lastOverlayRect = rect;
   const hash = hashRect(frameCtx.getImageData(rect.x, rect.y, rect.width, rect.height).data);
   if (mode === "auto" && hash === lastStableHash) return;
 
@@ -478,6 +493,12 @@ async function scanCurrentFrame(mode) {
     }
 
     applyScanResults(results);
+    lastScanTiles = results.map(result => ({
+      row: result.row,
+      col: result.col,
+      dex: result.dex,
+      status: result.status
+    }));
     lastStableHash = hash;
     const detected = results.map(result => `#${String(result.dex).padStart(4, "0")} ${result.status}`).join(", ");
     lastScanSummary.textContent = `${results.length} entries updated for ${LIST_TYPES.find(list => list.id === state.activeList)?.label}`;
@@ -494,11 +515,13 @@ async function scanCurrentFrame(mode) {
       list: state.activeList,
       motion,
       count: results.length,
-      sample: results.slice(0, 8)
+      sample: results.slice(0, 8),
+      baseDex: results[0]?.dex || null
     });
     saveState();
     renderAll();
     requestMissingNames();
+    renderPreviewFrame();
   } catch (error) {
     lastScanSummary.textContent = "Frame scan failed";
     lastScanDetail.textContent = error.message;
@@ -519,25 +542,84 @@ async function scanGrid(sourceCanvas, rect) {
   const tileWidth = rect.width / cols;
   const tileHeight = rect.height / rows;
   const worker = await getTesseractWorker();
-  const results = [];
+  const tiles = [];
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
-      const tileRect = {
-        x: Math.round(rect.x + col * tileWidth),
-        y: Math.round(rect.y + row * tileHeight),
-        width: Math.round(tileWidth),
-        height: Math.round(tileHeight)
-      };
-
-      const status = classifyTile(sourceCanvas, tileRect);
-      const dex = await readDexNumber(worker, sourceCanvas, tileRect);
-      if (!dex) continue;
-      results.push({ dex, status });
+      tiles.push({
+        row,
+        col,
+        index: row * cols + col,
+        rect: {
+          x: Math.round(rect.x + col * tileWidth),
+          y: Math.round(rect.y + row * tileHeight),
+          width: Math.round(tileWidth),
+          height: Math.round(tileHeight)
+        }
+      });
     }
   }
 
-  return results.filter(entry => entry.dex >= 1 && entry.dex <= 9999);
+  const anchorTiles = tiles.filter(tile => tile.row === 0 || tile.col === 0);
+  const anchorReads = [];
+  for (const tile of anchorTiles) {
+    const dex = await readDexNumber(worker, sourceCanvas, tile.rect);
+    if (!dex) continue;
+    anchorReads.push({
+      index: tile.index,
+      dex
+    });
+  }
+
+  const baseDex = chooseBaseDex(anchorReads, tiles.length);
+  if (!baseDex) {
+    return [];
+  }
+
+  return tiles.map(tile => ({
+    row: tile.row,
+    col: tile.col,
+    dex: baseDex + tile.index,
+    status: classifyTile(sourceCanvas, tile.rect)
+  })).filter(entry => entry.dex >= 1 && entry.dex <= 9999);
+}
+
+function chooseBaseDex(anchorReads, tileCount) {
+  if (!anchorReads.length) return null;
+  const support = new Map();
+  anchorReads.forEach(read => {
+    const candidate = read.dex - read.index;
+    if (candidate < 1 || candidate > 9999) return;
+    const current = support.get(candidate) || { count: 0, reads: [] };
+    current.count += 1;
+    current.reads.push(read);
+    support.set(candidate, current);
+  });
+
+  let bestCandidate = null;
+  let bestCount = 0;
+  for (const [candidate, info] of support.entries()) {
+    if (candidate + tileCount - 1 > 9999) continue;
+    if (info.count > bestCount) {
+      bestCandidate = candidate;
+      bestCount = info.count;
+    }
+  }
+
+  if (bestCandidate && bestCount >= 2) return bestCandidate;
+
+  const sorted = [...anchorReads].sort((a, b) => a.index - b.index);
+  for (let i = 0; i < sorted.length; i += 1) {
+    for (let j = i + 1; j < sorted.length; j += 1) {
+      const deltaIndex = sorted[j].index - sorted[i].index;
+      const deltaDex = sorted[j].dex - sorted[i].dex;
+      if (deltaIndex === deltaDex) {
+        return sorted[i].dex - sorted[i].index;
+      }
+    }
+  }
+
+  return bestCandidate;
 }
 
 function classifyTile(sourceCanvas, tileRect) {
@@ -622,8 +704,8 @@ function computeSaturation(r, g, b) {
 async function readDexNumber(worker, sourceCanvas, tileRect) {
   const numberBandHeight = Math.round(tileRect.height * (state.calibration.numberBand / 100));
   const numberCanvas = document.createElement("canvas");
-  numberCanvas.width = tileRect.width;
-  numberCanvas.height = numberBandHeight;
+  numberCanvas.width = Math.max(80, Math.round(tileRect.width * 1.8));
+  numberCanvas.height = Math.max(26, Math.round(numberBandHeight * 2));
   const numberCtx = numberCanvas.getContext("2d", { willReadFrequently: true });
 
   numberCtx.drawImage(
@@ -634,14 +716,14 @@ async function readDexNumber(worker, sourceCanvas, tileRect) {
     numberBandHeight,
     0,
     0,
-    tileRect.width,
-    numberBandHeight
+    numberCanvas.width,
+    numberCanvas.height
   );
 
   preprocessNumberCanvas(numberCanvas, numberCtx);
   const { data } = await worker.recognize(numberCanvas);
   const digits = String(data.text || "").replace(/[^\d]/g, "");
-  if (!digits.length) return null;
+  if (digits.length < 2) return null;
   return Number(digits.slice(-4));
 }
 
@@ -665,6 +747,122 @@ function preprocessNumberCanvas(canvas, ctx) {
   }
 
   ctx.putImageData(imageData, 0, 0);
+}
+
+function detectSnappedGridRect(canvas, rect) {
+  try {
+    const cols = 4;
+    const rows = state.calibration.rowCount;
+    const tileWidth = rect.width / cols;
+    const tileHeight = rect.height / rows;
+    const sampleRect = {
+      x: Math.max(0, rect.x - Math.round(tileWidth * 0.14)),
+      y: Math.max(0, rect.y - Math.round(tileHeight * 0.14)),
+      width: Math.min(canvas.width - Math.max(0, rect.x - Math.round(tileWidth * 0.14)), rect.width + Math.round(tileWidth * 0.28)),
+      height: Math.min(canvas.height - Math.max(0, rect.y - Math.round(tileHeight * 0.14)), rect.height + Math.round(tileHeight * 0.28))
+    };
+    const sampleCtx = canvas.getContext("2d", { willReadFrequently: true });
+    const image = sampleCtx.getImageData(sampleRect.x, sampleRect.y, sampleRect.width, sampleRect.height);
+    const vertical = scoreVerticalLines(image, sampleRect.width, sampleRect.height);
+    const horizontal = scoreHorizontalLines(image, sampleRect.width, sampleRect.height);
+
+    const left = snapAxisGroup(rect.x - sampleRect.x, tileWidth, cols, vertical, sampleRect.width);
+    const top = snapAxisGroup(rect.y - sampleRect.y, tileHeight, rows, horizontal, sampleRect.height);
+    const right = snapAxisSingle(rect.x - sampleRect.x + rect.width, vertical, sampleRect.width, tileWidth);
+    const bottom = snapAxisSingle(rect.y - sampleRect.y + rect.height, horizontal, sampleRect.height, tileHeight);
+
+    const snapped = {
+      x: sampleRect.x + left,
+      y: sampleRect.y + top,
+      width: right - left,
+      height: bottom - top
+    };
+
+    if (snapped.width < rect.width * 0.82 || snapped.height < rect.height * 0.82) {
+      return rect;
+    }
+    return snapped;
+  } catch {
+    return rect;
+  }
+}
+
+function scoreVerticalLines(image, width, height) {
+  const scores = new Array(width).fill(0);
+  for (let x = 1; x < width - 1; x += 1) {
+    let score = 0;
+    for (let y = 0; y < height; y += 3) {
+      const center = pixelLuma(image.data, width, x, y);
+      const left = pixelLuma(image.data, width, x - 1, y);
+      const right = pixelLuma(image.data, width, x + 1, y);
+      score += center * 0.6 + Math.abs(center - left) + Math.abs(center - right);
+    }
+    scores[x] = score;
+  }
+  return scores;
+}
+
+function scoreHorizontalLines(image, width, height) {
+  const scores = new Array(height).fill(0);
+  for (let y = 1; y < height - 1; y += 1) {
+    let score = 0;
+    for (let x = 0; x < width; x += 3) {
+      const center = pixelLuma(image.data, width, x, y);
+      const top = pixelLuma(image.data, width, x, y - 1);
+      const bottom = pixelLuma(image.data, width, x, y + 1);
+      score += center * 0.6 + Math.abs(center - top) + Math.abs(center - bottom);
+    }
+    scores[y] = score;
+  }
+  return scores;
+}
+
+function pixelLuma(data, width, x, y) {
+  const index = (y * width + x) * 4;
+  return data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+}
+
+function snapAxis(currentBoundary, tileSize, count, scores, maxLength) {
+  const searchRadius = Math.max(4, Math.round(tileSize * 0.18));
+  let bestBoundary = currentBoundary;
+  let bestTotal = -Infinity;
+
+  for (let shift = -searchRadius; shift <= searchRadius; shift += 1) {
+    const candidate = Math.round(currentBoundary + shift);
+    if (candidate < 1 || candidate >= maxLength - 1) continue;
+    let total = 0;
+    for (let i = 0; i <= count; i += 1) {
+      const boundary = Math.round(candidate + i * tileSize);
+      if (boundary < 1 || boundary >= maxLength - 1) continue;
+      total += scores[boundary] || 0;
+    }
+    if (total > bestTotal) {
+      bestTotal = total;
+      bestBoundary = candidate;
+    }
+  }
+
+  return bestBoundary;
+}
+
+function snapAxisGroup(currentBoundary, tileSize, count, scores, maxLength) {
+  return snapAxis(currentBoundary, tileSize, count, scores, maxLength);
+}
+
+function snapAxisSingle(currentBoundary, scores, maxLength, tileSize) {
+  const searchRadius = Math.max(4, Math.round(tileSize * 0.18));
+  let bestBoundary = currentBoundary;
+  let bestScore = -Infinity;
+  for (let shift = -searchRadius; shift <= searchRadius; shift += 1) {
+    const candidate = Math.round(currentBoundary + shift);
+    if (candidate < 1 || candidate >= maxLength - 1) continue;
+    const score = scores[candidate] || 0;
+    if (score > bestScore) {
+      bestScore = score;
+      bestBoundary = candidate;
+    }
+  }
+  return bestBoundary;
 }
 
 async function getTesseractWorker() {
@@ -768,7 +966,7 @@ function renderDexTable() {
   const dexNumbers = [...dexSet].sort((a, b) => a - b);
   dexTableBody.innerHTML = "";
 
-  dexNumbers.slice(0, 500).forEach(dex => {
+  dexNumbers.forEach(dex => {
     const row = document.createElement("tr");
     const name = getPokemonName(dex);
     const cells = LIST_TYPES.map(list => renderStatePill(state.lists[list.id][dex]?.status || "unknown"));
@@ -965,6 +1163,15 @@ function clearLogs() {
   state.logs = [];
   saveState();
   renderLogs();
+}
+
+function clearCurrentList() {
+  state.lists[state.activeList] = {};
+  lastScanTiles = [];
+  addLog("warn", "Current list cleared", { list: state.activeList });
+  saveState();
+  renderAll();
+  renderPreviewFrame();
 }
 
 function fileToImage(file) {
