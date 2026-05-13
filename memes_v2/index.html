@@ -86,11 +86,12 @@ button.toggle.active{ background:#3a5cff; }
   right:10px;
   display:flex;
   gap:10px;
+  z-index:2;
 }
 
 #viewerBar button{
-  font-size:18px;
-  padding:6px 10px;
+  font-size:16px;
+  padding:8px 12px;
 }
 
 #imageFrame{
@@ -123,12 +124,14 @@ button.toggle.active{ background:#3a5cff; }
   position:absolute;
   top:50%;
   transform:translateY(-50%);
-  font-size:40px;
+  font-size:28px;
   color:white;
-  background:rgba(0,0,0,.4);
+  background:rgba(0,0,0,.28);
   border:none;
   cursor:pointer;
-  padding:8px 12px;
+  padding:10px 12px;
+  border-radius:999px;
+  z-index:1;
 }
 
 #prevBtn{ left:10px; }
@@ -158,6 +161,25 @@ button.toggle.active{ background:#3a5cff; }
   outline:3px solid #3a5cff;
   transform:scale(1.05);
 }
+
+#backBtn,
+#similarStrip{
+  display:none;
+}
+
+#backBtn{
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:2;
+  padding:8px 12px;
+  font-size:16px;
+  border:none;
+  border-radius:6px;
+  background:#222;
+  color:#eee;
+  cursor:pointer;
+}
 </style>
 </head>
 
@@ -166,7 +188,7 @@ button.toggle.active{ background:#3a5cff; }
 <h2>😂 Meme Search v2</h2>
 
 <div class="controls">
-<input id="search" placeholder="Searchâ€¦">
+<input id="search" placeholder="Search...">
 
 <select id="sortSelect">
 <option value="relevance">Relevance</option>
@@ -194,15 +216,15 @@ button.toggle.active{ background:#3a5cff; }
 
 <div id="viewerBar">
 <button id="similarBtn">Find Similar</button>
-<button id="closeBtn">âœ•</button>
+<button id="closeBtn" aria-label="Close viewer">Close</button>
 </div>
 
-<button id="backBtn">Back</button>
+<button id="backBtn">Back To Results</button>
 
 <div id="imageFrame">
-<button class="navArrow" id="prevBtn">â€¹</button>
+<button class="navArrow" id="prevBtn" aria-label="Previous image">&#8249;</button>
 <img id="fullImage">
-<button class="navArrow" id="nextBtn">â€º</button>
+<button class="navArrow" id="nextBtn" aria-label="Next image">&#8250;</button>
 </div>
 
 <div id="fileName" style="margin-top:8px;font-size:14px;color:#aaa"></div>
@@ -226,6 +248,8 @@ let sortMode="date";
 
 let similarList=[];
 let similarPointer=0;
+let previousResults=[];
+let inSimilarMode=false;
 
 const SIMILAR_COUNT=60;
 
@@ -285,6 +309,11 @@ results.appendChild(img);
 
 }
 
+function updateViewerUi(){
+document.getElementById("backBtn").style.display = inSimilarMode ? "block" : "none";
+document.getElementById("similarStrip").style.display = inSimilarMode ? "block" : "none";
+}
+
 /* search */
 
 function applySearch(){
@@ -295,6 +324,8 @@ const words=q ? q.split(/\s+/) : [];
 if(!q){
 
 currentResults=[...memes];
+inSimilarMode=false;
+updateViewerUi();
 
 if(sortMode==="date"){
 currentResults.sort((a,b)=>new Date(b.modified)-new Date(a.modified));
@@ -323,6 +354,8 @@ scored.sort((a,b)=>a.basename.localeCompare(b.basename));
 }
 
 currentResults=scored;
+inSimilarMode=false;
+updateViewerUi();
 
 render(currentResults);
 
@@ -338,6 +371,7 @@ const viewer=document.getElementById("viewer");
 const img=document.getElementById("fullImage");
 
 viewer.style.display="flex";
+updateViewerUi();
 
 img.src="";
 
@@ -357,8 +391,10 @@ document.getElementById("imageFrame").classList.remove("zoomed");
 document.getElementById("fileName").textContent =
 memes[index].basename + memes[index].ext;
 
+if(inSimilarMode){
 renderSimilar();
 centerThumbnail(index);
+}
 
 preloadNeighbors(index);
 
@@ -401,6 +437,9 @@ function buildSimilar(index){
 
 const base=memes[index];
 similarList=[];
+previousResults=[...currentResults];
+inSimilarMode=true;
+updateViewerUi();
 
 for(let i=0;i<memes.length;i++){
 
@@ -425,7 +464,9 @@ render(currentResults);
 
 renderSimilar();
 
+if(currentResults.length){
 openViewer(currentResults[0]._index);
+}
 
 }
 function renderSimilar(){
@@ -555,7 +596,11 @@ buildSimilar(currentOpenIndex);
 
 document.getElementById("backBtn").onclick=()=>{
 similarList=[];
-applySearch();
+inSimilarMode=false;
+currentResults = previousResults.length ? [...previousResults] : [...memes];
+updateViewerUi();
+render(currentResults);
+openViewer(currentOpenIndex);
 };
 
 /* close */
@@ -563,6 +608,8 @@ applySearch();
 document.getElementById("closeBtn").onclick=()=>{
 viewer.style.display="none";
 similarList=[];
+inSimilarMode=false;
+updateViewerUi();
 };
 
 /* load metadata + embeddings */
