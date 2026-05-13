@@ -2,6 +2,8 @@ import argparse
 import gc
 import hashlib
 import json
+import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -14,7 +16,8 @@ from tqdm import tqdm
 from transformers import BlipForConditionalGeneration, BlipProcessor
 
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+TESSERACT_EXE = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = TESSERACT_EXE
 
 
 ROOT = Path(__file__).resolve().parent
@@ -136,10 +139,42 @@ def make_square_thumb(src_path: Path, dst_path: Path) -> None:
 
 
 def ocr_text(src_path: Path) -> str:
-    rgb = load_processing_rgb(src_path)
-    text = pytesseract.image_to_string(rgb, config=OCR_CONFIG)
-    text = text.replace("\n", " ").lower()
-    return " ".join(text.split())
+    last_error = None
+    for max_dimension in (1800, 1400, 1000, 700):
+        try:
+            rgb = load_processing_rgb(src_path, max_dimension=max_dimension)
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp_path = Path(tmp.name)
+
+            try:
+                rgb.save(tmp_path, "JPEG", quality=85, optimize=True)
+                result = subprocess.run(
+                    [
+                        TESSERACT_EXE,
+                        str(tmp_path),
+                        "stdout",
+                        "--oem",
+                        "3",
+                        "--psm",
+                        "6",
+                    ],
+                    capture_output=True,
+                    check=True,
+                )
+                text = result.stdout.decode("utf-8", errors="replace")
+            finally:
+                tmp_path.unlink(missing_ok=True)
+
+            text = text.replace("\n", " ").lower()
+            return " ".join(text.split())
+        except Exception as exc:
+            last_error = exc
+            gc.collect()
+
+    if last_error:
+        raise last_error
+
+    return ""
 
 
 def load_existing_embeddings():
@@ -248,6 +283,13 @@ def collect_candidates(scan_from: datetime):
     return candidates
 
 
+def filter_candidates_by_exact_name(candidates, exact_names: list[str]):
+    wanted = {name.lower() for name in exact_names}
+    filtered = [path for path in candidates if path.name.lower() in wanted]
+    filtered.sort(key=lambda item: item.stat().st_mtime)
+    return filtered
+
+
 def build_item(image_path: Path, source_path: Path, file_hash: str, text: str, caption: str) -> dict:
     source_modified = datetime.fromtimestamp(source_path.stat().st_mtime)
     stat = image_path.stat()
@@ -271,6 +313,17 @@ def main() -> None:
     parser.add_argument("--since", help="ISO date or datetime, for example 2026-01-01")
     parser.add_argument("--limit", type=int, help="Only inspect the first N filtered candidates")
     parser.add_argument(
+        "--exact-name",
+        action="append",
+        default=[],
+        help="Retry only files with this exact filename. Can be passed more than once.",
+    )
+    parser.add_argument(
+        "--skip-caption",
+        action="store_true",
+        help="Do not run BLIP captioning. Useful for recovering files that crash in the caption step.",
+    )
+    parser.add_argument(
         "--stop-after-imports",
         type=int,
         help="Stop once this many new files have been imported in the current run",
@@ -289,6 +342,8 @@ def main() -> None:
     save_status(phase="scanning", scan_from=scan_from.isoformat(), indexed_items=len(items))
 
     candidates = collect_candidates(scan_from)
+    if args.exact_name:
+        candidates = filter_candidates_by_exact_name(candidates, args.exact_name)
     if args.limit:
         candidates = candidates[: args.limit]
 
@@ -314,9 +369,12 @@ def main() -> None:
     save_status(phase="loading_clip", candidate_count=len(candidates), indexed_items=len(items))
     clip_model, preprocess = build_clip(device)
 
-    log("Loading caption model...")
-    save_status(phase="loading_caption", candidate_count=len(candidates), indexed_items=len(items))
-    caption_processor, caption_model = build_captioner(device)
+    caption_processor = None
+    caption_model = None
+    if not args.skip_caption:
+        log("Loading caption model...")
+        save_status(phase="loading_caption", candidate_count=len(candidates), indexed_items=len(items))
+        caption_processor, caption_model = build_captioner(device)
 
     imported = 0
     skipped_hash = 0
@@ -361,7 +419,10 @@ def main() -> None:
         try:
             make_square_thumb(image_path, thumb_path)
             text = ocr_text(image_path)
-            caption = image_caption(caption_processor, caption_model, device, image_path)
+            if args.skip_caption:
+                caption = ""
+            else:
+                caption = image_caption(caption_processor, caption_model, device, image_path)
             emb = image_embedding(clip_model, preprocess, device, image_path)
 
             items.append(build_item(image_path, source_path, file_hash, text, caption))
