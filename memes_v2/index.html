@@ -143,6 +143,7 @@ button.toggle.active{ background:#3a5cff; }
   width:90vw;
   margin-top:14px;
   overflow-x:auto;
+  display:block;
 }
 
 #similarRow{
@@ -160,11 +161,6 @@ button.toggle.active{ background:#3a5cff; }
 .similarThumb.active{
   outline:3px solid #3a5cff;
   transform:scale(1.05);
-}
-
-#backBtn,
-#similarStrip{
-  display:none;
 }
 
 #backBtn{
@@ -216,6 +212,7 @@ button.toggle.active{ background:#3a5cff; }
 
 <div id="viewerBar">
 <button id="similarBtn">Find Similar</button>
+<button id="shareBtn">Share</button>
 <button id="closeBtn" aria-label="Close viewer">Close</button>
 </div>
 
@@ -247,9 +244,11 @@ let currentResults=[];
 let sortMode="date";
 
 let similarList=[];
-let similarPointer=0;
 let previousResults=[];
 let inSimilarMode=false;
+let similarSourceIndex=-1;
+let embeddingsLoaded=false;
+let embeddingsPromise=null;
 
 const SIMILAR_COUNT=60;
 
@@ -273,6 +272,7 @@ return score;
 function preloadNeighbors(index){
 
 let pos = currentResults.findIndex(m => m._index === index);
+if(pos===-1 || currentResults.length===0) return;
 
 for(let i=1;i<=2;i++){
 
@@ -311,7 +311,14 @@ results.appendChild(img);
 
 function updateViewerUi(){
 document.getElementById("backBtn").style.display = inSimilarMode ? "block" : "none";
-document.getElementById("similarStrip").style.display = inSimilarMode ? "block" : "none";
+document.getElementById("similarStrip").style.display = currentResults.length > 1 ? "block" : "none";
+document.getElementById("similarBtn").textContent = inSimilarMode ? "Refresh Similar" : "Find Similar";
+}
+
+function viewerUrlForIndex(index){
+const url=new URL(window.location.href);
+url.searchParams.set("m", memes[index].file);
+return url.toString();
 }
 
 /* search */
@@ -366,6 +373,7 @@ render(currentResults);
 function openViewer(index){
 
 currentOpenIndex=index;
+window.history.replaceState(null,"",viewerUrlForIndex(index));
 
 const viewer=document.getElementById("viewer");
 const img=document.getElementById("fullImage");
@@ -391,10 +399,8 @@ document.getElementById("imageFrame").classList.remove("zoomed");
 document.getElementById("fileName").textContent =
 memes[index].basename + memes[index].ext;
 
-if(inSimilarMode){
 renderSimilar();
 centerThumbnail(index);
-}
 
 preloadNeighbors(index);
 
@@ -433,12 +439,67 @@ zoom=false;
 
 /* build similar */
 
-function buildSimilar(index){
+async function ensureEmbeddingsLoaded(){
+if(embeddingsLoaded) return;
+if(embeddingsPromise) return embeddingsPromise;
+
+embeddingsPromise=(async()=>{
+const status=document.getElementById("resultCount");
+const previousText=status.textContent;
+status.textContent="Loading visual index...";
+
+let embeddings=[];
+let binIndex=0;
+
+while(true){
+try{
+const path=`embeddings/emb_${String(binIndex).padStart(3,"0")}.bin`;
+const res=await fetch(path);
+if(!res.ok) break;
+const buffer=await res.arrayBuffer();
+embeddings.push(new Float32Array(buffer));
+binIndex++;
+}catch(e){
+break;
+}
+}
+
+if(embeddings.length===0){
+status.textContent=previousText;
+throw new Error("No embedding bins found.");
+}
+
+const totalLength=embeddings.reduce((a,b)=>a+b.length,0);
+const merged=new Float32Array(totalLength);
+
+let offset=0;
+for(const arr of embeddings){
+merged.set(arr,offset);
+offset+=arr.length;
+}
+
+const dim=Math.floor(merged.length/memes.length);
+for(let i=0;i<memes.length;i++){
+memes[i].embVec=merged.subarray(i*dim,(i+1)*dim);
+}
+
+embeddingsLoaded=true;
+embeddingsPromise=null;
+status.textContent=previousText;
+})();
+
+return embeddingsPromise;
+}
+
+async function buildSimilar(index){
+
+await ensureEmbeddingsLoaded();
 
 const base=memes[index];
 similarList=[];
 previousResults=[...currentResults];
 inSimilarMode=true;
+similarSourceIndex=index;
 updateViewerUi();
 
 for(let i=0;i<memes.length;i++){
@@ -456,17 +517,14 @@ similarList.push({idx:i,score:s});
 
 similarList.sort((a,b)=>b.score-a.score);
 
-currentResults = similarList
+currentResults = [base,...similarList
 .slice(0,SIMILAR_COUNT)
-.map(x=>memes[x.idx]);
+.map(x=>memes[x.idx])];
 
 render(currentResults);
 
 renderSimilar();
-
-if(currentResults.length){
-openViewer(currentResults[0]._index);
-}
+openViewer(index);
 
 }
 function renderSimilar(){
@@ -591,7 +649,26 @@ applySearch();
 /* buttons */
 
 document.getElementById("similarBtn").onclick=()=>{
-buildSimilar(currentOpenIndex);
+(async()=>{
+const btn=document.getElementById("similarBtn");
+const originalText=btn.textContent;
+btn.disabled=true;
+btn.textContent="Loading...";
+try{
+await buildSimilar(currentOpenIndex);
+}catch(err){
+console.error(err);
+alert("Find Similar is not available right now.");
+inSimilarMode=false;
+currentResults = previousResults.length ? [...previousResults] : [...memes];
+updateViewerUi();
+render(currentResults);
+}finally{
+btn.disabled=false;
+btn.textContent=originalText;
+updateViewerUi();
+}
+})();
 };
 
 document.getElementById("backBtn").onclick=()=>{
@@ -600,7 +677,8 @@ inSimilarMode=false;
 currentResults = previousResults.length ? [...previousResults] : [...memes];
 updateViewerUi();
 render(currentResults);
-openViewer(currentOpenIndex);
+openViewer(similarSourceIndex!==-1 ? similarSourceIndex : currentOpenIndex);
+similarSourceIndex=-1;
 };
 
 /* close */
@@ -609,7 +687,28 @@ document.getElementById("closeBtn").onclick=()=>{
 viewer.style.display="none";
 similarList=[];
 inSimilarMode=false;
+similarSourceIndex=-1;
 updateViewerUi();
+const url=new URL(window.location.href);
+url.searchParams.delete("m");
+window.history.replaceState(null,"",url.toString());
+};
+
+document.getElementById("shareBtn").onclick=async()=>{
+if(currentOpenIndex<0) return;
+const url=viewerUrlForIndex(currentOpenIndex);
+const title=memes[currentOpenIndex].basename + memes[currentOpenIndex].ext;
+
+try{
+if(navigator.share){
+await navigator.share({title, url});
+return;
+}
+await navigator.clipboard.writeText(url);
+alert("Link copied.");
+}catch(err){
+console.error(err);
+}
 };
 
 /* load metadata + embeddings */
@@ -621,62 +720,17 @@ const meta = await fetch("memes.json").then(r=>r.json());
 
 memes = meta.map((m,i)=>({...m,_index:i}));
 
-// load embedding bins
-let embeddings=[];
-
-let binIndex=0;
-
-while(true){
-
-try{
-
-const path=`embeddings/emb_${String(binIndex).padStart(3,"0")}.bin`;
-
-const res=await fetch(path);
-
-if(!res.ok) break;
-
-const buffer=await res.arrayBuffer();
-
-embeddings.push(new Float32Array(buffer));
-
-binIndex++;
-
-}catch(e){
-break;
-}
-
-}
-
-if(embeddings.length===0){
-console.warn("No embedding bins found.");
-sortMode = document.getElementById("sortSelect").value;
-applySearch();
-return;
-}
-
-// merge bins
-const totalLength=embeddings.reduce((a,b)=>a+b.length,0);
-const merged=new Float32Array(totalLength);
-
-let offset=0;
-
-for(const arr of embeddings){
-merged.set(arr,offset);
-offset+=arr.length;
-}
-
-// determine vector dimension
-const dim=merged.length/memes.length;
-
-// attach embeddings
-for(let i=0;i<memes.length;i++){
-memes[i].embVec=merged.subarray(i*dim,(i+1)*dim);
-}
-
 sortMode = document.getElementById("sortSelect").value;
 
 applySearch();
+
+const sharedFile = new URL(window.location.href).searchParams.get("m");
+if(sharedFile){
+const match = memes.find(m=>m.file===sharedFile);
+if(match){
+openViewer(match._index);
+}
+}
 
 }
 document.getElementById("resultCount").textContent="Loading...";
