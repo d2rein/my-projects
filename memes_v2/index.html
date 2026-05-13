@@ -1,0 +1,642 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Meme Search v2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* { box-sizing: border-box; }
+
+body{
+  font-family:system-ui;
+  background:#111;
+  color:#eee;
+  margin:0;
+  padding:10px;
+}
+
+h2{ margin:8px 0 10px; }
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+input#search{
+  flex:1 1 240px;
+  padding:12px;
+  font-size:16px;
+  border-radius:6px;
+  border:none;
+}
+
+select,button.toggle{
+  padding:10px;
+  border-radius:6px;
+  border:none;
+  background:#222;
+  color:#eee;
+  cursor:pointer;
+}
+
+button.toggle.active{ background:#3a5cff; }
+
+#resultCount{
+  font-size:14px;
+  color:#bbb;
+  margin:6px 0 10px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:10px;
+}
+
+.thumb{
+  width:100%;
+  height:140px;
+  object-fit:cover;
+  border-radius:6px;
+  cursor:pointer;
+  background:#222;
+}
+
+.thumb:hover{ transform:scale(1.03); }
+
+/* viewer */
+
+#viewer{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.95);
+  display:none;
+  z-index:1000;
+  flex-direction:column;
+  align-items:center;
+}
+
+#viewerBar{
+  position:absolute;
+  top:10px;
+  right:10px;
+  display:flex;
+  gap:10px;
+}
+
+#viewerBar button{
+  font-size:18px;
+  padding:6px 10px;
+}
+
+#imageFrame{
+  width:90vw;
+  height:70vh;
+  margin-top:60px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  position:relative;
+}
+
+#imageFrame.zoomed{
+  overflow:auto;
+  align-items:flex-start;
+  justify-content:flex-start;
+}
+
+#fullImage{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  cursor:zoom-in;
+}
+
+/* navigation arrows */
+
+.navArrow{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:40px;
+  color:white;
+  background:rgba(0,0,0,.4);
+  border:none;
+  cursor:pointer;
+  padding:8px 12px;
+}
+
+#prevBtn{ left:10px; }
+#nextBtn{ right:10px; }
+
+/* similar strip */
+
+#similarStrip{
+  width:90vw;
+  margin-top:14px;
+  overflow-x:auto;
+}
+
+#similarRow{
+  display:flex;
+  gap:8px;
+}
+
+.similarThumb{
+  height:80px;
+  flex:0 0 auto;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.similarThumb.active{
+  outline:3px solid #3a5cff;
+  transform:scale(1.05);
+}
+</style>
+</head>
+
+<body>
+
+<h2>😂 Meme Search v2</h2>
+
+<div class="controls">
+<input id="search" placeholder="Searchâ€¦">
+
+<select id="sortSelect">
+<option value="relevance">Relevance</option>
+<option value="date" selected>Newest</option>
+<option value="name">Filename</option>
+</select>
+
+<select id="limitSelect">
+<option value="10">10</option>
+<option value="30">30</option>
+<option value="50">50</option>
+<option value="100">100</option>
+<option value="9999" selected>All</option>
+</select>
+
+<button class="toggle" id="modeText">Text</button>
+<button class="toggle" id="modeVisual">Visual</button>
+<button class="toggle active" id="modeHybrid">Hybrid</button>
+</div>
+
+<div id="resultCount"></div>
+<div class="grid" id="results"></div>
+
+<div id="viewer">
+
+<div id="viewerBar">
+<button id="similarBtn">Find Similar</button>
+<button id="closeBtn">âœ•</button>
+</div>
+
+<button id="backBtn">Back</button>
+
+<div id="imageFrame">
+<button class="navArrow" id="prevBtn">â€¹</button>
+<img id="fullImage">
+<button class="navArrow" id="nextBtn">â€º</button>
+</div>
+
+<div id="fileName" style="margin-top:8px;font-size:14px;color:#aaa"></div>
+
+<div id="similarStrip">
+<div id="similarRow"></div>
+</div>
+
+</div>
+
+<script>
+
+let memes=[];
+let currentLimit=9999;
+let mode="hybrid";
+let currentOpenIndex=-1;
+let zoom=false;
+
+let currentResults=[];
+let sortMode="date";
+
+let similarList=[];
+let similarPointer=0;
+
+const SIMILAR_COUNT=60;
+
+/* helpers */
+
+function dot(a,b){
+let s=0;
+for(let i=0;i<a.length;i++) s+=a[i]*b[i];
+return s;
+}
+
+function ocrScore(m,words){
+let score=0;
+for(const w of words){
+if(m.text && m.text.includes(w)) score++;
+if(m.caption && m.caption.includes(w)) score++;
+}
+return score;
+}
+
+function preloadNeighbors(index){
+
+let pos = currentResults.findIndex(m => m._index === index);
+
+for(let i=1;i<=2;i++){
+
+const prev = currentResults[(pos - i + currentResults.length) % currentResults.length];
+const next = currentResults[(pos + i) % currentResults.length];
+
+new Image().src = memes[prev._index].file;
+new Image().src = memes[next._index].file;
+
+}
+
+}
+
+/* render */
+
+function render(list){
+
+const results=document.getElementById("results");
+const rc=document.getElementById("resultCount");
+
+results.innerHTML="";
+
+const shown=list.slice(0,currentLimit);
+
+rc.textContent=`${Math.min(list.length,currentLimit)} of ${list.length} results`;
+
+shown.forEach(m=>{
+const img=document.createElement("img");
+img.src=m.thumb;
+img.className="thumb";
+img.onclick=()=>openViewer(m._index);
+results.appendChild(img);
+});
+
+}
+
+/* search */
+
+function applySearch(){
+
+const q=document.getElementById("search").value.toLowerCase().trim();
+const words=q ? q.split(/\s+/) : [];
+
+if(!q){
+
+currentResults=[...memes];
+
+if(sortMode==="date"){
+currentResults.sort((a,b)=>new Date(b.modified)-new Date(a.modified));
+}
+
+if(sortMode==="name"){
+currentResults.sort((a,b)=>a.basename.localeCompare(b.basename));
+}
+
+render(currentResults);
+return;
+
+}
+
+const scored=memes
+.map(m=>({...m,score:ocrScore(m,words)}))
+.filter(m=>m.score>0)
+.sort((a,b)=>b.score-a.score);
+
+if(sortMode==="date"){
+scored.sort((a,b)=>new Date(b.modified)-new Date(a.modified));
+}
+
+if(sortMode==="name"){
+scored.sort((a,b)=>a.basename.localeCompare(b.basename));
+}
+
+currentResults=scored;
+
+render(currentResults);
+
+}
+
+/* viewer */
+
+function openViewer(index){
+
+currentOpenIndex=index;
+
+const viewer=document.getElementById("viewer");
+const img=document.getElementById("fullImage");
+
+viewer.style.display="flex";
+
+img.src="";
+
+const loader=new Image();
+loader.src=memes[index].file;
+
+loader.decoding="async";
+loader.loading="eager";
+
+loader.onload=()=>{
+img.src=loader.src;
+};
+
+zoom=false;
+document.getElementById("imageFrame").classList.remove("zoomed");
+
+document.getElementById("fileName").textContent =
+memes[index].basename + memes[index].ext;
+
+renderSimilar();
+centerThumbnail(index);
+
+preloadNeighbors(index);
+
+}
+
+/* zoom */
+
+document.getElementById("fullImage").onclick=()=>{
+
+const frame=document.getElementById("imageFrame");
+const img=document.getElementById("fullImage");
+
+if(!zoom){
+
+frame.classList.add("zoomed");
+
+img.style.maxWidth="none";
+img.style.maxHeight="none";
+img.style.width="100%";
+
+zoom=true;
+
+}else{
+
+frame.classList.remove("zoomed");
+
+img.style.width="";
+img.style.maxWidth="100%";
+img.style.maxHeight="100%";
+
+zoom=false;
+
+}
+
+};
+
+/* build similar */
+
+function buildSimilar(index){
+
+const base=memes[index];
+similarList=[];
+
+for(let i=0;i<memes.length;i++){
+
+if(i===index) continue;
+
+const m=memes[i];
+if(!m.embVec) continue;
+
+const s=dot(base.embVec,m.embVec);
+
+similarList.push({idx:i,score:s});
+
+}
+
+similarList.sort((a,b)=>b.score-a.score);
+
+currentResults = similarList
+.slice(0,SIMILAR_COUNT)
+.map(x=>memes[x.idx]);
+
+render(currentResults);
+
+renderSimilar();
+
+openViewer(currentResults[0]._index);
+
+}
+function renderSimilar(){
+
+const row=document.getElementById("similarRow");
+row.innerHTML="";
+
+currentResults.slice(0,SIMILAR_COUNT).forEach((m,i)=>{
+
+const img=document.createElement("img");
+img.src=m.thumb;
+img.className="similarThumb";
+
+if(m._index===currentOpenIndex){
+img.classList.add("active");
+}
+
+img.onclick=()=>{
+openViewer(m._index);
+};
+
+row.appendChild(img);
+
+});
+
+}
+
+/* navigation */
+
+function nextImage(){
+
+let idx=currentResults.findIndex(m=>m._index===currentOpenIndex);
+
+idx=(idx+1)%currentResults.length;
+
+openViewer(currentResults[idx]._index);
+
+}
+
+function prevImage(){
+
+let idx=currentResults.findIndex(m=>m._index===currentOpenIndex);
+
+idx=(idx-1+currentResults.length)%currentResults.length;
+
+openViewer(currentResults[idx]._index);
+
+}
+
+document.getElementById("nextBtn").onclick = nextImage;
+document.getElementById("prevBtn").onclick = prevImage;
+
+/* swipe */
+
+let touchStartX=0;
+
+document.getElementById("imageFrame").addEventListener("touchstart",(e)=>{
+touchStartX=e.touches[0].clientX;
+});
+
+document.getElementById("imageFrame").addEventListener("touchend",(e)=>{
+
+const dx=e.changedTouches[0].clientX-touchStartX;
+
+if(Math.abs(dx)>50){
+
+if(dx<0) nextImage();
+else prevImage();
+
+}
+
+});
+
+/* center thumbnail */
+
+function centerThumbnail(index){
+
+const row=document.getElementById("similarRow");
+
+[...row.children].forEach(el=>{
+
+if(el.src.includes(memes[index].thumb)){
+
+const left=el.offsetLeft-(row.clientWidth/2)+(el.clientWidth/2);
+
+row.parentElement.scrollTo({left,behavior:"smooth"});
+
+}
+
+});
+
+}
+
+/* controls */
+
+document.getElementById("limitSelect").addEventListener("change",()=>{
+currentLimit=parseInt(document.getElementById("limitSelect").value);
+applySearch();
+});
+
+document.getElementById("search").addEventListener("input",applySearch);
+
+document.getElementById("modeText").onclick=()=>setMode("text");
+document.getElementById("modeVisual").onclick=()=>setMode("visual");
+document.getElementById("modeHybrid").onclick=()=>setMode("hybrid");
+
+document.getElementById("sortSelect").addEventListener("change",()=>{
+sortMode=document.getElementById("sortSelect").value;
+applySearch();
+});
+
+function setMode(newMode){
+mode=newMode;
+
+modeText.classList.toggle("active",mode==="text");
+modeVisual.classList.toggle("active",mode==="visual");
+modeHybrid.classList.toggle("active",mode==="hybrid");
+
+applySearch();
+}
+
+/* buttons */
+
+document.getElementById("similarBtn").onclick=()=>{
+buildSimilar(currentOpenIndex);
+};
+
+document.getElementById("backBtn").onclick=()=>{
+similarList=[];
+applySearch();
+};
+
+/* close */
+
+document.getElementById("closeBtn").onclick=()=>{
+viewer.style.display="none";
+similarList=[];
+};
+
+/* load metadata + embeddings */
+
+async function loadData(){
+
+// load meme metadata
+const meta = await fetch("memes.json").then(r=>r.json());
+
+memes = meta.map((m,i)=>({...m,_index:i}));
+
+// load embedding bins
+let embeddings=[];
+
+let binIndex=0;
+
+while(true){
+
+try{
+
+const path=`embeddings/emb_${String(binIndex).padStart(3,"0")}.bin`;
+
+const res=await fetch(path);
+
+if(!res.ok) break;
+
+const buffer=await res.arrayBuffer();
+
+embeddings.push(new Float32Array(buffer));
+
+binIndex++;
+
+}catch(e){
+break;
+}
+
+}
+
+if(embeddings.length===0){
+console.warn("No embedding bins found.");
+sortMode = document.getElementById("sortSelect").value;
+applySearch();
+return;
+}
+
+// merge bins
+const totalLength=embeddings.reduce((a,b)=>a+b.length,0);
+const merged=new Float32Array(totalLength);
+
+let offset=0;
+
+for(const arr of embeddings){
+merged.set(arr,offset);
+offset+=arr.length;
+}
+
+// determine vector dimension
+const dim=merged.length/memes.length;
+
+// attach embeddings
+for(let i=0;i<memes.length;i++){
+memes[i].embVec=merged.subarray(i*dim,(i+1)*dim);
+}
+
+sortMode = document.getElementById("sortSelect").value;
+
+applySearch();
+
+}
+document.getElementById("resultCount").textContent="Loading...";
+
+loadData();
+
+</script>
+
+</body>
+</html>
