@@ -249,8 +249,18 @@ let inSimilarMode=false;
 let similarSourceIndex=-1;
 let embeddingsLoaded=false;
 let embeddingsPromise=null;
+let tokenDocumentFrequency=new Map();
+let totalTokenDocuments=0;
 
 const SIMILAR_COUNT=60;
+const STOP_WORDS=new Set([
+"the","and","for","you","that","with","this","have","from","your","was","are","but","not","all","too","they","them",
+"his","her","she","him","our","out","get","got","has","had","its","it's","into","about","just","there","their","what",
+"when","where","who","why","how","can","could","would","should","than","then","because","been","being","also","over",
+"more","most","some","such","only","very","like","look","looks","looking","still","back","here","were","will","want",
+"dont","don't","cant","can't","didnt","didn't","ive","i've","im","i'm","thats","that's","theyre","they're","https",
+"http","www","com","jpg","jpeg","png","webp","screenshot","received","chrome","messenger","reddit","twitter","x","imgur"
+]);
 
 /* helpers */
 
@@ -258,6 +268,76 @@ function dot(a,b){
 let s=0;
 for(let i=0;i<a.length;i++) s+=a[i]*b[i];
 return s;
+}
+
+function tokenize(text){
+return String(text || "")
+.toLowerCase()
+.replace(/[_/\\.,:;!?()[\]{}"'`~|@#$%^&*+=<>-]+/g," ")
+.split(/\s+/)
+.map(token=>token.trim())
+.filter(token=>token.length>=3 && !STOP_WORDS.has(token) && !/^\d+$/.test(token));
+}
+
+function extractSourceLabel(meme){
+const parts=String(meme.basename || "").split("_").filter(Boolean);
+if(parts.length===0) return "";
+const tail=parts[parts.length-1].toLowerCase();
+if(/^\d+$/.test(tail)) return "";
+return tail;
+}
+
+function buildSearchProfile(meme){
+const textTokens=tokenize(meme.text);
+const captionTokens=tokenize(meme.caption);
+const nameTokens=tokenize(meme.basename);
+const sourceLabel=extractSourceLabel(meme);
+const sourceTokens=tokenize(sourceLabel);
+const allTokens=[...textTokens,...captionTokens,...nameTokens,...sourceTokens];
+const uniqueTokens=[...new Set(allTokens)];
+
+return {
+textTokens,
+captionTokens,
+nameTokens,
+sourceLabel,
+sourceTokens,
+allTokens,
+uniqueTokens
+};
+}
+
+function idfForToken(token){
+const docFreq=tokenDocumentFrequency.get(token) || 1;
+return Math.log(1 + (totalTokenDocuments / docFreq));
+}
+
+function weightedTokenOverlap(aTokens,bTokens){
+if(!aTokens.length || !bTokens.length) return 0;
+const aSet=new Set(aTokens);
+const bSet=new Set(bTokens);
+let shared=0;
+let total=0;
+const seen=new Set([...aSet,...bSet]);
+seen.forEach(token=>{
+const weight=idfForToken(token);
+const inA=aSet.has(token);
+const inB=bSet.has(token);
+if(inA || inB) total+=weight;
+if(inA && inB) shared+=weight;
+});
+return total ? shared / total : 0;
+}
+
+function buildTokenDocumentFrequency(items){
+tokenDocumentFrequency=new Map();
+totalTokenDocuments=items.length;
+items.forEach(item=>{
+const unique=new Set(item.profile.uniqueTokens);
+unique.forEach(token=>{
+tokenDocumentFrequency.set(token,(tokenDocumentFrequency.get(token) || 0) + 1);
+});
+});
 }
 
 function ocrScore(m,words){
@@ -509,7 +589,24 @@ if(i===index) continue;
 const m=memes[i];
 if(!m.embVec) continue;
 
-const s=dot(base.embVec,m.embVec);
+const visualScore=dot(base.embVec,m.embVec);
+const textScore=weightedTokenOverlap(base.profile.textTokens,m.profile.textTokens);
+const captionScore=weightedTokenOverlap(base.profile.captionTokens,m.profile.captionTokens);
+const nameScore=weightedTokenOverlap(base.profile.nameTokens,m.profile.nameTokens);
+const topicScore=weightedTokenOverlap(base.profile.uniqueTokens,m.profile.uniqueTokens);
+
+let sourceBonus=0;
+if(base.profile.sourceLabel && base.profile.sourceLabel===m.profile.sourceLabel){
+sourceBonus=0.18;
+}
+
+const s=
+(visualScore * 0.42) +
+(topicScore * 0.30) +
+(textScore * 0.18) +
+(captionScore * 0.06) +
+(nameScore * 0.04) +
+sourceBonus;
 
 similarList.push({idx:i,score:s});
 
@@ -731,6 +828,8 @@ async function loadData(){
 const meta = await fetch("memes.json").then(r=>r.json());
 
 memes = meta.map((m,i)=>({...m,_index:i}));
+memes.forEach(m=>{ m.profile = buildSearchProfile(m); });
+buildTokenDocumentFrequency(memes);
 
 sortMode = document.getElementById("sortSelect").value;
 

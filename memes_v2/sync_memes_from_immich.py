@@ -36,6 +36,7 @@ DEFAULT_SCAN_FROM = datetime(2026, 1, 1)
 THUMB_SIZE = 300
 OCR_CONFIG = "--oem 3 --psm 6"
 PROCESSING_MAX_DIMENSION = 2200
+STORED_MAX_DIMENSION = 1800
 
 CLIP_MODEL = "ViT-L-14"
 CLIP_PRETRAINED = "laion2b_s32b_b82k"
@@ -136,6 +137,41 @@ def make_square_thumb(src_path: Path, dst_path: Path) -> None:
         img = img.crop((left, top, left + side, top + side))
         img = img.resize((THUMB_SIZE, THUMB_SIZE), Image.LANCZOS)
         img.save(dst_path, "JPEG", quality=80, optimize=True, progressive=True)
+
+
+def write_normalized_image(src_path: Path, dst_path: Path, max_dimension: int = STORED_MAX_DIMENSION) -> None:
+    with Image.open(src_path) as opened:
+        has_alpha = "A" in opened.getbands()
+        ext = dst_path.suffix.lower()
+
+        working = opened.convert("RGBA" if has_alpha and ext in {".png", ".webp"} else "RGB")
+        width, height = working.size
+        longest = max(width, height)
+
+        if longest > max_dimension:
+            scale = max_dimension / longest
+            working = working.resize(
+                (max(1, int(width * scale)), max(1, int(height * scale))),
+                Image.LANCZOS,
+            )
+
+        if ext in {".jpg", ".jpeg"}:
+            if working.mode != "RGB":
+                working = working.convert("RGB")
+            working.save(dst_path, "JPEG", quality=86, optimize=True, progressive=True)
+            return
+
+        if ext == ".png":
+            working.save(dst_path, "PNG", optimize=True)
+            return
+
+        if ext == ".webp":
+            working.save(dst_path, "WEBP", quality=86, method=6)
+            return
+
+        if working.mode != "RGB":
+            working = working.convert("RGB")
+        working.save(dst_path)
 
 
 def ocr_text(src_path: Path) -> str:
@@ -256,8 +292,6 @@ def passes_legacy_filters(path: Path) -> bool:
     if name.startswith("PXL_"):
         return False
     if name.startswith("Messenger_creation"):
-        return False
-    if path.stat().st_size >= 3_000_000:
         return False
     if lower.endswith(".gif"):
         return False
@@ -414,9 +448,8 @@ def main() -> None:
         image_path = IMAGES_DIR / target_name
         thumb_path = THUMBS_DIR / f"{source_path.stem}.jpg"
 
-        image_path.write_bytes(source_path.read_bytes())
-
         try:
+            write_normalized_image(source_path, image_path)
             make_square_thumb(image_path, thumb_path)
             text = ocr_text(image_path)
             if args.skip_caption:
