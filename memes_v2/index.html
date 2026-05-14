@@ -311,6 +311,9 @@ const EMBEDDING_DIM=768;
 const THUMB_CONCURRENCY=10;
 const THUMB_PRIORITY_COUNT=120;
 const VIEWER_PRELOAD_COUNT=1;
+const SIMILAR_VISUAL_POOL=300;
+const SIMILAR_TEXT_WEIGHT=0.55;
+const SIMILAR_SHARED_TAG_WEIGHT=0.18;
 const STOP_WORDS=new Set([
 "the","and","for","you","that","with","this","have","from","your","was","are","but","not","all","too","they","them",
 "his","her","she","him","our","out","get","got","has","had","its","it's","into","about","just","there","their","what",
@@ -319,6 +322,14 @@ const STOP_WORDS=new Set([
 "dont","don't","cant","can't","didnt","didn't","ive","i've","im","i'm","thats","that's","theyre","they're","https",
 "http","www","com","jpg","jpeg","png","webp","screenshot","received","chrome","messenger","reddit","twitter","x","imgur"
 ]);
+const SIMILAR_TAG_GROUPS={
+painting:["painting","painted","artwork","watercolor","watercolour","oil","canvas","illustration","impressionist"],
+boat:["boat","boats","ship","ships","harbor","harbour","sail","sailing","sailboat","vessel","raft","yacht"],
+comic:["comic","cartoon","calvin","hobbes","panel","panels"],
+screenshot:["screenshot","tweet","reddit","post","conversation","text","dm","message"],
+map:["map","atlas","chart","diagram","route","routes"],
+game:["game","gaming","runescape","pokemon","pogo","steam","nintendo","xbox","playstation"]
+};
 
 /* helpers */
 
@@ -353,6 +364,11 @@ const sourceLabel=extractSourceLabel(meme);
 const sourceTokens=tokenize(sourceLabel);
 const allTokens=[...textTokens,...captionTokens,...nameTokens,...sourceTokens];
 const uniqueTokens=[...new Set(allTokens)];
+const cleanTokens=[...new Set([...captionTokens,...nameTokens])];
+const rawSimilarityText=`${String(meme.caption || "").toLowerCase()} ${String(meme.basename || "").toLowerCase().replace(/_/g," ")}`;
+const similarTags=Object.entries(SIMILAR_TAG_GROUPS)
+.filter(([,words])=>words.some(word=>rawSimilarityText.includes(word)))
+.map(([tag])=>tag);
 
 return {
 textTokens,
@@ -361,7 +377,9 @@ nameTokens,
 sourceLabel,
 sourceTokens,
 allTokens,
-uniqueTokens
+uniqueTokens,
+cleanTokens,
+similarTags
 };
 }
 
@@ -385,6 +403,27 @@ if(inA || inB) total+=weight;
 if(inA && inB) shared+=weight;
 });
 return total ? shared / total : 0;
+}
+
+function cleanTokenOverlap(aTokens,bTokens){
+if(!aTokens.length || !bTokens.length) return 0;
+const aSet=new Set(aTokens);
+const bSet=new Set(bTokens);
+let shared=0;
+for(const token of aSet){
+if(bSet.has(token)) shared++;
+}
+return shared / Math.max(1,new Set([...aSet,...bSet]).size);
+}
+
+function sharedTagCount(aTags,bTags){
+if(!aTags.length || !bTags.length) return 0;
+const bSet=new Set(bTags);
+let shared=0;
+for(const tag of aTags){
+if(bSet.has(tag)) shared++;
+}
+return shared;
 }
 
 function buildTokenDocumentFrequency(items){
@@ -763,6 +802,21 @@ similarList.push({idx:i,score:s});
 }
 
 similarList.sort((a,b)=>b.score-a.score);
+
+const baseProfile=base.profile || {cleanTokens:[],similarTags:[]};
+similarList=similarList
+.slice(0,SIMILAR_VISUAL_POOL)
+.map(item=>{
+const candidate=memes[item.idx];
+const candidateProfile=candidate.profile || {cleanTokens:[],similarTags:[]};
+const tokenScore=cleanTokenOverlap(baseProfile.cleanTokens || [],candidateProfile.cleanTokens || []);
+const tagScore=sharedTagCount(baseProfile.similarTags || [],candidateProfile.similarTags || []);
+return {
+...item,
+score:item.score + (tokenScore * SIMILAR_TEXT_WEIGHT) + (tagScore * SIMILAR_SHARED_TAG_WEIGHT)
+};
+})
+.sort((a,b)=>b.score-a.score);
 
 currentResults = [base,...similarList
 .slice(0,SIMILAR_COUNT)
