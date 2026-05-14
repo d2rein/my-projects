@@ -253,6 +253,7 @@ let tokenDocumentFrequency=new Map();
 let totalTokenDocuments=0;
 
 const SIMILAR_COUNT=60;
+const EMBEDDING_DIM=768;
 const STOP_WORDS=new Set([
 "the","and","for","you","that","with","this","have","from","your","was","are","but","not","all","too","they","them",
 "his","her","she","him","our","out","get","got","has","had","its","it's","into","about","just","there","their","what",
@@ -558,9 +559,12 @@ merged.set(arr,offset);
 offset+=arr.length;
 }
 
-const dim=Math.floor(merged.length/memes.length);
-for(let i=0;i<memes.length;i++){
-memes[i].embVec=merged.subarray(i*dim,(i+1)*dim);
+const rowCount=Math.floor(merged.length/EMBEDDING_DIM);
+for(let i=0;i<Math.min(memes.length,rowCount);i++){
+memes[i].embVec=merged.subarray(i*EMBEDDING_DIM,(i+1)*EMBEDDING_DIM);
+}
+for(let i=rowCount;i<memes.length;i++){
+memes[i].embVec=null;
 }
 
 embeddingsLoaded=true;
@@ -576,6 +580,9 @@ async function buildSimilar(index){
 await ensureEmbeddingsLoaded();
 
 const base=memes[index];
+if(!base.embVec){
+throw new Error("No embedding available for this image yet.");
+}
 similarList=[];
 previousResults=[...currentResults];
 inSimilarMode=true;

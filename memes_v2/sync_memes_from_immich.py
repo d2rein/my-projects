@@ -139,6 +139,10 @@ def make_square_thumb(src_path: Path, dst_path: Path) -> None:
         img.save(dst_path, "JPEG", quality=80, optimize=True, progressive=True)
 
 
+def thumb_name_for_image(image_path: Path) -> str:
+    return f"{image_path.name}.jpg"
+
+
 def write_normalized_image(src_path: Path, dst_path: Path, max_dimension: int = STORED_MAX_DIMENSION) -> None:
     with Image.open(src_path) as opened:
         has_alpha = "A" in opened.getbands()
@@ -293,24 +297,32 @@ def passes_legacy_filters(path: Path) -> bool:
         return False
     if name.startswith("Messenger_creation"):
         return False
+    if name.startswith("VideoCapture"):
+        return False
+    if name.startswith("IMG_"):
+        return False
+    if name.startswith("DSCF"):
+        return False
     if lower.endswith(".gif"):
         return False
 
     return True
 
 
-def collect_candidates(scan_from: datetime):
+def collect_candidates(scan_from: datetime, source_root: Path | None = None):
+    search_root = source_root or IMMICH_ROOT
     candidates = []
-    for path in IMMICH_ROOT.rglob("*"):
+    for path in search_root.rglob("*"):
         if not path.is_file():
             continue
         if path.suffix.lower() not in IMAGE_EXTS:
             continue
-        modified = datetime.fromtimestamp(path.stat().st_mtime)
-        if modified < scan_from:
-            continue
-        if not passes_legacy_filters(path):
-            continue
+        if source_root is None:
+            modified = datetime.fromtimestamp(path.stat().st_mtime)
+            if modified < scan_from:
+                continue
+            if not passes_legacy_filters(path):
+                continue
         candidates.append(path)
 
     candidates.sort(key=lambda item: item.stat().st_mtime)
@@ -330,7 +342,7 @@ def build_item(image_path: Path, source_path: Path, file_hash: str, text: str, c
 
     return {
         "file": f"images/{image_path.name}",
-        "thumb": f"thumbs/{image_path.stem}.jpg",
+        "thumb": f"thumbs/{thumb_name_for_image(image_path)}",
         "text": text,
         "caption": caption,
         "hash": file_hash,
@@ -347,6 +359,10 @@ def main() -> None:
     parser.add_argument("--since", help="ISO date or datetime, for example 2026-01-01")
     parser.add_argument("--limit", type=int, help="Only inspect the first N filtered candidates")
     parser.add_argument(
+        "--source-dir",
+        help="Import from this folder instead of scanning the Immich library. Files in this folder are treated as already curated.",
+    )
+    parser.add_argument(
         "--exact-name",
         action="append",
         default=[],
@@ -356,6 +372,11 @@ def main() -> None:
         "--skip-caption",
         action="store_true",
         help="Do not run BLIP captioning. Useful for recovering files that crash in the caption step.",
+    )
+    parser.add_argument(
+        "--skip-embedding",
+        action="store_true",
+        help="Do not generate CLIP embeddings for new imports. Useful when memory is tight.",
     )
     parser.add_argument(
         "--stop-after-imports",
@@ -375,7 +396,8 @@ def main() -> None:
     log(f"Scanning Immich from {scan_from.isoformat()}")
     save_status(phase="scanning", scan_from=scan_from.isoformat(), indexed_items=len(items))
 
-    candidates = collect_candidates(scan_from)
+    source_root = Path(args.source_dir).resolve() if args.source_dir else None
+    candidates = collect_candidates(scan_from, source_root=source_root)
     if args.exact_name:
         candidates = filter_candidates_by_exact_name(candidates, args.exact_name)
     if args.limit:
@@ -399,9 +421,12 @@ def main() -> None:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     log(f"Using device: {device}")
-    log("Loading CLIP model...")
-    save_status(phase="loading_clip", candidate_count=len(candidates), indexed_items=len(items))
-    clip_model, preprocess = build_clip(device)
+    clip_model = None
+    preprocess = None
+    if not args.skip_embedding:
+        log("Loading CLIP model...")
+        save_status(phase="loading_clip", candidate_count=len(candidates), indexed_items=len(items))
+        clip_model, preprocess = build_clip(device)
 
     caption_processor = None
     caption_model = None
@@ -446,7 +471,7 @@ def main() -> None:
             continue
 
         image_path = IMAGES_DIR / target_name
-        thumb_path = THUMBS_DIR / f"{source_path.stem}.jpg"
+        thumb_path = THUMBS_DIR / thumb_name_for_image(image_path)
 
         try:
             write_normalized_image(source_path, image_path)
@@ -456,14 +481,16 @@ def main() -> None:
                 caption = ""
             else:
                 caption = image_caption(caption_processor, caption_model, device, image_path)
-            emb = image_embedding(clip_model, preprocess, device, image_path)
+            emb = None if args.skip_embedding else image_embedding(clip_model, preprocess, device, image_path)
 
             items.append(build_item(image_path, source_path, file_hash, text, caption))
-            new_embeddings.append(emb)
+            if emb is not None:
+                new_embeddings.append(emb)
             existing_hashes.add(file_hash)
             existing_filenames.add(target_name.lower())
             imported += 1
-            del emb
+            if emb is not None:
+                del emb
             gc.collect()
 
         except Exception:
