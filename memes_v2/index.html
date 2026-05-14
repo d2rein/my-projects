@@ -249,11 +249,19 @@ let inSimilarMode=false;
 let similarSourceIndex=-1;
 let embeddingsLoaded=false;
 let embeddingsPromise=null;
+let thumbQueue=[];
+let thumbActiveCount=0;
+let thumbQueuePaused=false;
+let thumbRenderToken=0;
+let viewerImageRequestId=0;
 let tokenDocumentFrequency=new Map();
 let totalTokenDocuments=0;
 
 const SIMILAR_COUNT=60;
 const EMBEDDING_DIM=768;
+const THUMB_CONCURRENCY=10;
+const THUMB_PRIORITY_COUNT=120;
+const VIEWER_PRELOAD_COUNT=1;
 const STOP_WORDS=new Set([
 "the","and","for","you","that","with","this","have","from","your","was","are","but","not","all","too","they","them",
 "his","her","she","him","our","out","get","got","has","had","its","it's","into","about","just","there","their","what",
@@ -355,16 +363,61 @@ function preloadNeighbors(index){
 let pos = currentResults.findIndex(m => m._index === index);
 if(pos===-1 || currentResults.length===0) return;
 
-for(let i=1;i<=2;i++){
+for(let i=1;i<=VIEWER_PRELOAD_COUNT;i++){
 
 const prev = currentResults[(pos - i + currentResults.length) % currentResults.length];
 const next = currentResults[(pos + i) % currentResults.length];
 
-new Image().src = memes[prev._index].file;
-new Image().src = memes[next._index].file;
+const prevLoader=new Image();
+prevLoader.decoding="async";
+prevLoader.src = memes[prev._index].file;
+
+const nextLoader=new Image();
+nextLoader.decoding="async";
+nextLoader.src = memes[next._index].file;
 
 }
 
+}
+
+function pauseThumbQueue(){
+thumbQueuePaused=true;
+}
+
+function resumeThumbQueue(){
+thumbQueuePaused=false;
+pumpThumbQueue();
+}
+
+function enqueueThumbLoad(element,src,priority,token){
+thumbQueue.push({element,src,priority,token});
+thumbQueue.sort((a,b)=>a.priority-b.priority);
+pumpThumbQueue();
+}
+
+function pumpThumbQueue(){
+while(!thumbQueuePaused && thumbActiveCount<THUMB_CONCURRENCY && thumbQueue.length){
+const job=thumbQueue.shift();
+if(job.token!==thumbRenderToken) continue;
+if(!job.element.isConnected) continue;
+thumbActiveCount++;
+
+const loader=new Image();
+loader.decoding="async";
+loader.onload=()=>{
+if(job.token===thumbRenderToken && job.element.isConnected){
+job.element.src=job.src;
+job.element.dataset.loaded="1";
+}
+thumbActiveCount=Math.max(0,thumbActiveCount-1);
+pumpThumbQueue();
+};
+loader.onerror=()=>{
+thumbActiveCount=Math.max(0,thumbActiveCount-1);
+pumpThumbQueue();
+};
+loader.src=job.src;
+}
 }
 
 /* render */
@@ -377,15 +430,22 @@ const rc=document.getElementById("resultCount");
 results.innerHTML="";
 
 const shown=list.slice(0,currentLimit);
+thumbRenderToken++;
+thumbQueue=[];
 
 rc.textContent=`${Math.min(list.length,currentLimit)} of ${list.length} results`;
 
-shown.forEach(m=>{
+shown.forEach((m,idx)=>{
 const img=document.createElement("img");
-img.src=m.thumb;
 img.className="thumb";
+img.alt=m.basename + m.ext;
+img.decoding="async";
+img.src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 img.onclick=()=>openViewer(m._index);
 results.appendChild(img);
+
+const priority=idx<THUMB_PRIORITY_COUNT ? idx : THUMB_PRIORITY_COUNT + idx;
+enqueueThumbLoad(img,m.thumb,priority,thumbRenderToken);
 });
 
 }
@@ -463,15 +523,29 @@ viewer.style.display="flex";
 updateViewerUi();
 
 img.src="";
+viewerImageRequestId++;
+pauseThumbQueue();
+
+const requestId=viewerImageRequestId;
+img.src=memes[index].thumb;
+img.style.maxWidth="100%";
+img.style.maxHeight="100%";
+img.style.width="";
 
 const loader=new Image();
+loader.decoding="async";
+loader.fetchPriority="high";
 loader.src=memes[index].file;
 
-loader.decoding="async";
-loader.loading="eager";
-
 loader.onload=()=>{
+if(requestId!==viewerImageRequestId) return;
 img.src=loader.src;
+resumeThumbQueue();
+preloadNeighbors(index);
+};
+loader.onerror=()=>{
+if(requestId!==viewerImageRequestId) return;
+resumeThumbQueue();
 };
 
 zoom=false;
@@ -482,8 +556,6 @@ memes[index].basename + memes[index].ext;
 
 renderSimilar();
 centerThumbnail(index);
-
-preloadNeighbors(index);
 
 }
 
@@ -741,6 +813,7 @@ const btn=document.getElementById("similarBtn");
 const originalText=btn.textContent;
 btn.disabled=true;
 btn.textContent="Loading...";
+pauseThumbQueue();
 try{
 await buildSimilar(currentOpenIndex);
 }catch(err){
@@ -754,6 +827,7 @@ render(currentResults);
 btn.disabled=false;
 btn.textContent=originalText;
 updateViewerUi();
+resumeThumbQueue();
 }
 })();
 };
@@ -775,6 +849,8 @@ viewer.style.display="none";
 similarList=[];
 inSimilarMode=false;
 similarSourceIndex=-1;
+viewerImageRequestId++;
+resumeThumbQueue();
 updateViewerUi();
 const url=new URL(window.location.href);
 url.searchParams.delete("m");
