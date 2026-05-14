@@ -4,7 +4,16 @@ setlocal
 cd /d "%~dp0.."
 
 echo [1/5] Staging memes_v2 changes...
-git add -A .gitignore memes memes_v2
+git add .gitignore memes_v2
+if errorlevel 1 (
+  echo Failed to stage memes_v2 changes.
+  pause
+  exit /b 1
+)
+
+if exist "%~dp0..\memes" (
+  git add -A memes
+)
 if errorlevel 1 (
   echo Failed to stage memes_v2 changes.
   pause

@@ -30,6 +30,7 @@ node_modules/
 # local meme app tooling / archives
 memes_v2_clip311/
 memes_v1_local_backup/
+memes_v2/review_2026-05-14_messenger_excluded/
 
 # local sqlite databases
 *.sqlite
