@@ -596,24 +596,7 @@ if(i===index) continue;
 const m=memes[i];
 if(!m.embVec) continue;
 
-const visualScore=dot(base.embVec,m.embVec);
-const textScore=weightedTokenOverlap(base.profile.textTokens,m.profile.textTokens);
-const captionScore=weightedTokenOverlap(base.profile.captionTokens,m.profile.captionTokens);
-const nameScore=weightedTokenOverlap(base.profile.nameTokens,m.profile.nameTokens);
-const topicScore=weightedTokenOverlap(base.profile.uniqueTokens,m.profile.uniqueTokens);
-
-let sourceBonus=0;
-if(base.profile.sourceLabel && base.profile.sourceLabel===m.profile.sourceLabel){
-sourceBonus=0.18;
-}
-
-const s=
-(visualScore * 0.42) +
-(topicScore * 0.30) +
-(textScore * 0.18) +
-(captionScore * 0.06) +
-(nameScore * 0.04) +
-sourceBonus;
+const s=dot(base.embVec,m.embVec);
 
 similarList.push({idx:i,score:s});
 
