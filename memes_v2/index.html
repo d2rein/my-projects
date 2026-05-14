@@ -18,6 +18,15 @@ body{
 
 h2{ margin:8px 0 10px; }
 
+#topChrome{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:#111;
+  padding-top:6px;
+  padding-bottom:8px;
+}
+
 .controls{
   display:flex;
   flex-wrap:wrap;
@@ -225,6 +234,7 @@ button.toggle.active{ background:#3a5cff; }
 
 <body>
 
+<div id="topChrome">
 <button id="titleBtn" type="button"><h2>😂 Meme Search v2</h2></button>
 
 <div class="controls">
@@ -250,6 +260,7 @@ button.toggle.active{ background:#3a5cff; }
 <button class="toggle" id="modeText">Text</button>
 <button class="toggle" id="modeVisual">Visual</button>
 <button class="toggle active" id="modeHybrid">Hybrid</button>
+</div>
 </div>
 
 <div id="resultCount"></div>

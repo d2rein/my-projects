@@ -15,6 +15,7 @@ __pycache__/
 
 # EXCEPTION: allow meme embedding bins for website
 !memes/embeddings/*.bin
+!memes_v2/embeddings/*.bin
 
 # node dependencies
 node_modules/
@@ -25,6 +26,10 @@ node_modules/
 
 # wrangler local state
 .wrangler/
+
+# local meme app tooling / archives
+memes_v2_clip311/
+memes_v1_local_backup/
 
 # local sqlite databases
 *.sqlite

@@ -19,5 +19,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [2/2] Pushing site updates...
-call "..\push.bat"
+echo [2/2] Publishing memes_v2 live...
+call "%~dp0publish_live.bat"
+exit /b %errorlevel%
