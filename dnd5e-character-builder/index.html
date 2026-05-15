@@ -282,6 +282,12 @@
     padding:7px 8px;
     font-size:12px;
   }
+  .detail-item.editable{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:8px;
+    align-items:start;
+  }
   .builder-select-row{
     display:grid;
     grid-template-columns:1fr 34px;
@@ -323,6 +329,144 @@
     min-height:34px;
     text-align:left;
     justify-content:flex-start;
+  }
+  .feature-btn.required{
+    background:#ead04d;
+    color:#1b1504;
+    border-color:#f3e58b;
+  }
+  .feature-btn.ready{
+    background:#17334a;
+  }
+  .control-row{
+    display:grid;
+    grid-template-columns:1fr auto auto auto;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .roll-row{
+    cursor:pointer;
+  }
+  .roll-row:hover{
+    border-color:#5b88af;
+  }
+  .top-split{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:8px;
+    align-items:stretch;
+  }
+  .coin-stack{
+    display:grid;
+    gap:4px;
+    min-width:104px;
+  }
+  .coin-box,.eq-box{
+    background:#0a1017;
+    color:#fff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:8px;
+  }
+  .coin-box{
+    display:grid;
+    grid-template-columns:auto auto;
+    gap:3px 8px;
+    align-content:start;
+  }
+  .coin-box strong{text-align:right}
+  .eq-box{
+    font-size:11px;
+    font-weight:800;
+    text-align:center;
+  }
+  .hitdice-row{
+    display:grid;
+    grid-template-columns:42px 1fr;
+    gap:8px;
+    align-items:center;
+    margin-bottom:6px;
+  }
+  .hitdice-label{
+    font-size:12px;
+    font-weight:900;
+    color:#cce4ff;
+    text-align:center;
+  }
+  .pips-box{
+    display:flex;
+    gap:4px;
+    flex-wrap:wrap;
+  }
+  .quick-spell-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    margin-top:6px;
+  }
+  .quick-spell-row button{
+    min-height:44px;
+    font-size:11px;
+    line-height:1.15;
+  }
+  .spellbook-list{
+    display:grid;
+    gap:6px;
+  }
+  .book-row{
+    display:grid;
+    grid-template-columns:28px 1fr auto auto;
+    gap:6px;
+    align-items:center;
+    padding:7px 8px;
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .book-row.prepared{background:#153023}
+  .book-row.extra{background:#2b2210}
+  .book-row-name{font-size:12px;font-weight:800}
+  .book-row-meta{font-size:10px;color:#bdd4ea}
+  .book-tag{
+    border:1px solid var(--line2);
+    border-radius:999px;
+    padding:3px 7px;
+    font-size:10px;
+    font-weight:800;
+    background:#101821;
+  }
+  .counts{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:6px;
+  }
+  .count-box{
+    background:#0d131c;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:7px;
+    font-size:11px;
+    font-weight:800;
+  }
+  .count-box b{
+    float:right;
+  }
+  .check-item{
+    display:grid;
+    grid-template-columns:28px 1fr auto auto auto;
+    gap:6px;
+    align-items:center;
+    padding:7px 8px;
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:9px;
+  }
+  .class-pick{
+    display:flex;
+    gap:3px;
+    align-items:center;
+    font-size:10px;
+    font-weight:800;
   }
   .combat-top{
     display:grid;
@@ -634,9 +778,7 @@
         <label>Target Level
           <input type="number" id="targetLevelInput" min="1" max="20" value="1">
         </label>
-        <label>Populate Rolls
-          <input type="number" id="populateSeedInput" min="1" max="5" value="1">
-        </label>
+        <div class="detail-box">Populate rolls HP once for each new level, keeping the better of the roll or average.</div>
       </div>
       <div class="modal-actions">
         <button class="action-btn blue" id="populateBuilderBtn">Populate</button>
@@ -647,6 +789,17 @@
 
   <section class="page" data-page="stats">
     <div class="card">
+      <div class="top-split">
+        <div>
+          <div class="chip-grid" id="statsTopChips"></div>
+        </div>
+        <div class="coin-stack">
+          <button class="coin-box" id="coinsBtn" type="button"></button>
+          <div class="eq-box" id="eqText"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-title">
         <span>Core Stats</span>
         <div class="title-actions">
@@ -654,16 +807,32 @@
           <button class="small-btn" id="repopulateBtn">Repopulate</button>
         </div>
       </div>
+      <div class="control-row">
+        <button class="mode-btn" id="coreRollTypeBtn"></button>
+        <button class="mode-btn" id="coreAdvModeBtn"></button>
+        <button class="small-btn" id="editCoreBtn">Edit</button>
+        <div></div>
+      </div>
       <div class="stats-grid" id="statsGrid"></div>
     </div>
     <div class="card">
       <div class="card-title"><span>Skills</span></div>
+      <div class="control-row">
+        <button class="mode-btn" id="skillAdvModeBtn"></button>
+        <button class="small-btn" id="editSkillsBtn">Edit</button>
+        <div></div>
+        <div></div>
+      </div>
       <div class="skills-grid" id="skillsGrid"></div>
     </div>
     <div class="triple">
       <div class="mini-box"><span class="tiny">Passive Perception</span><b id="passiveText"></b></div>
       <div class="mini-box"><span class="tiny">Spell DC</span><b id="spellDcText"></b></div>
       <div class="mini-box"><span class="tiny">Pact Slots</span><b id="pactSlotText"></b></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Hit Dice</span></div>
+      <div class="stack" id="hitDiceRows"></div>
     </div>
     <div class="card">
       <div class="card-title"><span>Derived</span></div>
@@ -678,6 +847,12 @@
         <button class="action-btn green" id="shortRestBtn">Short Rest</button>
         <button class="action-btn blue" id="longRestBtn">Long Rest</button>
       </div>
+      <div class="grid-3" style="margin-top:7px;">
+        <button class="action-btn blue" id="concentrationCheckBtn">Con</button>
+        <button class="mode-btn" id="concentrationModeBtn"></button>
+        <button class="action-btn" id="concentrationActiveBtn"></button>
+      </div>
+      <div class="quick-spell-row" id="quickSpellRow"></div>
       <div class="amount-row">
         <input type="number" id="amountInput" min="0" placeholder="Amount">
         <button class="action-btn red" id="damageBtn">DMG</button>
@@ -749,8 +924,18 @@
       <div class="card-title">
         <span>Spellbook</span>
         <div class="title-actions">
+          <a class="small-btn" href="./spells.html" target="_blank" rel="noreferrer">Card Browser</a>
           <button class="small-btn" id="editSpellsBtn">Edit Spells</button>
         </div>
+      </div>
+      <div class="slot-panel" style="margin-bottom:8px;">
+        <div class="slot-head"><span>Spell Slots</span><span id="spellbookSlotHeadText"></span></div>
+        <div class="slot-grid" id="spellbookSlotGrid"></div>
+      </div>
+      <div class="counts" id="spellCounts"></div>
+      <div class="detail-item editable" style="margin-top:8px;">
+        <div><strong>Extra Spells:</strong> <span id="bonusSpellSummary"></span></div>
+        <button class="small-btn" id="editBonusSpellsBtn">Edit</button>
       </div>
       <div class="stack" id="spellbookSummary"></div>
     </div>

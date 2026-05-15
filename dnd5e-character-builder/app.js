@@ -114,11 +114,11 @@ const SHIELDS = [
 ];
 const WEAPONS = [
   { id:"none", name:"None", damage:"", ability:"" },
-  { id:"hand-crossbow", name:"Hand Crossbow", damage:"1d6", type:"ranged", ability:"DEX", range:"30/120", tags:["loading","light"] },
-  { id:"battleaxe-plus-1", name:"+1 Battleaxe", damage:"1d8", type:"melee", ability:"STR", attackBonus:1, damageBonus:1, versatile:"1d10", tags:["versatile"] },
-  { id:"rapier-plus-1", name:"+1 Rapier", damage:"1d8", type:"melee", ability:"DEX", finesse:true, attackBonus:1, damageBonus:1 },
-  { id:"longbow-plus-1", name:"+1 Longbow", damage:"1d8", type:"ranged", ability:"DEX", attackBonus:1, damageBonus:1, range:"150/600" },
-  { id:"shortbow", name:"Shortbow", damage:"1d6", type:"ranged", ability:"DEX", range:"80/320" }
+  { id:"hand-crossbow", name:"Hand Crossbow", damage:"1d6", damageType:"piercing", type:"ranged", ability:"DEX", range:"30/120", tags:["loading","light"] },
+  { id:"battleaxe-plus-1", name:"+1 Battleaxe", damage:"1d8", damageType:"slashing", type:"melee", ability:"STR", attackBonus:1, damageBonus:1, versatile:"1d10", tags:["versatile"] },
+  { id:"rapier-plus-1", name:"+1 Rapier", damage:"1d8", damageType:"piercing", type:"melee", ability:"DEX", finesse:true, attackBonus:1, damageBonus:1 },
+  { id:"longbow-plus-1", name:"+1 Longbow", damage:"1d8", damageType:"piercing", type:"ranged", ability:"DEX", attackBonus:1, damageBonus:1, range:"150/600" },
+  { id:"shortbow", name:"Shortbow", damage:"1d6", damageType:"piercing", type:"ranged", ability:"DEX", range:"80/320" }
 ];
 const SAMPLE_SPELLS = {
   alaric:["Fire Bolt","Toll the Dead","Mage Hand","Guidance","Shield","Mage Armor","Misty Step","Haste","Fireball","Counterspell","Wall of Force"],
@@ -168,6 +168,10 @@ function escapeHtml(value){
     .replace(/"/g, "&quot;");
 }
 
+function escapeAttr(value){
+  return escapeHtml(value).replace(/'/g, "&#39;");
+}
+
 function unique(list){
   return Array.from(new Set((list || []).filter(Boolean)));
 }
@@ -194,16 +198,19 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     id,
     name:"New Character",
     portrait:"./alaric-headshot.png",
+    coins:{ cp:0, sp:0, gp:0 },
     speciesSlug:"",
     backgroundSlug:"",
     targetLevel:1,
-    populateRuns:1,
     pointBuyBase:{ STR:8, DEX:8, CON:8, INT:8, WIS:8, CHA:8 },
     manualBase:{ STR:8, DEX:8, CON:8, INT:8, WIS:8, CHA:8 },
     statMode:"pointbuy",
     statRolls:[],
     rollAssignments:{},
     speciesAsiChoices:[],
+    backgroundSelections:{ skills:[], tools:[], languages:[] },
+    selectedSkills:[],
+    selectedSaves:[],
     selectedFeats:[],
     progression,
     hpRolls:[],
@@ -216,7 +223,15 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     attackModes:{},
     history:[],
     equipment:{ armorId:"none", shieldId:"none", weaponIds:["none","none","none"] },
+    knownSpells:[],
     preparedSpells:[],
+    extraSpells:[],
+    quickSpells:["","","",""],
+    coreRollType:"check",
+    coreAdvMode:"-",
+    skillAdvMode:"-",
+    concentrationMode:"-",
+    concentrationActive:"",
     notes:"",
     syncCode:"",
     autoSync:false,
@@ -226,9 +241,10 @@ function createBlankProfile(id = `profile-${Date.now()}`){
       breathWeaponUsed:0,
       channelDivinityUsed:0,
       hexbladeCurseUsed:0,
+      hexbladeCurseActive:false,
       warPriestUsed:0,
       rageUsed:0,
-      sneakAttackReady:true,
+      sneakAttackReady:false,
       steadyAimActive:false
     }
   };
@@ -240,7 +256,6 @@ function buildSampleProfiles(){
   alaric.speciesSlug = "lineage:human";
   alaric.backgroundSlug = "background:haunted-one";
   alaric.targetLevel = 10;
-  alaric.populateRuns = 1;
   alaric.pointBuyBase = { STR:8, DEX:15, CON:15, INT:15, WIS:14, CHA:10 };
   alaric.manualBase = clone(alaric.pointBuyBase);
   alaric.speciesAsiChoices = [
@@ -257,7 +272,10 @@ function buildSampleProfiles(){
   alaric.progression[8].asiMode = "feat";
   alaric.progression[8].featSlug = "feat:fey-touched";
   alaric.equipment = { armorId:"none", shieldId:"none", weaponIds:["hand-crossbow","none","none"] };
+  alaric.knownSpells = SAMPLE_SPELLS.alaric.slice();
   alaric.preparedSpells = SAMPLE_SPELLS.alaric.slice();
+  alaric.quickSpells = ["Shield","Misty Step","Haste","Fireball"];
+  alaric.coins = { cp:42, sp:13, gp:7 };
   alaric.syncCode = "dnd5e-test-alaric";
   alaric.autoSync = true;
 
@@ -282,7 +300,10 @@ function buildSampleProfiles(){
   wintio.progression[7].asiMode = "asi";
   wintio.progression[7].asiChoices = [{ ability:"STR", amount:2 }];
   wintio.equipment = { armorId:"half-plate", shieldId:"shield", weaponIds:["battleaxe-plus-1","none","none"] };
+  wintio.knownSpells = SAMPLE_SPELLS.wintio.slice();
   wintio.preparedSpells = SAMPLE_SPELLS.wintio.slice();
+  wintio.quickSpells = ["Hex","Bless","Shield of Faith","Wrathful Smite"];
+  wintio.coins = { cp:0, sp:9, gp:48 };
   wintio.syncCode = "dnd5e-test-wintio";
   wintio.autoSync = true;
 
@@ -307,7 +328,10 @@ function buildSampleProfiles(){
   jefferson.progression[9].asiMode = "feat";
   jefferson.progression[9].featSlug = "feat:sharpshooter";
   jefferson.equipment = { armorId:"breastplate", shieldId:"none", weaponIds:["rapier-plus-1","longbow-plus-1","shortbow"] };
+  jefferson.knownSpells = SAMPLE_SPELLS.jefferson.slice();
   jefferson.preparedSpells = SAMPLE_SPELLS.jefferson.slice();
+  jefferson.quickSpells = ["Bless","Shield of Faith","Guidance","Toll the Dead"];
+  jefferson.coins = { cp:5, sp:17, gp:24 };
   jefferson.syncCode = "dnd5e-test-jefferson";
   jefferson.autoSync = true;
 
@@ -346,11 +370,16 @@ function loadState(){
 function ensureProfileShape(profile){
   const blank = createBlankProfile(profile.id || `profile-${Date.now()}`);
   Object.assign(blank, profile);
+  blank.coins = Object.assign({}, blank.coins, profile.coins || {});
   blank.pointBuyBase = Object.assign({}, blank.pointBuyBase, profile.pointBuyBase || {});
   blank.manualBase = Object.assign({}, blank.manualBase, profile.manualBase || {});
   blank.rollAssignments = Object.assign({}, blank.rollAssignments || {});
   blank.resources = Object.assign({}, blank.resources, profile.resources || {});
   blank.equipment = Object.assign({}, blank.equipment, profile.equipment || {});
+  blank.backgroundSelections = Object.assign({}, blank.backgroundSelections, profile.backgroundSelections || {});
+  blank.backgroundSelections.skills = unique(blank.backgroundSelections.skills || []);
+  blank.backgroundSelections.tools = unique(blank.backgroundSelections.tools || []);
+  blank.backgroundSelections.languages = unique(blank.backgroundSelections.languages || []);
   blank.equipment.weaponIds = Array.isArray(blank.equipment.weaponIds) ? blank.equipment.weaponIds.slice(0, 3) : ["none","none","none"];
   while (blank.equipment.weaponIds.length < 3) blank.equipment.weaponIds.push("none");
   blank.progression = Array.isArray(profile.progression) ? profile.progression.slice(0, 20) : blank.progression;
@@ -358,7 +387,17 @@ function ensureProfileShape(profile){
     blank.progression.push({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"" });
   }
   blank.progression = blank.progression.map(row => Object.assign({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"" }, row));
+  blank.knownSpells = unique(blank.knownSpells || blank.preparedSpells || []);
   blank.preparedSpells = unique(blank.preparedSpells || []);
+  blank.selectedSkills = unique(blank.selectedSkills || []);
+  blank.selectedSaves = unique(blank.selectedSaves || []);
+  blank.extraSpells = Array.isArray(blank.extraSpells) ? blank.extraSpells.map(item => ({
+    name:item?.name || "",
+    known:item?.known !== false,
+    prepared:Boolean(item?.prepared)
+  })).filter(item => item.name) : [];
+  blank.quickSpells = Array.isArray(blank.quickSpells) ? blank.quickSpells.slice(0, 4) : ["","","",""];
+  while (blank.quickSpells.length < 4) blank.quickSpells.push("");
   blank.selectedFeats = Array.isArray(blank.selectedFeats) ? blank.selectedFeats : [];
   blank.history = Array.isArray(blank.history) ? blank.history.slice(0, HISTORY_LIMIT) : [];
   blank.statRolls = Array.isArray(blank.statRolls) ? blank.statRolls : [];
@@ -498,12 +537,63 @@ function explicitEquipmentFromText(text){
   return match ? match[1].trim() : "None";
 }
 
+function splitChoiceList(text){
+  return String(text || "")
+    .replace(/\bor\b/gi, ",")
+    .replace(/\band\b/gi, ",")
+    .split(/,|\//)
+    .map(item => item.replace(/\([^)]*\)/g, "").trim())
+    .filter(Boolean);
+}
+
+function parseBackgroundChoiceData(profile = activeProfile()){
+  const background = entryBySlug("backgrounds", profile.backgroundSlug);
+  const raw = String((background && background.raw_text) || "");
+  const skillLine = extractLineValue(raw, "Skill Proficiencies");
+  const toolLine = extractLineValue(raw, "Tool Proficiencies");
+  const languageLine = extractLineValue(raw, "Languages");
+  const fixedSkills = explicitSkillsFromText(raw);
+  const skillOptions = /choice|choose|any|one of|two of/i.test(skillLine)
+    ? SKILLS.map(skill => skill.name)
+    : [];
+  const toolOptions = /choice|choose|one type|one gaming set|musical instrument|artisan's tools|navigator|vehicles/i.test(toolLine)
+    ? splitChoiceList(toolLine)
+    : [];
+  const languageOptions = /choice|choose|any/i.test(languageLine)
+    ? ["Common","Dwarvish","Elvish","Giant","Gnomish","Goblin","Halfling","Orc","Abyssal","Celestial","Draconic","Deep Speech","Infernal","Primordial","Sylvan","Undercommon"]
+    : [];
+  return {
+    fixedSkills,
+    fixedTools:/choice|choose|any/i.test(toolLine) ? [] : splitChoiceList(toolLine === "None" ? "" : toolLine),
+    fixedLanguages:/choice|choose|any/i.test(languageLine) ? [] : splitChoiceList(languageLine === "None" ? "" : languageLine),
+    skillOptions,
+    toolOptions,
+    languageOptions,
+    equipment:explicitEquipmentFromText(raw),
+    abilities:extractBackgroundAbilities(background)
+  };
+}
+
+function profileLanguages(profile = activeProfile()){
+  const species = extractLanguageText(entryBySlug("lineages", profile.speciesSlug) || {});
+  const backgroundData = parseBackgroundChoiceData(profile);
+  return unique([
+    ...splitChoiceList(species === "Not parsed." ? "" : species),
+    ...backgroundData.fixedLanguages,
+    ...(profile.backgroundSelections.languages || [])
+  ]);
+}
+
+function extraSpellNames(profile = activeProfile(), filter = "known"){
+  return unique((profile.extraSpells || [])
+    .filter(item => filter === "prepared" ? item.prepared : item.known)
+    .map(item => item.name));
+}
+
 function profileSkillProficiencies(profile = activeProfile()){
   const skills = [];
-  const background = entryBySlug("backgrounds", profile.backgroundSlug);
-  if (background){
-    skills.push(...explicitSkillsFromText(background.raw_text));
-  }
+  const backgroundData = parseBackgroundChoiceData(profile);
+  skills.push(...backgroundData.fixedSkills, ...(profile.backgroundSelections.skills || []));
   const counts = classCounts(profile);
   Object.keys(counts).forEach(classSlug => {
     if (classSlug === "wizard") skills.push("Arcana", "History");
@@ -517,12 +607,18 @@ function profileSkillProficiencies(profile = activeProfile()){
       skills.push("Nature", "Survival");
     }
   });
+  skills.push(...(profile.selectedSkills || []));
   return unique(skills);
+}
+
+function profileToolProficiencies(profile = activeProfile()){
+  const backgroundData = parseBackgroundChoiceData(profile);
+  return unique([...backgroundData.fixedTools, ...(profile.backgroundSelections.tools || [])]);
 }
 
 function profileSaveProficiencies(profile = activeProfile()){
   const firstClass = progressionUpTo(profile, 1)[0]?.classSlug;
-  return firstClass && CLASS_RULES[firstClass] ? CLASS_RULES[firstClass].saves : [];
+  return unique([...(firstClass && CLASS_RULES[firstClass] ? CLASS_RULES[firstClass].saves : []), ...(profile.selectedSaves || [])]);
 }
 
 function profileSize(profile = activeProfile()){
@@ -669,7 +765,11 @@ function hasSubclass(profile, slug){
 }
 
 function currentSpellList(profile = activeProfile()){
-  return unique(profile.preparedSpells || []).map(getSpellByName).filter(Boolean);
+  return unique([
+    ...(profile.preparedSpells || []),
+    ...(profile.knownSpells || []),
+    ...extraSpellNames(profile, "known")
+  ]).map(getSpellByName).filter(Boolean);
 }
 
 function skillMod(skillName, profile = activeProfile()){
@@ -913,19 +1013,10 @@ function featItems(){
 }
 
 function spellItemsForProfile(profile = activeProfile()){
-  const counts = classCounts(profile);
-  const classSlugs = Object.keys(counts).filter(classSlug => {
-    const rule = CLASS_RULES[classSlug];
-    return rule && rule.spellcasting !== "none";
-  });
-  return (window.SPELL_DATA || []).filter(spell => {
-    if (!classSlugs.length) return false;
-    const lower = String(spell.classes || "").toLowerCase();
-    return classSlugs.some(classSlug => lower.includes(classSlug));
-  }).map(spell => ({
+  return (window.SPELL_DATA || []).map(spell => ({
     slug:spell.name,
     name:spell.name,
-    meta:`L${spell.level} / ${spell.school || "-"}`,
+    meta:`L${spell.level} / ${spell.school || "-"} / ${spell.classes || "-"}`,
     search:`${spell.name} ${spell.school || ""} ${spell.classes || ""}`.toLowerCase(),
     spell
   }));
@@ -934,8 +1025,18 @@ function spellItemsForProfile(profile = activeProfile()){
 function selectedFeaturesNeedChoice(profile = activeProfile()){
   const features = [];
   const species = entryBySlug("lineages", profile.speciesSlug);
+  const backgroundData = parseBackgroundChoiceData(profile);
   if (species && /increase one ability score by 2 and increase a different one by 1|increase three different scores by 1/i.test(species.raw_text)){
     features.push("Species ASI choices are active.");
+  }
+  if (backgroundData.skillOptions.length && !(profile.backgroundSelections.skills || []).length){
+    features.push("Background skill choice pending.");
+  }
+  if (backgroundData.toolOptions.length && !(profile.backgroundSelections.tools || []).length){
+    features.push("Background tool choice pending.");
+  }
+  if (backgroundData.languageOptions.length && !(profile.backgroundSelections.languages || []).length){
+    features.push("Background language choice pending.");
   }
   progressionUpTo(profile).forEach((row, index) => {
     const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
@@ -947,6 +1048,31 @@ function selectedFeaturesNeedChoice(profile = activeProfile()){
     }
   });
   return features;
+}
+
+function isFeatureChoicePending(profile, index){
+  const row = profile.progression[index];
+  if (!row?.classSlug) return false;
+  const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
+  if (classLevel === (CLASS_RULES[row.classSlug]?.subclassLevel || 99) && !row.subclassSlug) return true;
+  if ((CLASS_RULES[row.classSlug]?.asi || []).includes(classLevel) && !row.asiMode) return true;
+  return false;
+}
+
+function spellbookAllowance(profile = activeProfile()){
+  const wizard = classCounts(profile).wizard || 0;
+  return wizard ? 6 + Math.max(0, (wizard - 1) * 2) : 0;
+}
+
+function preparedSpellLimit(profile = activeProfile()){
+  const counts = classCounts(profile);
+  const castingClass = spellAbility(profile);
+  const ability = finalAbilityScores(profile)[castingClass] || 10;
+  const fullCasterLevels = Object.entries(counts).reduce((sum, [classSlug, count]) => {
+    const rule = CLASS_RULES[classSlug];
+    return sum + (rule?.spellcasting === "full" ? count : 0);
+  }, 0);
+  return Math.max(0, fullCasterLevels + abilityMod(ability));
 }
 
 function updateTopIdentity(){
@@ -994,14 +1120,36 @@ function renderProfileSelector(){
 
 function renderBuilderPage(){
   const profile = activeProfile();
+  const backgroundData = parseBackgroundChoiceData(profile);
   document.getElementById("builderNameInput").value = profile.name || "";
   document.getElementById("speciesSelectBtn").textContent = entrySummary("lineages", profile.speciesSlug) || "Select Species";
   document.getElementById("backgroundSelectBtn").textContent = entrySummary("backgrounds", profile.backgroundSlug) || "Select Background";
   document.getElementById("speciesDetails").innerHTML = detailLinesForEntry(entryBySlug("lineages", profile.speciesSlug), "lineages").map(item => `
     <div class="detail-item"><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>
   `).join("");
-  document.getElementById("backgroundDetails").innerHTML = detailLinesForEntry(entryBySlug("backgrounds", profile.backgroundSlug), "backgrounds").map(item => `
-    <div class="detail-item"><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>
+  document.getElementById("backgroundDetails").innerHTML = [
+    {
+      label:"Skill Proficiencies",
+      value:unique([...backgroundData.fixedSkills, ...(profile.backgroundSelections.skills || [])]).join(", ") || "None",
+      editable:Boolean(backgroundData.skillOptions.length)
+    },
+    {
+      label:"Tool Proficiencies",
+      value:profileToolProficiencies(profile).join(", ") || "None",
+      editable:Boolean(backgroundData.toolOptions.length)
+    },
+    {
+      label:"Languages",
+      value:unique([...backgroundData.fixedLanguages, ...(profile.backgroundSelections.languages || [])]).join(", ") || "None",
+      editable:Boolean(backgroundData.languageOptions.length)
+    },
+    { label:"Equipment", value:backgroundData.equipment || "None", editable:false },
+    { label:"Abilities", value:backgroundData.abilities || "None listed.", editable:false }
+  ].map(item => `
+    <div class="detail-item ${item.editable ? "editable" : ""}">
+      <div><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>
+      ${item.editable ? `<button class="small-btn" data-edit-background="${escapeAttr(item.label)}">Edit</button>` : ""}
+    </div>
   `).join("");
   document.getElementById("pointBuyRemaining").textContent = `PB ${pointBuyRemaining(profile)}`;
   document.getElementById("builderStatsGrid").innerHTML = ABILITIES.map(abil => {
@@ -1026,7 +1174,6 @@ function renderBuilderPage(){
     `;
   }).join("");
   document.getElementById("targetLevelInput").value = currentLevel(profile);
-  document.getElementById("populateSeedInput").value = profile.populateRuns || 1;
   document.getElementById("populateHint").textContent = selectedFeaturesNeedChoice(profile).join(" ") || "Populate uses the chosen progression and rolls HP level by level.";
   renderProgressionList();
 }
@@ -1041,6 +1188,7 @@ function renderProgressionList(){
     }
     const top = mainClasses(profile, index + 1);
     const feature = findClassFeatureText(profile, index);
+    const pending = isFeatureChoicePending(profile, index);
     return `
       <div class="progression-row">
         <div>${index + 1}</div>
@@ -1050,7 +1198,7 @@ function renderProgressionList(){
         </select>
         <div class="tag">${top.primary[1] || "-"}</div>
         <div class="tag">${top.secondary[1] || "-"}</div>
-        <button class="small-btn feature-btn" data-level-feature="${index}">${escapeHtml(feature || "-")}</button>
+        <button class="small-btn feature-btn ${pending ? "required" : "ready"}" data-level-feature="${index}">${escapeHtml(feature || "-")}</button>
       </div>
     `;
   }).join("");
@@ -1059,12 +1207,28 @@ function renderProgressionList(){
 function renderStatsPage(){
   const profile = activeProfile();
   const scores = finalAbilityScores(profile);
+  document.getElementById("statsTopChips").innerHTML = `
+    <div class="chip green"><span>HP</span><b>${profile.currentHp}/${computeHpMax(profile)}</b></div>
+    <div class="chip blue"><span>AC</span><b>${profileAc(profile)}</b></div>
+    <div class="chip"><span>Init</span><b>${fmtMod(profileInitiative(profile))}</b></div>
+    <div class="chip"><span>Speed</span><b>${profileSpeed(profile)}</b></div>
+    <div class="chip gold"><span>Prof</span><b>${fmtMod(profBonus(profile))}</b></div>
+  `;
+  document.getElementById("coinsBtn").innerHTML = `
+    <div>CP</div><strong>${profile.coins.cp}</strong>
+    <div>SP</div><strong>${profile.coins.sp}</strong>
+    <div>GP</div><strong>${profile.coins.gp}</strong>
+  `;
+  document.getElementById("eqText").textContent = `Eq ${(((profile.coins.cp || 0) / 100) + ((profile.coins.sp || 0) / 10) + (profile.coins.gp || 0)).toFixed(2)} gp`;
+  document.getElementById("coreRollTypeBtn").textContent = profile.coreRollType === "save" ? "Save" : "Check";
+  document.getElementById("coreAdvModeBtn").textContent = profile.coreAdvMode === "-" ? "Adv/Dis" : profile.coreAdvMode.toUpperCase();
+  document.getElementById("skillAdvModeBtn").textContent = profile.skillAdvMode === "-" ? "Adv/Dis" : profile.skillAdvMode.toUpperCase();
   document.getElementById("statsGrid").innerHTML = ABILITIES.map(abil => `
-    <div class="stat">
+    <div class="stat roll-row" data-roll-core="${abil}">
       <div class="stat-head">${abil}</div>
       <div class="stat-score">${scores[abil]}</div>
       <div class="stat-foot">
-        <span class="stat-pair"><span class="muted">MOD</span><b>${fmtMod(abilityMod(scores[abil]))}</b></span>
+        <span class="stat-pair"><span class="muted">CHK</span><b>${fmtMod(abilityMod(scores[abil]))}</b></span>
         <span class="stat-pair"><span class="muted">SAVE</span><b>${fmtMod(saveMod(abil, profile))}</b></span>
       </div>
     </div>
@@ -1072,7 +1236,7 @@ function renderStatsPage(){
   document.getElementById("skillsGrid").innerHTML = ["STR","DEX","INT","WIS","CHA"].map(abil => {
     const skills = SKILLS.filter(skill => skill.abil === abil).map(skill => {
       const prof = profileSkillProficiencies(profile).includes(skill.name);
-      return `<div class="skill-line ${prof ? "prof" : ""}"><span>${escapeHtml(skill.name)}</span><span>${fmtMod(skillMod(skill.name, profile))}</span></div>`;
+      return `<div class="skill-line roll-row ${prof ? "prof" : ""}" data-roll-skill="${escapeAttr(skill.name)}"><span>${escapeHtml(skill.name)}</span><span>${fmtMod(skillMod(skill.name, profile))}</span></div>`;
     }).join("");
     return `<div class="skill-col"><div class="skill-col-title">${abil}</div>${skills}</div>`;
   }).join("");
@@ -1080,6 +1244,11 @@ function renderStatsPage(){
   document.getElementById("spellDcText").textContent = spellDc(profile);
   const pact = spellcastingSummary(profile).pact;
   document.getElementById("pactSlotText").textContent = pact.slots ? `${pact.slots}xL${pact.level}` : "-";
+  document.getElementById("hitDiceRows").innerHTML = Object.entries(profileHitDice(profile)).map(([die, max]) => {
+    const current = Number(profile.hitDiceCur[die] ?? max);
+    const pips = Array.from({ length:max }, (_, index) => `<span class="pip ${index < current ? "on green" : ""}" data-hit-die="${die}" data-hit-index="${index}"></span>`).join("");
+    return `<div class="hitdice-row"><div class="hitdice-label">${die}</div><div class="pips-box">${pips}</div></div>`;
+  }).join("") || `<div class="empty">No hit dice yet.</div>`;
   document.getElementById("derivedDetails").innerHTML = [
     { label:"Size", value:profileSize(profile) },
     { label:"Speed", value:`${profileSpeed(profile)} ft` },
@@ -1088,7 +1257,9 @@ function renderStatsPage(){
     { label:"Hit Points", value:`${profile.currentHp}/${computeHpMax(profile)}` },
     { label:"Hit Dice", value:Object.entries(profileHitDice(profile)).map(([die, count]) => `${count}${die}`).join(" + ") || "-" },
     { label:"Save Proficiencies", value:profileSaveProficiencies(profile).join(", ") || "-" },
-    { label:"Skill Proficiencies", value:profileSkillProficiencies(profile).join(", ") || "-" }
+    { label:"Skill Proficiencies", value:profileSkillProficiencies(profile).join(", ") || "-" },
+    { label:"Tool Proficiencies", value:profileToolProficiencies(profile).join(", ") || "-" },
+    { label:"Languages", value:profileLanguages(profile).join(", ") || "-" }
   ].map(item => `<div class="detail-item"><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>`).join("");
 }
 
@@ -1162,9 +1333,9 @@ function buildAbilityButtons(profile = activeProfile()){
     });
     buttons.push({
       id:"sneak-attack",
-      label:"Sneak Attack",
+      label:profile.resources.sneakAttackReady ? "Sneak Attack On" : "Sneak Attack",
       note:sneakAttackDice(profile),
-      action:rollSneakAttack
+      action:toggleSneakAttack
     });
   }
   if ((counts.paladin || 0) >= 2){
@@ -1202,9 +1373,15 @@ function renderCombatPage(){
     <button class="action-btn blue" id="initRollBtn">INIT Roll</button>
   `;
   renderSlots("slotGrid");
+  document.getElementById("concentrationModeBtn").textContent = profile.concentrationMode === "-" ? "Adv/Dis" : profile.concentrationMode.toUpperCase();
+  document.getElementById("concentrationActiveBtn").textContent = profile.concentrationActive || "Concentration Off";
+  document.getElementById("concentrationActiveBtn").className = `action-btn ${profile.concentrationActive ? "yellow" : "blue"}`;
+  document.getElementById("quickSpellRow").innerHTML = profile.quickSpells.map((name, index) => `
+    <button class="mode-btn ${name ? "active" : "inactive"}" data-quick-spell="${index}">${escapeHtml(name || "-")}</button>
+  `).join("");
   const buttons = buildAbilityButtons(profile);
   document.getElementById("abilityButtons").innerHTML = buttons.length
-    ? buttons.map(item => `<button class="action-btn blue" data-ability-btn="${item.id}">${escapeHtml(item.label)}<br><span class="tiny">${escapeHtml(item.note)}</span></button>`).join("")
+    ? buttons.map(item => `<button class="action-btn ${item.id === "steady-aim" && profile.resources.steadyAimActive ? "yellow" : item.id === "sneak-attack" && profile.resources.sneakAttackReady ? "yellow" : "blue"}" data-ability-btn="${item.id}">${escapeHtml(item.label)}<br><span class="tiny">${escapeHtml(item.note)}</span></button>`).join("")
     : `<div class="empty">No active buttons detected for this build yet.</div>`;
   renderWeaponRows();
   renderSpellRows();
@@ -1238,7 +1415,7 @@ function renderWeaponRows(){
         <button class="icon-btn" data-weapon-info="${weapon.id}">i</button>
         <button class="combat-action" data-weapon-roll="${weapon.id}">
           <b>${escapeHtml(weapon.name)}</b>
-          <span>${escapeHtml(weapon.damage)} ${escapeHtml(weapon.type)} / ${escapeHtml(data.abilityKey)}</span>
+          <span>${escapeHtml(weapon.damage)} ${escapeHtml(weapon.damageType || weapon.type)} / ${escapeHtml(data.abilityKey)} / to hit ${fmtMod(data.attackBonus)}</span>
         </button>
         <div class="tag">${fmtMod(data.attackBonus)}</div>
         <button class="mode-btn ${mode.crit ? "active" : "inactive"}" data-weapon-crit="${weapon.id}">Crit</button>
@@ -1300,10 +1477,39 @@ function bindSelect(id, items, selectedId){
 
 function renderSpellsPage(){
   const profile = activeProfile();
-  const summary = currentSpellList(profile);
-  document.getElementById("spellbookSummary").innerHTML = summary.length
-    ? summary.map(spell => `<div class="detail-item"><strong>${escapeHtml(spell.name)}</strong><br>${escapeHtml(`L${spell.level} / ${spell.school || "-"} / ${spell.classes || "-"}`)}</div>`).join("")
-    : `<div class="empty">No spells selected yet.</div>`;
+  const allKnown = unique([...(profile.knownSpells || []), ...extraSpellNames(profile, "known")]).map(getSpellByName).filter(Boolean).sort((a, b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const prepared = unique([...(profile.preparedSpells || []), ...extraSpellNames(profile, "prepared")]).map(getSpellByName).filter(Boolean).sort((a, b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  renderSlots("spellbookSlotGrid");
+  document.getElementById("spellbookSlotHeadText").textContent = document.getElementById("slotHeadText").textContent;
+  document.getElementById("spellCounts").innerHTML = `
+    <div class="count-box">Known <b>${allKnown.length}</b></div>
+    <div class="count-box">Prepared <b>${prepared.length}/${preparedSpellLimit(profile)}</b></div>
+    <div class="count-box">Spellbook <b>${(profile.knownSpells || []).filter(name => Number(getSpellByName(name)?.level || 0) > 0).length}/${spellbookAllowance(profile) || "-"}</b></div>
+    <div class="count-box">Spell DC <b>${spellDc(profile)}</b></div>
+  `;
+  document.getElementById("bonusSpellSummary").textContent = `${extraSpellNames(profile, "known").length} known / ${extraSpellNames(profile, "prepared").length} prepared`;
+  const sections = [
+    { title:"Prepared", list:prepared, prepared:true },
+    { title:"Known", list:allKnown, prepared:false }
+  ];
+  document.getElementById("spellbookSummary").innerHTML = sections.map(section => `
+    <div class="card">
+      <div class="card-title"><span>${section.title} Spells</span></div>
+      <div class="spellbook-list">
+        ${section.list.length ? section.list.map(spell => `
+          <div class="book-row ${section.prepared && (profile.preparedSpells || []).includes(spell.name) ? "prepared" : ""} ${(profile.extraSpells || []).some(item => item.name === spell.name) ? "extra" : ""}">
+            <button class="icon-btn" data-spell-info="${escapeAttr(spell.name)}">i</button>
+            <div>
+              <div class="book-row-name">${escapeHtml(spell.name)}</div>
+              <div class="book-row-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+            </div>
+            <button class="book-tag" data-toggle-known="${escapeAttr(spell.name)}">${(profile.knownSpells || []).includes(spell.name) ? "Known" : "Extra"}</button>
+            <button class="book-tag" data-toggle-prepared="${escapeAttr(spell.name)}">${(profile.preparedSpells || []).includes(spell.name) || (profile.extraSpells || []).some(item => item.name === spell.name && item.prepared) ? "Prepared" : "Prep"}</button>
+          </div>
+        `).join("") : `<div class="empty">No ${section.title.toLowerCase()} spells yet.</div>`}
+      </div>
+    </div>
+  `).join("");
 }
 
 function renderNotesPage(){
@@ -1396,12 +1602,16 @@ function bindGlobalButtons(){
       items:backgroundItems(),
       onSelect:slug => {
         activeProfile().backgroundSlug = slug;
+        activeProfile().backgroundSelections = { skills:[], tools:[], languages:[] };
         saveState();
       }
     });
   };
   document.getElementById("speciesInfoBtn").onclick = () => openEntryInfo(entryBySlug("lineages", activeProfile().speciesSlug));
   document.getElementById("backgroundInfoBtn").onclick = () => openEntryInfo(entryBySlug("backgrounds", activeProfile().backgroundSlug));
+  document.querySelectorAll("[data-edit-background]").forEach(button => {
+    button.onclick = () => openBackgroundChoiceEditor(button.dataset.editBackground);
+  });
   document.querySelectorAll("[data-stat-minus]").forEach(button => button.onclick = () => adjustBaseStat(button.dataset.statMinus, -1));
   document.querySelectorAll("[data-stat-plus]").forEach(button => button.onclick = () => adjustBaseStat(button.dataset.statPlus, 1));
   document.querySelectorAll("[data-stat-mode]").forEach(button => button.onclick = () => toggleStatMode(button.dataset.statMode));
@@ -1426,13 +1636,27 @@ function bindGlobalButtons(){
     activeProfile().targetLevel = clamp(Number(event.target.value || 1), 1, 20);
     saveState();
   };
-  document.getElementById("populateSeedInput").onchange = event => {
-    activeProfile().populateRuns = clamp(Number(event.target.value || 1), 1, 5);
-    saveState({ skipRender:true });
-  };
   document.getElementById("populateBuilderBtn").onclick = populateProfile;
   document.getElementById("levelUpBtn").onclick = levelUp;
   document.getElementById("repopulateBtn").onclick = populateProfile;
+  document.getElementById("coinsBtn").onclick = openCoinsEditor;
+  document.getElementById("coreRollTypeBtn").onclick = () => {
+    activeProfile().coreRollType = activeProfile().coreRollType === "check" ? "save" : "check";
+    saveState();
+  };
+  document.getElementById("coreAdvModeBtn").onclick = () => cycleMode("coreAdvMode");
+  document.getElementById("skillAdvModeBtn").onclick = () => cycleMode("skillAdvMode");
+  document.getElementById("editCoreBtn").onclick = () => openProficiencyEditor("save");
+  document.getElementById("editSkillsBtn").onclick = () => openProficiencyEditor("skill");
+  document.querySelectorAll("[data-roll-core]").forEach(button => {
+    button.onclick = () => rollAbilityCheck(button.dataset.rollCore);
+  });
+  document.querySelectorAll("[data-roll-skill]").forEach(button => {
+    button.onclick = () => rollSkillCheck(button.dataset.rollSkill);
+  });
+  document.querySelectorAll("[data-hit-die]").forEach(button => {
+    button.onclick = () => spendHitDie(button.dataset.hitDie, Number(button.dataset.hitIndex));
+  });
   document.getElementById("notesInput").onchange = event => {
     activeProfile().notes = event.target.value;
     saveState({ skipRender:true });
@@ -1458,6 +1682,22 @@ function bindGlobalButtons(){
   document.getElementById("initRollBtn").onclick = rollInitiative;
   document.getElementById("shortRestBtn").onclick = shortRest;
   document.getElementById("longRestBtn").onclick = longRest;
+  document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
+  document.getElementById("concentrationModeBtn").onclick = () => cycleMode("concentrationMode");
+  document.getElementById("concentrationActiveBtn").onclick = () => toggleConcentration();
+  document.querySelectorAll("[data-quick-spell]").forEach(button => {
+    const index = Number(button.dataset.quickSpell);
+    let pressTimer = null;
+    button.onclick = () => castQuickSpell(index);
+    button.oncontextmenu = event => {
+      event.preventDefault();
+      openQuickSpellEditor(index);
+    };
+    button.ontouchstart = () => {
+      pressTimer = setTimeout(() => openQuickSpellEditor(index), 550);
+    };
+    button.ontouchend = () => clearTimeout(pressTimer);
+  });
   document.getElementById("damageBtn").onclick = () => applyHpAction("damage");
   document.getElementById("healBtn").onclick = () => applyHpAction("heal");
   document.getElementById("thpBtn").onclick = () => applyHpAction("thp");
@@ -1485,6 +1725,9 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-spell-cast]").forEach(button => button.onclick = () => castSpell(button.dataset.spellCast));
   document.querySelectorAll("[data-spell-crit]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.spellCrit, "crit"));
   document.querySelectorAll("[data-spell-adv]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.spellAdv, "adv"));
+  document.querySelectorAll("[data-toggle-known]").forEach(button => button.onclick = () => toggleSpellKnown(button.dataset.toggleKnown));
+  document.querySelectorAll("[data-toggle-prepared]").forEach(button => button.onclick = () => toggleSpellPrepared(button.dataset.togglePrepared));
+  document.getElementById("editBonusSpellsBtn").onclick = openBonusSpellEditor;
   const importInput = document.getElementById("importSaveInput");
   importInput.onchange = event => {
     const file = event.target.files && event.target.files[0];
@@ -1765,10 +2008,244 @@ function openAsiDetailModal(index){
   };
 }
 
+function openBackgroundChoiceEditor(label){
+  const profile = activeProfile();
+  const backgroundData = parseBackgroundChoiceData(profile);
+  const key = label.toLowerCase().includes("skill") ? "skills" : label.toLowerCase().includes("tool") ? "tools" : "languages";
+  const options = key === "skills" ? backgroundData.skillOptions : key === "tools" ? backgroundData.toolOptions : backgroundData.languageOptions;
+  const selected = new Set(profile.backgroundSelections[key] || []);
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Edit ${escapeHtml(label)}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">
+      <div class="list-grid">
+        ${options.map(option => `
+          <label class="list-item">
+            <input type="checkbox" data-background-choice="${escapeAttr(option)}" ${selected.has(option) ? "checked" : ""}>
+            <div class="list-item-main"><div class="list-title">${escapeHtml(option)}</div></div>
+          </label>
+        `).join("")}
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveBackgroundChoicesBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveBackgroundChoicesBtn").onclick = () => {
+    profile.backgroundSelections[key] = Array.from(document.querySelectorAll("[data-background-choice]:checked")).map(input => input.dataset.backgroundChoice);
+    closeModal();
+    saveState();
+  };
+}
+
+function cycleMode(key){
+  const profile = activeProfile();
+  profile[key] = profile[key] === "-" ? "adv" : profile[key] === "adv" ? "dis" : "-";
+  saveState();
+}
+
+function rollAbilityCheck(ability){
+  const profile = activeProfile();
+  const mode = profile.coreAdvMode;
+  const roll = rollD20(mode);
+  const bonus = profile.coreRollType === "save" ? saveMod(ability, profile) : abilityMod(finalAbilityScores(profile)[ability]);
+  const label = `${ability} ${profile.coreRollType === "save" ? "Save" : "Check"}`;
+  const text = `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${roll.chosen + bonus}`;
+  openResult(label, text);
+  pushHistory(`${label}: ${text}`);
+}
+
+function rollSkillCheck(skillName){
+  const profile = activeProfile();
+  const roll = rollD20(profile.skillAdvMode);
+  const bonus = skillMod(skillName, profile);
+  const text = `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${roll.chosen + bonus}`;
+  openResult(skillName, text);
+  pushHistory(`${skillName}: ${text}`);
+}
+
+function spendHitDie(die, pipIndex){
+  const profile = activeProfile();
+  const max = profileHitDice(profile)[die] || 0;
+  const current = Number(profile.hitDiceCur[die] ?? max);
+  if (pipIndex >= current) return;
+  const heal = rollDice(`1${die}`);
+  const gain = heal.total + abilityMod(finalAbilityScores(profile).CON);
+  profile.hitDiceCur[die] = Math.max(0, current - 1);
+  profile.currentHp = clamp(profile.currentHp + Math.max(1, gain), 0, computeHpMax(profile));
+  openResult(`Spend ${die}`, `${heal.rolls.join(" + ")} ${fmtMod(abilityMod(finalAbilityScores(profile).CON))} = ${gain}\nHP ${profile.currentHp}/${computeHpMax(profile)}`);
+  pushHistory(`Spent ${die}: healed ${gain}.`);
+  saveState();
+}
+
+function openCoinsEditor(){
+  const profile = activeProfile();
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Coins</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="form-grid">
+      <label>Copper<input type="number" id="coinsCp" value="${profile.coins.cp}"></label>
+      <label>Silver<input type="number" id="coinsSp" value="${profile.coins.sp}"></label>
+      <label>Gold<input type="number" id="coinsGp" value="${profile.coins.gp}"></label>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveCoinsBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveCoinsBtn").onclick = () => {
+    profile.coins.cp = Math.max(0, Number(document.getElementById("coinsCp").value || 0));
+    profile.coins.sp = Math.max(0, Number(document.getElementById("coinsSp").value || 0));
+    profile.coins.gp = Math.max(0, Number(document.getElementById("coinsGp").value || 0));
+    closeModal();
+    saveState();
+  };
+}
+
+function openProficiencyEditor(kind){
+  const profile = activeProfile();
+  const key = kind === "save" ? "selectedSaves" : "selectedSkills";
+  const all = kind === "save" ? ABILITIES : SKILLS.map(skill => skill.name);
+  const selected = new Set(kind === "save" ? profileSaveProficiencies(profile) : profileSkillProficiencies(profile));
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Edit ${kind === "save" ? "Save" : "Skill"} Proficiencies</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="list-grid">
+      ${all.map(option => `
+        <label class="list-item">
+          <input type="checkbox" data-prof-choice="${escapeAttr(option)}" ${selected.has(option) ? "checked" : ""}>
+          <div class="list-item-main"><div class="list-title">${escapeHtml(option)}</div></div>
+        </label>
+      `).join("")}
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveProfEditBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveProfEditBtn").onclick = () => {
+    profile[key] = Array.from(document.querySelectorAll("[data-prof-choice]:checked")).map(input => input.dataset.profChoice);
+    closeModal();
+    saveState();
+  };
+}
+
+function toggleConcentration(name = ""){
+  const profile = activeProfile();
+  profile.concentrationActive = profile.concentrationActive ? "" : (name || "Custom");
+  saveState();
+}
+
+function runConcentrationCheck(){
+  const profile = activeProfile();
+  const bonus = saveMod("CON", profile) + (profile.resources.bladesongActive ? Math.max(1, abilityMod(finalAbilityScores(profile).INT)) : 0);
+  const roll = rollD20(profile.concentrationMode);
+  const total = roll.chosen + bonus;
+  const text = total >= 10 ? `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${total}\nSAVE < ${total * 2} DMG` : `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${total}\nFAIL`;
+  openResult("Concentration Check", text);
+  pushHistory(`Concentration: ${text.replace(/\n/g, " | ")}`);
+}
+
+function openQuickSpellEditor(index){
+  selectionModal({
+    title:`Quick Spell ${index + 1}`,
+    items:spellItemsForProfile(),
+    onSelect:slug => {
+      activeProfile().quickSpells[index] = slug;
+      saveState();
+    }
+  });
+}
+
+function castQuickSpell(index){
+  const name = activeProfile().quickSpells[index];
+  if (!name){
+    openQuickSpellEditor(index);
+    return;
+  }
+  castSpell(name);
+}
+
+function toggleSpellKnown(name){
+  const profile = activeProfile();
+  if ((profile.knownSpells || []).includes(name)){
+    profile.knownSpells = profile.knownSpells.filter(item => item !== name);
+    profile.preparedSpells = profile.preparedSpells.filter(item => item !== name);
+  }else{
+    profile.knownSpells.push(name);
+  }
+  saveState();
+}
+
+function toggleSpellPrepared(name){
+  const profile = activeProfile();
+  if ((profile.preparedSpells || []).includes(name)){
+    profile.preparedSpells = profile.preparedSpells.filter(item => item !== name);
+  }else{
+    if (!(profile.knownSpells || []).includes(name)) profile.knownSpells.push(name);
+    profile.preparedSpells.push(name);
+  }
+  saveState();
+}
+
+function openBonusSpellEditor(){
+  const profile = activeProfile();
+  const draft = Object.fromEntries((profile.extraSpells || []).map(item => [item.name, { known:item.known, prepared:item.prepared }]));
+  const spells = (window.SPELL_DATA || []);
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Extra Spells</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="list-grid">
+      ${spells.map(spell => {
+        const flags = draft[spell.name] || { known:false, prepared:false };
+        return `
+          <div class="check-item">
+            <button class="icon-btn" data-bonus-info="${escapeAttr(spell.name)}">i</button>
+            <div class="list-item-main">
+              <div class="list-title">${escapeHtml(spell.name)}</div>
+              <div class="list-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+            </div>
+            <label class="class-pick"><span>K</span><input type="checkbox" data-bonus-known="${escapeAttr(spell.name)}" ${flags.known ? "checked" : ""}></label>
+            <label class="class-pick"><span>P</span><input type="checkbox" data-bonus-prepared="${escapeAttr(spell.name)}" ${flags.prepared ? "checked" : ""}></label>
+            <div></div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveBonusSpellsBtn">Save</button>
+    </div>
+  `);
+  document.querySelectorAll("[data-bonus-info]").forEach(button => button.onclick = () => {
+    const spell = getSpellByName(button.dataset.bonusInfo);
+    if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
+  });
+  document.getElementById("saveBonusSpellsBtn").onclick = () => {
+    const byName = {};
+    document.querySelectorAll("[data-bonus-known]").forEach(box => {
+      byName[box.dataset.bonusKnown] ||= { name:box.dataset.bonusKnown, known:false, prepared:false };
+      byName[box.dataset.bonusKnown].known = box.checked;
+    });
+    document.querySelectorAll("[data-bonus-prepared]").forEach(box => {
+      byName[box.dataset.bonusPrepared] ||= { name:box.dataset.bonusPrepared, known:false, prepared:false };
+      byName[box.dataset.bonusPrepared].prepared = box.checked;
+      if (box.checked) byName[box.dataset.bonusPrepared].known = true;
+    });
+    profile.extraSpells = Object.values(byName).filter(item => item.known || item.prepared);
+    closeModal();
+    saveState();
+  };
+}
+
 function populateProfile(){
   const profile = activeProfile();
   profile.targetLevel = clamp(Number(document.getElementById("targetLevelInput").value || 1), 1, 20);
-  profile.populateRuns = clamp(Number(document.getElementById("populateSeedInput").value || 1), 1, 5);
   const rows = progressionUpTo(profile);
   const scores = finalAbilityScores(profile);
   const conMod = abilityMod(scores.CON);
@@ -1799,6 +2276,9 @@ function populateProfile(){
   profile.resources.hexbladeCurseUsed = 0;
   profile.resources.hexbladeCurseActive = false;
   profile.resources.warPriestUsed = 0;
+  profile.resources.sneakAttackReady = false;
+  profile.resources.steadyAimActive = false;
+  profile.concentrationActive = "";
   pushHistory(`Populated build to level ${profile.targetLevel}. HP max ${computeHpMax(profile)}.`);
   saveState();
 }
@@ -1959,12 +2439,22 @@ function rollWeapon(weaponId){
   const attack = rollD20(profile.resources.steadyAimActive ? "adv" : mode.adv);
   const toHit = attack.chosen + data.attackBonus;
   const damage = rollDice(weapon.damage);
-  const crit = mode.crit || attack.chosen === 20;
-  const total = damage.total + data.damageBonus + (crit ? damage.max : 0);
+  const critFloor = profile.resources.hexbladeCurseActive ? 19 : 20;
+  const crit = mode.crit || attack.chosen >= critFloor;
+  let bonusDamage = data.damageBonus + (profile.resources.hexbladeCurseActive ? profBonus(profile) : 0);
+  let extra = "";
+  let total = damage.total + bonusDamage + (crit ? damage.max : 0);
+  if (profile.resources.sneakAttackReady && (classCounts(profile).rogue || 0) > 0 && (weapon.type === "ranged" || weapon.finesse)){
+    const sneak = rollDice(sneakAttackDice(profile));
+    const sneakTotal = sneak.total + (crit ? sneak.max : 0);
+    total += sneakTotal;
+    extra = `\nSneak Attack: ${sneak.rolls.join(" + ")}${crit ? ` + crit(${sneak.max})` : ""} = ${sneakTotal}`;
+    profile.resources.sneakAttackReady = false;
+  }
   const text = [
     `${weapon.name}`,
     `Attack: ${attack.second ? `${attack.first}, ${attack.second}` : attack.first} -> ${attack.chosen} ${fmtMod(data.attackBonus)} = ${toHit}`,
-    `Damage: ${damage.rolls.join(" + ")}${data.damageBonus ? ` ${fmtMod(data.damageBonus)}` : ""}${crit ? ` + crit(${damage.max})` : ""} = ${total}`
+    `Damage: ${damage.rolls.join(" + ")}${bonusDamage ? ` ${fmtMod(bonusDamage)}` : ""}${crit ? ` + crit(${damage.max})` : ""} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
   ].join("\n");
   openResult(weapon.name, text);
   pushHistory(text.replace(/\n/g, " | "));
@@ -2018,6 +2508,10 @@ function castSpell(name){
   if (damageMatch){
     const damage = rollDice(damageMatch[1]);
     text += `\nDamage: ${damage.rolls.join(" + ")} = ${damage.total} ${damageMatch[2]}`;
+  }
+  if (/concentration/i.test(String(spell.duration || ""))){
+    profile.concentrationActive = spell.name;
+    text += `\nConcentration started: ${spell.name}`;
   }
   openResult(spell.name, text);
   pushHistory(text.replace(/\n/g, " | "));
@@ -2119,11 +2613,11 @@ function toggleSteadyAim(){
   saveState();
 }
 
-function rollSneakAttack(){
-  const dice = sneakAttackDice(activeProfile());
-  const roll = rollDice(dice);
-  openResult("Sneak Attack", `${dice}: ${roll.rolls.join(" + ")} = ${roll.total}`);
-  pushHistory(`Sneak Attack ${roll.total}`);
+function toggleSneakAttack(){
+  const profile = activeProfile();
+  profile.resources.sneakAttackReady = !profile.resources.sneakAttackReady;
+  pushHistory(profile.resources.sneakAttackReady ? "Sneak Attack primed." : "Sneak Attack cleared.");
+  saveState();
 }
 
 function rollDivineSmite(){
@@ -2153,6 +2647,8 @@ function shortRest(){
   profile.resources.hexbladeCurseActive = false;
   profile.resources.bladesongActive = false;
   profile.resources.steadyAimActive = false;
+  profile.resources.sneakAttackReady = false;
+  profile.concentrationActive = "";
   profile.pactSlotsCur = summary.pact.slots || 0;
   pushHistory("Short rest: pact slots and short-rest resources refreshed.");
   saveState();
@@ -2177,6 +2673,8 @@ function longRest(){
   profile.resources.warPriestUsed = 0;
   profile.resources.rageUsed = 0;
   profile.resources.steadyAimActive = false;
+  profile.resources.sneakAttackReady = false;
+  profile.concentrationActive = "";
   Object.entries(profileHitDice(profile)).forEach(([die, max]) => {
     profile.hitDiceCur[die] = Math.min(max, (profile.hitDiceCur[die] || 0) + Math.max(1, Math.floor(max / 2)));
   });
@@ -2186,7 +2684,8 @@ function longRest(){
 
 function openSpellSelector(){
   const profile = activeProfile();
-  const selected = new Set(profile.preparedSpells);
+  const known = new Set(profile.knownSpells || []);
+  const prepared = new Set(profile.preparedSpells || []);
   const items = spellItemsForProfile(profile);
   openModal(`
     <div class="modal-head">
@@ -2207,14 +2706,23 @@ function openSpellSelector(){
   const renderList = query => {
     const filtered = items.filter(item => item.search.includes(query));
     document.getElementById("spellSelectList").innerHTML = filtered.map(item => `
-      <label class="list-item">
-        <input type="checkbox" data-spell-choice="${escapeHtml(item.slug)}"${selected.has(item.slug) ? " checked" : ""}>
+      <div class="check-item">
+        <button class="icon-btn" data-spell-info="${escapeAttr(item.slug)}">i</button>
         <div class="list-item-main">
           <div class="list-title">${escapeHtml(item.name)}</div>
           <div class="list-meta">${escapeHtml(item.meta)}</div>
         </div>
-      </label>
+        <label class="class-pick"><span>K</span><input type="checkbox" data-known-choice="${escapeAttr(item.slug)}"${known.has(item.slug) ? " checked" : ""}></label>
+        <label class="class-pick"><span>P</span><input type="checkbox" data-prepared-choice="${escapeAttr(item.slug)}"${prepared.has(item.slug) ? " checked" : ""}></label>
+        <div></div>
+      </div>
     `).join("") || `<div class="empty">No spells found.</div>`;
+    document.querySelectorAll("[data-spell-info]").forEach(button => {
+      button.onclick = () => {
+        const spell = getSpellByName(button.dataset.spellInfo);
+        if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
+      };
+    });
   };
   renderList("");
   document.getElementById("spellSearchInput").oninput = event => renderList(event.target.value.trim().toLowerCase());
@@ -2223,7 +2731,11 @@ function openSpellSelector(){
     renderList("");
   };
   document.getElementById("saveSpellSelectionBtn").onclick = () => {
-    profile.preparedSpells = Array.from(document.querySelectorAll("[data-spell-choice]:checked")).map(input => input.dataset.spellChoice);
+    profile.knownSpells = Array.from(document.querySelectorAll("[data-known-choice]:checked")).map(input => input.dataset.knownChoice);
+    profile.preparedSpells = Array.from(document.querySelectorAll("[data-prepared-choice]:checked")).map(input => input.dataset.preparedChoice);
+    profile.preparedSpells.forEach(name => {
+      if (!profile.knownSpells.includes(name)) profile.knownSpells.push(name);
+    });
     closeModal();
     saveState();
   };
