@@ -1,4 +1,4 @@
-const CACHE_NAME = "dnd5e-character-builder-v1";
+const CACHE_NAME = "dnd5e-character-builder-v2";
 const ASSETS = [
   "./",
   "./index.html",

@@ -27,9 +27,15 @@ input,select,button { outline:none; }
 .mini-pill {
   background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; font-size:12px; white-space:nowrap;
 }
+.mini-pill.link-pill {
+  color:var(--text); text-decoration:none; font-weight:700;
+}
 .tabs { display:flex; gap:6px; margin-bottom:8px; }
 .tab-btn {
   border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:7px 12px; border-radius:10px; cursor:pointer; font-weight:700;
+}
+.tab-link {
+  display:inline-flex; align-items:center; border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:7px 12px; border-radius:10px; cursor:pointer; font-weight:700; text-decoration:none;
 }
 .tab-btn.active { background:#21345e; }
 .tab-pane { display:none; }
@@ -49,6 +55,7 @@ button.primary, button.secondary {
 }
 button.primary { border:none; background:linear-gradient(135deg,var(--accent),#9bffb2); color:#031018; }
 button.secondary { border:1px solid var(--line); background:#0f1730; color:var(--text); }
+.top-action-btn { border:1px solid var(--line); background:#0f1730; color:var(--text); height:32px; padding:0 12px; border-radius:8px; cursor:pointer; font-weight:700; }
 .compact-note { font-size:11px; color:var(--muted); margin-left:auto; }
 .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
 table { width:100%; border-collapse:collapse; min-width:1100px; }
@@ -112,13 +119,19 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
   <div class="topbar">
     <div class="title">Pokémon GO medal planner</div>
     <div id="summaryBar" class="mini-stats"></div>
-    <div class="mini-pill" id="nextSoonBar">—</div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
+      <button class="top-action-btn" id="cloudSyncBtn" type="button">Cloud Sync</button>
+      <div class="mini-pill" id="nextSoonBar">—</div>
+    </div>
   </div>
+  <input id="importAllInput" type="file" accept=".json,application/json" hidden>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="entry">Entry</button>
     <button class="tab-btn" data-tab="forecast">Level Forecast</button>
     <button class="tab-btn" data-tab="graphs">Graphs</button>
+    <a class="tab-link" href="./pokedex.html">Pokedex</a>
   </div>
 
   <section id="entry" class="tab-pane active">
@@ -219,6 +232,9 @@ const DEFAULT_DATA = {
   medalOrder: { main: ["vivillon", "kanto", "johto", "gym_leader", "idol", "kalos", "triathlete", "rising_star", "expert_navigator", "life_party", "jogger", "collector", "scientist", "breeder", "backpacker", "sightseer", "battle_girl", "berry_master", "hoenn", "pokemon_ranger", "pilot", "unova", "alola", "galar", "mega_evo_guru", "raid_expert", "tiny_collector", "jumbo_collector", "fisher", "youngster", "pikachu_fan", "unown", "champion", "battle_legend", "gentleman", "sinnoh", "cameraman", "purifier", "hero", "rising_star_duo", "picnicker", "successor", "hisui", "paldea", "great_league", "master_league", "ultra_hero", "best_buddy", "friend_finder", "showcase_star", "ace_trainer", "ultra_league", "wayfarer", "community_member"], catch: ["schoolkid", "bird_keeper", "bug_catcher", "swimmer", "gardener", "black_belt", "punk_girl", "ruin_maniac", "hiker", "hex_maniac", "rail_staff", "kindler", "rocker", "psychic", "skier", "dragon_tamer", "delinquent", "fairy_tale"] }
 };
 const STORAGE_KEY = "pogo-medal-forecast-v2";
+const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v2";
+const MEDAL_SYNC_SETTINGS_KEY = "pogo-medal-cloud-sync-v1";
+const MEDAL_SYNC_API = "/api/pogo-medals-sync";
 const RECOVERED_SNAPSHOTS = [
   {"date":"2026-03-17","xp":88752236,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":28766,"idol":81,"kalos":72,"triathlete":106,"rising_star":166,"expert_navigator":685,"life_party":210,"jogger":2884.7,"collector":29196,"scientist":556,"breeder":698,"backpacker":20125,"sightseer":1359,"battle_girl":2971,"pikachu_fan":300,"berry_master":11754,"hoenn":122,"pokemon_ranger":1158,"pilot":1755463,"unova":130,"alola":56,"galar":51,"mega_evo_guru":36,"raid_expert":325,"tiny_collector":220,"jumbo_collector":350,"fisher":86,"youngster":103,"unown":11,"champion":168,"battle_legend":157,"gentleman":685,"sinnoh":79,"cameraman":118,"purifier":221,"hero":521,"rising_star_duo":307,"picnicker":180,"successor":475,"hisui":4,"paldea":48,"ace_trainer":10,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"showcase_star":8,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":6256,"bird_keeper":3504,"punk_girl":2543,"bug_catcher":3067,"swimmer":3762,"gardener":2629,"black_belt":1958,"ruin_maniac":1737,"hiker":1424,"hex_maniac":1621,"rail_staff":1537,"kindler":2108,"rocker":2336,"psychic":2356,"skier":958,"dragon_tamer":767,"delinquent":1973,"fairy_tale":1550}},
   {"date":"2026-04-16","xp":99957272,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":32187,"idol":97,"kalos":72,"triathlete":116,"rising_star":169,"mega_evo_guru":46,"expert_navigator":703,"life_party":210,"jogger":3164.5,"collector":34068,"scientist":612,"breeder":767,"backpacker":23753,"sightseer":1504,"battle_girl":3238,"pikachu_fan":348,"berry_master":14400,"hoenn":124,"pokemon_ranger":1313,"pilot":1910542,"sinnoh":86,"unova":132,"alola":60,"galar":53,"successor":578,"raid_expert":347,"tiny_collector":256,"jumbo_collector":371,"fisher":90,"youngster":116,"unown":11,"champion":183,"battle_legend":164,"gentleman":711,"cameraman":126,"purifier":259,"hero":600,"rising_star_duo":328,"picnicker":222,"hisui":4,"paldea":49,"showcase_star":10,"ace_trainer":11,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":7295,"bird_keeper":4070,"punk_girl":2984,"bug_catcher":4246,"swimmer":4212,"gardener":3118,"rocker":2981,"psychic":2687,"black_belt":2148,"ruin_maniac":1970,"hiker":1633,"hex_maniac":1796,"rail_staff":1826,"kindler":2416,"skier":1005,"dragon_tamer":792,"delinquent":2205,"fairy_tale":1901}}
@@ -256,8 +272,282 @@ function loadState() {
     return fallback;
   }
 }
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+let medalSyncTimer = null;
+function saveState() {
+  state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  scheduleCloudPush();
+}
+function safeJsonParse(value) {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;");
+}
+function buildCombinedBackup() {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: {
+      medals: state,
+      pokedex: safeJsonParse(localStorage.getItem(POKEDEX_STORAGE_KEY))
+    }
+  };
+}
+function getCurrentPokedexState() {
+  return safeJsonParse(localStorage.getItem(POKEDEX_STORAGE_KEY));
+}
+function getPokedexModifiedAt(source) {
+  return String(source?._meta?.lastModifiedAt || "");
+}
+function mergePokedexStates(localState, remoteState) {
+  if (!localState && !remoteState) return null;
+  const localTime = getPokedexModifiedAt(localState);
+  const remoteTime = getPokedexModifiedAt(remoteState);
+  if (!localState) return remoteState;
+  if (!remoteState) return localState;
+  return remoteTime > localTime ? remoteState : localState;
+}
+function downloadCombinedBackup() {
+  const payload = buildCombinedBackup();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const stamp = payload.exportedAt.slice(0, 19).replace(/[:T]/g, "-");
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `pogo-all-data-backup-${stamp}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+async function openBackupDialog() {
+  const result = await Swal.fire({
+    title: "Backup / Restore",
+    html: "Download one file with medal tracker and Pok\u00e9dex data, or restore both from a previous backup.",
+    showCancelButton: true,
+    showDenyButton: true,
+    confirmButtonText: "Download backup",
+    denyButtonText: "Restore backup",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#6ef0ab",
+    denyButtonColor: "#7fd4ff",
+    background: "#121c34",
+    color: "#eef4ff"
+  });
+  if (result.isConfirmed) {
+    downloadCombinedBackup();
+    return;
+  }
+  if (result.isDenied) {
+    document.getElementById("importAllInput").click();
+  }
+}
+async function handleCombinedImport(file) {
+  if (!file) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    await Swal.fire({ icon: "error", title: "Invalid backup", text: "That file is not valid JSON.", background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  const medals = parsed?.data?.medals;
+  const pokedex = parsed?.data?.pokedex;
+  if (!medals || !Array.isArray(medals.snapshots) || !Array.isArray(medals.medals)) {
+    await Swal.fire({ icon: "error", title: "Invalid backup", text: "The backup file is missing medal tracker data.", background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  const confirm = await Swal.fire({
+    icon: "warning",
+    title: "Restore all data?",
+    text: "This will overwrite the current medal tracker and Pok\u00e9dex local data on this device.",
+    showCancelButton: true,
+    confirmButtonText: "Restore",
+    cancelButtonText: "Cancel",
+    background: "#121c34",
+    color: "#eef4ff"
+  });
+  if (!confirm.isConfirmed) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(medals));
+  if (pokedex) localStorage.setItem(POKEDEX_STORAGE_KEY, JSON.stringify(pokedex));
+  await Swal.fire({ icon: "success", title: "Backup restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+  location.reload();
+}
 function medalMap() { return Object.fromEntries(state.medals.map(m => [m.id, m])); }
+function getCloudSyncSettings() {
+  return safeJsonParse(localStorage.getItem(MEDAL_SYNC_SETTINGS_KEY));
+}
+function saveCloudSyncSettings(settings) {
+  localStorage.setItem(MEDAL_SYNC_SETTINGS_KEY, JSON.stringify(settings));
+}
+function clearCloudSyncSettings() {
+  localStorage.removeItem(MEDAL_SYNC_SETTINGS_KEY);
+}
+function normalizeSyncCode(value) {
+  return String(value || "").trim().replace(/\s+/g, "-");
+}
+function getStateModifiedAt(source) {
+  return String(source?._meta?.lastModifiedAt || "");
+}
+function chooseNewerState(a, b) {
+  return getStateModifiedAt(b) > getStateModifiedAt(a) ? b : a;
+}
+function mergeMedalStates(localState, remoteState) {
+  const newer = chooseNewerState(localState, remoteState) || remoteState || localState || structuredClone(DEFAULT_DATA);
+  const merged = { ...structuredClone(DEFAULT_DATA), ...(newer || {}) };
+  merged.snapshots = mergeSnapshots(DEFAULT_DATA.snapshots, RECOVERED_SNAPSHOTS, localState?.snapshots || [], remoteState?.snapshots || []);
+  merged.hiddenBonusMedals = Number(merged.hiddenBonusMedals || 0);
+  merged._meta = {
+    ...(merged._meta || {}),
+    lastModifiedAt: [getStateModifiedAt(localState), getStateModifiedAt(remoteState)].filter(Boolean).sort().at(-1) || new Date().toISOString()
+  };
+  return merged;
+}
+async function fetchCloudMedals(settings = getCloudSyncSettings()) {
+  if (!settings?.code || !settings?.pin) throw new Error("Cloud sync is not configured.");
+  const response = await fetch(`${MEDAL_SYNC_API}?code=${encodeURIComponent(settings.code)}`, {
+    headers: { "x-sync-pin": settings.pin }
+  });
+  if (response.status === 404) return null;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Cloud download failed.");
+  return data;
+}
+async function pushCloudMedals(settings = getCloudSyncSettings()) {
+  if (!settings?.code || !settings?.pin) throw new Error("Cloud sync is not configured.");
+  const response = await fetch(`${MEDAL_SYNC_API}?code=${encodeURIComponent(settings.code)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      pin: settings.pin,
+      payload: {
+        medals: state,
+        pokedex: getCurrentPokedexState()
+      }
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Cloud upload failed.");
+  return data;
+}
+function scheduleCloudPush(delay = 1200) {
+  const settings = getCloudSyncSettings();
+  if (!settings?.autoSync || !settings?.code || !settings?.pin) return;
+  clearTimeout(medalSyncTimer);
+  medalSyncTimer = setTimeout(() => {
+    pushCloudMedals(settings).catch(error => console.warn("Medal cloud sync upload failed:", error));
+  }, delay);
+}
+async function pullCloudMedalsAndApply(options = {}) {
+  const remote = await fetchCloudMedals();
+  if (!remote?.payload) return false;
+  const localState = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
+  const remoteMedals = remote.payload.medals || null;
+  const remotePokedex = remote.payload.pokedex || null;
+  const localPokedex = getCurrentPokedexState();
+  const merged = remoteMedals ? mergeMedalStates(localState, remoteMedals) : localState;
+  const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
+  const hadLocalNewerSnapshotCount = remoteMedals ? (localState?.snapshots?.length || 0) > (remoteMedals?.snapshots?.length || 0) : false;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  if (mergedPokedex) localStorage.setItem(POKEDEX_STORAGE_KEY, JSON.stringify(mergedPokedex));
+  state = loadState();
+  renderAll();
+  if (hadLocalNewerSnapshotCount) scheduleCloudPush(1500);
+  if (!options.silent) {
+    await Swal.fire({ icon: "success", title: "Cloud sync complete", text: "The medal tracker and Pokédex data on this device have been refreshed from cloud storage.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+  }
+  return true;
+}
+async function openCloudSyncDialog() {
+  const existing = getCloudSyncSettings() || { code: "", pin: "", autoSync: true };
+  const result = await Swal.fire({
+    title: "Pokemon GO Cloud Sync",
+    html: `
+      <div style="display:grid; gap:10px; text-align:left;">
+        <label style="display:grid; gap:4px;">
+          <span style="font-size:12px; color:#9fb2d9;">Sync code</span>
+          <input id="syncCodeInput" class="swal2-input" value="${escapeHtml(existing.code || "")}" placeholder="e.g. pogo-main" style="margin:0; width:100%;">
+        </label>
+        <label style="display:grid; gap:4px;">
+          <span style="font-size:12px; color:#9fb2d9;">4-digit PIN</span>
+          <input id="syncPinInput" class="swal2-input" inputmode="numeric" maxlength="4" value="${escapeHtml(existing.pin || "")}" placeholder="1234" style="margin:0; width:100%;">
+        </label>
+        <label style="display:grid; gap:4px;">
+          <span style="font-size:12px; color:#9fb2d9;">Action</span>
+          <select id="syncActionSelect" class="swal2-input" style="margin:0; width:100%;">
+            <option value="upload">Upload this device to cloud</option>
+            <option value="download">Load cloud data onto this device</option>
+            <option value="disconnect">Disconnect this device</option>
+          </select>
+        </label>
+        <label style="display:flex; gap:8px; align-items:center;">
+          <input id="syncAutoToggle" type="checkbox" ${existing.autoSync !== false ? "checked" : ""}>
+          <span style="font-size:12px; color:#9fb2d9;">Auto-sync medal and Pokédex saves on this device</span>
+        </label>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Run",
+    cancelButtonText: "Cancel",
+    background: "#121c34",
+    color: "#eef4ff",
+    preConfirm: () => {
+      const code = normalizeSyncCode(document.getElementById("syncCodeInput").value);
+      const pin = String(document.getElementById("syncPinInput").value || "").trim();
+      const action = document.getElementById("syncActionSelect").value;
+      const autoSync = document.getElementById("syncAutoToggle").checked;
+      if (action !== "disconnect") {
+        if (!code) {
+          Swal.showValidationMessage("A sync code is required.");
+          return false;
+        }
+        if (!/^\d{4}$/.test(pin)) {
+          Swal.showValidationMessage("Use a 4-digit PIN.");
+          return false;
+        }
+      }
+      return { code, pin, action, autoSync };
+    }
+  });
+  if (!result.isConfirmed) return;
+  const { code, pin, action, autoSync } = result.value;
+  if (action === "disconnect") {
+    clearCloudSyncSettings();
+    await Swal.fire({ icon: "success", title: "Cloud sync disconnected", text: "This device will stop auto-syncing medal data.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  const settings = { code, pin, autoSync };
+  saveCloudSyncSettings(settings);
+  try {
+    if (action === "upload") {
+      await pushCloudMedals(settings);
+      await Swal.fire({ icon: "success", title: "Uploaded to cloud", text: "This device's medal tracker and Pokédex data are now stored online.", timer: 1500, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    } else {
+      await pullCloudMedalsAndApply({ silent: false });
+    }
+  } catch (error) {
+    await Swal.fire({ icon: "error", title: "Cloud sync failed", text: error.message || "The cloud sync request failed.", background: "#121c34", color: "#eef4ff" });
+  }
+}
+async function initializeCloudSync() {
+  const settings = getCloudSyncSettings();
+  if (!settings?.code || !settings?.pin) return;
+  try {
+    await pullCloudMedalsAndApply({ silent: true });
+  } catch (error) {
+    console.warn("Initial medal cloud sync failed:", error);
+  }
+}
 function snapshotSorted() { return [...state.snapshots].sort((a,b) => a.date.localeCompare(b.date)); }
 function latestSnapshot() { return snapshotSorted().at(-1); }
 function previousSnapshot() { const s = snapshotSorted(); return s.length > 1 ? s.at(-2) : null; }
@@ -903,9 +1193,17 @@ document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click
   document.getElementById(btn.dataset.tab).classList.add("active");
   if (btn.dataset.tab === "graphs") buildCharts();
 }));
+document.getElementById("backupAllBtn").addEventListener("click", openBackupDialog);
+document.getElementById("cloudSyncBtn").addEventListener("click", openCloudSyncDialog);
+document.getElementById("importAllInput").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  await handleCombinedImport(file);
+  event.target.value = "";
+});
 document.getElementById("saveSnapshotBtn").addEventListener("click", handleSaveSnapshot);
 document.getElementById("resetDataBtn").addEventListener("click", resetData);
 renderAll();
+initializeCloudSync();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>

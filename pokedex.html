@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokemon GO Pokedex Tracker</title>
+<link rel="stylesheet" href="./pokedex-assets/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <main>
+    <section class="panel hero-panel">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">Pokemon GO</p>
+          <h1>Pokedex Tracker</h1>
+          <p class="lede">A fresh collection page for your dex progress, special dexes, alternate forms, and evolution gaps.</p>
+        </div>
+        <div class="header-actions">
+          <button class="nav-link" id="cloudSyncBtn" type="button">Cloud Sync</button>
+          <a class="nav-link" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
+        </div>
+      </div>
+
+      <div class="dex-mode-bar" id="dexModeBar"></div>
+
+      <div class="chip-group" id="regionFilterBar"></div>
+
+      <div class="control-row">
+        <label class="search-wrap">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Search by name or dex number">
+        </label>
+
+        <div class="chip-group" id="statusFilterBar"></div>
+
+        <label class="toggle">
+          <input id="autoEvolveToggle" type="checkbox" checked>
+          <span>Auto mark evolutions</span>
+        </label>
+
+        <label class="toggle">
+          <input id="showAltFormsToggle" type="checkbox" checked>
+          <span>Show alternate forms</span>
+        </label>
+
+        <label class="toggle">
+          <input id="editUnreleasedToggle" type="checkbox">
+          <span>Edit unreleased</span>
+        </label>
+
+        <label class="toggle mode-only mode-availability">
+          <input id="showUnavailableToggle" type="checkbox">
+          <span>Show unavailable</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel stats-panel">
+      <div class="stats-head">
+        <div>
+          <p class="eyebrow">Summary</p>
+          <h2 id="summaryTitle">Pokemon Dex</h2>
+        </div>
+        <div class="summary-pills" id="summaryPills"></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Region</th>
+              <th>Total</th>
+              <th>Owned</th>
+              <th>Evolutions</th>
+              <th>Missing</th>
+              <th>Unreleased</th>
+            </tr>
+          </thead>
+          <tbody id="summaryTableBody"></tbody>
+          <tfoot id="summaryTableFoot"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel availability-panel mode-only mode-availability">
+      <div class="stats-head compact">
+        <div>
+          <p class="eyebrow">Availability</p>
+          <h2 id="availabilityTitle">Mega and GMAX availability</h2>
+        </div>
+      </div>
+      <div id="availabilityLegend" class="availability-legend"></div>
+    </section>
+
+    <section class="grid-panel">
+      <div class="grid-head">
+        <div>
+          <p class="eyebrow">Cards</p>
+          <h2 id="gridTitle">All entries</h2>
+        </div>
+        <p class="count-note" id="gridCountNote"></p>
+      </div>
+
+      <div id="cardGrid" class="card-grid"></div>
+    </section>
+  </main>
+</div>
+
+<script src="./pokedex-assets/seed-data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="./pokedex-assets/app.js"></script>
+</body>
+</html>

@@ -26,13 +26,26 @@ node_modules/
 
 # wrangler local state
 .wrangler/
+.pages-deploy-public/
+.pages-deploy-pogo/
+deploy-pogo.log
 
 # local meme app tooling / archives
 memes_v2_clip311/
 memes_v1_local_backup/
+memes_v2_clip_cache_fresh/
 memes_v2/review_2026-05-14_messenger_excluded/
 
 # local sqlite databases
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# local/runtime noise
+ELO/backend/node_modules/.mf/
+chatgpt_meme_guide.html
+New Text Document.txt
+"iss-tracker - Copy"/
+pogo-pokedex/local-scanner/output/
+pogo-pokedex/local-scanner/__pycache__/
+pogo-pokedex/local-scanner/config.json

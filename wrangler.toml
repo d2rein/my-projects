@@ -1,0 +1,6 @@
+name = "my-projects"
+pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "POGO_TRACKER_KV"
+id = "59af78bb943d4dfe9f0eac05de80fd06"
