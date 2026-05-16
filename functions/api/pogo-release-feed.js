@@ -229,9 +229,7 @@ function parseRaidBosses(html) {
   const regularSlice = sliceBetween(html, '<div class="raid-bosses"', "<h2>Shadow Raids</h2>");
   const shadowSlice = sliceFrom(html, '<div class="shadow-raid-bosses"', 40000);
 
-  const regularEntries = extractNamesFromParagraphs(regularSlice)
-    .map(name => makeRaidEntry(name))
-    .filter(Boolean);
+  const regularEntries = extractRaidEntriesFromContainer(regularSlice);
   if (regularEntries.length) {
     current.push(makeCatalogSection({
       id: "raids",
@@ -247,9 +245,7 @@ function parseRaidBosses(html) {
     }));
   }
 
-  const shadowEntries = extractNamesFromParagraphs(shadowSlice)
-    .map(name => makeEntryFromName(name.replace(/^Shadow\s+/i, ""), "shadow"))
-    .filter(Boolean);
+  const shadowEntries = extractRaidEntriesFromContainer(shadowSlice, { shadow: true });
   if (shadowEntries.length) {
     current.push(makeCatalogSection({
       id: "shadow-raids",
@@ -270,26 +266,20 @@ function parseRaidBosses(html) {
 
 function parseRocketLineups(html) {
   const encounters = [];
-  const profileStarts = [...html.matchAll(/<div\b[^>]*class="[^"]*\brocket-profile\b[^"]*"[^>]*>/gi)]
-    .map(match => match.index)
-    .filter(index => Number.isInteger(index));
+  const profiles = extractBlocksByStartRegex(html, /<div\b[^>]*class="[^"]*\brocket-profile\b[^"]*"[^>]*>/gi);
 
-  for (let i = 0; i < profileStarts.length; i += 1) {
-    const start = profileStarts[i];
-    const end = profileStarts[i + 1] ?? html.length;
-    const profileHtml = html.slice(start, end);
+  for (const profileHtml of profiles) {
     const profileName = extractProfileName(profileHtml) || "Rocket";
-    const encounterRegex = /<div\b[^>]*class="[^"]*\bslot encounter\b[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-    let encounterMatch;
-    while ((encounterMatch = encounterRegex.exec(profileHtml))) {
-      const encounterHtml = encounterMatch[1];
+    const encountersHtml = extractBlocksByStartRegex(profileHtml, /<div\b[^>]*class="[^"]*\bslot encounter\b[^"]*"[^>]*>/gi);
+    for (const encounterHtml of encountersHtml) {
       const nameRegex = /<span\b[^>]*class="[^"]*\bshadow-pokemon\b[^"]*"[^>]*data-pokemon="([^"]+)"/gi;
       let nameMatch;
       while ((nameMatch = nameRegex.exec(encounterHtml))) {
         const name = decodeHtml(nameMatch[1]).replace(/^Shadow\s+/i, "").trim();
         const base = makeEntryFromName(name, "shadow", {
           details: [profileName],
-          matchingLists: ["shadow", "purified"]
+          matchingLists: ["shadow", "purified"],
+          shiny: /class="[^"]*\bshiny-icon\b/i.test(nameMatch[0])
         });
         if (base) encounters.push(base);
       }
@@ -356,7 +346,9 @@ function parseEggs(html) {
 
   while ((match = sectionRegex.exec(html))) {
     const title = decodeHtml(stripTags(match[2])).trim();
-    const entries = extractNamesFromCardBlock(match[3]).map(name => makeEntryFromName(name, "pokemon")).filter(Boolean);
+    const entries = extractNamesFromCardBlock(match[3])
+      .map(name => makeEntryFromName(name, "pokemon", { details: [title] }))
+      .filter(Boolean);
     if (!entries.length) continue;
     current.push(makeCatalogSection({
       id: slugify(`eggs-${title}`),
@@ -411,17 +403,17 @@ function buildSectionReleases(sections) {
 
 function extractResearchRewards(html) {
   const entries = [];
-  const taskRegex = /<li\b[^>]*class="[^"]*\btask-item\b[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
-  let taskMatch;
-  while ((taskMatch = taskRegex.exec(html))) {
-    const taskHtml = taskMatch[1];
+  const taskBlocks = extractBlocksByStartRegex(html, /<li\b[^>]*class="[^"]*\btask-item\b[^"]*"[^>]*>/gi);
+  for (const taskHtml of taskBlocks) {
     const taskText = decodeHtml(extractByClass(taskHtml, "task-text")).replace(/\s+/g, " ").trim();
-    const rewardRegex = /<li\b[^>]*class="[^"]*\breward\b[^"]*"[^>]*data-reward-type="encounter"[^>]*>[\s\S]*?<span\b[^>]*class="[^"]*\breward-label\b[^"]*"[^>]*>\s*<span[^>]*>([^<]+)<\/span>/gi;
-    let rewardMatch;
-    while ((rewardMatch = rewardRegex.exec(taskHtml))) {
-      const name = decodeHtml(rewardMatch[1]).trim();
+    const rewardBlocks = extractBlocksByStartRegex(taskHtml, /<li\b[^>]*class="[^"]*\breward\b[^"]*"[^>]*data-reward-type="encounter"[^>]*>/gi);
+    for (const rewardHtml of rewardBlocks) {
+      const nameMatch = rewardHtml.match(/<span\b[^>]*class="[^"]*\breward-label\b[^"]*"[^>]*>\s*<span[^>]*>([^<]+)<\/span>/i);
+      if (!nameMatch) continue;
+      const name = decodeHtml(nameMatch[1]).trim();
       const entry = makeEntryFromName(name, "pokemon", {
-        details: taskText ? [taskText] : []
+        details: taskText ? [taskText] : [],
+        shiny: /class="[^"]*\bshiny-icon\b/i.test(rewardHtml)
       });
       if (entry) entries.push(entry);
     }
@@ -528,7 +520,8 @@ function makeEntryFromName(name, list, extras = {}) {
     dex,
     list,
     details: extras.details || [],
-    matchingLists: extras.matchingLists || [list]
+    matchingLists: extras.matchingLists || [list],
+    shiny: !!extras.shiny
   };
 }
 
@@ -548,7 +541,8 @@ function extractPokemonMentions(text) {
         dex: entry.dex,
         list: inferListFromText(text),
         details: [],
-        matchingLists: [inferListFromText(text)]
+        matchingLists: [inferListFromText(text)],
+        shiny: false
       });
     }
   }
@@ -618,13 +612,15 @@ function mergeEntries(entries) {
       map.set(key, {
         ...entry,
         details: uniqueStrings(entry.details || []),
-        matchingLists: uniqueStrings(entry.matchingLists || [entry.list])
+        matchingLists: uniqueStrings(entry.matchingLists || [entry.list]),
+        shiny: !!entry.shiny
       });
       continue;
     }
 
     existing.details = uniqueStrings([...(existing.details || []), ...(entry.details || [])]);
     existing.matchingLists = uniqueStrings([...(existing.matchingLists || [existing.list]), ...(entry.matchingLists || [])]);
+    existing.shiny = existing.shiny || !!entry.shiny;
   }
   return [...map.values()];
 }
@@ -728,7 +724,8 @@ function extractEventArticleEntries(html) {
       const list = inferListFromText(heading);
       const entry = makeEntryFromName(name, list, {
         details: [heading],
-        matchingLists: list === "shadow" ? ["shadow", "purified"] : [list]
+        matchingLists: list === "shadow" ? ["shadow", "purified"] : [list],
+        shiny: /class="[^"]*\bshiny-icon\b/i.test(body)
       });
       if (entry) entries.push(entry);
     }
@@ -759,15 +756,48 @@ function extractRewardLabelNames(html) {
   return names;
 }
 
+function extractRaidEntriesFromContainer(html, options = {}) {
+  const entries = [];
+  const tiers = extractBlocksByStartRegex(html, /<div\b[^>]*class="[^"]*\btier\b[^"]*"[^>]*>/gi);
+  for (const tierHtml of tiers) {
+    const tierLabel = decodeHtml(extractByClass(tierHtml, "tier-label")).replace(/\s+/g, " ").trim() || (options.shadow ? "Shadow Raids" : "Raids");
+    const cards = extractBlocksByStartRegex(tierHtml, /<div\b[^>]*class="[^"]*\bcard\b[^"]*"[^>]*>/gi);
+    for (const cardHtml of cards) {
+      const name = decodeHtml(extractTagTextWithClass(cardHtml, "name")).trim();
+      if (!name) continue;
+      const list = options.shadow ? "shadow" : (/^Mega\s+/i.test(name) ? "mega" : "pokemon");
+      const cleanedName = options.shadow ? name.replace(/^Shadow\s+/i, "") : name;
+      const entry = makeEntryFromName(cleanedName, list, {
+        details: [tierLabel],
+        matchingLists: options.shadow ? ["shadow", "purified"] : [list],
+        shiny: /class="[^"]*\bshiny-icon\b/i.test(cardHtml)
+      });
+      if (entry) entries.push(entry);
+    }
+  }
+  return mergeEntries(entries);
+}
+
 function extractProfileName(html) {
-  const employeeChunkMatch = html.match(/<div\b[^>]*class="[^"]*\bemployee-info\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-  const chunk = employeeChunkMatch ? employeeChunkMatch[1] : html;
-  const nameMatch = chunk.match(/<div\b[^>]*class="[^"]*\bname\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+  const nameMatch = html.match(/<div\b[^>]*class="[^"]*\bname\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   return nameMatch ? decodeHtml(stripTags(nameMatch[1])).replace(/\s+/g, " ").trim() : "";
 }
 
 function uniqueStrings(values) {
   return [...new Set((values || []).filter(Boolean))];
+}
+
+function extractBlocksByStartRegex(html, startRegex) {
+  const starts = [...html.matchAll(startRegex)]
+    .map(match => match.index)
+    .filter(index => Number.isInteger(index));
+
+  if (!starts.length) return [];
+
+  return starts.map((start, index) => {
+    const end = starts[index + 1] ?? html.length;
+    return html.slice(start, end);
+  });
 }
 
 function absolutizeUrl(href, base) {

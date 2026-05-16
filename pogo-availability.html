@@ -3,316 +3,694 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pokemon GO Availability Feed</title>
+  <title>Pokemon GO Availability Tracker</title>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b1220;
-      --panel: #121c2f;
-      --panel-2: #17233a;
-      --line: #243554;
-      --text: #f2f7ff;
-      --muted: #98abc9;
-      --accent: #5bc4ff;
-      --accent-2: #8bf0c8;
-      --chip: #203250;
+      --bg: #0a101c;
+      --panel: rgba(16, 24, 40, 0.94);
+      --panel-2: rgba(22, 33, 54, 0.96);
+      --line: #223252;
+      --text: #eef4ff;
+      --muted: #93a7c8;
+      --accent: #66c9ff;
+      --accent-2: #95f0bf;
+      --danger: #ff9696;
+      --missing-bg: rgba(106, 35, 35, 0.28);
+      --missing-line: rgba(255, 132, 132, 0.5);
+      --raid: rgba(72, 101, 170, 0.18);
+      --shadow-raid: rgba(113, 82, 160, 0.18);
+      --rocket: rgba(170, 76, 76, 0.18);
+      --research: rgba(76, 143, 108, 0.18);
+      --eggs: rgba(164, 145, 69, 0.18);
+      --event: rgba(67, 131, 171, 0.16);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: radial-gradient(circle at top, #17304d 0%, var(--bg) 42%);
       color: var(--text);
-      font: 16px/1.4 "Trebuchet MS", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top, #18324f 0%, #0c1424 35%, var(--bg) 100%);
+      font: 15px/1.35 "Trebuchet MS", Verdana, sans-serif;
     }
     .shell {
-      width: min(1200px, calc(100vw - 32px));
-      margin: 24px auto 48px;
+      width: min(1560px, calc(100vw - 24px));
+      margin: 16px auto 28px;
     }
-    .hero, .panel {
-      background: rgba(18, 28, 47, 0.92);
+    .panel {
+      background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 24px;
-      padding: 24px;
-      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.26);
       backdrop-filter: blur(10px);
     }
+    .panel + .panel { margin-top: 14px; }
     .hero {
-      display: flex;
-      justify-content: space-between;
-      gap: 24px;
-      align-items: flex-start;
-      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: start;
     }
-    .hero h1 { margin: 0 0 8px; font-size: clamp(2rem, 4vw, 3rem); }
-    .hero p { margin: 0; color: var(--muted); max-width: 70ch; }
+    .eyebrow {
+      color: #9bb6ff;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.78rem;
+      margin-bottom: 6px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.9rem, 3.6vw, 2.9rem);
+      line-height: 1.02;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 78ch;
+    }
     .meta {
       display: grid;
-      gap: 8px;
+      gap: 6px;
       min-width: 280px;
       color: var(--muted);
-      font-size: 0.95rem;
+      font-size: 0.93rem;
+      text-align: right;
     }
-    .panel + .panel { margin-top: 18px; }
-    .section-head {
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+    .row {
       display: flex;
-      justify-content: space-between;
-      gap: 16px;
+      gap: 10px;
+      flex-wrap: wrap;
       align-items: center;
-      margin-bottom: 18px;
     }
-    .section-head h2 { margin: 0; font-size: 1.45rem; }
-    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    button, a.button {
-      border: 1px solid #315382;
-      background: #1b2e4d;
+    .search {
+      flex: 1 1 340px;
+      min-width: 260px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid #2b4268;
+      background: #0d1830;
+      color: var(--text);
+      font: inherit;
+    }
+    .search::placeholder { color: #7992b5; }
+    button, a.button, select {
+      border: 1px solid #35517c;
+      background: #182a49;
       color: var(--text);
       border-radius: 999px;
-      padding: 10px 16px;
+      padding: 10px 15px;
       font: inherit;
-      cursor: pointer;
       text-decoration: none;
     }
-    button:hover, a.button:hover { border-color: var(--accent); }
-    .status {
+    button, select { cursor: pointer; }
+    button:hover, a.button:hover, select:hover { border-color: var(--accent); }
+    .toggle-btn.active {
+      background: linear-gradient(180deg, #2d506e, #23445e);
+      border-color: #5fc2ee;
+    }
+    .summary {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
       color: var(--muted);
-      margin-bottom: 14px;
+      font-size: 0.94rem;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
+    .summary-pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #294261;
+      background: rgba(16, 26, 43, 0.78);
     }
-    .card {
+    .table-wrap {
+      overflow: auto;
       border: 1px solid var(--line);
       border-radius: 18px;
-      padding: 16px;
-      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      background: rgba(8, 14, 25, 0.72);
     }
-    .card h3 {
-      margin: 0 0 6px;
-      font-size: 1.1rem;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1080px;
     }
-    .card h3 a {
-      color: var(--text);
-      text-decoration: none;
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #172742;
+      color: #f3f8ff;
+      text-align: left;
+      font-size: 0.84rem;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid #294261;
+      padding: 11px 10px;
+      white-space: nowrap;
     }
-    .card h3 a:hover {
-      color: var(--accent);
-      text-decoration: underline;
+    tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(41, 66, 97, 0.42);
+      vertical-align: top;
     }
-    .card p {
-      margin: 0 0 10px;
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    tbody tr.row-missing {
+      background: var(--missing-bg);
+      box-shadow: inset 3px 0 0 var(--missing-line);
+    }
+    tbody tr.row-upcoming {
+      opacity: 0.66;
+    }
+    tbody tr.group-raids { background-color: var(--raid); }
+    tbody tr.group-shadow-raids { background-color: var(--shadow-raid); }
+    tbody tr.group-rocket { background-color: var(--rocket); }
+    tbody tr.group-research { background-color: var(--research); }
+    tbody tr.group-eggs { background-color: var(--eggs); }
+    tbody tr.group-event { background-color: var(--event); }
+    .dex-cell {
+      font-variant-numeric: tabular-nums;
+      color: #cfe0ff;
+      white-space: nowrap;
+    }
+    .name-cell {
+      min-width: 180px;
+      font-weight: 700;
+    }
+    .sub {
+      display: block;
+      margin-top: 3px;
       color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 400;
+    }
+    .symbol {
+      display: inline-flex;
+      width: 26px;
+      min-height: 26px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid #36557f;
+      background: rgba(15, 24, 40, 0.78);
       font-size: 0.95rem;
     }
-    .window {
-      display: inline-block;
-      margin-bottom: 10px;
-      color: var(--accent-2);
-      font-size: 0.92rem;
+    .symbol.empty {
+      opacity: 0.28;
     }
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .chip {
-      background: var(--chip);
-      border: 1px solid #2c4770;
-      border-radius: 999px;
-      padding: 6px 10px;
-      color: #dce9ff;
-      font-size: 0.92rem;
-    }
-    .entry-list {
-      display: grid;
-      gap: 10px;
-    }
-    .entry-item {
-      border: 1px solid #274166;
-      border-radius: 14px;
-      padding: 10px 12px;
-      background: rgba(10, 19, 34, 0.55);
-    }
-    .entry-name {
+    .category-link {
+      color: #bfe7ff;
+      text-decoration: none;
       font-weight: 700;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
     }
-    .entry-meta {
+    .category-link:hover {
+      color: #fff;
+      text-decoration: underline;
+    }
+    .category-type {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: #d8ecff;
+      background: rgba(12, 24, 42, 0.7);
+      border: 1px solid rgba(90, 126, 173, 0.45);
+    }
+    .source-cell {
+      color: #dfe9fb;
+    }
+    .source-detail {
+      display: block;
+      margin-top: 3px;
       color: var(--muted);
-      font-size: 0.9rem;
-      margin-top: 4px;
+      font-size: 0.83rem;
     }
-    .source-line {
-      margin-top: 10px;
+    .date-cell {
+      white-space: nowrap;
+      color: #d4e4ff;
       font-size: 0.9rem;
-      color: var(--muted);
     }
-    .source-line a {
-      color: var(--accent);
+    .missing-tag, .upcoming-tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+    .missing-tag {
+      color: #ffd7d7;
+      background: rgba(125, 41, 41, 0.5);
+      border: 1px solid rgba(255, 160, 160, 0.3);
+    }
+    .upcoming-tag {
+      color: #d5def5;
+      background: rgba(53, 69, 101, 0.55);
+      border: 1px solid rgba(168, 184, 226, 0.22);
     }
     .empty {
+      padding: 20px;
       color: var(--muted);
-      padding: 16px;
-      border: 1px dashed var(--line);
-      border-radius: 16px;
     }
     .warning {
-      color: #ffd08a;
-      margin-top: 10px;
+      color: #ffd18f;
+      font-size: 0.94rem;
     }
-    @media (max-width: 780px) {
-      .hero { flex-direction: column; }
-      .meta { min-width: 0; }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .meta { text-align: left; min-width: 0; }
     }
   </style>
 </head>
 <body>
   <div class="shell">
-    <section class="hero">
+    <section class="panel hero">
       <div>
-        <h1>Pokemon GO Availability Feed</h1>
+        <div class="eyebrow">Pokemon Go</div>
+        <h1>Availability Tracker</h1>
         <p>
-          Automatically pulls current and announced upcoming availability from Leek Duck so we have a live list to connect to your collection later.
+          Live Leek Duck availability, packed into a single tracker table with current sources, upcoming windows, and local Pokédex-aware missing highlights.
         </p>
       </div>
       <div class="meta">
         <div><strong>Feed updated:</strong> <span id="updatedAt">Loading...</span></div>
         <div><strong>Generated:</strong> <span id="generatedAt">Loading...</span></div>
-        <div><strong>Source mode:</strong> <span id="generatedFrom">Loading...</span></div>
+        <div><strong>Mode:</strong> <span id="generatedFrom">Loading...</span></div>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="section-head">
-        <h2>Current Availability</h2>
-        <div class="button-row">
-          <button id="refreshBtn">Refresh Feed</button>
-          <a class="button" href="./pokedex.html">Open Pokedex</a>
-          <a class="button" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
-          <a class="button" href="./index.html">Homepage</a>
-        </div>
+    <section class="panel controls">
+      <div class="row">
+        <input id="searchInput" class="search" type="search" placeholder="Search by name, event, task, grunt, or category">
+        <select id="sortSelect" aria-label="Sort rows">
+          <option value="source">Event order</option>
+          <option value="dex">Pokedex order</option>
+        </select>
+        <button id="missingToggle" class="toggle-btn" type="button">Only missing</button>
+        <button id="upcomingToggle" class="toggle-btn active" type="button">Show upcoming</button>
+        <button id="refreshBtn" type="button">Refresh feed</button>
+        <a class="button" href="./pokedex.html">Open Pokedex</a>
+        <a class="button" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
+        <a class="button" href="./index.html">Homepage</a>
       </div>
-      <div id="status" class="status">Loading feed…</div>
-      <div id="currentGrid" class="grid"></div>
-      <div id="warning" class="warning"></div>
+      <div id="status" class="warning">Loading feed...</div>
+      <div id="summary" class="summary"></div>
     </section>
 
     <section class="panel">
-      <div class="section-head">
-        <h2>Upcoming / Announced</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Dex #</th>
+              <th>Name</th>
+              <th title="Shiny available">Shiny</th>
+              <th title="Shadow-related source">Shadow</th>
+              <th>Category</th>
+              <th>Source</th>
+              <th>From</th>
+              <th>To</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="8" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div id="upcomingGrid" class="grid"></div>
     </section>
   </div>
 
   <script>
-    const currentGrid = document.querySelector("#currentGrid");
-    const upcomingGrid = document.querySelector("#upcomingGrid");
-    const updatedAtEl = document.querySelector("#updatedAt");
-    const generatedAtEl = document.querySelector("#generatedAt");
-    const generatedFromEl = document.querySelector("#generatedFrom");
-    const statusEl = document.querySelector("#status");
-    const warningEl = document.querySelector("#warning");
-    const refreshBtn = document.querySelector("#refreshBtn");
+    const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v2";
+    const state = {
+      search: "",
+      sort: "source",
+      missingOnly: false,
+      showUpcoming: true
+    };
 
-    refreshBtn.addEventListener("click", () => loadFeed(true));
+    const els = {
+      updatedAt: document.querySelector("#updatedAt"),
+      generatedAt: document.querySelector("#generatedAt"),
+      generatedFrom: document.querySelector("#generatedFrom"),
+      status: document.querySelector("#status"),
+      summary: document.querySelector("#summary"),
+      tableBody: document.querySelector("#tableBody"),
+      searchInput: document.querySelector("#searchInput"),
+      sortSelect: document.querySelector("#sortSelect"),
+      missingToggle: document.querySelector("#missingToggle"),
+      upcomingToggle: document.querySelector("#upcomingToggle"),
+      refreshBtn: document.querySelector("#refreshBtn")
+    };
+
+    let feedPayload = null;
+    let flatRows = [];
+    let pokedexStateCache = null;
+
+    els.searchInput.addEventListener("input", () => {
+      state.search = els.searchInput.value.trim().toLowerCase();
+      render();
+    });
+    els.sortSelect.addEventListener("change", () => {
+      state.sort = els.sortSelect.value;
+      render();
+    });
+    els.missingToggle.addEventListener("click", () => {
+      state.missingOnly = !state.missingOnly;
+      els.missingToggle.classList.toggle("active", state.missingOnly);
+      render();
+    });
+    els.upcomingToggle.addEventListener("click", () => {
+      state.showUpcoming = !state.showUpcoming;
+      els.upcomingToggle.classList.toggle("active", state.showUpcoming);
+      render();
+    });
+    els.refreshBtn.addEventListener("click", () => loadFeed(true));
+
     loadFeed(false);
 
     async function loadFeed(forceRefresh) {
-      statusEl.textContent = forceRefresh ? "Refreshing from live sources…" : "Loading feed…";
-      warningEl.textContent = "";
-      currentGrid.innerHTML = "";
-      upcomingGrid.innerHTML = "";
+      els.status.textContent = forceRefresh ? "Refreshing from live sources..." : "Loading feed...";
+      els.tableBody.innerHTML = `<tr><td colspan="8" class="empty">Loading...</td></tr>`;
       try {
-        const url = forceRefresh ? "/api/pogo-release-feed?refresh=1" : "/api/pogo-release-feed";
-        const response = await fetch(url);
+        const response = await fetch(forceRefresh ? "/api/pogo-release-feed?refresh=1" : "/api/pogo-release-feed");
         if (!response.ok) throw new Error(await response.text());
-        const payload = await response.json();
-        updatedAtEl.textContent = formatDate(payload.updatedAt);
-        generatedAtEl.textContent = formatDate(payload.generatedAt);
-        generatedFromEl.textContent = payload.generatedFrom || "unknown";
-        statusEl.textContent = `${(payload.catalog?.current || []).length} current sections, ${(payload.catalog?.upcoming || []).length} upcoming sections`;
-        if (payload.warning) warningEl.textContent = payload.warning;
-        renderSections(currentGrid, payload.catalog?.current || [], "No current sections were parsed.");
-        renderSections(upcomingGrid, payload.catalog?.upcoming || [], "No upcoming sections were parsed.");
+        feedPayload = await response.json();
+        flatRows = flattenFeed(feedPayload);
+        els.updatedAt.textContent = formatDate(feedPayload.updatedAt);
+        els.generatedAt.textContent = formatDate(feedPayload.generatedAt);
+        els.generatedFrom.textContent = feedPayload.generatedFrom || "unknown";
+        els.status.textContent = feedPayload.warning || "Live feed loaded.";
+        render();
       } catch (error) {
-        statusEl.textContent = "Feed load failed";
-        warningEl.textContent = error.message;
-        currentGrid.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
-        upcomingGrid.innerHTML = `<div class="empty">No data loaded.</div>`;
+        els.status.textContent = error.message || "Feed load failed.";
+        els.tableBody.innerHTML = `<tr><td colspan="8" class="empty">${escapeHtml(error.message || "Feed load failed.")}</td></tr>`;
+        els.summary.innerHTML = "";
       }
     }
 
-    function renderSections(target, sections, emptyMessage) {
-      if (!sections.length) {
-        target.innerHTML = `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
+    function render() {
+      pokedexStateCache = loadPokedexState();
+      flatRows.forEach(row => {
+        row.isMissing = isMissingRow(row, pokedexStateCache);
+      });
+      const rows = filterRows(sortRows(flatRows.slice()));
+      renderSummary(rows);
+
+      if (!rows.length) {
+        els.tableBody.innerHTML = `<tr><td colspan="8" class="empty">No rows match the current filters.</td></tr>`;
         return;
       }
 
-      target.innerHTML = sections.map(section => {
-        const items = (section.entries || []).map(entry => {
-          const listSuffix = entry.list && entry.list !== "pokemon" ? labelForList(entry.list) : "";
-          const detailText = (entry.details || []).join(", ");
-          return `
-            <div class="entry-item">
-              <div class="entry-name">
-                <span>${escapeHtml(entry.name || `#${entry.dex}`)}</span>
-                ${listSuffix ? `<span class="chip">${escapeHtml(listSuffix)}</span>` : ""}
-              </div>
-              ${detailText ? `<div class="entry-meta">${escapeHtml(detailText)}</div>` : ""}
-            </div>
-          `;
-        }).join("");
-
-        const titleHtml = section.source
-          ? `<a href="${escapeHtml(section.source)}" target="_blank" rel="noreferrer">${escapeHtml(section.title || section.category || "Untitled")}</a>`
-          : escapeHtml(section.title || section.category || "Untitled");
+      els.tableBody.innerHTML = rows.map(row => {
+        const missingTag = row.isMissing ? `<span class="missing-tag">Missing</span>` : "";
+        const upcomingTag = row.isUpcoming ? `<span class="upcoming-tag">${row.isSoonRaid ? "Soon" : "Upcoming"}</span>` : "";
+        const shadowActive = row.isShadowSource ? "🌑" : "";
+        const shinyActive = row.shiny ? "✨" : "";
 
         return `
-          <article class="card">
-            <h3>${titleHtml}</h3>
-            <p>${escapeHtml(section.subtitle || section.category || "")}</p>
-            <span class="window">${escapeHtml(formatWindow(section.startsAt, section.endsAt, section.updatedAt))}</span>
-            <div class="entry-list">${items || `<div class="empty">No Pokemon extracted yet for this section.</div>`}</div>
-            ${section.source ? `<div class="source-line">Source: <a href="${escapeHtml(section.source)}" target="_blank" rel="noreferrer">${escapeHtml(section.sourceLabel || "Open source page")}</a></div>` : ""}
-          </article>
+          <tr class="group-${escapeHtml(row.group)} ${row.isMissing ? "row-missing" : ""} ${row.isUpcoming ? "row-upcoming" : ""}">
+            <td class="dex-cell">#${String(row.dex).padStart(4, "0")}</td>
+            <td class="name-cell">
+              ${escapeHtml(row.name)}
+              ${missingTag}
+              ${upcomingTag}
+              ${row.formHint ? `<span class="sub">${escapeHtml(row.formHint)}</span>` : ""}
+            </td>
+            <td><span class="symbol ${row.shiny ? "" : "empty"}">${shinyActive || "·"}</span></td>
+            <td><span class="symbol ${row.isShadowSource ? "" : "empty"}">${shadowActive || "·"}</span></td>
+            <td>
+              ${row.categoryUrl ? `<a class="category-link" href="${escapeHtml(row.categoryUrl)}" target="_blank" rel="noreferrer">${escapeHtml(row.category)}</a>` : escapeHtml(row.category)}
+              <span class="category-type">${escapeHtml(row.groupLabel)}</span>
+            </td>
+            <td class="source-cell">
+              ${escapeHtml(row.source)}
+              ${row.extraSource ? `<span class="source-detail">${escapeHtml(row.extraSource)}</span>` : ""}
+            </td>
+            <td class="date-cell">${escapeHtml(formatShortDate(row.startsAt))}</td>
+            <td class="date-cell">${escapeHtml(formatShortDate(row.endsAt))}</td>
+          </tr>
         `;
       }).join("");
     }
 
-    function formatWindow(start, end, updatedAt) {
-      if (start && end) return `${formatDate(start)} to ${formatDate(end)}`;
-      if (start) return `Starts ${formatDate(start)}`;
-      if (end) return `Until ${formatDate(end)}`;
-      if (updatedAt) return `Page updated ${formatDate(updatedAt)}`;
-      return "Date not listed";
+    function renderSummary(rows) {
+      const total = rows.length;
+      const missing = rows.filter(row => row.isMissing).length;
+      const current = rows.filter(row => !row.isUpcoming).length;
+      const upcoming = rows.filter(row => row.isUpcoming).length;
+      const soonRaids = rows.filter(row => row.isSoonRaid).length;
+      els.summary.innerHTML = [
+        pill(`${total} rows`),
+        pill(`${missing} missing highlighted`),
+        pill(`${current} current`),
+        pill(`${upcoming} upcoming`),
+        pill(`${soonRaids} soon raid rows`)
+      ].join("");
     }
 
-    function labelForList(list) {
+    function pill(text) {
+      return `<span class="summary-pill">${escapeHtml(text)}</span>`;
+    }
+
+    function filterRows(rows) {
+      return rows.filter(row => {
+        if (!state.showUpcoming && row.isUpcoming) return false;
+        if (state.missingOnly && !row.isMissing) return false;
+        if (!state.search) return true;
+        const haystack = [
+          row.name,
+          row.category,
+          row.source,
+          row.extraSource,
+          row.groupLabel,
+          row.formHint
+        ].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(state.search);
+      });
+    }
+
+    function sortRows(rows) {
+      if (state.sort === "dex") {
+        rows.sort((a, b) =>
+          a.dex - b.dex
+          || compareText(a.name, b.name)
+          || compareText(a.source, b.source)
+          || compareText(a.category, b.category)
+        );
+        return rows;
+      }
+
+      rows.sort((a, b) =>
+        eventOrderBucket(a) - eventOrderBucket(b)
+        || a.sectionOrder - b.sectionOrder
+        || a.entryOrder - b.entryOrder
+        || a.dex - b.dex
+        || compareText(a.name, b.name)
+      );
+      return rows;
+    }
+
+    function eventOrderBucket(row) {
+      if (!row.isUpcoming) return 0;
+      if (row.isSoonRaid) return 1;
+      return 2;
+    }
+
+    function flattenFeed(payload) {
+      const rows = [];
+      const currentSections = payload.catalog?.current || [];
+      const upcomingSections = payload.catalog?.upcoming || [];
+
+      currentSections.forEach((section, sectionOrder) => {
+        pushSectionRows(rows, section, sectionOrder, false);
+      });
+
+      upcomingSections.forEach((section, index) => {
+        pushSectionRows(rows, section, currentSections.length + index, true);
+      });
+
+      return dedupeRows(rows);
+    }
+
+    function pushSectionRows(target, section, sectionOrder, isUpcoming) {
+      const entries = section.entries || [];
+      const rowBase = {
+        sectionOrder,
+        category: section.title || section.category || "Untitled",
+        categoryUrl: section.source || "",
+        group: deriveGroup(section),
+        groupLabel: deriveGroupLabel(section),
+        startsAt: section.startsAt || null,
+        endsAt: section.endsAt || null,
+        isUpcoming
+      };
+
+      entries.forEach((entry, entryOrder) => {
+        const details = (entry.details || []).filter(Boolean);
+        const source = details[0] || section.subtitle || section.sourceLabel || section.category || "Source";
+        const extraSource = details.length > 1 ? details.slice(1).join(" | ") : "";
+        const row = {
+          ...rowBase,
+          rowId: `${section.id || sectionOrder}::${entry.list || "pokemon"}::${entry.dex}::${details.join("|")}`,
+          entryOrder,
+          dex: Number(entry.dex),
+          name: entry.name || `#${entry.dex}`,
+          shiny: !!entry.shiny,
+          isShadowSource: (entry.matchingLists || [entry.list]).includes("shadow"),
+          list: entry.list || "pokemon",
+          matchingLists: entry.matchingLists || [entry.list || "pokemon"],
+          source,
+          extraSource,
+          formHint: detectFormHint(entry.name || ""),
+          isSoonRaid: isUpcoming && isRaidLike(section, entry) && isWithinDays(section.startsAt, 7)
+        };
+        target.push(row);
+      });
+    }
+
+    function dedupeRows(rows) {
+      const seen = new Set();
+      return rows.filter(row => {
+        const key = [
+          row.dex,
+          row.name,
+          row.category,
+          row.source,
+          row.extraSource,
+          row.startsAt || "",
+          row.endsAt || "",
+          row.list,
+          row.isUpcoming ? "u" : "c"
+        ].join("::");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function deriveGroup(section) {
+      const id = String(section.id || "");
+      const title = `${section.title || ""} ${section.subtitle || ""}`.toLowerCase();
+      if (id === "rocket-catchable-shadows" || section.category === "Rocket") return "rocket";
+      if (id === "shadow-raids" || title.includes("shadow raid")) return "shadow-raids";
+      if (id === "raids" || title.includes(" raid")) return "raids";
+      if (section.category === "Field Research") return "research";
+      if (section.category === "Eggs") return "eggs";
+      return "event";
+    }
+
+    function deriveGroupLabel(section) {
+      const group = deriveGroup(section);
       return {
-        mega: "Mega",
-        shadow: "Shadow",
-        purified: "Purified"
-      }[list] || list;
+        "raids": "Raids",
+        "shadow-raids": "Shadow Raids",
+        "rocket": "Rocket",
+        "research": "Field Research",
+        "eggs": "Eggs",
+        "event": "Event"
+      }[group] || section.category || "Event";
+    }
+
+    function isRaidLike(section, entry) {
+      const group = deriveGroup(section);
+      return group === "raids" || group === "shadow-raids" || entry.list === "mega";
+    }
+
+    function isWithinDays(value, days) {
+      if (!value) return false;
+      const ts = Date.parse(value);
+      if (Number.isNaN(ts)) return false;
+      const diff = ts - Date.now();
+      return diff > 0 && diff <= days * 24 * 60 * 60 * 1000;
+    }
+
+    function isMissingRow(row, pokedex) {
+      const statuses = pokedex?.statuses || {};
+      const key = `pokemon::${row.dex}`;
+      const lists = row.matchingLists || [row.list || "pokemon"];
+
+      if (lists.includes("shadow") || lists.includes("purified")) {
+        return !isOwnedStatus(statuses.shadow?.[key]) && !isOwnedStatus(statuses.purified?.[key]);
+      }
+      if (lists.includes("mega")) {
+        return !anyOwnedKey(statuses.mega, candidate => candidate.startsWith(`mega::${row.dex}::`));
+      }
+      if (lists.includes("gmax")) {
+        return !anyOwnedKey(statuses.gmax, candidate => candidate.startsWith(`gmax::${row.dex}`));
+      }
+      if (row.formHint) {
+        return !anyOwnedKey(statuses.pokemon, candidate =>
+          candidate === key
+          || candidate.includes(`::${row.name}::`)
+        );
+      }
+      return !isOwnedStatus(statuses.pokemon?.[key]);
+    }
+
+    function loadPokedexState() {
+      try {
+        return JSON.parse(localStorage.getItem(POKEDEX_STORAGE_KEY) || "null");
+      } catch {
+        return null;
+      }
+    }
+
+    function isOwnedStatus(value) {
+      return value === "owned" || value === "can-evolve";
+    }
+
+    function anyOwnedKey(bucket, predicate) {
+      if (!bucket) return false;
+      return Object.entries(bucket).some(([key, value]) => predicate(key) && isOwnedStatus(value));
+    }
+
+    function detectFormHint(name) {
+      const lower = String(name || "").toLowerCase();
+      if (lower.includes("galarian")) return "Galarian";
+      if (lower.includes("alolan")) return "Alolan";
+      if (lower.includes("hisuian")) return "Hisuian";
+      if (lower.includes("paldean")) return "Paldean";
+      if (lower.includes("mega")) return "Mega";
+      if (lower.includes("shadow")) return "Shadow";
+      return "";
     }
 
     function formatDate(value) {
       if (!value) return "n/a";
       const date = new Date(value);
-      return Number.isNaN(date.getTime())
-        ? value
-        : date.toLocaleString();
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleString();
+    }
+
+    function formatShortDate(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleString([], {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    function compareText(a, b) {
+      return String(a || "").localeCompare(String(b || ""));
     }
 
     function escapeHtml(value) {
       return String(value)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
     }
   </script>
 </body>
