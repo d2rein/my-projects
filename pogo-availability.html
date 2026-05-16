@@ -92,6 +92,14 @@
       margin: 0 0 6px;
       font-size: 1.1rem;
     }
+    .card h3 a {
+      color: var(--text);
+      text-decoration: none;
+    }
+    .card h3 a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
     .card p {
       margin: 0 0 10px;
       color: var(--muted);
@@ -115,6 +123,36 @@
       padding: 6px 10px;
       color: #dce9ff;
       font-size: 0.92rem;
+    }
+    .entry-list {
+      display: grid;
+      gap: 10px;
+    }
+    .entry-item {
+      border: 1px solid #274166;
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(10, 19, 34, 0.55);
+    }
+    .entry-name {
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .entry-meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+    .source-line {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .source-line a {
+      color: var(--accent);
     }
     .empty {
       color: var(--muted);
@@ -216,17 +254,31 @@
       }
 
       target.innerHTML = sections.map(section => {
-        const chips = (section.entries || []).map(entry => {
-          const listSuffix = entry.list && entry.list !== "pokemon" ? ` (${labelForList(entry.list)})` : "";
-          return `<span class="chip">${escapeHtml(entry.name || `#${entry.dex}`)}${listSuffix}</span>`;
+        const items = (section.entries || []).map(entry => {
+          const listSuffix = entry.list && entry.list !== "pokemon" ? labelForList(entry.list) : "";
+          const detailText = (entry.details || []).join(", ");
+          return `
+            <div class="entry-item">
+              <div class="entry-name">
+                <span>${escapeHtml(entry.name || `#${entry.dex}`)}</span>
+                ${listSuffix ? `<span class="chip">${escapeHtml(listSuffix)}</span>` : ""}
+              </div>
+              ${detailText ? `<div class="entry-meta">${escapeHtml(detailText)}</div>` : ""}
+            </div>
+          `;
         }).join("");
+
+        const titleHtml = section.source
+          ? `<a href="${escapeHtml(section.source)}" target="_blank" rel="noreferrer">${escapeHtml(section.title || section.category || "Untitled")}</a>`
+          : escapeHtml(section.title || section.category || "Untitled");
 
         return `
           <article class="card">
-            <h3>${escapeHtml(section.title || section.category || "Untitled")}</h3>
+            <h3>${titleHtml}</h3>
             <p>${escapeHtml(section.subtitle || section.category || "")}</p>
             <span class="window">${escapeHtml(formatWindow(section.startsAt, section.endsAt, section.updatedAt))}</span>
-            <div class="chips">${chips || `<span class="chip">No Pokemon extracted yet</span>`}</div>
+            <div class="entry-list">${items || `<div class="empty">No Pokemon extracted yet for this section.</div>`}</div>
+            ${section.source ? `<div class="source-line">Source: <a href="${escapeHtml(section.source)}" target="_blank" rel="noreferrer">${escapeHtml(section.sourceLabel || "Open source page")}</a></div>` : ""}
           </article>
         `;
       }).join("");
