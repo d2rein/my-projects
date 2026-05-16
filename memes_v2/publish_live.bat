@@ -4,16 +4,7 @@ setlocal
 cd /d "%~dp0.."
 
 echo [1/5] Staging memes_v2 changes...
-git add .gitignore memes_v2
-if errorlevel 1 (
-  echo Failed to stage memes_v2 changes.
-  pause
-  exit /b 1
-)
-
-if exist "%~dp0..\memes" (
-  git add -A memes
-)
+git add memes_v2
 if errorlevel 1 (
   echo Failed to stage memes_v2 changes.
   pause
@@ -50,7 +41,7 @@ if errorlevel 1 (
 )
 
 echo [5/5] Opening live site...
-start "" "https://my-projects-cqs.pages.dev/memes_v2/"
+start "" "https://meme-search-v2-d2rei.pages.dev/"
 
 echo Done.
 pause

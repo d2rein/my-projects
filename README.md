@@ -20,7 +20,7 @@ For a period in May 2026, some Pages deploys were made from local workspace bund
 - `functions/api/pogo-medals-sync.js`
 - `dnd5e-character-builder/`
 - `pogo-pokedex/`
-- `memes_v2/`
+- `memes_v2/` (standalone Pages app)
 
 ## Files and folders that are not source
 

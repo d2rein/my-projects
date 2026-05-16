@@ -70,14 +70,16 @@ When the site is in a known-good condition:
 
 ## Meme search caveat
 
-`memes_v2/` contains a large library. Because it lives inside the same Pages project, any full-site deploy of this project will include that library in the uploaded bundle.
+`memes_v2/` contains a large library and is now deployed as its own Pages app.
+
+The normal `my-projects` deploy script removes `memes_v2` from the deployment bundle before upload.
 
 That means:
 
-- typo fix on the main site can still trigger a large upload
-- this is a project-shape limitation, not just a script problem
+- typo fixes on the main site no longer need to upload the meme library
+- meme updates should go through `memes_v2/update_site.bat`
 
-If avoiding that upload becomes important, the real solution is to split `memes_v2` into its own Pages project or move the meme assets to separate storage.
+Homepage links to the standalone meme app instead of serving it from the `my-projects` Pages bundle.
 
 ## Legacy meme v1 note
 

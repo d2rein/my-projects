@@ -33,6 +33,11 @@ try {
     throw "tar extract failed"
   }
 
+  $standaloneMemesPath = Join-Path $deployRoot "memes_v2"
+  if (Test-Path -LiteralPath $standaloneMemesPath) {
+    Remove-Item -LiteralPath $standaloneMemesPath -Recurse -Force
+  }
+
   @"
 const path = require('path');
 const base = path.join(process.env.APPDATA, 'npm', 'node_modules', 'wrangler');
