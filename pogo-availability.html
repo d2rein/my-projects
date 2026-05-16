@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon GO Availability Feed</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #121c2f;
+      --panel-2: #17233a;
+      --line: #243554;
+      --text: #f2f7ff;
+      --muted: #98abc9;
+      --accent: #5bc4ff;
+      --accent-2: #8bf0c8;
+      --chip: #203250;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #17304d 0%, var(--bg) 42%);
+      color: var(--text);
+      font: 16px/1.4 "Trebuchet MS", system-ui, sans-serif;
+    }
+    .shell {
+      width: min(1200px, calc(100vw - 32px));
+      margin: 24px auto 48px;
+    }
+    .hero, .panel {
+      background: rgba(18, 28, 47, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(10px);
+    }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: clamp(2rem, 4vw, 3rem); }
+    .hero p { margin: 0; color: var(--muted); max-width: 70ch; }
+    .meta {
+      display: grid;
+      gap: 8px;
+      min-width: 280px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .panel + .panel { margin-top: 18px; }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .section-head h2 { margin: 0; font-size: 1.45rem; }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    button, a.button {
+      border: 1px solid #315382;
+      background: #1b2e4d;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button:hover, a.button:hover { border-color: var(--accent); }
+    .status {
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    }
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1.1rem;
+    }
+    .card p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .window {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font-size: 0.92rem;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      background: var(--chip);
+      border: 1px solid #2c4770;
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: #dce9ff;
+      font-size: 0.92rem;
+    }
+    .empty {
+      color: var(--muted);
+      padding: 16px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+    }
+    .warning {
+      color: #ffd08a;
+      margin-top: 10px;
+    }
+    @media (max-width: 780px) {
+      .hero { flex-direction: column; }
+      .meta { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div>
+        <h1>Pokemon GO Availability Feed</h1>
+        <p>
+          Automatically pulls current and announced upcoming availability from Leek Duck so we have a live list to connect to your collection later.
+        </p>
+      </div>
+      <div class="meta">
+        <div><strong>Feed updated:</strong> <span id="updatedAt">Loading...</span></div>
+        <div><strong>Generated:</strong> <span id="generatedAt">Loading...</span></div>
+        <div><strong>Source mode:</strong> <span id="generatedFrom">Loading...</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Current Availability</h2>
+        <div class="button-row">
+          <button id="refreshBtn">Refresh Feed</button>
+          <a class="button" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
+        </div>
+      </div>
+      <div id="status" class="status">Loading feed…</div>
+      <div id="currentGrid" class="grid"></div>
+      <div id="warning" class="warning"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Upcoming / Announced</h2>
+      </div>
+      <div id="upcomingGrid" class="grid"></div>
+    </section>
+  </div>
+
+  <script>
+    const currentGrid = document.querySelector("#currentGrid");
+    const upcomingGrid = document.querySelector("#upcomingGrid");
+    const updatedAtEl = document.querySelector("#updatedAt");
+    const generatedAtEl = document.querySelector("#generatedAt");
+    const generatedFromEl = document.querySelector("#generatedFrom");
+    const statusEl = document.querySelector("#status");
+    const warningEl = document.querySelector("#warning");
+    const refreshBtn = document.querySelector("#refreshBtn");
+
+    refreshBtn.addEventListener("click", () => loadFeed(true));
+    loadFeed(false);
+
+    async function loadFeed(forceRefresh) {
+      statusEl.textContent = forceRefresh ? "Refreshing from live sources…" : "Loading feed…";
+      warningEl.textContent = "";
+      currentGrid.innerHTML = "";
+      upcomingGrid.innerHTML = "";
+      try {
+        const url = forceRefresh ? "/api/pogo-release-feed?refresh=1" : "/api/pogo-release-feed";
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(await response.text());
+        const payload = await response.json();
+        updatedAtEl.textContent = formatDate(payload.updatedAt);
+        generatedAtEl.textContent = formatDate(payload.generatedAt);
+        generatedFromEl.textContent = payload.generatedFrom || "unknown";
+        statusEl.textContent = `${(payload.catalog?.current || []).length} current sections, ${(payload.catalog?.upcoming || []).length} upcoming sections`;
+        if (payload.warning) warningEl.textContent = payload.warning;
+        renderSections(currentGrid, payload.catalog?.current || [], "No current sections were parsed.");
+        renderSections(upcomingGrid, payload.catalog?.upcoming || [], "No upcoming sections were parsed.");
+      } catch (error) {
+        statusEl.textContent = "Feed load failed";
+        warningEl.textContent = error.message;
+        currentGrid.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+        upcomingGrid.innerHTML = `<div class="empty">No data loaded.</div>`;
+      }
+    }
+
+    function renderSections(target, sections, emptyMessage) {
+      if (!sections.length) {
+        target.innerHTML = `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
+        return;
+      }
+
+      target.innerHTML = sections.map(section => {
+        const chips = (section.entries || []).map(entry => {
+          const listSuffix = entry.list && entry.list !== "pokemon" ? ` (${labelForList(entry.list)})` : "";
+          return `<span class="chip">${escapeHtml(entry.name || `#${entry.dex}`)}${listSuffix}</span>`;
+        }).join("");
+
+        return `
+          <article class="card">
+            <h3>${escapeHtml(section.title || section.category || "Untitled")}</h3>
+            <p>${escapeHtml(section.subtitle || section.category || "")}</p>
+            <span class="window">${escapeHtml(formatWindow(section.startsAt, section.endsAt, section.updatedAt))}</span>
+            <div class="chips">${chips || `<span class="chip">No Pokemon extracted yet</span>`}</div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function formatWindow(start, end, updatedAt) {
+      if (start && end) return `${formatDate(start)} to ${formatDate(end)}`;
+      if (start) return `Starts ${formatDate(start)}`;
+      if (end) return `Until ${formatDate(end)}`;
+      if (updatedAt) return `Page updated ${formatDate(updatedAt)}`;
+      return "Date not listed";
+    }
+
+    function labelForList(list) {
+      return {
+        mega: "Mega",
+        shadow: "Shadow",
+        purified: "Purified"
+      }[list] || list;
+    }
+
+    function formatDate(value) {
+      if (!value) return "n/a";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? value
+        : date.toLocaleString();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+  </script>
+</body>
+</html>
