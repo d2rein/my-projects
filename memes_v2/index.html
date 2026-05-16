@@ -325,6 +325,10 @@ const VIEWER_PRELOAD_COUNT=1;
 const SIMILAR_VISUAL_POOL=300;
 const SIMILAR_TEXT_WEIGHT=0.55;
 const SIMILAR_SHARED_TAG_WEIGHT=0.18;
+const STANDALONE_MEMES_ASSET_BASE="https://71a2a7c2.my-projects-cqs.pages.dev/memes_v2/";
+const assetBase=location.hostname==="meme-search-v2-d2rei.pages.dev"
+? STANDALONE_MEMES_ASSET_BASE
+: new URL("./",window.location.href).toString();
 const STOP_WORDS=new Set([
 "the","and","for","you","that","with","this","have","from","your","was","are","but","not","all","too","they","them",
 "his","her","she","him","our","out","get","got","has","had","its","it's","into","about","just","there","their","what",
@@ -348,6 +352,10 @@ function dot(a,b){
 let s=0;
 for(let i=0;i<a.length;i++) s+=a[i]*b[i];
 return s;
+}
+
+function assetUrl(path){
+return new URL(path,assetBase).toString();
 }
 
 function tokenize(text){
@@ -469,11 +477,11 @@ const next = currentResults[(pos + i) % currentResults.length];
 
 const prevLoader=new Image();
 prevLoader.decoding="async";
-prevLoader.src = memes[prev._index].file;
+prevLoader.src = assetUrl(memes[prev._index].file);
 
 const nextLoader=new Image();
 nextLoader.decoding="async";
-nextLoader.src = memes[next._index].file;
+nextLoader.src = assetUrl(memes[next._index].file);
 
 }
 
@@ -544,7 +552,7 @@ img.onclick=()=>openViewer(m._index);
 results.appendChild(img);
 
 const priority=idx<THUMB_PRIORITY_COUNT ? idx : THUMB_PRIORITY_COUNT + idx;
-enqueueThumbLoad(img,m.thumb,priority,thumbRenderToken);
+enqueueThumbLoad(img,assetUrl(m.thumb),priority,thumbRenderToken);
 });
 
 }
@@ -664,7 +672,7 @@ viewerImageRequestId++;
 pauseThumbQueue();
 
 const requestId=viewerImageRequestId;
-img.src=memes[index].thumb;
+img.src=assetUrl(memes[index].thumb);
 img.style.maxWidth="100%";
 img.style.maxHeight="100%";
 img.style.width="";
@@ -672,7 +680,7 @@ img.style.width="";
 const loader=new Image();
 loader.decoding="async";
 loader.fetchPriority="high";
-loader.src=memes[index].file;
+loader.src=assetUrl(memes[index].file);
 
 loader.onload=()=>{
 if(requestId!==viewerImageRequestId) return;
@@ -743,7 +751,7 @@ let binIndex=0;
 
 while(true){
 try{
-const path=`embeddings/emb_${String(binIndex).padStart(3,"0")}.bin`;
+const path=assetUrl(`embeddings/emb_${String(binIndex).padStart(3,"0")}.bin`);
 const res=await fetch(path);
 if(!res.ok) break;
 const buffer=await res.arrayBuffer();
@@ -847,7 +855,7 @@ row.innerHTML="";
 currentResults.slice(0,SIMILAR_COUNT).forEach((m,i)=>{
 
 const img=document.createElement("img");
-img.src=m.thumb;
+img.src=assetUrl(m.thumb);
 img.className="similarThumb";
 
 if(m._index===currentOpenIndex){
@@ -1020,7 +1028,7 @@ const url=viewerUrlForIndex(currentOpenIndex);
 const title=memes[currentOpenIndex].basename + memes[currentOpenIndex].ext;
 
 try{
-const imageUrl = new URL(memes[currentOpenIndex].file, window.location.href).toString();
+const imageUrl = assetUrl(memes[currentOpenIndex].file);
 const response = await fetch(imageUrl);
 const blob = await response.blob();
 const file = new File([blob], `${memes[currentOpenIndex].basename}${memes[currentOpenIndex].ext}`, {
@@ -1048,7 +1056,7 @@ console.error(err);
 async function loadData(){
 
 // load meme metadata
-const meta = await fetch("memes.json").then(r=>r.json());
+const meta = await fetch(assetUrl("memes.json")).then(r=>r.json());
 
 memes = meta.map((m,i)=>({...m,_index:i}));
 memes.forEach(m=>{ m.profile = buildSearchProfile(m); });
