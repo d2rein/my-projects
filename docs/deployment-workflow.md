@@ -15,6 +15,11 @@ That means:
 
 - Project: `my-projects`
 - Current KV binding for Pokemon GO sync: `POGO_TRACKER_KV`
+- Sitewide account login uses:
+  - KV binding: `POGO_TRACKER_KV`
+  - secret env var: `SITE_OWNER_PASSWORD_HASH`
+  - optional env var: `SITE_OWNER_USERNAME` (defaults to `owner`)
+- Generate a password hash locally with `node scripts/hash-site-password.js <your-password>`
 - Binding id: `59af78bb943d4dfe9f0eac05de80fd06`
 
 Root config lives in [wrangler.toml](../wrangler.toml).

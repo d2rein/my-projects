@@ -121,7 +121,7 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
     <div id="summaryBar" class="mini-stats"></div>
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
       <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
-      <button class="top-action-btn" id="cloudSyncBtn" type="button">Cloud Sync</button>
+      <button class="top-action-btn" id="cloudSyncBtn" type="button">Account</button>
       <div class="mini-pill" id="nextSoonBar">—</div>
     </div>
   </div>
@@ -233,8 +233,10 @@ const DEFAULT_DATA = {
 };
 const STORAGE_KEY = "pogo-medal-forecast-v2";
 const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v2";
-const MEDAL_SYNC_SETTINGS_KEY = "pogo-medal-cloud-sync-v1";
-const MEDAL_SYNC_API = "/api/pogo-medals-sync";
+const ACCOUNT_SESSION_API = "/api/site-auth/session";
+const ACCOUNT_LOGIN_API = "/api/site-auth/login";
+const ACCOUNT_LOGOUT_API = "/api/site-auth/logout";
+const POGO_ACCOUNT_STATE_API = "/api/pogo-account-state";
 const RECOVERED_SNAPSHOTS = [
   {"date":"2026-03-17","xp":88752236,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":28766,"idol":81,"kalos":72,"triathlete":106,"rising_star":166,"expert_navigator":685,"life_party":210,"jogger":2884.7,"collector":29196,"scientist":556,"breeder":698,"backpacker":20125,"sightseer":1359,"battle_girl":2971,"pikachu_fan":300,"berry_master":11754,"hoenn":122,"pokemon_ranger":1158,"pilot":1755463,"unova":130,"alola":56,"galar":51,"mega_evo_guru":36,"raid_expert":325,"tiny_collector":220,"jumbo_collector":350,"fisher":86,"youngster":103,"unown":11,"champion":168,"battle_legend":157,"gentleman":685,"sinnoh":79,"cameraman":118,"purifier":221,"hero":521,"rising_star_duo":307,"picnicker":180,"successor":475,"hisui":4,"paldea":48,"ace_trainer":10,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"showcase_star":8,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":6256,"bird_keeper":3504,"punk_girl":2543,"bug_catcher":3067,"swimmer":3762,"gardener":2629,"black_belt":1958,"ruin_maniac":1737,"hiker":1424,"hex_maniac":1621,"rail_staff":1537,"kindler":2108,"rocker":2336,"psychic":2356,"skier":958,"dragon_tamer":767,"delinquent":1973,"fairy_tale":1550}},
   {"date":"2026-04-16","xp":99957272,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":32187,"idol":97,"kalos":72,"triathlete":116,"rising_star":169,"mega_evo_guru":46,"expert_navigator":703,"life_party":210,"jogger":3164.5,"collector":34068,"scientist":612,"breeder":767,"backpacker":23753,"sightseer":1504,"battle_girl":3238,"pikachu_fan":348,"berry_master":14400,"hoenn":124,"pokemon_ranger":1313,"pilot":1910542,"sinnoh":86,"unova":132,"alola":60,"galar":53,"successor":578,"raid_expert":347,"tiny_collector":256,"jumbo_collector":371,"fisher":90,"youngster":116,"unown":11,"champion":183,"battle_legend":164,"gentleman":711,"cameraman":126,"purifier":259,"hero":600,"rising_star_duo":328,"picnicker":222,"hisui":4,"paldea":49,"showcase_star":10,"ace_trainer":11,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":7295,"bird_keeper":4070,"punk_girl":2984,"bug_catcher":4246,"swimmer":4212,"gardener":3118,"rocker":2981,"psychic":2687,"black_belt":2148,"ruin_maniac":1970,"hiker":1633,"hex_maniac":1796,"rail_staff":1826,"kindler":2416,"skier":1005,"dragon_tamer":792,"delinquent":2205,"fairy_tale":1901}}
@@ -242,6 +244,10 @@ const RECOVERED_SNAPSHOTS = [
 let state = loadState();
 let combinedChart, medalProgressChart, catchProgressChart;
 const liveTierAnnouncements = {};
+let medalSyncTimer = null;
+let accountSessionState = { loggedIn: false, configured: false, username: "owner" };
+let accountStateRevision = 0;
+let accountSyncPollTimer = null;
 
 function mergeSnapshots(...sources) {
   const byDate = new Map();
@@ -272,7 +278,6 @@ function loadState() {
     return fallback;
   }
 }
-let medalSyncTimer = null;
 function saveState() {
   state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -385,16 +390,16 @@ async function handleCombinedImport(file) {
 }
 function medalMap() { return Object.fromEntries(state.medals.map(m => [m.id, m])); }
 function getCloudSyncSettings() {
-  return safeJsonParse(localStorage.getItem(MEDAL_SYNC_SETTINGS_KEY));
+  return null;
 }
 function saveCloudSyncSettings(settings) {
-  localStorage.setItem(MEDAL_SYNC_SETTINGS_KEY, JSON.stringify(settings));
+  return settings;
 }
 function clearCloudSyncSettings() {
-  localStorage.removeItem(MEDAL_SYNC_SETTINGS_KEY);
+  return null;
 }
 function normalizeSyncCode(value) {
-  return String(value || "").trim().replace(/\s+/g, "-");
+  return String(value || "").trim();
 }
 function getStateModifiedAt(source) {
   return String(source?._meta?.lastModifiedAt || "");
@@ -413,23 +418,33 @@ function mergeMedalStates(localState, remoteState) {
   };
   return merged;
 }
-async function fetchCloudMedals(settings = getCloudSyncSettings()) {
-  if (!settings?.code || !settings?.pin) throw new Error("Cloud sync is not configured.");
-  const response = await fetch(`${MEDAL_SYNC_API}?code=${encodeURIComponent(settings.code)}`, {
-    headers: { "x-sync-pin": settings.pin }
-  });
-  if (response.status === 404) return null;
+async function fetchCloudMedals() {
+  const response = await fetch(ACCOUNT_SESSION_API, { credentials: "same-origin" });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Cloud download failed.");
+  if (!response.ok && response.status !== 401 && response.status !== 503) {
+    throw new Error(data.error || "Could not check account session.");
+  }
+  accountSessionState = {
+    loggedIn: !!data.loggedIn,
+    configured: !!data.configured,
+    username: data.username || "owner"
+  };
+  refreshCloudSyncButton();
+  return accountSessionState;
+}
+async function fetchAccountState() {
+  const response = await fetch(POGO_ACCOUNT_STATE_API, { credentials: "same-origin" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Could not load account data.");
   return data;
 }
-async function pushCloudMedals(settings = getCloudSyncSettings()) {
-  if (!settings?.code || !settings?.pin) throw new Error("Cloud sync is not configured.");
-  const response = await fetch(`${MEDAL_SYNC_API}?code=${encodeURIComponent(settings.code)}`, {
+async function pushCloudMedals() {
+  const response = await fetch(POGO_ACCOUNT_STATE_API, {
     method: "PUT",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      pin: settings.pin,
+      baseRevision: accountStateRevision,
       payload: {
         medals: state,
         pokedex: getCurrentPokedexState()
@@ -437,115 +452,197 @@ async function pushCloudMedals(settings = getCloudSyncSettings()) {
     })
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Cloud upload failed.");
+  if (response.status === 409) {
+    if (data.state) {
+      applyRemoteAccountState(data.state);
+      return pushCloudMedals();
+    }
+    throw new Error(data.error || "State conflict. Reload and try again.");
+  }
+  if (!response.ok) throw new Error(data.error || "Account save failed.");
+  accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
   return data;
 }
 function scheduleCloudPush(delay = 1200) {
-  const settings = getCloudSyncSettings();
-  if (!settings?.autoSync || !settings?.code || !settings?.pin) return;
+  if (!accountSessionState.loggedIn) return;
   clearTimeout(medalSyncTimer);
   medalSyncTimer = setTimeout(() => {
-    pushCloudMedals(settings).catch(error => console.warn("Medal cloud sync upload failed:", error));
+    pushCloudMedals().catch(error => console.warn("Medal account sync upload failed:", error));
   }, delay);
 }
-async function pullCloudMedalsAndApply(options = {}) {
-  const remote = await fetchCloudMedals();
-  if (!remote?.payload) return false;
+function applyRemoteAccountState(remoteState) {
   const localState = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
-  const remoteMedals = remote.payload.medals || null;
-  const remotePokedex = remote.payload.pokedex || null;
+  const remoteMedals = remoteState?.medals || null;
+  const remotePokedex = remoteState?.pokedex || null;
   const localPokedex = getCurrentPokedexState();
   const merged = remoteMedals ? mergeMedalStates(localState, remoteMedals) : localState;
   const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
-  const hadLocalNewerSnapshotCount = remoteMedals ? (localState?.snapshots?.length || 0) > (remoteMedals?.snapshots?.length || 0) : false;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   if (mergedPokedex) localStorage.setItem(POKEDEX_STORAGE_KEY, JSON.stringify(mergedPokedex));
   state = loadState();
+  if (remoteState?.revision !== undefined) {
+    accountStateRevision = Number(remoteState.revision || 0);
+  }
+}
+
+function hasMeaningfulLocalMedalState() {
+  return Array.isArray(state?.snapshots) && state.snapshots.length > 0;
+}
+
+async function bootstrapAccountFromLocalIfEmpty() {
+  const remote = await fetchAccountState();
+  const remoteIsEmpty = !remote || (!remote.medals && !remote.pokedex && Number(remote.revision || 0) === 0);
+  if (!remoteIsEmpty || !hasMeaningfulLocalMedalState()) return false;
+  accountStateRevision = Number(remote.revision || 0);
+  await pushCloudMedals();
+  return true;
+}
+
+async function pullCloudMedalsAndApply(options = {}) {
+  const remote = await fetchAccountState();
+  applyRemoteAccountState(remote);
   renderAll();
-  if (hadLocalNewerSnapshotCount) scheduleCloudPush(1500);
   if (!options.silent) {
-    await Swal.fire({ icon: "success", title: "Cloud sync complete", text: "The medal tracker and Pokédex data on this device have been refreshed from cloud storage.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    await Swal.fire({ icon: "success", title: "Account sync complete", text: "This device is now aligned with your live site data.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   }
   return true;
 }
 async function openCloudSyncDialog() {
-  const existing = getCloudSyncSettings() || { code: "", pin: "", autoSync: true };
+  await fetchCloudMedals().catch(() => null);
+  if (!accountSessionState.configured) {
+    await Swal.fire({ icon: "info", title: "Login not configured yet", text: "The new sitewide account login needs the owner username and password configured before it can go live.", background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  if (accountSessionState.loggedIn) {
+    const result = await Swal.fire({
+      title: "Site Account",
+      html:
+        '<div style="display:grid; gap:10px; text-align:left;">' +
+        '<div style="font-size:13px; color:#9fb2d9;">Signed in as <strong>' + escapeHtml(accountSessionState.username) + '</strong>.</div>' +
+        '<div style="font-size:12px; color:#9fb2d9;">This session is sitewide. Medal and Pokemon changes save live while you stay signed in.</div>' +
+        '</div>',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: "Refresh from server",
+      denyButtonText: "Sign out",
+      cancelButtonText: "Close",
+      background: "#121c34",
+      color: "#eef4ff"
+    });
+    if (result.isConfirmed) {
+      await pullCloudMedalsAndApply({ silent: false });
+      return;
+    }
+    if (result.isDenied) {
+      await fetch(ACCOUNT_LOGOUT_API, { method: "POST", credentials: "same-origin" });
+      accountSessionState.loggedIn = false;
+      accountStateRevision = 0;
+      stopAccountSyncPolling();
+      refreshCloudSyncButton();
+      await Swal.fire({ icon: "success", title: "Signed out", timer: 1200, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    }
+    return;
+  }
   const result = await Swal.fire({
-    title: "Pokemon GO Cloud Sync",
-    html: `
-      <div style="display:grid; gap:10px; text-align:left;">
-        <label style="display:grid; gap:4px;">
-          <span style="font-size:12px; color:#9fb2d9;">Sync code</span>
-          <input id="syncCodeInput" class="swal2-input" value="${escapeHtml(existing.code || "")}" placeholder="e.g. pogo-main" style="margin:0; width:100%;">
-        </label>
-        <label style="display:grid; gap:4px;">
-          <span style="font-size:12px; color:#9fb2d9;">4-digit PIN</span>
-          <input id="syncPinInput" class="swal2-input" inputmode="numeric" maxlength="4" value="${escapeHtml(existing.pin || "")}" placeholder="1234" style="margin:0; width:100%;">
-        </label>
-        <label style="display:grid; gap:4px;">
-          <span style="font-size:12px; color:#9fb2d9;">Action</span>
-          <select id="syncActionSelect" class="swal2-input" style="margin:0; width:100%;">
-            <option value="upload">Upload this device to cloud</option>
-            <option value="download">Load cloud data onto this device</option>
-            <option value="disconnect">Disconnect this device</option>
-          </select>
-        </label>
-        <label style="display:flex; gap:8px; align-items:center;">
-          <input id="syncAutoToggle" type="checkbox" ${existing.autoSync !== false ? "checked" : ""}>
-          <span style="font-size:12px; color:#9fb2d9;">Auto-sync medal and Pokédex saves on this device</span>
-        </label>
-      </div>
-    `,
+    title: "Site Account Login",
+    html:
+      '<form id="siteAccountLoginForm" style="display:grid; gap:10px; text-align:left;" autocomplete="on">' +
+      '<label style="display:grid; gap:4px;">' +
+      '<span style="font-size:12px; color:#9fb2d9;">Username</span>' +
+      '<input id="loginUsernameInput" class="swal2-input" name="username" autocomplete="username" value="' + escapeHtml(accountSessionState.username || "owner") + '" style="margin:0; width:100%;">' +
+      '</label>' +
+      '<label style="display:grid; gap:4px;">' +
+      '<span style="font-size:12px; color:#9fb2d9;">Password</span>' +
+      '<input id="loginPasswordInput" class="swal2-input" name="password" type="password" autocomplete="current-password" style="margin:0; width:100%;">' +
+      '</label>' +
+      '</form>',
     showCancelButton: true,
-    confirmButtonText: "Run",
+    confirmButtonText: "Sign in",
     cancelButtonText: "Cancel",
     background: "#121c34",
     color: "#eef4ff",
     preConfirm: () => {
-      const code = normalizeSyncCode(document.getElementById("syncCodeInput").value);
-      const pin = String(document.getElementById("syncPinInput").value || "").trim();
-      const action = document.getElementById("syncActionSelect").value;
-      const autoSync = document.getElementById("syncAutoToggle").checked;
-      if (action !== "disconnect") {
-        if (!code) {
-          Swal.showValidationMessage("A sync code is required.");
-          return false;
-        }
-        if (!/^\d{4}$/.test(pin)) {
-          Swal.showValidationMessage("Use a 4-digit PIN.");
-          return false;
-        }
+      const username = String(document.getElementById("loginUsernameInput").value || "").trim();
+      const password = String(document.getElementById("loginPasswordInput").value || "");
+      if (!username) {
+        Swal.showValidationMessage("A username is required.");
+        return false;
       }
-      return { code, pin, action, autoSync };
+      if (!password) {
+        Swal.showValidationMessage("A password is required.");
+        return false;
+      }
+      return { username, password };
     }
   });
   if (!result.isConfirmed) return;
-  const { code, pin, action, autoSync } = result.value;
-  if (action === "disconnect") {
-    clearCloudSyncSettings();
-    await Swal.fire({ icon: "success", title: "Cloud sync disconnected", text: "This device will stop auto-syncing medal data.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
-    return;
-  }
-  const settings = { code, pin, autoSync };
-  saveCloudSyncSettings(settings);
   try {
-    if (action === "upload") {
-      await pushCloudMedals(settings);
-      await Swal.fire({ icon: "success", title: "Uploaded to cloud", text: "This device's medal tracker and Pokédex data are now stored online.", timer: 1500, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
-    } else {
-      await pullCloudMedalsAndApply({ silent: false });
+    const response = await fetch(ACCOUNT_LOGIN_API, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result.value)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Could not sign in.");
     }
+    await fetchCloudMedals();
+    await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+    await pullCloudMedalsAndApply({ silent: true }).catch(() => null);
+    startAccountSyncPolling();
+    await Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
-    await Swal.fire({ icon: "error", title: "Cloud sync failed", text: error.message || "The cloud sync request failed.", background: "#121c34", color: "#eef4ff" });
+    await Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
   }
 }
 async function initializeCloudSync() {
-  const settings = getCloudSyncSettings();
-  if (!settings?.code || !settings?.pin) return;
   try {
-    await pullCloudMedalsAndApply({ silent: true });
+    await fetchCloudMedals();
+    if (accountSessionState.loggedIn) {
+      await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+      await pullCloudMedalsAndApply({ silent: true });
+      startAccountSyncPolling();
+    }
   } catch (error) {
-    console.warn("Initial medal cloud sync failed:", error);
+    console.warn("Initial medal account sync failed:", error);
+  }
+}
+function refreshCloudSyncButton() {
+  const button = document.getElementById("cloudSyncBtn");
+  if (!button) return;
+  if (!accountSessionState.configured) {
+    button.textContent = "Account Setup";
+    return;
+  }
+  button.textContent = accountSessionState.loggedIn ? "Account Live" : "Account Login";
+}
+function startAccountSyncPolling() {
+  stopAccountSyncPolling();
+  accountSyncPollTimer = setInterval(() => {
+    if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
+      pullCloudMedalsAndApply({ silent: true }).catch(error => console.warn("Background medal pull failed:", error));
+    }
+  }, 20000);
+  window.addEventListener("focus", handleAccountSyncFocus);
+  document.addEventListener("visibilitychange", handleAccountSyncVisibility);
+}
+function stopAccountSyncPolling() {
+  if (accountSyncPollTimer) {
+    clearInterval(accountSyncPollTimer);
+    accountSyncPollTimer = null;
+  }
+  window.removeEventListener("focus", handleAccountSyncFocus);
+  document.removeEventListener("visibilitychange", handleAccountSyncVisibility);
+}
+function handleAccountSyncFocus() {
+  if (accountSessionState.loggedIn) {
+    pullCloudMedalsAndApply({ silent: true }).catch(error => console.warn("Focus medal pull failed:", error));
+  }
+}
+function handleAccountSyncVisibility() {
+  if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
+    pullCloudMedalsAndApply({ silent: true }).catch(error => console.warn("Visibility medal pull failed:", error));
   }
 }
 function snapshotSorted() { return [...state.snapshots].sort((a,b) => a.date.localeCompare(b.date)); }
@@ -1209,3 +1306,5 @@ initializeCloudSync();
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
 </body>
 </html>
+
+

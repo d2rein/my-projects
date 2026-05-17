@@ -1,7 +1,9 @@
 const STORAGE_KEY = "pogo-fresh-pokedex-v2";
 const MEDAL_STORAGE_KEY = "pogo-medal-forecast-v2";
-const MEDAL_SYNC_SETTINGS_KEY = "pogo-medal-cloud-sync-v1";
-const CLOUD_SYNC_API = "/api/pogo-medals-sync";
+const ACCOUNT_SESSION_API = "/api/site-auth/session";
+const ACCOUNT_LOGIN_API = "/api/site-auth/login";
+const ACCOUNT_LOGOUT_API = "/api/site-auth/logout";
+const POGO_ACCOUNT_STATE_API = "/api/pogo-account-state";
 
 const DEX_MODES = [
   { id: "pokemon", label: "Pokemon" },
@@ -290,6 +292,9 @@ let stickyFilterKey = "";
 let cloudSyncTimer = null;
 let longPressTimer = null;
 let suppressNextStatusClickId = "";
+let accountSyncPollTimer = null;
+let accountSessionState = { loggedIn: false, configured: false, username: "owner" };
+let accountStateRevision = 0;
 
 const ALL_EVOLUTION_PREDECESSOR = { ...EVOLUTION_PREDECESSOR, ...EXTRA_EVOLUTION_PREDECESSOR };
 
@@ -1229,11 +1234,11 @@ function safeJsonParse(value) {
 }
 
 function getCloudSyncSettings() {
-  return safeJsonParse(localStorage.getItem(MEDAL_SYNC_SETTINGS_KEY));
+  return null;
 }
 
 function normalizeSyncCode(value) {
-  return String(value || "").trim().replace(/\s+/g, "-");
+  return String(value || "").trim();
 }
 
 function getCurrentMedalState() {
@@ -1258,24 +1263,35 @@ function mergeMedalStates(localState, remoteState) {
   return getModifiedAt(remoteState) > getModifiedAt(localState) ? remoteState : localState;
 }
 
-async function fetchCloudBundle(settings = getCloudSyncSettings()) {
-  if (!settings?.code || !settings?.pin) throw new Error("Cloud sync is not configured.");
-  const response = await fetch(`${CLOUD_SYNC_API}?code=${encodeURIComponent(settings.code)}`, {
-    headers: { "x-sync-pin": settings.pin }
-  });
-  if (response.status === 404) return null;
+async function fetchCloudBundle() {
+  const response = await fetch(ACCOUNT_SESSION_API, { credentials: "same-origin" });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Cloud download failed.");
+  if (!response.ok && response.status !== 401 && response.status !== 503) {
+    throw new Error(data.error || "Could not check account session.");
+  }
+  accountSessionState = {
+    loggedIn: !!data.loggedIn,
+    configured: !!data.configured,
+    username: data.username || "owner"
+  };
+  refreshCloudSyncButton();
+  return accountSessionState;
+}
+
+async function fetchAccountState() {
+  const response = await fetch(POGO_ACCOUNT_STATE_API, { credentials: "same-origin" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Could not load account data.");
   return data;
 }
 
-async function pushCloudBundle(settings = getCloudSyncSettings()) {
-  if (!settings?.code || !settings?.pin) throw new Error("Cloud sync is not configured.");
-  const response = await fetch(`${CLOUD_SYNC_API}?code=${encodeURIComponent(settings.code)}`, {
+async function pushCloudBundle() {
+  const response = await fetch(POGO_ACCOUNT_STATE_API, {
     method: "PUT",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      pin: settings.pin,
+      baseRevision: accountStateRevision,
       payload: {
         medals: getCurrentMedalState(),
         pokedex: state
@@ -1283,16 +1299,23 @@ async function pushCloudBundle(settings = getCloudSyncSettings()) {
     })
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Cloud upload failed.");
+  if (response.status === 409) {
+    if (data.state) {
+      applyRemoteBundle(data.state);
+      return pushCloudBundle();
+    }
+    throw new Error(data.error || "State conflict. Reload and try again.");
+  }
+  if (!response.ok) throw new Error(data.error || "Account save failed.");
+  accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
   return data;
 }
 
 function scheduleCloudPush(delay = 1200) {
-  const settings = getCloudSyncSettings();
-  if (!settings?.autoSync || !settings?.code || !settings?.pin) return;
+  if (!accountSessionState.loggedIn) return;
   clearTimeout(cloudSyncTimer);
   cloudSyncTimer = setTimeout(() => {
-    pushCloudBundle(settings).catch(error => console.warn("Pokedex cloud sync upload failed:", error));
+    pushCloudBundle().catch(error => console.warn("Pokedex account sync upload failed:", error));
   }, delay);
 }
 
@@ -1302,11 +1325,9 @@ function applyRemotePokedexState(nextState) {
   Object.assign(state, loadState(), nextState);
 }
 
-async function pullCloudBundleAndApply(options = {}) {
-  const remote = await fetchCloudBundle();
-  if (!remote?.payload) return false;
-  const remotePokedex = remote.payload.pokedex || null;
-  const remoteMedals = remote.payload.medals || null;
+function applyRemoteBundle(remoteState) {
+  const remotePokedex = remoteState?.pokedex || null;
+  const remoteMedals = remoteState?.medals || null;
   const localPokedex = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
   const localMedals = getCurrentMedalState();
   const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
@@ -1318,88 +1339,185 @@ async function pullCloudBundleAndApply(options = {}) {
   if (mergedMedals) {
     localStorage.setItem(MEDAL_STORAGE_KEY, JSON.stringify(mergedMedals));
   }
+  if (remoteState?.revision !== undefined) {
+    accountStateRevision = Number(remoteState.revision || 0);
+  }
+}
+
+function hasMeaningfulLocalPokedexState() {
+  const statuses = state?.statuses || {};
+  return Object.values(statuses).some(bucket =>
+    bucket && Object.values(bucket).some(value => ["owned", "can-evolve", "trade", "missing-lock"].includes(value))
+  );
+}
+
+async function bootstrapAccountFromLocalIfEmpty() {
+  const remote = await fetchAccountState();
+  const remoteIsEmpty = !remote || (!remote.medals && !remote.pokedex && Number(remote.revision || 0) === 0);
+  if (!remoteIsEmpty || !hasMeaningfulLocalPokedexState()) return false;
+  accountStateRevision = Number(remote.revision || 0);
+  await pushCloudBundle();
+  return true;
+}
+
+async function pullCloudBundleAndApply(options = {}) {
+  const remote = await fetchAccountState();
+  applyRemoteBundle(remote);
   buildControls();
   render();
   if (!options.silent) {
-    await window.Swal.fire({ icon: "success", title: "Cloud sync complete", text: "The Pokédex and medal data on this device have been refreshed from cloud storage.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    await window.Swal.fire({ icon: "success", title: "Account sync complete", text: "This device is now aligned with your live site data.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   }
   return true;
 }
 
 async function openCloudSyncDialog() {
-  const existing = getCloudSyncSettings() || { code: "", pin: "", autoSync: true };
+  await fetchCloudBundle().catch(() => null);
+  if (!accountSessionState.configured) {
+    await window.Swal.fire({
+      icon: "info",
+      title: "Login not configured yet",
+      text: "The new sitewide account login needs the owner username and password configured before it can go live.",
+      background: "#121c34",
+      color: "#eef4ff"
+    });
+    return;
+  }
+
+  if (accountSessionState.loggedIn) {
+    const result = await window.Swal.fire({
+      title: "Site Account",
+      html:         '<div style="display:grid; gap:10px; text-align:left;">' +
+        '<div style="font-size:13px; color:#9fb2d9;">Signed in as <strong>' + escapeHtml(accountSessionState.username) + '</strong>.</div>' +
+        '<div style="font-size:12px; color:#9fb2d9;">This session is sitewide. Pokedex and medal changes save live while you stay signed in.</div>' +
+        '</div>',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: "Refresh from server",
+      denyButtonText: "Sign out",
+      cancelButtonText: "Close",
+      background: "#121c34",
+      color: "#eef4ff"
+    });
+    if (result.isConfirmed) {
+      await pullCloudBundleAndApply({ silent: false });
+      return;
+    }
+    if (result.isDenied) {
+      await fetch(ACCOUNT_LOGOUT_API, { method: "POST", credentials: "same-origin" });
+      accountSessionState.loggedIn = false;
+      accountStateRevision = 0;
+      stopAccountSyncPolling();
+      refreshCloudSyncButton();
+      await window.Swal.fire({ icon: "success", title: "Signed out", timer: 1200, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    }
+    return;
+  }
+
   const result = await window.Swal.fire({
-    title: "Pokemon GO Cloud Sync",
-    html: `
-      <div style="display:grid; gap:10px; text-align:left;">
-        <label style="display:grid; gap:4px;">
-          <span style="font-size:12px; color:#9fb2d9;">Sync code</span>
-          <input id="syncCodeInput" class="swal2-input" value="${escapeHtml(existing.code || "")}" placeholder="e.g. pogo-main" style="margin:0; width:100%;">
-        </label>
-        <label style="display:grid; gap:4px;">
-          <span style="font-size:12px; color:#9fb2d9;">4-digit PIN</span>
-          <input id="syncPinInput" class="swal2-input" inputmode="numeric" maxlength="4" value="${escapeHtml(existing.pin || "")}" placeholder="1234" style="margin:0; width:100%;">
-        </label>
-        <label style="display:grid; gap:4px;">
-          <span style="font-size:12px; color:#9fb2d9;">Action</span>
-          <select id="syncActionSelect" class="swal2-input" style="margin:0; width:100%;">
-            <option value="upload">Upload this device to cloud</option>
-            <option value="download">Load cloud data onto this device</option>
-          </select>
-        </label>
-        <label style="display:flex; gap:8px; align-items:center;">
-          <input id="syncAutoToggle" type="checkbox" ${existing.autoSync !== false ? "checked" : ""}>
-          <span style="font-size:12px; color:#9fb2d9;">Auto-sync medal and Pokédex saves on this device</span>
-        </label>
-      </div>
-    `,
+    title: "Site Account Login",
+    html:       '<form id="siteAccountLoginForm" style="display:grid; gap:10px; text-align:left;" autocomplete="on">' +
+      '<label style="display:grid; gap:4px;">' +
+      '<span style="font-size:12px; color:#9fb2d9;">Username</span>' +
+      '<input id="loginUsernameInput" class="swal2-input" name="username" autocomplete="username" value="' + escapeHtml(accountSessionState.username || "owner") + '" style="margin:0; width:100%;">' +
+      '</label>' +
+      '<label style="display:grid; gap:4px;">' +
+      '<span style="font-size:12px; color:#9fb2d9;">Password</span>' +
+      '<input id="loginPasswordInput" class="swal2-input" name="password" type="password" autocomplete="current-password" style="margin:0; width:100%;">' +
+      '</label>' +
+      '</form>',
     showCancelButton: true,
-    confirmButtonText: "Run",
+    confirmButtonText: "Sign in",
     cancelButtonText: "Cancel",
     background: "#121c34",
     color: "#eef4ff",
     preConfirm: () => {
-      const code = normalizeSyncCode(document.getElementById("syncCodeInput").value);
-      const pin = String(document.getElementById("syncPinInput").value || "").trim();
-      const action = document.getElementById("syncActionSelect").value;
-      const autoSync = document.getElementById("syncAutoToggle").checked;
-      if (!code) {
-        window.Swal.showValidationMessage("A sync code is required.");
+      const username = String(document.getElementById("loginUsernameInput").value || "").trim();
+      const password = String(document.getElementById("loginPasswordInput").value || "");
+      if (!username) {
+        window.Swal.showValidationMessage("A username is required.");
         return false;
       }
-      if (!/^\d{4}$/.test(pin)) {
-        window.Swal.showValidationMessage("Use a 4-digit PIN.");
+      if (!password) {
+        window.Swal.showValidationMessage("A password is required.");
         return false;
       }
-      return { code, pin, action, autoSync };
+      return { username, password };
     }
   });
   if (!result.isConfirmed) return;
-  const settings = result.value;
-  localStorage.setItem(MEDAL_SYNC_SETTINGS_KEY, JSON.stringify({
-    code: settings.code,
-    pin: settings.pin,
-    autoSync: settings.autoSync
-  }));
   try {
-    if (settings.action === "upload") {
-      await pushCloudBundle(settings);
-      await window.Swal.fire({ icon: "success", title: "Uploaded to cloud", text: "This device's Pokédex and medal data are now stored online.", timer: 1500, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
-    } else {
-      await pullCloudBundleAndApply({ silent: false });
+    const response = await fetch(ACCOUNT_LOGIN_API, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result.value)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Could not sign in.");
     }
+    await fetchCloudBundle();
+    await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+    await pullCloudBundleAndApply({ silent: true }).catch(() => null);
+    startAccountSyncPolling();
+    await window.Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
-    await window.Swal.fire({ icon: "error", title: "Cloud sync failed", text: error.message || "The cloud sync request failed.", background: "#121c34", color: "#eef4ff" });
+    await window.Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
   }
 }
 
 async function initializeCloudSync() {
-  const settings = getCloudSyncSettings();
-  if (!settings?.code || !settings?.pin) return;
   try {
-    await pullCloudBundleAndApply({ silent: true });
+    await fetchCloudBundle();
+    if (accountSessionState.loggedIn) {
+      await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+      await pullCloudBundleAndApply({ silent: true });
+      startAccountSyncPolling();
+    }
   } catch (error) {
-    console.warn("Initial pokedex cloud sync failed:", error);
+    console.warn("Initial pokedex account sync failed:", error);
+  }
+}
+
+function refreshCloudSyncButton() {
+  if (!els.cloudSyncBtn) return;
+  if (!accountSessionState.configured) {
+    els.cloudSyncBtn.textContent = "Account Setup";
+    return;
+  }
+  els.cloudSyncBtn.textContent = accountSessionState.loggedIn ? "Account Live" : "Account Login";
+}
+
+function startAccountSyncPolling() {
+  stopAccountSyncPolling();
+  accountSyncPollTimer = setInterval(() => {
+    if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
+      pullCloudBundleAndApply({ silent: true }).catch(error => console.warn("Background pokedex pull failed:", error));
+    }
+  }, 20000);
+  window.addEventListener("focus", handleAccountSyncFocus);
+  document.addEventListener("visibilitychange", handleAccountSyncVisibility);
+}
+
+function stopAccountSyncPolling() {
+  if (accountSyncPollTimer) {
+    clearInterval(accountSyncPollTimer);
+    accountSyncPollTimer = null;
+  }
+  window.removeEventListener("focus", handleAccountSyncFocus);
+  document.removeEventListener("visibilitychange", handleAccountSyncVisibility);
+}
+
+function handleAccountSyncFocus() {
+  if (accountSessionState.loggedIn) {
+    pullCloudBundleAndApply({ silent: true }).catch(error => console.warn("Focus pokedex pull failed:", error));
+  }
+}
+
+function handleAccountSyncVisibility() {
+  if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
+    pullCloudBundleAndApply({ silent: true }).catch(error => console.warn("Visibility pokedex pull failed:", error));
   }
 }
 
