@@ -136,6 +136,7 @@
       width: 100%;
       border-collapse: collapse;
       min-width: 1180px;
+      table-layout: fixed;
     }
     thead th {
       position: sticky;
@@ -144,17 +145,19 @@
       background: #172742;
       color: #f3f8ff;
       text-align: left;
-      font-size: 0.84rem;
+      font-size: 0.79rem;
       letter-spacing: 0.03em;
       border-bottom: 1px solid #294261;
-      padding: 10px 9px;
+      padding: 6px 6px;
       white-space: nowrap;
+      line-height: 1.05;
     }
     tbody td {
-      padding: 8px 9px;
+      padding: 4px 6px;
       border-bottom: 1px solid rgba(41, 66, 97, 0.42);
       vertical-align: middle;
       white-space: nowrap;
+      line-height: 1.05;
     }
     tbody tr:hover {
       background: rgba(255, 255, 255, 0.03);
@@ -175,21 +178,27 @@
     .dex-cell {
       font-variant-numeric: tabular-nums;
       color: #cfe0ff;
+      width: 72px;
+      font-size: 0.88rem;
     }
     .name-cell {
-      min-width: 210px;
+      width: 220px;
+      min-width: 220px;
       font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.92rem;
     }
     .symbol {
       display: inline-flex;
-      width: 26px;
-      min-height: 26px;
+      width: 18px;
+      min-height: 18px;
       align-items: center;
       justify-content: center;
       border-radius: 999px;
       border: 1px solid #36557f;
       background: rgba(15, 24, 40, 0.78);
-      font-size: 1rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: #f1f7ff;
     }
@@ -210,6 +219,11 @@
       color: #bfe7ff;
       text-decoration: none;
       font-weight: 700;
+      display: inline-block;
+      max-width: 135px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
     }
     .category-link:hover {
       color: #fff;
@@ -217,30 +231,34 @@
     }
     .category-type {
       display: inline-block;
-      margin-left: 7px;
-      padding: 2px 8px;
+      margin-left: 5px;
+      padding: 1px 6px;
       border-radius: 999px;
-      font-size: 0.75rem;
+      font-size: 0.68rem;
       color: #d8ecff;
       background: rgba(12, 24, 42, 0.7);
       border: 1px solid rgba(90, 126, 173, 0.45);
+      vertical-align: middle;
     }
     .source-cell {
       color: #dfe9fb;
-      max-width: 720px;
+      width: 380px;
+      max-width: 380px;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-size: 0.86rem;
     }
     .date-cell {
       color: #d4e4ff;
-      font-size: 0.9rem;
+      font-size: 0.82rem;
+      width: 118px;
     }
     .missing-tag, .upcoming-tag {
       display: inline-block;
-      margin-left: 8px;
-      padding: 2px 7px;
+      margin-left: 5px;
+      padding: 1px 5px;
       border-radius: 999px;
-      font-size: 0.73rem;
+      font-size: 0.65rem;
       font-weight: 700;
       vertical-align: middle;
     }
