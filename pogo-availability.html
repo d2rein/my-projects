@@ -567,11 +567,10 @@
 
     function isMissingRow(row, pokedex) {
       const statuses = pokedex?.statuses || {};
-      const key = `pokemon::${row.dex}`;
       const lists = row.matchingLists || [row.list || "pokemon"];
 
       if (lists.includes("shadow") || lists.includes("purified")) {
-        return !isOwnedStatus(statuses.shadow?.[key]) && !isOwnedStatus(statuses.purified?.[key]);
+        return !bucketHasOwnedForDex(statuses.shadow, row.dex) && !bucketHasOwnedForDex(statuses.purified, row.dex);
       }
       if (lists.includes("mega")) {
         return !anyOwnedKey(statuses.mega, candidate => candidate.startsWith(`mega::${row.dex}::`));
@@ -579,7 +578,17 @@
       if (lists.includes("gmax")) {
         return !anyOwnedKey(statuses.gmax, candidate => candidate.startsWith(`gmax::${row.dex}`));
       }
-      return !isOwnedStatus(statuses.pokemon?.[key]);
+      return !bucketHasOwnedForDex(statuses.pokemon, row.dex);
+    }
+
+    function bucketHasOwnedForDex(bucket, dex) {
+      if (!bucket) return false;
+      const canonicalKey = `pokemon::${dex}`;
+      const altPrefix = `alt::${dex}::`;
+      return Object.entries(bucket).some(([key, value]) => {
+        if (!isOwnedStatus(value)) return false;
+        return key === canonicalKey || key.startsWith(altPrefix);
+      });
     }
 
     function loadPokedexState() {
@@ -591,7 +600,7 @@
     }
 
     function isOwnedStatus(value) {
-      return value === "owned" || value === "can-evolve";
+      return value === "owned" || value === "can-evolve" || value === "trade";
     }
 
     function anyOwnedKey(bucket, predicate) {
