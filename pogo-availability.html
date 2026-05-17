@@ -142,7 +142,7 @@
       table-layout: fixed;
     }
     thead th:nth-child(1), tbody td:nth-child(1) { width: 46px; }
-    thead th:nth-child(2), tbody td:nth-child(2) { width: 148px; }
+    thead th:nth-child(2), tbody td:nth-child(2) { width: 132px; }
     thead th:nth-child(3), tbody td:nth-child(3) { width: 18px; text-align: center; }
     thead th:nth-child(4), tbody td:nth-child(4) { width: 18px; text-align: center; }
     thead th:nth-child(5), tbody td:nth-child(5) { width: 118px; }
@@ -164,12 +164,12 @@
       line-height: 1;
     }
     tbody td {
-      padding: 1px 4px;
+      padding: 0 4px;
       border-bottom: 1px solid rgba(41, 66, 97, 0.42);
       vertical-align: middle;
       white-space: nowrap;
       line-height: 1;
-      height: 18px;
+      height: 16px;
     }
     tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
     tbody tr.row-missing {
@@ -192,7 +192,7 @@
       font-weight: 700;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
     }
     .symbol {
       display: inline-flex;
@@ -247,12 +247,12 @@
       color: #d4e4ff;
       font-size: 0.68rem;
     }
-    .missing-tag, .upcoming-tag {
+    .missing-tag {
       display: inline-block;
-      margin-left: 2px;
-      padding: 0 3px;
+      margin-left: 1px;
+      padding: 0 2px;
       border-radius: 999px;
-      font-size: 0.5rem;
+      font-size: 0.48rem;
       font-weight: 700;
       vertical-align: middle;
       line-height: 1.05;
@@ -261,11 +261,6 @@
       color: #ffd7d7;
       background: rgba(125, 41, 41, 0.5);
       border: 1px solid rgba(255, 160, 160, 0.3);
-    }
-    .upcoming-tag {
-      color: #d5def5;
-      background: rgba(53, 69, 101, 0.55);
-      border: 1px solid rgba(168, 184, 226, 0.22);
     }
     .empty {
       padding: 12px;
@@ -412,14 +407,13 @@
 
       els.tableBody.innerHTML = rows.map(row => {
         const missingTag = row.isMissing ? `<span class="missing-tag">Missing</span>` : "";
-        const upcomingTag = row.isUpcoming ? `<span class="upcoming-tag">${row.isSoonRaid ? "Soon" : "Upcoming"}</span>` : "";
         const shinyActive = row.shiny ? "&#10022;" : "&middot;";
         const shadowActive = row.isShadowSource ? "&#11043;" : "&middot;";
 
         return `
           <tr class="group-${escapeHtml(row.group)} ${row.isMissing ? "row-missing" : ""} ${row.isUpcoming ? "row-upcoming" : ""}">
             <td class="dex-cell">#${String(row.dex).padStart(4, "0")}</td>
-            <td class="name-cell">${escapeHtml(row.name)}${missingTag}${upcomingTag}</td>
+            <td class="name-cell">${escapeHtml(row.name)}${missingTag}</td>
             <td><span class="symbol ${row.shiny ? "shiny-on" : "empty"}">${shinyActive}</span></td>
             <td><span class="symbol ${row.isShadowSource ? "shadow-on" : "empty"}">${shadowActive}</span></td>
             <td class="category-cell">${row.categoryUrl ? `<a class="category-link" href="${escapeHtml(row.categoryUrl)}" target="_blank" rel="noreferrer">${escapeHtml(row.category)}</a>` : escapeHtml(row.category)}</td>
