@@ -270,8 +270,14 @@ function parseRocketLineups(html) {
 
   for (const profileHtml of profiles) {
     const profileName = extractProfileName(profileHtml) || "Rocket";
+    const profileTitle = extractProfileTitle(profileHtml);
+    const allowedEncounterNumber = getCatchableEncounterNumber(profileTitle);
     const encountersHtml = extractBlocksByStartRegex(profileHtml, /<div\b[^>]*class="[^"]*\bslot encounter\b[^"]*"[^>]*>/gi);
     for (const encounterHtml of encountersHtml) {
+      const encounterNumber = extractEncounterNumber(encounterHtml);
+      if (allowedEncounterNumber !== null && encounterNumber !== allowedEncounterNumber) {
+        continue;
+      }
       const nameRegex = /<span\b[^>]*class="[^"]*\bshadow-pokemon\b[^"]*"[^>]*data-pokemon="([^"]+)"/gi;
       let nameMatch;
       while ((nameMatch = nameRegex.exec(encounterHtml))) {
@@ -781,6 +787,23 @@ function extractRaidEntriesFromContainer(html, options = {}) {
 function extractProfileName(html) {
   const nameMatch = html.match(/<div\b[^>]*class="[^"]*\bname\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   return nameMatch ? decodeHtml(stripTags(nameMatch[1])).replace(/\s+/g, " ").trim() : "";
+}
+
+function extractProfileTitle(html) {
+  const titleMatch = html.match(/<div\b[^>]*class="[^"]*\btitle\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+  return titleMatch ? decodeHtml(stripTags(titleMatch[1])).replace(/\s+/g, " ").trim() : "";
+}
+
+function extractEncounterNumber(html) {
+  const numberMatch = html.match(/<span\b[^>]*class="[^"]*\bnumber\b[^"]*"[^>]*>(\d+)<\/span>/i);
+  return numberMatch ? Number(numberMatch[1]) : null;
+}
+
+function getCatchableEncounterNumber(profileTitle) {
+  const normalized = normalizeName(profileTitle);
+  if (normalized.includes("team go rocket leader")) return 1;
+  if (normalized.includes("team go rocket boss")) return 3;
+  return null;
 }
 
 function uniqueStrings(values) {
