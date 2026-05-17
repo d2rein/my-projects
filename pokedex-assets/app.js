@@ -164,6 +164,54 @@ const ALT_FORM_SPRITE_SLUGS = {
   "alt::916::1::Oinkologne::Normal::-": "oinkologne-female"
 };
 
+const EXTRA_EVOLUTION_PREDECESSOR = {
+  25: 172,
+  35: 173,
+  39: 174,
+  42: 41,
+  106: 236,
+  107: 236,
+  113: 440,
+  122: 439,
+  124: 238,
+  125: 239,
+  126: 240,
+  143: 446,
+  169: 42,
+  182: 44,
+  185: 438,
+  186: 61,
+  199: 79,
+  202: 360,
+  208: 95,
+  226: 458,
+  233: 137,
+  237: 236,
+  315: 406,
+  358: 433,
+  430: 198,
+  462: 82,
+  472: 207,
+  474: 233,
+  476: 299,
+  700: 133,
+  862: null,
+  863: null,
+  864: null,
+  865: null,
+  869: 868,
+  899: 234,
+  900: 123,
+  902: null,
+  903: null,
+  904: null,
+  867: null,
+  980: null,
+  982: 206,
+  983: 625,
+  1018: 884
+};
+
 const EVOLUTION_PREDECESSOR = {
   2: 1, 3: 2, 5: 4, 6: 5, 8: 7, 9: 8, 11: 10, 12: 11, 14: 13, 15: 14, 17: 16, 18: 17, 20: 19,
   22: 21, 24: 23, 26: 25, 28: 27, 30: 29, 31: 30, 33: 32, 34: 33, 36: 35, 38: 37, 40: 39, 42: 41,
@@ -236,9 +284,14 @@ let altEntries = [];
 let megaEntries = [];
 let gmaxEntries = [];
 let entriesByMode = new Map();
+let speciesEntriesByDex = new Map();
 let stickyVisibleEntryIds = new Set();
 let stickyFilterKey = "";
 let cloudSyncTimer = null;
+let longPressTimer = null;
+let suppressNextStatusClickId = "";
+
+const ALL_EVOLUTION_PREDECESSOR = { ...EVOLUTION_PREDECESSOR, ...EXTRA_EVOLUTION_PREDECESSOR };
 
 initialize();
 
@@ -391,6 +444,10 @@ function buildCollections() {
   canonicalEntries.sort((a, b) => a.dex - b.dex);
   altEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
   megaEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+  speciesEntriesByDex = new Map();
+  canonicalEntries.forEach(entry => {
+    speciesEntriesByDex.set(entry.dex, [entry, ...altEntries.filter(candidate => candidate.dex === entry.dex)]);
+  });
 
   gmaxEntries = [...GMAX_SPECIES.entries()].map(([dex, name]) => {
     const base = canonicalEntries.find(entry => entry.dex === dex);
@@ -528,7 +585,8 @@ function seedStateFromData() {
     showUnavailable: false,
     statuses: {},
     availability: {},
-    unreleasedOverrides: {}
+    unreleasedOverrides: {},
+    statusMeta: {}
   };
 
   Object.assign(state, fallback, state);
@@ -536,6 +594,7 @@ function seedStateFromData() {
   for (const mode of DEX_MODES) {
     state.statuses[mode.id] ||= {};
     state.availability[mode.id] ||= {};
+    state.statusMeta[mode.id] ||= {};
   }
 
   canonicalEntries.forEach(entry => {
@@ -579,7 +638,8 @@ function loadState() {
       showUnavailable: false,
       statuses: {},
       availability: {},
-      unreleasedOverrides: {}
+      unreleasedOverrides: {},
+      statusMeta: {}
     };
   }
 
@@ -597,7 +657,8 @@ function loadState() {
       showUnavailable: false,
       statuses: {},
       availability: {},
-      unreleasedOverrides: {}
+      unreleasedOverrides: {},
+      statusMeta: {}
     };
   }
 }
@@ -697,6 +758,10 @@ function bindEvents() {
   els.cardGrid.addEventListener("click", event => {
     const statusTarget = event.target.closest("[data-cycle-status]");
     if (statusTarget) {
+      if (suppressNextStatusClickId === statusTarget.dataset.entryId) {
+        suppressNextStatusClickId = "";
+        return;
+      }
       cycleStatus(statusTarget.dataset.entryId);
       return;
     }
@@ -711,6 +776,28 @@ function bindEvents() {
     if (unreleasedTarget) {
       toggleUnreleased(unreleasedTarget.dataset.entryId);
     }
+  });
+
+  els.cardGrid.addEventListener("contextmenu", event => {
+    const statusTarget = event.target.closest("[data-cycle-status]");
+    if (!statusTarget) return;
+    event.preventDefault();
+    setTradeStatus(statusTarget.dataset.entryId);
+  });
+
+  els.cardGrid.addEventListener("pointerdown", event => {
+    const statusTarget = event.target.closest("[data-cycle-status]");
+    if (!statusTarget) return;
+    clearLongPressTimer();
+    longPressTimer = setTimeout(() => {
+      suppressNextStatusClickId = statusTarget.dataset.entryId;
+      setTradeStatus(statusTarget.dataset.entryId);
+      longPressTimer = null;
+    }, 500);
+  });
+
+  ["pointerup", "pointerleave", "pointercancel"].forEach(eventName => {
+    els.cardGrid.addEventListener(eventName, clearLongPressTimer);
   });
 
   els.cloudSyncBtn?.addEventListener("click", openCloudSyncDialog);
@@ -824,7 +911,7 @@ function renderCard(entry) {
       <div class="card-body">
         <div class="pokemon-name">${escapeHtml(cleanDisplayName(entry))}</div>
         <div class="subline">${escapeHtml(buildSubline(entry))}</div>
-        <button class="status-btn ${statusClassName(status)}" data-cycle-status data-entry-id="${escapeAttribute(entry.id)}">${statusLabel(status)}</button>
+        <button class="status-btn ${statusClassName(status)}" data-cycle-status data-entry-id="${escapeAttribute(entry.id)}" title="Click to cycle status. Long press or right-click to mark Trade.">${statusLabel(status)}</button>
         ${shouldShowUnreleasedButton(entry) ? renderUnreleasedButton(entry) : ""}
         ${["mega", "gmax"].includes(state.activeMode) ? renderAvailabilityButton(entry) : ""}
       </div>
@@ -884,7 +971,7 @@ function getVisibleEntries() {
     if (state.regionFilter !== "all" && entry.region !== state.regionFilter) return false;
     if (state.statusFilter === "unreleased" && !isCurrentlyUnreleased(entry)) return false;
     else if (state.statusFilter === "regional" && !entry.isRegional) return false;
-    else if (state.statusFilter === "unowned" && !["missing", "can-evolve"].includes(status)) return false;
+    else if (state.statusFilter === "unowned" && !["missing", "can-evolve", "trade", "unreleased"].includes(status)) return false;
     else if (!["all", "unreleased", "regional", "unowned"].includes(state.statusFilter) && status !== state.statusFilter) return false;
     if (!search) return true;
     return cleanDisplayName(entry).toLowerCase().includes(search) || String(entry.dex).includes(search);
@@ -916,9 +1003,11 @@ function computeCounts(entries) {
       counts.unreleased += 1;
       continue;
     }
-    const status = getEffectiveStatus(entry, state.activeMode);
+    const status = shouldUseSpeciesSummaryLogic(state.activeMode)
+      ? getSpeciesSummaryStatus(entry.dex, state.activeMode)
+      : getEffectiveStatus(entry, state.activeMode);
     if (status === "owned") counts.owned += 1;
-    else if (status === "can-evolve") counts.evolutions += 1;
+    else if (["can-evolve", "trade"].includes(status)) counts.evolutions += 1;
     else counts.missing += 1;
   }
   return counts;
@@ -926,7 +1015,7 @@ function computeCounts(entries) {
 
 function getEffectiveStatus(entry, mode) {
   const stored = state.statuses[mode]?.[entry.id];
-  if (stored === "owned" || stored === "can-evolve") return stored;
+  if (["owned", "can-evolve", "trade"].includes(stored)) return stored;
   if (stored === "missing-lock") return "missing";
   if (isCurrentlyUnreleased(entry)) return "unreleased";
 
@@ -938,15 +1027,19 @@ function getEffectiveStatus(entry, mode) {
 }
 
 function cycleStatus(entryId) {
-  const bucket = state.statuses[state.activeMode];
   const entry = getEntryById(entryId);
   if (!entry) return;
   const current = getEffectiveStatus(entry, state.activeMode);
-  const order = ["missing", "owned", "can-evolve"];
-  const next = order[(order.indexOf(current) + 1 + order.length) % order.length];
-  bucket[entryId] = next === "missing" ? "missing-lock" : next;
+  if (current === "unreleased") return;
+  const autoDerived = isAutoDerivedCanEvolve(state.activeMode, entryId);
+  let next = "missing";
+  if (current === "missing") next = "owned";
+  else if (current === "owned") next = "can-evolve";
+  else if (current === "trade") next = "owned";
+  else if (current === "can-evolve") next = autoDerived ? "owned" : "missing";
+  setEntryStatus(state.activeMode, entryId, next, { autoDerived: false });
   registerStickyVisible(entryId);
-  if (next === "owned" && state.autoEvolve) {
+  if (["owned", "trade"].includes(next) && state.autoEvolve) {
     propagateOwnedForward(entryId, state.activeMode);
   }
   saveState();
@@ -955,14 +1048,12 @@ function cycleStatus(entryId) {
 
 function propagateOwnedForward(entryId, mode) {
   const entry = getEntryById(entryId);
-  if (!entry || entry.isAltForm || ["mega", "gmax"].includes(mode)) return;
-  const descendants = getDescendants(entry.dex);
-  descendants.forEach(descDex => {
-    const desc = canonicalEntries.find(candidate => candidate.dex === descDex);
-    if (!desc) return;
-    const current = state.statuses[mode][desc.id] || desc.importedBaseStatus || "missing";
-    if (current === "missing") {
-      state.statuses[mode][desc.id] = "can-evolve";
+  if (!entry || ["mega", "gmax"].includes(mode)) return;
+  const descendants = getEvolutionTargets(entry);
+  descendants.forEach(desc => {
+    const stored = state.statuses[mode][desc.id];
+    if (!stored || stored === "missing") {
+      setEntryStatus(mode, desc.id, "can-evolve", { autoDerived: true });
       registerStickyVisible(desc.id);
     }
   });
@@ -975,7 +1066,7 @@ function getDescendants(startDex) {
 
   while (queue.length) {
     const current = queue.shift();
-    const nextEntries = canonicalEntries.filter(candidate => EVOLUTION_PREDECESSOR[candidate.dex] === current);
+    const nextEntries = canonicalEntries.filter(candidate => ALL_EVOLUTION_PREDECESSOR[candidate.dex] === current);
     nextEntries.forEach(candidate => {
       if (seen.has(candidate.dex)) return;
       seen.add(candidate.dex);
@@ -987,9 +1078,115 @@ function getDescendants(startDex) {
   return out;
 }
 
+function shouldUseSpeciesSummaryLogic(mode) {
+  return STANDARD_COLLECTION_MODES.includes(mode);
+}
+
+function getSpeciesSummaryStatus(dex, mode) {
+  const speciesEntries = speciesEntriesByDex.get(Number(dex)) || [];
+  if (!speciesEntries.length) return "missing";
+  if (speciesEntries.some(entry => isCurrentlyUnreleased(entry))) return "unreleased";
+  if (speciesEntries.some(entry => getEffectiveStatus(entry, mode) === "owned")) return "owned";
+  if (speciesEntries.some(entry => ["can-evolve", "trade"].includes(getEffectiveStatus(entry, mode)))) return "can-evolve";
+  return "missing";
+}
+
+function getEvolutionTargets(entry) {
+  const targets = [];
+  const familyKey = getFormFamilyKey(entry);
+  const descendantDexes = [...new Set([
+    ...getDescendants(entry.dex),
+    ...getRegionalSpecificDescendants(entry, familyKey)
+  ])];
+
+  descendantDexes.forEach(descDex => {
+    const speciesEntries = speciesEntriesByDex.get(descDex) || [];
+    if (!speciesEntries.length) return;
+
+    let target = null;
+    if (entry.isAltForm && familyKey) {
+      target = speciesEntries.find(candidate => getFormFamilyKey(candidate) === familyKey) || null;
+    }
+
+    if (!target) {
+      target = speciesEntries.find(candidate => !candidate.isAltForm) || speciesEntries[0];
+    }
+
+    if (target) targets.push(target);
+  });
+  return targets;
+}
+
+function getRegionalSpecificDescendants(entry, familyKey) {
+  if (!entry.isAltForm || !familyKey) return [];
+  const regionalKey = `${familyKey}:${entry.dex}`;
+  const regionalMap = {
+    "galarian:52": [863],
+    "galarian:83": [865],
+    "galarian:222": [864],
+    "galarian:264": [862],
+    "galarian:562": [867],
+    "hisuian:211": [904],
+    "hisuian:215": [903],
+    "paldean:194": [980]
+  };
+  return regionalMap[regionalKey] || [];
+}
+
+function getFormFamilyKey(entry) {
+  const slug = getSpecialSpriteSlug(entry, "pokemon");
+  if (!slug) return "";
+  if (slug.includes("-alolan")) return "alolan";
+  if (slug.includes("-galarian")) return "galarian";
+  if (slug.includes("-hisuian")) return "hisuian";
+  if (slug.includes("-paldean")) return "paldean";
+  return "";
+}
+
+function setEntryStatus(mode, entryId, nextStatus, options = {}) {
+  state.statuses[mode] ||= {};
+  state.statusMeta[mode] ||= {};
+
+  if (nextStatus === "missing") {
+    state.statuses[mode][entryId] = "missing-lock";
+    delete state.statusMeta[mode][entryId];
+    return;
+  }
+
+  state.statuses[mode][entryId] = nextStatus;
+  if (nextStatus === "can-evolve" && options.autoDerived) {
+    state.statusMeta[mode][entryId] = { autoDerivedCanEvolve: true };
+  } else {
+    delete state.statusMeta[mode][entryId];
+  }
+}
+
+function isAutoDerivedCanEvolve(mode, entryId) {
+  return !!state.statusMeta?.[mode]?.[entryId]?.autoDerivedCanEvolve;
+}
+
 function getEntryById(entryId) {
   const all = [...canonicalEntries, ...altEntries, ...megaEntries, ...gmaxEntries];
   return all.find(entry => entry.id === entryId) || null;
+}
+
+function setTradeStatus(entryId) {
+  const entry = getEntryById(entryId);
+  if (!entry || isCurrentlyUnreleased(entry)) return;
+  setEntryStatus(state.activeMode, entryId, "trade", { autoDerived: false });
+  registerStickyVisible(entryId);
+  if (state.autoEvolve) {
+    propagateOwnedForward(entryId, state.activeMode);
+  }
+  saveState();
+  render();
+}
+
+function clearLongPressTimer() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
 }
 
 function toggleUnreleased(entryId) {
@@ -1275,12 +1472,34 @@ function getSpriteSources(entry, mode) {
 
 function getSpecialSpriteSlug(entry, mode) {
   if (entry.isAltForm) {
-    return ALT_FORM_SPRITE_SLUGS[entry.id] || "";
+    return ALT_FORM_SPRITE_SLUGS[entry.id] || getHeuristicAltSpriteSlug(entry);
   }
   if (mode === "gmax") {
     return `${slugify(entry.baseName)}-gmax`;
   }
   return SPECIAL_SPRITE_SLUGS[entry.id] || "";
+}
+
+function getHeuristicAltSpriteSlug(entry) {
+  const index = Number(entry.id.split("::")[2] || 0);
+  const slugSets = {
+    386: ["deoxys-attack", "deoxys-defense", "deoxys-speed"],
+    483: ["dialga-origin"],
+    484: ["palkia-origin"],
+    487: ["giratina-origin"],
+    492: ["shaymin-sky"],
+    641: ["tornadus-therian"],
+    642: ["thundurus-therian"],
+    645: ["landorus-therian"],
+    646: ["kyurem-white", "kyurem-black"],
+    710: ["pumpkaboo-small", "pumpkaboo-large", "pumpkaboo-super"],
+    711: ["gourgeist-small", "gourgeist-large", "gourgeist-super"],
+    718: ["zygarde-10", "zygarde-complete"],
+    745: ["lycanroc-midnight", "lycanroc-dusk"]
+  };
+  const candidates = slugSets[entry.dex];
+  if (!candidates?.length) return "";
+  return candidates[index - 1] || "";
 }
 
 function slugify(value) {
@@ -1310,6 +1529,7 @@ function buildSubline(entry) {
 function statusClassName(status) {
   if (status === "owned") return "status-owned";
   if (status === "can-evolve") return "status-can-evolve";
+  if (status === "trade") return "status-trade";
   if (status === "unreleased") return "status-unreleased";
   return "status-missing";
 }
@@ -1317,6 +1537,7 @@ function statusClassName(status) {
 function statusLabel(status) {
   if (status === "owned") return "Owned";
   if (status === "can-evolve") return "Can evolve";
+  if (status === "trade") return "Trade";
   if (status === "unreleased") return "Unreleased";
   return "Missing";
 }

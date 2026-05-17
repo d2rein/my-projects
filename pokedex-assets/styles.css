@@ -384,6 +384,11 @@ main {
   background: var(--evolve);
 }
 
+.status-trade {
+  color: #07101d;
+  background: linear-gradient(135deg, #79d7ff, #9fc9ff);
+}
+
 .status-missing {
   color: white;
   background: rgba(255, 143, 157, 0.72);
