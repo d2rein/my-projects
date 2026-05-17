@@ -27,67 +27,69 @@
       margin: 0;
       color: var(--text);
       background: radial-gradient(circle at top, #18324f 0%, #0c1424 35%, var(--bg) 100%);
-      font: 15px/1.35 "Trebuchet MS", Verdana, sans-serif;
+      font: 14px/1.2 "Trebuchet MS", Verdana, sans-serif;
     }
     .shell {
-      width: min(1640px, calc(100vw - 20px));
-      margin: 14px auto 26px;
+      width: min(1640px, calc(100vw - 16px));
+      margin: 10px auto 18px;
     }
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 16px;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.26);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
       backdrop-filter: blur(10px);
     }
-    .panel + .panel { margin-top: 12px; }
+    .panel + .panel { margin-top: 10px; }
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 18px;
+      gap: 14px;
       align-items: start;
     }
     .eyebrow {
       color: #9bb6ff;
       text-transform: uppercase;
       letter-spacing: 0.18em;
-      font-size: 0.78rem;
-      margin-bottom: 6px;
+      font-size: 0.72rem;
+      margin-bottom: 4px;
     }
     h1 {
-      margin: 0 0 8px;
-      font-size: clamp(1.9rem, 3.6vw, 2.9rem);
-      line-height: 1.02;
+      margin: 0 0 4px;
+      font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+      line-height: 1;
     }
     .hero p {
       margin: 0;
       color: var(--muted);
-      max-width: 78ch;
+      max-width: 72ch;
+      font-size: 0.88rem;
+      line-height: 1.2;
     }
     .meta {
       display: grid;
-      gap: 6px;
-      min-width: 280px;
+      gap: 4px;
+      min-width: 250px;
       color: var(--muted);
-      font-size: 0.93rem;
+      font-size: 0.82rem;
       text-align: right;
     }
     .controls {
       display: grid;
-      gap: 12px;
+      gap: 8px;
     }
     .row {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
       align-items: center;
     }
     .search {
-      flex: 1 1 360px;
-      min-width: 260px;
-      padding: 11px 14px;
-      border-radius: 14px;
+      flex: 1 1 320px;
+      min-width: 220px;
+      padding: 7px 10px;
+      border-radius: 10px;
       border: 1px solid #2b4268;
       background: #0d1830;
       color: var(--text);
@@ -99,8 +101,9 @@
       background: #182a49;
       color: var(--text);
       border-radius: 999px;
-      padding: 10px 14px;
+      padding: 7px 10px;
       font: inherit;
+      font-size: 0.82rem;
       text-decoration: none;
     }
     button, select { cursor: pointer; }
@@ -111,33 +114,41 @@
     }
     .summary {
       display: flex;
-      gap: 10px;
+      gap: 6px;
       flex-wrap: wrap;
       color: var(--muted);
-      font-size: 0.94rem;
+      font-size: 0.8rem;
     }
     .summary-pill {
-      padding: 8px 12px;
+      padding: 5px 8px;
       border-radius: 999px;
       border: 1px solid #294261;
       background: rgba(16, 26, 43, 0.78);
     }
     .warning {
       color: #ffd18f;
-      font-size: 0.94rem;
+      font-size: 0.82rem;
     }
     .table-wrap {
       overflow: auto;
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 12px;
       background: rgba(8, 14, 25, 0.72);
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1060px;
+      min-width: 930px;
       table-layout: fixed;
     }
+    thead th:nth-child(1), tbody td:nth-child(1) { width: 46px; }
+    thead th:nth-child(2), tbody td:nth-child(2) { width: 148px; }
+    thead th:nth-child(3), tbody td:nth-child(3) { width: 18px; text-align: center; }
+    thead th:nth-child(4), tbody td:nth-child(4) { width: 18px; text-align: center; }
+    thead th:nth-child(5), tbody td:nth-child(5) { width: 118px; }
+    thead th:nth-child(6), tbody td:nth-child(6) { width: 250px; }
+    thead th:nth-child(7), tbody td:nth-child(7) { width: 82px; }
+    thead th:nth-child(8), tbody td:nth-child(8) { width: 82px; }
     thead th {
       position: sticky;
       top: 0;
@@ -145,30 +156,27 @@
       background: #172742;
       color: #f3f8ff;
       text-align: left;
-      font-size: 0.79rem;
+      font-size: 0.7rem;
       letter-spacing: 0.03em;
       border-bottom: 1px solid #294261;
-      padding: 6px 6px;
+      padding: 3px 4px;
       white-space: nowrap;
-      line-height: 1.05;
+      line-height: 1;
     }
     tbody td {
-      padding: 4px 6px;
+      padding: 1px 4px;
       border-bottom: 1px solid rgba(41, 66, 97, 0.42);
       vertical-align: middle;
       white-space: nowrap;
-      line-height: 1.05;
+      line-height: 1;
+      height: 18px;
     }
-    tbody tr:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
+    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
     tbody tr.row-missing {
       background: var(--missing-bg);
       box-shadow: inset 3px 0 0 var(--missing-line);
     }
-    tbody tr.row-upcoming {
-      opacity: 0.66;
-    }
+    tbody tr.row-upcoming { opacity: 0.66; }
     tbody tr.group-raids { background-color: var(--raid); }
     tbody tr.group-shadow-raids { background-color: var(--shadow-raid); }
     tbody tr.group-rocket { background-color: var(--rocket); }
@@ -178,90 +186,76 @@
     .dex-cell {
       font-variant-numeric: tabular-nums;
       color: #cfe0ff;
-      width: 58px;
-      font-size: 0.82rem;
+      font-size: 0.72rem;
     }
     .name-cell {
-      width: 170px;
-      min-width: 170px;
       font-weight: 700;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 0.86rem;
+      font-size: 0.76rem;
     }
     .symbol {
       display: inline-flex;
-      width: 18px;
-      min-height: 18px;
+      width: 12px;
+      min-height: 12px;
       align-items: center;
       justify-content: center;
       border-radius: 999px;
-      border: 1px solid #36557f;
-      background: rgba(15, 24, 40, 0.78);
-      font-size: 0.8rem;
+      background: transparent;
+      font-size: 0.62rem;
       font-weight: 700;
       color: #f1f7ff;
+      line-height: 1;
+      padding: 0;
+      border: 0;
     }
-    .symbol.empty {
-      opacity: 0.24;
-    }
+    .symbol.empty { opacity: 0.2; }
     .symbol.shiny-on {
       color: #ffd84f;
-      text-shadow: 0 0 10px rgba(255, 214, 90, 0.55);
+      text-shadow: 0 0 8px rgba(255, 214, 90, 0.55);
     }
     .symbol.shadow-on {
-      color: #ff7e9b;
-      text-shadow: 0 0 10px rgba(255, 100, 130, 0.55);
-      background: rgba(55, 18, 31, 0.85);
-      border-color: rgba(255, 122, 151, 0.65);
+      color: #ff6f93;
+      text-shadow: 0 0 8px rgba(255, 90, 126, 0.7);
+    }
+    .category-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .category-link {
       color: #bfe7ff;
       text-decoration: none;
       font-weight: 700;
       display: inline-block;
-      max-width: 120px;
+      max-width: 118px;
       overflow: hidden;
       text-overflow: ellipsis;
       vertical-align: middle;
-      font-size: 0.83rem;
+      font-size: 0.73rem;
     }
     .category-link:hover {
       color: #fff;
       text-decoration: underline;
     }
-    .category-type {
-      display: inline-block;
-      margin-left: 5px;
-      padding: 1px 6px;
-      border-radius: 999px;
-      font-size: 0.63rem;
-      color: #d8ecff;
-      background: rgba(12, 24, 42, 0.7);
-      border: 1px solid rgba(90, 126, 173, 0.45);
-      vertical-align: middle;
-    }
     .source-cell {
       color: #dfe9fb;
-      width: 300px;
-      max-width: 300px;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 0.8rem;
+      font-size: 0.7rem;
     }
     .date-cell {
       color: #d4e4ff;
-      font-size: 0.76rem;
-      width: 102px;
+      font-size: 0.68rem;
     }
     .missing-tag, .upcoming-tag {
       display: inline-block;
-      margin-left: 5px;
-      padding: 0 4px;
+      margin-left: 2px;
+      padding: 0 3px;
       border-radius: 999px;
-      font-size: 0.58rem;
+      font-size: 0.5rem;
       font-weight: 700;
       vertical-align: middle;
+      line-height: 1.05;
     }
     .missing-tag {
       color: #ffd7d7;
@@ -274,8 +268,9 @@
       border: 1px solid rgba(168, 184, 226, 0.22);
     }
     .empty {
-      padding: 20px;
+      padding: 12px;
       color: var(--muted);
+      font-size: 0.82rem;
     }
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
@@ -289,9 +284,7 @@
       <div>
         <div class="eyebrow">Pokemon Go</div>
         <h1>Availability Tracker</h1>
-        <p>
-          Live Leek Duck availability, packed into a single tracker table with current sources, upcoming windows, and local Pokedex-aware missing highlights.
-        </p>
+        <p>Live Leek Duck availability in a dense tracker table with current sources, upcoming windows, and local Pokedex-aware missing highlights.</p>
       </div>
       <div class="meta">
         <div><strong>Feed updated:</strong> <span id="updatedAt">Loading...</span></div>
@@ -325,8 +318,8 @@
             <tr>
               <th>Dex #</th>
               <th>Name</th>
-              <th title="Shiny available">Shiny</th>
-              <th title="Shadow-related source">Shadow</th>
+              <th title="Shiny available">S</th>
+              <th title="Shadow-related source">Sh</th>
               <th>Category</th>
               <th>Source</th>
               <th>From</th>
@@ -343,12 +336,7 @@
 
   <script>
     const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v2";
-    const state = {
-      search: "",
-      sort: "source",
-      missingOnly: false,
-      showUpcoming: true
-    };
+    const state = { search: "", sort: "source", missingOnly: false, showUpcoming: true };
 
     const els = {
       updatedAt: document.querySelector("#updatedAt"),
@@ -425,8 +413,8 @@
       els.tableBody.innerHTML = rows.map(row => {
         const missingTag = row.isMissing ? `<span class="missing-tag">Missing</span>` : "";
         const upcomingTag = row.isUpcoming ? `<span class="upcoming-tag">${row.isSoonRaid ? "Soon" : "Upcoming"}</span>` : "";
-        const shinyActive = row.shiny ? "✦" : "·";
-        const shadowActive = row.isShadowSource ? "⬣" : "·";
+        const shinyActive = row.shiny ? "&#10022;" : "&middot;";
+        const shadowActive = row.isShadowSource ? "&#11043;" : "&middot;";
 
         return `
           <tr class="group-${escapeHtml(row.group)} ${row.isMissing ? "row-missing" : ""} ${row.isUpcoming ? "row-upcoming" : ""}">
@@ -434,7 +422,7 @@
             <td class="name-cell">${escapeHtml(row.name)}${missingTag}${upcomingTag}</td>
             <td><span class="symbol ${row.shiny ? "shiny-on" : "empty"}">${shinyActive}</span></td>
             <td><span class="symbol ${row.isShadowSource ? "shadow-on" : "empty"}">${shadowActive}</span></td>
-            <td>${row.categoryUrl ? `<a class="category-link" href="${escapeHtml(row.categoryUrl)}" target="_blank" rel="noreferrer">${escapeHtml(row.category)}</a>` : escapeHtml(row.category)}<span class="category-type">${escapeHtml(row.groupLabel)}</span></td>
+            <td class="category-cell">${row.categoryUrl ? `<a class="category-link" href="${escapeHtml(row.categoryUrl)}" target="_blank" rel="noreferrer">${escapeHtml(row.category)}</a>` : escapeHtml(row.category)}</td>
             <td class="source-cell" title="${escapeHtml(row.source)}">${escapeHtml(row.source)}</td>
             <td class="date-cell">${escapeHtml(formatShortDate(row.startsAt))}</td>
             <td class="date-cell">${escapeHtml(formatShortDate(row.endsAt))}</td>
@@ -451,10 +439,10 @@
       const soonRaids = rows.filter(row => row.isSoonRaid).length;
       els.summary.innerHTML = [
         pill(`${total} rows`),
-        pill(`${missing} missing highlighted`),
+        pill(`${missing} missing`),
         pill(`${current} current`),
         pill(`${upcoming} upcoming`),
-        pill(`${soonRaids} soon raid rows`)
+        pill(`${soonRaids} soon raids`)
       ].join("");
     }
 
@@ -467,10 +455,7 @@
         if (!state.showUpcoming && row.isUpcoming) return false;
         if (state.missingOnly && !row.isMissing) return false;
         if (!state.search) return true;
-        const haystack = [row.name, row.category, row.source, row.groupLabel]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
+        const haystack = [row.name, row.category, row.source].filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(state.search);
       });
     }
@@ -480,7 +465,6 @@
         rows.sort((a, b) => a.dex - b.dex || compareText(a.name, b.name) || compareText(a.source, b.source));
         return rows;
       }
-
       rows.sort((a, b) =>
         eventOrderBucket(a) - eventOrderBucket(b)
         || a.sectionOrder - b.sectionOrder
@@ -505,11 +489,9 @@
       currentSections.forEach((section, sectionOrder) => {
         pushSectionRows(rows, section, sectionOrder, false);
       });
-
       upcomingSections.forEach((section, index) => {
         pushSectionRows(rows, section, currentSections.length + index, true);
       });
-
       return dedupeRows(rows);
     }
 
@@ -520,7 +502,6 @@
         category: section.title || section.category || "Untitled",
         categoryUrl: section.source || "",
         group: deriveGroup(section),
-        groupLabel: deriveGroupLabel(section),
         startsAt: section.startsAt || null,
         endsAt: section.endsAt || null,
         isUpcoming
@@ -575,18 +556,6 @@
       if (section.category === "Field Research") return "research";
       if (section.category === "Eggs") return "eggs";
       return "event";
-    }
-
-    function deriveGroupLabel(section) {
-      const group = deriveGroup(section);
-      return {
-        "raids": "Raids",
-        "shadow-raids": "Shadow Raids",
-        "rocket": "Rocket",
-        "research": "Field Research",
-        "eggs": "Eggs",
-        "event": "Event"
-      }[group] || section.category || "Event";
     }
 
     function isRaidLike(section, entry) {
