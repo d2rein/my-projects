@@ -615,6 +615,10 @@ function compareStatusPriority(left, right) {
   return (priority[left] || 0) - (priority[right] || 0);
 }
 
+function getEntryChangedAt(snapshot, mode, entryId) {
+  return String(snapshot?.statusMeta?.[mode]?.[entryId]?.changedAt || snapshot?._meta?.lastModifiedAt || "");
+}
+
 function toCanonicalEntry(row, groupRows) {
   return {
     id: `pokemon::${row.dex}`,
@@ -790,23 +794,16 @@ function loadState() {
 
 function chooseCurrentPokedexStorageValue() {
   const candidates = [
-    { key: STORAGE_KEY, raw: localStorage.getItem(STORAGE_KEY) },
-    ...LEGACY_POKEDEX_STORAGE_KEYS.map(key => ({ key, raw: localStorage.getItem(key) }))
-  ].filter(item => item.raw);
+    localStorage.getItem(STORAGE_KEY),
+    ...LEGACY_POKEDEX_STORAGE_KEYS.map(key => localStorage.getItem(key))
+  ]
+    .filter(Boolean)
+    .map(raw => safeJsonParse(raw))
+    .filter(Boolean);
 
   if (!candidates.length) return null;
-  if (candidates.length === 1) return candidates[0].raw;
-
-  let best = candidates[0];
-  let bestTime = getModifiedAt(safeJsonParse(best.raw));
-  for (const candidate of candidates.slice(1)) {
-    const time = getModifiedAt(safeJsonParse(candidate.raw));
-    if (time > bestTime) {
-      best = candidate;
-      bestTime = time;
-    }
-  }
-  return best.raw;
+  const merged = candidates.reduce((acc, candidate) => mergePokedexStates(acc, candidate), null);
+  return merged ? JSON.stringify(merged) : null;
 }
 
 function loadLegacyPokedexState() {
@@ -1320,18 +1317,19 @@ function getFormFamilyKey(entry) {
 function setEntryStatus(mode, entryId, nextStatus, options = {}) {
   state.statuses[mode] ||= {};
   state.statusMeta[mode] ||= {};
+  const changedAt = new Date().toISOString();
 
   if (nextStatus === "missing") {
     state.statuses[mode][entryId] = "missing-lock";
-    delete state.statusMeta[mode][entryId];
+    state.statusMeta[mode][entryId] = { changedAt };
     return;
   }
 
   state.statuses[mode][entryId] = nextStatus;
   if (nextStatus === "can-evolve" && options.autoDerived) {
-    state.statusMeta[mode][entryId] = { autoDerivedCanEvolve: true };
+    state.statusMeta[mode][entryId] = { autoDerivedCanEvolve: true, changedAt };
   } else {
-    delete state.statusMeta[mode][entryId];
+    state.statusMeta[mode][entryId] = { changedAt };
   }
 }
 
@@ -1508,7 +1506,73 @@ function mergePokedexStates(localState, remoteState) {
   if (!localState && !remoteState) return null;
   if (!localState) return remoteState;
   if (!remoteState) return localState;
-  return getModifiedAt(remoteState) > getModifiedAt(localState) ? remoteState : localState;
+  const localTime = getModifiedAt(localState);
+  const remoteTime = getModifiedAt(remoteState);
+  const newer = remoteTime > localTime ? remoteState : localState;
+  const merged = structuredClone(newer || localState || remoteState || {});
+
+  merged.statuses ||= {};
+  merged.statusMeta ||= {};
+  merged.availability ||= {};
+  merged.unreleasedOverrides ||= {};
+
+  DEX_MODES.forEach(mode => {
+    const modeId = mode.id;
+    merged.statuses[modeId] ||= {};
+    merged.statusMeta[modeId] ||= {};
+    merged.availability[modeId] ||= {};
+
+    const ids = new Set([
+      ...Object.keys(localState?.statuses?.[modeId] || {}),
+      ...Object.keys(remoteState?.statuses?.[modeId] || {})
+    ]);
+
+    ids.forEach(entryId => {
+      const localStatus = localState?.statuses?.[modeId]?.[entryId];
+      const remoteStatus = remoteState?.statuses?.[modeId]?.[entryId];
+      if (localStatus == null && remoteStatus == null) return;
+
+      const localChanged = getEntryChangedAt(localState, modeId, entryId);
+      const remoteChanged = getEntryChangedAt(remoteState, modeId, entryId);
+
+      let chosenStatus = localStatus;
+      let chosenMeta = localState?.statusMeta?.[modeId]?.[entryId];
+
+      if (remoteChanged > localChanged) {
+        chosenStatus = remoteStatus;
+        chosenMeta = remoteState?.statusMeta?.[modeId]?.[entryId];
+      } else if (remoteChanged === localChanged && compareStatusPriority(localStatus, remoteStatus) < 0) {
+        chosenStatus = remoteStatus;
+        chosenMeta = remoteState?.statusMeta?.[modeId]?.[entryId];
+      }
+
+      if (chosenStatus != null) merged.statuses[modeId][entryId] = chosenStatus;
+      if (chosenMeta) merged.statusMeta[modeId][entryId] = { ...chosenMeta };
+    });
+
+    const availabilityIds = new Set([
+      ...Object.keys(localState?.availability?.[modeId] || {}),
+      ...Object.keys(remoteState?.availability?.[modeId] || {})
+    ]);
+    availabilityIds.forEach(entryId => {
+      const localValue = localState?.availability?.[modeId]?.[entryId];
+      const remoteValue = remoteState?.availability?.[modeId]?.[entryId];
+      if (localValue == null && remoteValue == null) return;
+      const localChanged = getEntryChangedAt(localState, modeId, entryId);
+      const remoteChanged = getEntryChangedAt(remoteState, modeId, entryId);
+      merged.availability[modeId][entryId] = remoteChanged > localChanged ? !!remoteValue : !!localValue;
+    });
+  });
+
+  merged.unreleasedOverrides = {
+    ...(localState?.unreleasedOverrides || {}),
+    ...(remoteState?.unreleasedOverrides || {})
+  };
+  merged._meta = {
+    ...(merged._meta || {}),
+    lastModifiedAt: [localTime, remoteTime].filter(Boolean).sort().at(-1) || new Date().toISOString()
+  };
+  return merged;
 }
 
 async function fetchCloudBundle() {
