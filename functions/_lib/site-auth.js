@@ -80,12 +80,7 @@ export async function readSession(store, request) {
   if (!sessionId) return null;
   const raw = await store.get(sessionKey(sessionId));
   if (!raw) return null;
-  const record = JSON.parse(raw);
-  record.lastSeenAt = new Date().toISOString();
-  await store.put(sessionKey(sessionId), JSON.stringify(record), {
-    expirationTtl: SESSION_TTL_SECONDS
-  });
-  return record;
+  return JSON.parse(raw);
 }
 
 export async function destroySession(store, request) {

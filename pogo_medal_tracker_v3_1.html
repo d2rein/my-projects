@@ -122,6 +122,8 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
       <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
       <button class="top-action-btn" id="cloudSyncBtn" type="button">Account</button>
+      <button class="top-action-btn" id="accountRefreshBtn" type="button">Refresh live</button>
+      <button class="top-action-btn" id="syncPauseBtn" type="button">Pause sync</button>
       <div class="mini-pill" id="nextSoonBar">—</div>
     </div>
   </div>
@@ -237,6 +239,7 @@ const ACCOUNT_SESSION_API = "/api/site-auth/session";
 const ACCOUNT_LOGIN_API = "/api/site-auth/login";
 const ACCOUNT_LOGOUT_API = "/api/site-auth/logout";
 const POGO_ACCOUNT_STATE_API = "/api/pogo-account-state";
+const ACCOUNT_SYNC_PREFS_KEY = "pogo-account-sync-prefs-v1";
 const RECOVERED_SNAPSHOTS = [
   {"date":"2026-03-17","xp":88752236,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":28766,"idol":81,"kalos":72,"triathlete":106,"rising_star":166,"expert_navigator":685,"life_party":210,"jogger":2884.7,"collector":29196,"scientist":556,"breeder":698,"backpacker":20125,"sightseer":1359,"battle_girl":2971,"pikachu_fan":300,"berry_master":11754,"hoenn":122,"pokemon_ranger":1158,"pilot":1755463,"unova":130,"alola":56,"galar":51,"mega_evo_guru":36,"raid_expert":325,"tiny_collector":220,"jumbo_collector":350,"fisher":86,"youngster":103,"unown":11,"champion":168,"battle_legend":157,"gentleman":685,"sinnoh":79,"cameraman":118,"purifier":221,"hero":521,"rising_star_duo":307,"picnicker":180,"successor":475,"hisui":4,"paldea":48,"ace_trainer":10,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"showcase_star":8,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":6256,"bird_keeper":3504,"punk_girl":2543,"bug_catcher":3067,"swimmer":3762,"gardener":2629,"black_belt":1958,"ruin_maniac":1737,"hiker":1424,"hex_maniac":1621,"rail_staff":1537,"kindler":2108,"rocker":2336,"psychic":2356,"skier":958,"dragon_tamer":767,"delinquent":1973,"fairy_tale":1550}},
   {"date":"2026-04-16","xp":99957272,"medals":{"vivillon":18,"kanto":151,"johto":100,"gym_leader":32187,"idol":97,"kalos":72,"triathlete":116,"rising_star":169,"mega_evo_guru":46,"expert_navigator":703,"life_party":210,"jogger":3164.5,"collector":34068,"scientist":612,"breeder":767,"backpacker":23753,"sightseer":1504,"battle_girl":3238,"pikachu_fan":348,"berry_master":14400,"hoenn":124,"pokemon_ranger":1313,"pilot":1910542,"sinnoh":86,"unova":132,"alola":60,"galar":53,"successor":578,"raid_expert":347,"tiny_collector":256,"jumbo_collector":371,"fisher":90,"youngster":116,"unown":11,"champion":183,"battle_legend":164,"gentleman":711,"cameraman":126,"purifier":259,"hero":600,"rising_star_duo":328,"picnicker":222,"hisui":4,"paldea":49,"showcase_star":10,"ace_trainer":11,"great_league":48,"master_league":5,"ultra_hero":3,"best_buddy":5,"friend_finder":1,"ultra_league":0,"wayfarer":0,"community_member":0,"schoolkid":7295,"bird_keeper":4070,"punk_girl":2984,"bug_catcher":4246,"swimmer":4212,"gardener":3118,"rocker":2981,"psychic":2687,"black_belt":2148,"ruin_maniac":1970,"hiker":1633,"hex_maniac":1796,"rail_staff":1826,"kindler":2416,"skier":1005,"dragon_tamer":792,"delinquent":2205,"fairy_tale":1901}}
@@ -248,6 +251,7 @@ let medalSyncTimer = null;
 let accountSessionState = { loggedIn: false, configured: false, username: "owner" };
 let accountStateRevision = 0;
 let accountSyncPollTimer = null;
+let accountSyncPrefs = loadAccountSyncPrefs();
 
 function mergeSnapshots(...sources) {
   const byDate = new Map();
@@ -278,10 +282,12 @@ function loadState() {
     return fallback;
   }
 }
-function saveState() {
+function saveState(options = {}) {
   state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  scheduleCloudPush();
+  if (options.sync !== false) {
+    scheduleCloudPush();
+  }
 }
 function safeJsonParse(value) {
   if (!value) return null;
@@ -290,6 +296,14 @@ function safeJsonParse(value) {
   } catch {
     return null;
   }
+}
+function loadAccountSyncPrefs() {
+  return {
+    paused: !!safeJsonParse(localStorage.getItem(ACCOUNT_SYNC_PREFS_KEY))?.paused
+  };
+}
+function saveAccountSyncPrefs() {
+  localStorage.setItem(ACCOUNT_SYNC_PREFS_KEY, JSON.stringify(accountSyncPrefs));
 }
 function escapeHtml(value) {
   return String(value ?? "")
@@ -463,8 +477,8 @@ async function pushCloudMedals() {
   accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
   return data;
 }
-function scheduleCloudPush(delay = 1200) {
-  if (!accountSessionState.loggedIn) return;
+function scheduleCloudPush(delay = 3000) {
+  if (!accountSessionState.loggedIn || accountSyncPrefs.paused) return;
   clearTimeout(medalSyncTimer);
   medalSyncTimer = setTimeout(() => {
     pushCloudMedals().catch(error => console.warn("Medal account sync upload failed:", error));
@@ -519,7 +533,8 @@ async function openCloudSyncDialog() {
       html:
         '<div style="display:grid; gap:10px; text-align:left;">' +
         '<div style="font-size:13px; color:#9fb2d9;">Signed in as <strong>' + escapeHtml(accountSessionState.username) + '</strong>.</div>' +
-        '<div style="font-size:12px; color:#9fb2d9;">This session is sitewide. Medal and Pokemon changes save live while you stay signed in.</div>' +
+        '<div style="font-size:12px; color:#9fb2d9;">This session is sitewide. Use <strong>Refresh live</strong> to pull server changes on demand.</div>' +
+        '<div style="font-size:12px; color:#9fb2d9;">Auto upload is currently <strong>' + (accountSyncPrefs.paused ? 'paused' : 'active') + '</strong>.</div>' +
         '</div>',
       showCancelButton: true,
       showDenyButton: true,
@@ -590,7 +605,6 @@ async function openCloudSyncDialog() {
     await fetchCloudMedals();
     await bootstrapAccountFromLocalIfEmpty().catch(() => null);
     await pullCloudMedalsAndApply({ silent: true }).catch(() => null);
-    startAccountSyncPolling();
     await Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
     await Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
@@ -602,7 +616,6 @@ async function initializeCloudSync() {
     if (accountSessionState.loggedIn) {
       await bootstrapAccountFromLocalIfEmpty().catch(() => null);
       await pullCloudMedalsAndApply({ silent: true });
-      startAccountSyncPolling();
     }
   } catch (error) {
     console.warn("Initial medal account sync failed:", error);
@@ -613,37 +626,48 @@ function refreshCloudSyncButton() {
   if (!button) return;
   if (!accountSessionState.configured) {
     button.textContent = "Account Setup";
-    return;
+  } else {
+    button.textContent = accountSessionState.loggedIn ? "Account Live" : "Account Login";
   }
-  button.textContent = accountSessionState.loggedIn ? "Account Live" : "Account Login";
-}
-function startAccountSyncPolling() {
-  stopAccountSyncPolling();
-  accountSyncPollTimer = setInterval(() => {
-    if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
-      pullCloudMedalsAndApply({ silent: true }).catch(error => console.warn("Background medal pull failed:", error));
-    }
-  }, 20000);
-  window.addEventListener("focus", handleAccountSyncFocus);
-  document.addEventListener("visibilitychange", handleAccountSyncVisibility);
+  const refreshButton = document.getElementById("accountRefreshBtn");
+  if (refreshButton) {
+    refreshButton.disabled = !accountSessionState.loggedIn;
+    refreshButton.textContent = "Refresh live";
+  }
+  const pauseButton = document.getElementById("syncPauseBtn");
+  if (pauseButton) {
+    pauseButton.disabled = !accountSessionState.loggedIn;
+    pauseButton.textContent = accountSyncPrefs.paused ? "Resume sync" : "Pause sync";
+  }
 }
 function stopAccountSyncPolling() {
   if (accountSyncPollTimer) {
     clearInterval(accountSyncPollTimer);
     accountSyncPollTimer = null;
   }
-  window.removeEventListener("focus", handleAccountSyncFocus);
-  document.removeEventListener("visibilitychange", handleAccountSyncVisibility);
 }
-function handleAccountSyncFocus() {
-  if (accountSessionState.loggedIn) {
-    pullCloudMedalsAndApply({ silent: true }).catch(error => console.warn("Focus medal pull failed:", error));
+async function handleManualRefreshClick() {
+  if (!accountSessionState.loggedIn) {
+    await openCloudSyncDialog();
+    return;
   }
+  await pullCloudMedalsAndApply({ silent: false });
 }
-function handleAccountSyncVisibility() {
-  if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
-    pullCloudMedalsAndApply({ silent: true }).catch(error => console.warn("Visibility medal pull failed:", error));
+async function toggleSyncPause() {
+  if (!accountSessionState.loggedIn) {
+    await openCloudSyncDialog();
+    return;
   }
+  accountSyncPrefs.paused = !accountSyncPrefs.paused;
+  saveAccountSyncPrefs();
+  refreshCloudSyncButton();
+  if (!accountSyncPrefs.paused) {
+    scheduleCloudPush(100);
+    await Swal.fire({ icon: "success", title: "Auto sync resumed", text: "Local changes will upload again from this device.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  clearTimeout(medalSyncTimer);
+  await Swal.fire({ icon: "info", title: "Auto sync paused", text: "Use this while doing bulk edits. Your changes stay local until you resume sync.", timer: 1700, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
 }
 function snapshotSorted() { return [...state.snapshots].sort((a,b) => a.date.localeCompare(b.date)); }
 function latestSnapshot() { return snapshotSorted().at(-1); }
@@ -1292,6 +1316,8 @@ document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click
 }));
 document.getElementById("backupAllBtn").addEventListener("click", openBackupDialog);
 document.getElementById("cloudSyncBtn").addEventListener("click", openCloudSyncDialog);
+document.getElementById("accountRefreshBtn").addEventListener("click", handleManualRefreshClick);
+document.getElementById("syncPauseBtn").addEventListener("click", toggleSyncPause);
 document.getElementById("importAllInput").addEventListener("change", async event => {
   const file = event.target.files?.[0];
   await handleCombinedImport(file);

@@ -1,5 +1,6 @@
 const STORAGE_KEY = "pogo-fresh-pokedex-v2";
 const MEDAL_STORAGE_KEY = "pogo-medal-forecast-v2";
+const ACCOUNT_SYNC_PREFS_KEY = "pogo-account-sync-prefs-v1";
 const ACCOUNT_SESSION_API = "/api/site-auth/session";
 const ACCOUNT_LOGIN_API = "/api/site-auth/login";
 const ACCOUNT_LOGOUT_API = "/api/site-auth/logout";
@@ -286,6 +287,8 @@ const els = {
   gridTitle: document.querySelector("#gridTitle"),
   gridCountNote: document.querySelector("#gridCountNote"),
   cloudSyncBtn: document.querySelector("#cloudSyncBtn")
+  ,accountRefreshBtn: document.querySelector("#accountRefreshBtn")
+  ,syncPauseBtn: document.querySelector("#syncPauseBtn")
 };
 
 const state = loadState();
@@ -305,6 +308,7 @@ let suppressNextStatusClickId = "";
 let accountSyncPollTimer = null;
 let accountSessionState = { loggedIn: false, configured: false, username: "owner" };
 let accountStateRevision = 0;
+let accountSyncPrefs = loadAccountSyncPrefs();
 
 const ALL_EVOLUTION_PREDECESSOR = { ...EVOLUTION_PREDECESSOR, ...EXTRA_EVOLUTION_PREDECESSOR };
 
@@ -678,10 +682,12 @@ function loadState() {
   }
 }
 
-function saveState() {
+function saveState(options = {}) {
   state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  scheduleCloudPush();
+  if (options.sync !== false) {
+    scheduleCloudPush();
+  }
 }
 
 function buildControls() {
@@ -710,7 +716,7 @@ function bindEvents() {
     if (!button) return;
     state.activeMode = button.dataset.mode;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     buildControls();
     render();
   });
@@ -720,7 +726,7 @@ function bindEvents() {
     if (!button) return;
     state.statusFilter = button.dataset.filter;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     buildControls();
     render();
   });
@@ -730,7 +736,7 @@ function bindEvents() {
     if (!button) return;
     state.regionFilter = button.dataset.regionFilter;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     buildControls();
     render();
   });
@@ -738,35 +744,35 @@ function bindEvents() {
   els.searchInput.addEventListener("input", () => {
     state.search = els.searchInput.value;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     render();
   });
 
   els.autoEvolveToggle.addEventListener("change", () => {
     state.autoEvolve = els.autoEvolveToggle.checked;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     render();
   });
 
   els.showAltFormsToggle.addEventListener("change", () => {
     state.showAltForms = els.showAltFormsToggle.checked;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     render();
   });
 
   els.editUnreleasedToggle.addEventListener("change", () => {
     state.editUnreleased = els.editUnreleasedToggle.checked;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     render();
   });
 
   els.showUnavailableToggle.addEventListener("change", () => {
     state.showUnavailable = els.showUnavailableToggle.checked;
     clearStickyVisibility();
-    saveState();
+    saveState({ sync: false });
     render();
   });
 
@@ -816,6 +822,8 @@ function bindEvents() {
   });
 
   els.cloudSyncBtn?.addEventListener("click", openCloudSyncDialog);
+  els.accountRefreshBtn?.addEventListener("click", handleManualRefreshClick);
+  els.syncPauseBtn?.addEventListener("click", toggleSyncPause);
 }
 
 function render() {
@@ -1243,6 +1251,16 @@ function safeJsonParse(value) {
   }
 }
 
+function loadAccountSyncPrefs() {
+  return {
+    paused: !!safeJsonParse(localStorage.getItem(ACCOUNT_SYNC_PREFS_KEY))?.paused
+  };
+}
+
+function saveAccountSyncPrefs() {
+  localStorage.setItem(ACCOUNT_SYNC_PREFS_KEY, JSON.stringify(accountSyncPrefs));
+}
+
 function getCloudSyncSettings() {
   return null;
 }
@@ -1321,8 +1339,8 @@ async function pushCloudBundle() {
   return data;
 }
 
-function scheduleCloudPush(delay = 1200) {
-  if (!accountSessionState.loggedIn) return;
+function scheduleCloudPush(delay = 3000) {
+  if (!accountSessionState.loggedIn || accountSyncPrefs.paused) return;
   clearTimeout(cloudSyncTimer);
   cloudSyncTimer = setTimeout(() => {
     pushCloudBundle().catch(error => console.warn("Pokedex account sync upload failed:", error));
@@ -1399,7 +1417,8 @@ async function openCloudSyncDialog() {
       title: "Site Account",
       html:         '<div style="display:grid; gap:10px; text-align:left;">' +
         '<div style="font-size:13px; color:#9fb2d9;">Signed in as <strong>' + escapeHtml(accountSessionState.username) + '</strong>.</div>' +
-        '<div style="font-size:12px; color:#9fb2d9;">This session is sitewide. Pokedex and medal changes save live while you stay signed in.</div>' +
+        '<div style="font-size:12px; color:#9fb2d9;">This session is sitewide. Use <strong>Refresh live</strong> to pull server changes on demand.</div>' +
+        '<div style="font-size:12px; color:#9fb2d9;">Auto upload is currently <strong>' + (accountSyncPrefs.paused ? 'paused' : 'active') + '</strong>.</div>' +
         '</div>',
       showCancelButton: true,
       showDenyButton: true,
@@ -1470,7 +1489,6 @@ async function openCloudSyncDialog() {
     await fetchCloudBundle();
     await bootstrapAccountFromLocalIfEmpty().catch(() => null);
     await pullCloudBundleAndApply({ silent: true }).catch(() => null);
-    startAccountSyncPolling();
     await window.Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
     await window.Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
@@ -1483,7 +1501,6 @@ async function initializeCloudSync() {
     if (accountSessionState.loggedIn) {
       await bootstrapAccountFromLocalIfEmpty().catch(() => null);
       await pullCloudBundleAndApply({ silent: true });
-      startAccountSyncPolling();
     }
   } catch (error) {
     console.warn("Initial pokedex account sync failed:", error);
@@ -1494,20 +1511,17 @@ function refreshCloudSyncButton() {
   if (!els.cloudSyncBtn) return;
   if (!accountSessionState.configured) {
     els.cloudSyncBtn.textContent = "Account Setup";
-    return;
+  } else {
+    els.cloudSyncBtn.textContent = accountSessionState.loggedIn ? "Account Live" : "Account Login";
   }
-  els.cloudSyncBtn.textContent = accountSessionState.loggedIn ? "Account Live" : "Account Login";
-}
-
-function startAccountSyncPolling() {
-  stopAccountSyncPolling();
-  accountSyncPollTimer = setInterval(() => {
-    if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
-      pullCloudBundleAndApply({ silent: true }).catch(error => console.warn("Background pokedex pull failed:", error));
-    }
-  }, 20000);
-  window.addEventListener("focus", handleAccountSyncFocus);
-  document.addEventListener("visibilitychange", handleAccountSyncVisibility);
+  if (els.accountRefreshBtn) {
+    els.accountRefreshBtn.disabled = !accountSessionState.loggedIn;
+    els.accountRefreshBtn.textContent = "Refresh live";
+  }
+  if (els.syncPauseBtn) {
+    els.syncPauseBtn.disabled = !accountSessionState.loggedIn;
+    els.syncPauseBtn.textContent = accountSyncPrefs.paused ? "Resume sync" : "Pause sync";
+  }
 }
 
 function stopAccountSyncPolling() {
@@ -1515,20 +1529,31 @@ function stopAccountSyncPolling() {
     clearInterval(accountSyncPollTimer);
     accountSyncPollTimer = null;
   }
-  window.removeEventListener("focus", handleAccountSyncFocus);
-  document.removeEventListener("visibilitychange", handleAccountSyncVisibility);
 }
 
-function handleAccountSyncFocus() {
-  if (accountSessionState.loggedIn) {
-    pullCloudBundleAndApply({ silent: true }).catch(error => console.warn("Focus pokedex pull failed:", error));
+async function handleManualRefreshClick() {
+  if (!accountSessionState.loggedIn) {
+    await openCloudSyncDialog();
+    return;
   }
+  await pullCloudBundleAndApply({ silent: false });
 }
 
-function handleAccountSyncVisibility() {
-  if (document.visibilityState === "visible" && accountSessionState.loggedIn) {
-    pullCloudBundleAndApply({ silent: true }).catch(error => console.warn("Visibility pokedex pull failed:", error));
+async function toggleSyncPause() {
+  if (!accountSessionState.loggedIn) {
+    await openCloudSyncDialog();
+    return;
   }
+  accountSyncPrefs.paused = !accountSyncPrefs.paused;
+  saveAccountSyncPrefs();
+  refreshCloudSyncButton();
+  if (!accountSyncPrefs.paused) {
+    scheduleCloudPush(100);
+    await window.Swal.fire({ icon: "success", title: "Auto sync resumed", text: "Local changes will upload again from this device.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  clearTimeout(cloudSyncTimer);
+  await window.Swal.fire({ icon: "info", title: "Auto sync paused", text: "Use this while doing bulk edits. Your changes stay local until you resume sync.", timer: 1700, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
 }
 
 function getStickyFilterKey() {
