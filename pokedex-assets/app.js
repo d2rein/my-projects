@@ -775,7 +775,6 @@ function seedStateFromData() {
     }
   });
 
-  if (changed) saveState({ sync: false });
 }
 
 function loadState() {
