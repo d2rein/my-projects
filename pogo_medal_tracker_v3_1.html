@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script>
-const CURRENT_BUILD = "20260518h";
+const CURRENT_BUILD = "20260518i";
 {
   const url = new URL(window.location.href);
   if (url.hostname.endsWith(".my-projects-cqs.pages.dev") && url.hostname !== "my-projects-cqs.pages.dev") {
@@ -147,7 +147,7 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
     <button class="tab-btn active" data-tab="entry">Entry</button>
     <button class="tab-btn" data-tab="forecast">Level Forecast</button>
     <button class="tab-btn" data-tab="graphs">Graphs</button>
-    <a class="tab-link" href="./pokedex.html?b=20260518h">Pokedex</a>
+    <a class="tab-link" href="./pokedex.html?b=20260518i">Pokedex</a>
   </div>
 
   <section id="entry" class="tab-pane active">
@@ -248,7 +248,8 @@ const DEFAULT_DATA = {
   medalOrder: { main: ["vivillon", "kanto", "johto", "gym_leader", "idol", "kalos", "triathlete", "rising_star", "expert_navigator", "life_party", "jogger", "collector", "scientist", "breeder", "backpacker", "sightseer", "battle_girl", "berry_master", "hoenn", "pokemon_ranger", "pilot", "unova", "alola", "galar", "mega_evo_guru", "raid_expert", "tiny_collector", "jumbo_collector", "fisher", "youngster", "pikachu_fan", "unown", "champion", "battle_legend", "gentleman", "sinnoh", "cameraman", "purifier", "hero", "rising_star_duo", "picnicker", "successor", "hisui", "paldea", "great_league", "master_league", "ultra_hero", "best_buddy", "friend_finder", "showcase_star", "ace_trainer", "ultra_league", "wayfarer", "community_member"], catch: ["schoolkid", "bird_keeper", "bug_catcher", "swimmer", "gardener", "black_belt", "punk_girl", "ruin_maniac", "hiker", "hex_maniac", "rail_staff", "kindler", "rocker", "psychic", "skier", "dragon_tamer", "delinquent", "fairy_tale"] }
 };
 const STORAGE_KEY = "pogo-medal-forecast-v2";
-const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v2";
+const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v3";
+const LEGACY_POKEDEX_STORAGE_KEYS = ["pogo-fresh-pokedex-v2"];
 const ACCOUNT_SESSION_API = "/api/site-auth/session";
 const ACCOUNT_LOGIN_API = "/api/site-auth/login";
 const ACCOUNT_LOGOUT_API = "/api/site-auth/logout";
@@ -262,6 +263,7 @@ let state = loadState();
 let combinedChart, medalProgressChart, catchProgressChart;
 const liveTierAnnouncements = {};
 let medalSyncTimer = null;
+let medalSyncDirty = false;
 let accountSessionState = { loggedIn: false, configured: false, username: "owner" };
 let accountStateRevision = 0;
 let accountSyncPollTimer = null;
@@ -300,6 +302,7 @@ function saveState(options = {}) {
   state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (options.sync !== false) {
+    medalSyncDirty = true;
     scheduleCloudPush();
   }
 }
@@ -337,7 +340,14 @@ function buildCombinedBackup() {
   };
 }
 function getCurrentPokedexState() {
-  return safeJsonParse(localStorage.getItem(POKEDEX_STORAGE_KEY));
+  return safeJsonParse(localStorage.getItem(POKEDEX_STORAGE_KEY)) || loadLegacyPokedexState();
+}
+function loadLegacyPokedexState() {
+  for (const key of LEGACY_POKEDEX_STORAGE_KEYS) {
+    const parsed = safeJsonParse(localStorage.getItem(key));
+    if (parsed) return parsed;
+  }
+  return null;
 }
 function getPokedexModifiedAt(source) {
   return String(source?._meta?.lastModifiedAt || "");
@@ -480,6 +490,7 @@ async function pushCloudMedals() {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Account save failed.");
   accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
+  medalSyncDirty = false;
   return data;
 }
 function scheduleCloudPush(delay = 3000) {
@@ -492,12 +503,8 @@ function scheduleCloudPush(delay = 3000) {
 function applyRemoteAccountState(remoteState) {
   const localState = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
   const remoteMedals = remoteState?.medals || null;
-  const remotePokedex = remoteState?.pokedex || null;
-  const localPokedex = getCurrentPokedexState();
   const merged = remoteMedals ? mergeMedalStates(localState, remoteMedals) : localState;
-  const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-  if (mergedPokedex) localStorage.setItem(POKEDEX_STORAGE_KEY, JSON.stringify(mergedPokedex));
   state = loadState();
   if (remoteState?.revision !== undefined) {
     accountStateRevision = Number(remoteState.revision || 0);
@@ -671,6 +678,19 @@ async function toggleSyncPause() {
   }
   clearTimeout(medalSyncTimer);
   await Swal.fire({ icon: "info", title: "Auto sync paused", text: "Use this while doing bulk edits. Your changes stay local until you resume sync.", timer: 1700, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+}
+function flushCloudPushOnPageHide() {
+  if (!medalSyncDirty || !accountSessionState.loggedIn || accountSyncPrefs.paused) return;
+  const payload = JSON.stringify({ payload: { medals: state } });
+  try {
+    fetch(POGO_ACCOUNT_STATE_API, {
+      method: "PUT",
+      credentials: "same-origin",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: payload
+    }).catch(() => null);
+  } catch {}
 }
 function snapshotSorted() { return [...state.snapshots].sort((a,b) => a.date.localeCompare(b.date)); }
 function latestSnapshot() { return snapshotSorted().at(-1); }
@@ -1326,6 +1346,7 @@ document.getElementById("importAllInput").addEventListener("change", async event
   await handleCombinedImport(file);
   event.target.value = "";
 });
+window.addEventListener("pagehide", flushCloudPushOnPageHide);
 document.getElementById("saveSnapshotBtn").addEventListener("click", handleSaveSnapshot);
 document.getElementById("resetDataBtn").addEventListener("click", resetData);
 renderAll();

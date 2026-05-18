@@ -1,4 +1,5 @@
-const STORAGE_KEY = "pogo-fresh-pokedex-v2";
+const STORAGE_KEY = "pogo-fresh-pokedex-v3";
+const LEGACY_POKEDEX_STORAGE_KEYS = ["pogo-fresh-pokedex-v2"];
 const MEDAL_STORAGE_KEY = "pogo-medal-forecast-v2";
 const ACCOUNT_SYNC_PREFS_KEY = "pogo-account-sync-prefs-v1";
 const ACCOUNT_SESSION_API = "/api/site-auth/session";
@@ -305,6 +306,7 @@ let speciesEntriesByDex = new Map();
 let stickyVisibleEntryIds = new Set();
 let stickyFilterKey = "";
 let cloudSyncTimer = null;
+let cloudSyncDirty = false;
 let longPressTimer = null;
 let suppressNextStatusClickId = "";
 let accountSyncPollTimer = null;
@@ -748,7 +750,7 @@ function seedStateFromData() {
 }
 
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = localStorage.getItem(STORAGE_KEY) || loadLegacyPokedexState();
   if (!saved) {
     return {
       activeMode: "pokemon",
@@ -786,10 +788,19 @@ function loadState() {
   }
 }
 
+function loadLegacyPokedexState() {
+  for (const key of LEGACY_POKEDEX_STORAGE_KEYS) {
+    const value = localStorage.getItem(key);
+    if (value) return value;
+  }
+  return null;
+}
+
 function saveState(options = {}) {
   state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (options.sync !== false) {
+    cloudSyncDirty = true;
     scheduleCloudPush();
   }
 }
@@ -934,6 +945,8 @@ function bindEvents() {
     await handleCombinedImport(file);
     event.target.value = "";
   });
+
+  window.addEventListener("pagehide", flushCloudPushOnPageHide);
 }
 
 function render() {
@@ -1459,22 +1472,11 @@ function normalizeSyncCode(value) {
   return String(value || "").trim();
 }
 
-function getCurrentMedalState() {
-  return safeJsonParse(localStorage.getItem(MEDAL_STORAGE_KEY));
-}
-
 function getModifiedAt(source) {
   return String(source?._meta?.lastModifiedAt || "");
 }
 
 function mergePokedexStates(localState, remoteState) {
-  if (!localState && !remoteState) return null;
-  if (!localState) return remoteState;
-  if (!remoteState) return localState;
-  return getModifiedAt(remoteState) > getModifiedAt(localState) ? remoteState : localState;
-}
-
-function mergeMedalStates(localState, remoteState) {
   if (!localState && !remoteState) return null;
   if (!localState) return remoteState;
   if (!remoteState) return localState;
@@ -1517,6 +1519,7 @@ async function pushCloudBundle() {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Account save failed.");
   accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
+  cloudSyncDirty = false;
   return data;
 }
 
@@ -1536,17 +1539,11 @@ function applyRemotePokedexState(nextState) {
 
 function applyRemoteBundle(remoteState) {
   const remotePokedex = remoteState?.pokedex || null;
-  const remoteMedals = remoteState?.medals || null;
   const localPokedex = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
-  const localMedals = getCurrentMedalState();
   const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
-  const mergedMedals = mergeMedalStates(localMedals, remoteMedals);
   if (mergedPokedex) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedPokedex));
     applyRemotePokedexState(mergedPokedex);
-  }
-  if (mergedMedals) {
-    localStorage.setItem(MEDAL_STORAGE_KEY, JSON.stringify(mergedMedals));
   }
   if (remoteState?.revision !== undefined) {
     accountStateRevision = Number(remoteState.revision || 0);
@@ -1733,6 +1730,20 @@ async function toggleSyncPause() {
   }
   clearTimeout(cloudSyncTimer);
   await window.Swal.fire({ icon: "info", title: "Auto sync paused", text: "Use this while doing bulk edits. Your changes stay local until you resume sync.", timer: 1700, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+}
+
+function flushCloudPushOnPageHide() {
+  if (!cloudSyncDirty || !accountSessionState.loggedIn || accountSyncPrefs.paused) return;
+  const payload = JSON.stringify({ payload: { pokedex: state } });
+  try {
+    fetch(POGO_ACCOUNT_STATE_API, {
+      method: "PUT",
+      credentials: "same-origin",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: payload
+    }).catch(() => null);
+  } catch {}
 }
 
 function getStickyFilterKey() {
