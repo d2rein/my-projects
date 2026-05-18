@@ -750,7 +750,7 @@ function seedStateFromData() {
 }
 
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY) || loadLegacyPokedexState();
+  const saved = chooseCurrentPokedexStorageValue();
   if (!saved) {
     return {
       activeMode: "pokemon",
@@ -788,6 +788,27 @@ function loadState() {
   }
 }
 
+function chooseCurrentPokedexStorageValue() {
+  const candidates = [
+    { key: STORAGE_KEY, raw: localStorage.getItem(STORAGE_KEY) },
+    ...LEGACY_POKEDEX_STORAGE_KEYS.map(key => ({ key, raw: localStorage.getItem(key) }))
+  ].filter(item => item.raw);
+
+  if (!candidates.length) return null;
+  if (candidates.length === 1) return candidates[0].raw;
+
+  let best = candidates[0];
+  let bestTime = getModifiedAt(safeJsonParse(best.raw));
+  for (const candidate of candidates.slice(1)) {
+    const time = getModifiedAt(safeJsonParse(candidate.raw));
+    if (time > bestTime) {
+      best = candidate;
+      bestTime = time;
+    }
+  }
+  return best.raw;
+}
+
 function loadLegacyPokedexState() {
   for (const key of LEGACY_POKEDEX_STORAGE_KEYS) {
     const value = localStorage.getItem(key);
@@ -796,9 +817,16 @@ function loadLegacyPokedexState() {
   return null;
 }
 
+function persistPokedexLocalState(serialized) {
+  localStorage.setItem(STORAGE_KEY, serialized);
+  for (const key of LEGACY_POKEDEX_STORAGE_KEYS) {
+    localStorage.setItem(key, serialized);
+  }
+}
+
 function saveState(options = {}) {
   state._meta = { ...(state._meta || {}), lastModifiedAt: new Date().toISOString() };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  persistPokedexLocalState(JSON.stringify(state));
   if (options.sync !== false) {
     cloudSyncDirty = true;
     scheduleCloudPush();
@@ -1449,7 +1477,7 @@ async function handleCombinedImport(file) {
   });
   if (!confirm.isConfirmed) return;
   localStorage.setItem(MEDAL_STORAGE_KEY, JSON.stringify(medals));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pokedex));
+  persistPokedexLocalState(JSON.stringify(pokedex));
   await window.Swal.fire({ icon: "success", title: "Backup restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   location.reload();
 }
@@ -1542,7 +1570,7 @@ function applyRemoteBundle(remoteState) {
   const localPokedex = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
   const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
   if (mergedPokedex) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedPokedex));
+    persistPokedexLocalState(JSON.stringify(mergedPokedex));
     applyRemotePokedexState(mergedPokedex);
   }
   if (remoteState?.revision !== undefined) {
