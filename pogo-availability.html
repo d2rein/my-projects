@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pokemon GO Availability Tracker</title>
   <script>
-    const CURRENT_BUILD = "20260518g";
+    const CURRENT_BUILD = "20260518h";
     {
       const url = new URL(window.location.href);
+      if (url.hostname.endsWith(".my-projects-cqs.pages.dev") && url.hostname !== "my-projects-cqs.pages.dev") {
+        url.hostname = "my-projects-cqs.pages.dev";
+        window.location.replace(url.toString());
+      }
       if (url.searchParams.get("b") !== CURRENT_BUILD) {
         url.searchParams.set("b", CURRENT_BUILD);
         window.location.replace(url.toString());
@@ -308,8 +312,8 @@
         <button id="missingToggle" class="toggle-btn" type="button">Only missing</button>
         <button id="upcomingToggle" class="toggle-btn active" type="button">Show upcoming</button>
         <button id="refreshBtn" type="button">Refresh feed</button>
-        <a class="button" href="./pokedex.html?b=20260518g">Open Pokedex</a>
-        <a class="button" href="./pogo_medal_tracker_v3_1.html?b=20260518g">Back to Medal Tracker</a>
+        <a class="button" href="./pokedex.html?b=20260518h">Open Pokedex</a>
+        <a class="button" href="./pogo_medal_tracker_v3_1.html?b=20260518h">Back to Medal Tracker</a>
         <a class="button" href="./index.html">Homepage</a>
       </div>
       <div id="status" class="warning">Loading feed...</div>
