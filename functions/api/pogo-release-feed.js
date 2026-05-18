@@ -5,7 +5,7 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v2";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v3";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
@@ -270,12 +270,9 @@ function parseRocketLineups(html) {
 
   for (const profileHtml of profiles) {
     const profileName = extractProfileName(profileHtml) || "Rocket";
-    const profileTitle = extractProfileTitle(profileHtml);
-    const allowedEncounterNumber = getCatchableEncounterNumber(profileTitle);
-    const encountersHtml = extractBlocksByStartRegex(profileHtml, /<div\b[^>]*class="[^"]*\bslot encounter\b[^"]*"[^>]*>/gi);
-    for (const encounterHtml of encountersHtml) {
-      const encounterNumber = extractEncounterNumber(encounterHtml);
-      if (allowedEncounterNumber !== null && encounterNumber !== allowedEncounterNumber) {
+    const slotHtmlBlocks = extractRocketSlotBlocks(profileHtml);
+    for (const encounterHtml of slotHtmlBlocks) {
+      if (!isCatchableRocketSlot(encounterHtml)) {
         continue;
       }
       const nameRegex = /<span\b[^>]*class="[^"]*\bshadow-pokemon\b[^"]*"[^>]*data-pokemon="([^"]+)"/gi;
@@ -303,6 +300,16 @@ function parseRocketLineups(html) {
     entries: mergeEntries(encounters),
     checksAgainstLists: ["shadow", "purified"]
   });
+}
+
+function extractRocketSlotBlocks(html) {
+  return [...html.matchAll(/<div\b[^>]*class="[^"]*\bslot\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi)]
+    .map(match => match[0]);
+}
+
+function isCatchableRocketSlot(html) {
+  return /class="[^"]*\bslot\b[^"]*\bencounter\b/i.test(html)
+    || /class="[^"]*\bencounter-icon\b[^"]*"[\s\S]*?#poke-ball/i.test(html);
 }
 
 function parseResearch(html) {
