@@ -329,8 +329,7 @@ function buildCombinedBackup() {
     version: 1,
     exportedAt: new Date().toISOString(),
     data: {
-      medals: state,
-      pokedex: safeJsonParse(localStorage.getItem(POKEDEX_STORAGE_KEY))
+      medals: state
     }
   };
 }
@@ -387,7 +386,7 @@ function downloadCombinedBackup() {
   const stamp = payload.exportedAt.slice(0, 19).replace(/[:T]/g, "-");
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `pogo-all-data-backup-${stamp}.json`;
+  anchor.download = `pogo-medals-backup-${stamp}.json`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -396,7 +395,7 @@ function downloadCombinedBackup() {
 async function openBackupDialog() {
   const result = await Swal.fire({
     title: "Backup / Restore",
-    html: "Download one file with medal tracker and Pok\u00e9dex data, or restore both from a previous backup.",
+    html: "Download a medal-tracker-only backup file, or restore medals from a previous backup.",
     showCancelButton: true,
     showDenyButton: true,
     confirmButtonText: "Download backup",
@@ -425,15 +424,14 @@ async function handleCombinedImport(file) {
     return;
   }
   const medals = parsed?.data?.medals;
-  const pokedex = parsed?.data?.pokedex;
   if (!medals || !Array.isArray(medals.snapshots) || !Array.isArray(medals.medals)) {
     await Swal.fire({ icon: "error", title: "Invalid backup", text: "The backup file is missing medal tracker data.", background: "#121c34", color: "#eef4ff" });
     return;
   }
   const confirm = await Swal.fire({
     icon: "warning",
-    title: "Restore all data?",
-    text: "This will overwrite the current medal tracker and Pok\u00e9dex local data on this device.",
+    title: "Restore medals?",
+    text: "This will overwrite the current medal tracker local data on this device.",
     showCancelButton: true,
     confirmButtonText: "Restore",
     cancelButtonText: "Cancel",
@@ -442,8 +440,7 @@ async function handleCombinedImport(file) {
   });
   if (!confirm.isConfirmed) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(medals));
-  if (pokedex) persistPokedexLocalState(JSON.stringify(pokedex));
-  await Swal.fire({ icon: "success", title: "Backup restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+  await Swal.fire({ icon: "success", title: "Medals restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   location.reload();
 }
 function medalMap() { return Object.fromEntries(state.medals.map(m => [m.id, m])); }
