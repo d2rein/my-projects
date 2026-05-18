@@ -1015,7 +1015,7 @@ function renderGrid() {
 
 function renderCard(entry) {
   const status = getEffectiveStatus(entry, state.activeMode);
-  const { primary, fallback } = getSpriteSources(entry, state.activeMode);
+  const { primary, fallbacks } = getSpriteSources(entry, state.activeMode);
   const tags = [];
   if (entry.isRegional) tags.push(`<span class="tag regional">Regional</span>`);
   if (isCurrentlyUnreleased(entry)) tags.push(`<span class="tag unreleased">Unreleased</span>`);
@@ -1030,7 +1030,7 @@ function renderCard(entry) {
         <div class="tag-row">${tags.join("")}</div>
       </div>
       <div class="sprite-wrap">
-        <img src="${escapeAttribute(primary)}" alt="${escapeAttribute(cleanDisplayName(entry))}" loading="lazy" onerror="if(this.src!==this.dataset.fallback)this.src=this.dataset.fallback" data-fallback="${escapeAttribute(fallback)}">
+        <img src="${escapeAttribute(primary)}" alt="${escapeAttribute(cleanDisplayName(entry))}" loading="lazy" onerror="handleDexSpriteError(this)" data-fallbacks="${escapeAttribute(fallbacks.join("|"))}">
         ${entry.spriteHint ? `<span class="sprite-badge">${escapeHtml(entry.spriteHint)}</span>` : ""}
       </div>
       <div class="card-body">
@@ -1689,24 +1689,38 @@ function getSpriteSources(entry, mode) {
   const classicShiny = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${dex}.png`;
   const official = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${dex}.png`;
   const legacyAltSlug = entry.isAltForm ? getSpecialSpriteSlug(entry, mode) : "";
+  const familyKey = entry.isAltForm ? getFormFamilyKey(entry) : "";
 
   if (mode === "shiny") {
     if (legacyAltSlug) {
       return {
-        primary: `https://img.pokemondb.net/sprites/black-white/shiny/${legacyAltSlug}.png`,
-        fallback: `https://img.pokemondb.net/sprites/black-white/normal/${legacyAltSlug}.png`
+        primary: getAltSpriteUrl(legacyAltSlug, familyKey, "shiny"),
+        fallbacks: uniqueSpriteUrls([
+          getAltSpriteUrl(legacyAltSlug, familyKey, "normal"),
+          `https://img.pokemondb.net/sprites/black-white/shiny/${legacyAltSlug}.png`,
+          `https://img.pokemondb.net/sprites/black-white/normal/${legacyAltSlug}.png`,
+          `https://img.pokemondb.net/sprites/home/shiny/${legacyAltSlug}.png`,
+          `https://img.pokemondb.net/sprites/home/normal/${legacyAltSlug}.png`,
+          classicShiny,
+          classic
+        ])
       };
     }
     return {
       primary: classicShiny,
-      fallback: classic
+      fallbacks: [classic]
     };
   }
 
   if (entry.isAltForm && legacyAltSlug) {
     return {
-      primary: `https://img.pokemondb.net/sprites/black-white/normal/${legacyAltSlug}.png`,
-      fallback: classic
+      primary: getAltSpriteUrl(legacyAltSlug, familyKey, "normal"),
+      fallbacks: uniqueSpriteUrls([
+        `https://img.pokemondb.net/sprites/black-white/normal/${legacyAltSlug}.png`,
+        `https://img.pokemondb.net/sprites/home/normal/${legacyAltSlug}.png`,
+        classic,
+        official
+      ])
     };
   }
 
@@ -1715,12 +1729,37 @@ function getSpriteSources(entry, mode) {
     if (slug) {
       return {
         primary: `https://img.pokemondb.net/sprites/home/normal/${slug}.png`,
-        fallback: classic
+        fallbacks: [classic, official]
       };
     }
   }
 
-  return { primary: classic, fallback: official };
+  return { primary: classic, fallbacks: [official] };
+}
+
+function getAltSpriteUrl(slug, familyKey, variant) {
+  const normalizedVariant = variant === "shiny" ? "shiny" : "normal";
+  if (familyKey === "alolan") {
+    return `https://img.pokemondb.net/sprites/sun-moon/${normalizedVariant}/${slug}.png`;
+  }
+  return `https://img.pokemondb.net/sprites/black-white/${normalizedVariant}/${slug}.png`;
+}
+
+function uniqueSpriteUrls(urls) {
+  return [...new Set(urls.filter(Boolean))];
+}
+
+function handleDexSpriteError(img) {
+  const remaining = String(img.dataset.fallbacks || "")
+    .split("|")
+    .filter(Boolean);
+  if (!remaining.length) {
+    img.onerror = null;
+    return;
+  }
+  const next = remaining.shift();
+  img.dataset.fallbacks = remaining.join("|");
+  img.src = next;
 }
 
 function getSpecialSpriteSlug(entry, mode) {

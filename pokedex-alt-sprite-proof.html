@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokedex Alt Sprite Proof</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d1426;
+    --panel: #17233c;
+    --line: #2f4a79;
+    --text: #eef4ff;
+    --muted: #9fb2d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(180deg, #0a1020, #101a33 45%, #0d1426);
+    color: var(--text);
+  }
+  h1 { margin: 0 0 8px; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 12px;
+  }
+  .card img {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 10px;
+    image-rendering: pixelated;
+  }
+  .name {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .slug, .url {
+    font-size: 12px;
+    color: var(--muted);
+    word-break: break-word;
+  }
+  .url a { color: #9fd9ff; }
+</style>
+</head>
+<body>
+  <h1>Alt Sprite Proof</h1>
+  <p>These are the exact sprite URLs the Pokedex should now prefer for some of the regional/alt forms you flagged. Alolan forms use the <code>sun-moon</code> set because the earlier <code>black-white</code> URLs were wrong for them.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const entries = [
+      { name: "Raichu (Alolan)", slug: "raichu-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/shiny/raichu-alolan.png" },
+      { name: "Sandshrew (Alolan)", slug: "sandshrew-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/normal/sandshrew-alolan.png" },
+      { name: "Sandslash (Alolan)", slug: "sandslash-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/normal/sandslash-alolan.png" },
+      { name: "Vulpix (Alolan)", slug: "vulpix-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/normal/vulpix-alolan.png" },
+      { name: "Vulpix (Alolan Shiny)", slug: "vulpix-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/shiny/vulpix-alolan.png" },
+      { name: "Ninetales (Alolan)", slug: "ninetales-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/normal/ninetales-alolan.png" },
+      { name: "Diglett (Alolan)", slug: "diglett-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/normal/diglett-alolan.png" },
+      { name: "Diglett (Alolan Shiny)", slug: "diglett-alolan", url: "https://img.pokemondb.net/sprites/sun-moon/shiny/diglett-alolan.png" }
+    ];
+
+    const grid = document.getElementById("grid");
+    grid.innerHTML = entries.map(entry => {
+      return `
+        <article class="card">
+          <img src="${entry.url}" alt="${entry.name}">
+          <div class="name">${entry.name}</div>
+          <div class="slug">${entry.slug}</div>
+          <div class="url"><a href="${entry.url}" target="_blank" rel="noreferrer">${entry.url}</a></div>
+        </article>
+      `;
+    }).join("");
+  </script>
+</body>
+</html>
