@@ -1433,6 +1433,10 @@ function safeJsonParse(value) {
   }
 }
 
+function getCurrentMedalState() {
+  return safeJsonParse(localStorage.getItem(MEDAL_STORAGE_KEY));
+}
+
 function buildCombinedBackup() {
   return {
     version: 1,
