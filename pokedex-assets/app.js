@@ -286,6 +286,8 @@ const els = {
   cardGrid: document.querySelector("#cardGrid"),
   gridTitle: document.querySelector("#gridTitle"),
   gridCountNote: document.querySelector("#gridCountNote"),
+  backupAllBtn: document.querySelector("#backupAllBtn"),
+  importAllInput: document.querySelector("#importAllInput"),
   cloudSyncBtn: document.querySelector("#cloudSyncBtn")
   ,accountRefreshBtn: document.querySelector("#accountRefreshBtn")
   ,syncPauseBtn: document.querySelector("#syncPauseBtn")
@@ -926,6 +928,12 @@ function bindEvents() {
   els.cloudSyncBtn?.addEventListener("click", openCloudSyncDialog);
   els.accountRefreshBtn?.addEventListener("click", handleManualRefreshClick);
   els.syncPauseBtn?.addEventListener("click", toggleSyncPause);
+  els.backupAllBtn?.addEventListener("click", openBackupDialog);
+  els.importAllInput?.addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    await handleCombinedImport(file);
+    event.target.value = "";
+  });
 }
 
 function render() {
@@ -1351,6 +1359,86 @@ function safeJsonParse(value) {
   } catch {
     return null;
   }
+}
+
+function buildCombinedBackup() {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: {
+      medals: getCurrentMedalState(),
+      pokedex: state
+    }
+  };
+}
+
+function downloadCombinedBackup() {
+  const payload = buildCombinedBackup();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const stamp = payload.exportedAt.slice(0, 19).replace(/[:T]/g, "-");
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `pogo-all-data-backup-${stamp}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function openBackupDialog() {
+  const result = await window.Swal.fire({
+    title: "Backup / Restore",
+    html: "Download one file with medal tracker and Pokedex data, or restore both from a previous backup.",
+    showCancelButton: true,
+    showDenyButton: true,
+    confirmButtonText: "Download backup",
+    denyButtonText: "Restore backup",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#6ef0ab",
+    denyButtonColor: "#7fd4ff",
+    background: "#121c34",
+    color: "#eef4ff"
+  });
+  if (result.isConfirmed) {
+    downloadCombinedBackup();
+    return;
+  }
+  if (result.isDenied) {
+    els.importAllInput?.click();
+  }
+}
+
+async function handleCombinedImport(file) {
+  if (!file) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    await window.Swal.fire({ icon: "error", title: "Invalid backup", text: "That file is not valid JSON.", background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  const medals = parsed?.data?.medals;
+  const pokedex = parsed?.data?.pokedex;
+  if (!medals || !pokedex) {
+    await window.Swal.fire({ icon: "error", title: "Invalid backup", text: "That file is missing medal or Pokedex data.", background: "#121c34", color: "#eef4ff" });
+    return;
+  }
+  const confirm = await window.Swal.fire({
+    icon: "warning",
+    title: "Restore all data?",
+    text: "This will overwrite the current medal tracker and Pokedex local data on this device.",
+    showCancelButton: true,
+    confirmButtonText: "Restore",
+    cancelButtonText: "Cancel",
+    background: "#121c34",
+    color: "#eef4ff"
+  });
+  if (!confirm.isConfirmed) return;
+  localStorage.setItem(MEDAL_STORAGE_KEY, JSON.stringify(medals));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(pokedex));
+  await window.Swal.fire({ icon: "success", title: "Backup restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+  location.reload();
 }
 
 function loadAccountSyncPrefs() {
