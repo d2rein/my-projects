@@ -320,6 +320,7 @@ function initialize() {
     : (window.POKEDEX_SEED_CSV?.value || "");
   rawRows = parseCsv(csv).map(buildRawEntry).filter(Boolean);
   buildCollections();
+  migrateLegacyEntryIds();
   seedStateFromData();
   buildControls();
   bindEvents();
@@ -433,36 +434,10 @@ function buildSpriteHint(rawName, formName) {
 }
 
 function buildCollections() {
-  const speciesGroups = new Map();
-  const regularRows = rawRows.filter(row => !row.isMega && !row.excludeFromDex);
-  megaEntries = rawRows.filter(row => row.isMega && !row.excludeFromDex).map(row => toMegaEntry(row));
-
-  for (const row of regularRows) {
-    const key = String(row.dex);
-    if (!speciesGroups.has(key)) speciesGroups.set(key, []);
-    speciesGroups.get(key).push(row);
-  }
-
-  canonicalEntries = [];
-  altEntries = [];
-
-  for (const [dexKey, rows] of speciesGroups.entries()) {
-    const canonicalRow = chooseCanonicalRow(rows);
-    const canonicalEntry = toCanonicalEntry(canonicalRow, rows);
-    canonicalEntries.push(canonicalEntry);
-
-    const canonicalSignature = signatureForCanonical(canonicalRow);
-    rows.forEach((row, idx) => {
-      const rowSignature = signatureForCanonical(row);
-      if (idx === 0 && rowSignature === canonicalSignature) return;
-      if (rowSignature === canonicalSignature && row.rawName === canonicalRow.rawName && row.type1 === canonicalRow.type1 && row.type2 === canonicalRow.type2) return;
-      altEntries.push(toAltEntry(row, canonicalEntry, idx));
-    });
-  }
-
-  canonicalEntries.sort((a, b) => a.dex - b.dex);
-  altEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
-  megaEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+  const built = buildSpeciesCollections(chooseCanonicalRow);
+  canonicalEntries = built.canonicalEntries;
+  altEntries = built.altEntries;
+  megaEntries = built.megaEntries;
   speciesEntriesByDex = new Map();
   canonicalEntries.forEach(entry => {
     speciesEntriesByDex.set(entry.dex, [entry, ...altEntries.filter(candidate => candidate.dex === entry.dex)]);
@@ -501,12 +476,139 @@ function buildCollections() {
   ]);
 }
 
+function buildSpeciesCollections(canonicalSelector) {
+  const speciesGroups = new Map();
+  const regularRows = rawRows.filter(row => !row.isMega && !row.excludeFromDex);
+  const builtMegaEntries = rawRows.filter(row => row.isMega && !row.excludeFromDex).map(row => toMegaEntry(row));
+
+  for (const row of regularRows) {
+    const key = String(row.dex);
+    if (!speciesGroups.has(key)) speciesGroups.set(key, []);
+    speciesGroups.get(key).push(row);
+  }
+
+  const builtCanonicalEntries = [];
+  const builtAltEntries = [];
+
+  for (const [dexKey, rows] of speciesGroups.entries()) {
+    const canonicalRow = canonicalSelector(rows);
+    const canonicalEntry = toCanonicalEntry(canonicalRow, rows);
+    builtCanonicalEntries.push(canonicalEntry);
+
+    const canonicalSignature = signatureForCanonical(canonicalRow);
+    rows.forEach((row, idx) => {
+      const rowSignature = signatureForCanonical(row);
+      if (idx === 0 && rowSignature === canonicalSignature) return;
+      if (rowSignature === canonicalSignature && row.rawName === canonicalRow.rawName && row.type1 === canonicalRow.type1 && row.type2 === canonicalRow.type2) return;
+      builtAltEntries.push(toAltEntry(row, canonicalEntry, idx));
+    });
+  }
+
+  builtCanonicalEntries.sort((a, b) => a.dex - b.dex);
+  builtAltEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+  builtMegaEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+
+  return {
+    canonicalEntries: builtCanonicalEntries,
+    altEntries: builtAltEntries,
+    megaEntries: builtMegaEntries
+  };
+}
+
 function chooseCanonicalRow(rows) {
+  const plain = rows.find(row => !row.formName);
+  if (plain) return plain;
+  return rows[0];
+}
+
+function chooseLegacyCanonicalRow(rows) {
   const preferred = rows.find(row => ["owned", "can-evolve"].includes(row.seedStatus) && !row.formName);
   if (preferred) return preferred;
   const plain = rows.find(row => !row.formName);
   if (plain) return plain;
   return rows[0];
+}
+
+function migrateLegacyEntryIds() {
+  const legacy = buildSpeciesCollections(chooseLegacyCanonicalRow);
+  const currentEntries = [...canonicalEntries, ...altEntries];
+  const legacyEntries = [...legacy.canonicalEntries, ...legacy.altEntries];
+  const signatureToCurrentId = new Map(currentEntries.map(entry => [entrySignature(entry), entry.id]));
+  const remap = new Map();
+
+  legacyEntries.forEach(entry => {
+    const currentId = signatureToCurrentId.get(entrySignature(entry));
+    if (currentId && currentId !== entry.id) {
+      remap.set(entry.id, currentId);
+    }
+  });
+
+  if (!remap.size) return;
+
+  DEX_MODES.forEach(mode => {
+    state.statuses[mode.id] = remapStatusBucket(state.statuses[mode.id] || {}, remap);
+    state.statusMeta[mode.id] = remapMetaBucket(state.statusMeta[mode.id] || {}, remap);
+    state.availability[mode.id] = remapAvailabilityBucket(state.availability[mode.id] || {}, remap);
+  });
+  state.unreleasedOverrides = remapBooleanBucket(state.unreleasedOverrides || {}, remap);
+}
+
+function entrySignature(entry) {
+  return [entry.dex, entry.rawName, entry.type1 || "", entry.type2 || "", entry.region || ""].join("::");
+}
+
+function remapStatusBucket(bucket, remap) {
+  const next = {};
+  Object.entries(bucket || {}).forEach(([key, value]) => {
+    const targetKey = remap.get(key) || key;
+    if (!Object.prototype.hasOwnProperty.call(next, targetKey)) {
+      next[targetKey] = value;
+      return;
+    }
+    next[targetKey] = compareStatusPriority(next[targetKey], value) >= 0 ? next[targetKey] : value;
+  });
+  return next;
+}
+
+function remapMetaBucket(bucket, remap) {
+  const next = {};
+  Object.entries(bucket || {}).forEach(([key, value]) => {
+    const targetKey = remap.get(key) || key;
+    next[targetKey] = { ...(next[targetKey] || {}), ...(value || {}) };
+  });
+  return next;
+}
+
+function remapAvailabilityBucket(bucket, remap) {
+  const next = {};
+  Object.entries(bucket || {}).forEach(([key, value]) => {
+    const targetKey = remap.get(key) || key;
+    next[targetKey] = !!next[targetKey] || !!value;
+  });
+  return next;
+}
+
+function remapBooleanBucket(bucket, remap) {
+  const next = {};
+  Object.entries(bucket || {}).forEach(([key, value]) => {
+    const targetKey = remap.get(key) || key;
+    if (!Object.prototype.hasOwnProperty.call(next, targetKey)) {
+      next[targetKey] = value;
+    }
+  });
+  return next;
+}
+
+function compareStatusPriority(left, right) {
+  const priority = {
+    "": 0,
+    "missing": 1,
+    "missing-lock": 2,
+    "can-evolve": 3,
+    "trade": 4,
+    "owned": 5
+  };
+  return (priority[left] || 0) - (priority[right] || 0);
 }
 
 function toCanonicalEntry(row, groupRows) {
@@ -1488,7 +1590,6 @@ async function openCloudSyncDialog() {
     }
     await fetchCloudBundle();
     await bootstrapAccountFromLocalIfEmpty().catch(() => null);
-    await pullCloudBundleAndApply({ silent: true }).catch(() => null);
     await window.Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
     await window.Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
@@ -1500,7 +1601,6 @@ async function initializeCloudSync() {
     await fetchCloudBundle();
     if (accountSessionState.loggedIn) {
       await bootstrapAccountFromLocalIfEmpty().catch(() => null);
-      await pullCloudBundleAndApply({ silent: true });
     }
   } catch (error) {
     console.warn("Initial pokedex account sync failed:", error);
