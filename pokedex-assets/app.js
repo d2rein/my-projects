@@ -5,7 +5,7 @@ const ACCOUNT_SYNC_PREFS_KEY = "pogo-account-sync-prefs-v1";
 const ACCOUNT_SESSION_API = "/api/site-auth/session";
 const ACCOUNT_LOGIN_API = "/api/site-auth/login";
 const ACCOUNT_LOGOUT_API = "/api/site-auth/logout";
-const POGO_ACCOUNT_STATE_API = "/api/pogo-account-state";
+const POGO_DEX_STATE_API = "/api/pogo-dex-account-state";
 
 const DEX_MODES = [
   { id: "pokemon", label: "Pokemon" },
@@ -311,7 +311,6 @@ let longPressTimer = null;
 let suppressNextStatusClickId = "";
 let accountSyncPollTimer = null;
 let accountSessionState = { loggedIn: false, configured: false, username: "owner" };
-let accountStateRevision = 0;
 let accountSyncPrefs = loadAccountSyncPrefs();
 
 const ALL_EVOLUTION_PREDECESSOR = { ...EVOLUTION_PREDECESSOR, ...EXTRA_EVOLUTION_PREDECESSOR };
@@ -720,6 +719,8 @@ function seedStateFromData() {
 
   Object.assign(state, fallback, state);
 
+  let changed = false;
+
   for (const mode of DEX_MODES) {
     state.statuses[mode.id] ||= {};
     state.availability[mode.id] ||= {};
@@ -727,30 +728,54 @@ function seedStateFromData() {
   }
 
   canonicalEntries.forEach(entry => {
-    state.statuses.pokemon[entry.id] ??= entry.importedBaseStatus || "missing";
+    if (state.statuses.pokemon[entry.id] == null) {
+      state.statuses.pokemon[entry.id] = entry.importedBaseStatus || "missing";
+      changed = true;
+    }
     for (const mode of STANDARD_COLLECTION_MODES.filter(mode => mode !== "pokemon")) {
-      state.statuses[mode][entry.id] ??= "missing";
+      if (state.statuses[mode][entry.id] == null) {
+        state.statuses[mode][entry.id] = "missing";
+        changed = true;
+      }
     }
   });
 
   altEntries.forEach(entry => {
-    state.statuses.pokemon[entry.id] ??= entry.importedBaseStatus || "missing";
+    if (state.statuses.pokemon[entry.id] == null) {
+      state.statuses.pokemon[entry.id] = entry.importedBaseStatus || "missing";
+      changed = true;
+    }
     for (const mode of STANDARD_COLLECTION_MODES.filter(mode => mode !== "pokemon")) {
-      state.statuses[mode][entry.id] ??= "missing";
+      if (state.statuses[mode][entry.id] == null) {
+        state.statuses[mode][entry.id] = "missing";
+        changed = true;
+      }
     }
   });
 
   megaEntries.forEach(entry => {
-    state.statuses.mega[entry.id] ??= entry.importedBaseStatus || "missing";
-    state.availability.mega[entry.id] ??= entry.importedBaseStatus === "owned";
+    if (state.statuses.mega[entry.id] == null) {
+      state.statuses.mega[entry.id] = entry.importedBaseStatus || "missing";
+      changed = true;
+    }
+    if (state.availability.mega[entry.id] == null) {
+      state.availability.mega[entry.id] = entry.importedBaseStatus === "owned";
+      changed = true;
+    }
   });
 
   gmaxEntries.forEach(entry => {
-    state.statuses.gmax[entry.id] ??= "missing";
-    state.availability.gmax[entry.id] ??= false;
+    if (state.statuses.gmax[entry.id] == null) {
+      state.statuses.gmax[entry.id] = "missing";
+      changed = true;
+    }
+    if (state.availability.gmax[entry.id] == null) {
+      state.availability.gmax[entry.id] = false;
+      changed = true;
+    }
   });
 
-  saveState();
+  if (changed) saveState({ sync: false });
 }
 
 function loadState() {
@@ -802,8 +827,16 @@ function chooseCurrentPokedexStorageValue() {
     .filter(Boolean);
 
   if (!candidates.length) return null;
-  const merged = candidates.reduce((acc, candidate) => mergePokedexStates(acc, candidate), null);
-  return merged ? JSON.stringify(merged) : null;
+  let best = candidates[0];
+  let bestTime = getModifiedAt(best);
+  for (const candidate of candidates.slice(1)) {
+    const time = getModifiedAt(candidate);
+    if (time > bestTime) {
+      best = candidate;
+      bestTime = time;
+    }
+  }
+  return JSON.stringify(best);
 }
 
 function loadLegacyPokedexState() {
@@ -1502,79 +1535,6 @@ function getModifiedAt(source) {
   return String(source?._meta?.lastModifiedAt || "");
 }
 
-function mergePokedexStates(localState, remoteState) {
-  if (!localState && !remoteState) return null;
-  if (!localState) return remoteState;
-  if (!remoteState) return localState;
-  const localTime = getModifiedAt(localState);
-  const remoteTime = getModifiedAt(remoteState);
-  const newer = remoteTime > localTime ? remoteState : localState;
-  const merged = structuredClone(newer || localState || remoteState || {});
-
-  merged.statuses ||= {};
-  merged.statusMeta ||= {};
-  merged.availability ||= {};
-  merged.unreleasedOverrides ||= {};
-
-  DEX_MODES.forEach(mode => {
-    const modeId = mode.id;
-    merged.statuses[modeId] ||= {};
-    merged.statusMeta[modeId] ||= {};
-    merged.availability[modeId] ||= {};
-
-    const ids = new Set([
-      ...Object.keys(localState?.statuses?.[modeId] || {}),
-      ...Object.keys(remoteState?.statuses?.[modeId] || {})
-    ]);
-
-    ids.forEach(entryId => {
-      const localStatus = localState?.statuses?.[modeId]?.[entryId];
-      const remoteStatus = remoteState?.statuses?.[modeId]?.[entryId];
-      if (localStatus == null && remoteStatus == null) return;
-
-      const localChanged = getEntryChangedAt(localState, modeId, entryId);
-      const remoteChanged = getEntryChangedAt(remoteState, modeId, entryId);
-
-      let chosenStatus = localStatus;
-      let chosenMeta = localState?.statusMeta?.[modeId]?.[entryId];
-
-      if (remoteChanged > localChanged) {
-        chosenStatus = remoteStatus;
-        chosenMeta = remoteState?.statusMeta?.[modeId]?.[entryId];
-      } else if (remoteChanged === localChanged && compareStatusPriority(localStatus, remoteStatus) < 0) {
-        chosenStatus = remoteStatus;
-        chosenMeta = remoteState?.statusMeta?.[modeId]?.[entryId];
-      }
-
-      if (chosenStatus != null) merged.statuses[modeId][entryId] = chosenStatus;
-      if (chosenMeta) merged.statusMeta[modeId][entryId] = { ...chosenMeta };
-    });
-
-    const availabilityIds = new Set([
-      ...Object.keys(localState?.availability?.[modeId] || {}),
-      ...Object.keys(remoteState?.availability?.[modeId] || {})
-    ]);
-    availabilityIds.forEach(entryId => {
-      const localValue = localState?.availability?.[modeId]?.[entryId];
-      const remoteValue = remoteState?.availability?.[modeId]?.[entryId];
-      if (localValue == null && remoteValue == null) return;
-      const localChanged = getEntryChangedAt(localState, modeId, entryId);
-      const remoteChanged = getEntryChangedAt(remoteState, modeId, entryId);
-      merged.availability[modeId][entryId] = remoteChanged > localChanged ? !!remoteValue : !!localValue;
-    });
-  });
-
-  merged.unreleasedOverrides = {
-    ...(localState?.unreleasedOverrides || {}),
-    ...(remoteState?.unreleasedOverrides || {})
-  };
-  merged._meta = {
-    ...(merged._meta || {}),
-    lastModifiedAt: [localTime, remoteTime].filter(Boolean).sort().at(-1) || new Date().toISOString()
-  };
-  return merged;
-}
-
 async function fetchCloudBundle() {
   const response = await fetch(ACCOUNT_SESSION_API, { credentials: "same-origin" });
   const data = await response.json().catch(() => ({}));
@@ -1591,26 +1551,21 @@ async function fetchCloudBundle() {
 }
 
 async function fetchAccountState() {
-  const response = await fetch(POGO_ACCOUNT_STATE_API, { credentials: "same-origin" });
+  const response = await fetch(POGO_DEX_STATE_API, { credentials: "same-origin" });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Could not load account data.");
   return data;
 }
 
 async function pushCloudBundle() {
-  const response = await fetch(POGO_ACCOUNT_STATE_API, {
+  const response = await fetch(POGO_DEX_STATE_API, {
     method: "PUT",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      payload: {
-        pokedex: state
-      }
-    })
+    body: JSON.stringify({ pokedex: state })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Account save failed.");
-  accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
   cloudSyncDirty = false;
   return data;
 }
@@ -1631,15 +1586,10 @@ function applyRemotePokedexState(nextState) {
 
 function applyRemoteBundle(remoteState) {
   const remotePokedex = remoteState?.pokedex || null;
-  const localPokedex = safeJsonParse(localStorage.getItem(STORAGE_KEY)) || state;
-  const mergedPokedex = mergePokedexStates(localPokedex, remotePokedex);
-  if (mergedPokedex) {
-    persistPokedexLocalState(JSON.stringify(mergedPokedex));
-    applyRemotePokedexState(mergedPokedex);
-  }
-  if (remoteState?.revision !== undefined) {
-    accountStateRevision = Number(remoteState.revision || 0);
-  }
+  if (!remotePokedex) return false;
+  persistPokedexLocalState(JSON.stringify(remotePokedex));
+  applyRemotePokedexState(remotePokedex);
+  return true;
 }
 
 function hasMeaningfulLocalPokedexState() {
@@ -1651,22 +1601,25 @@ function hasMeaningfulLocalPokedexState() {
 
 async function bootstrapAccountFromLocalIfEmpty() {
   const remote = await fetchAccountState();
-  const remoteIsEmpty = !remote || (!remote.medals && !remote.pokedex && Number(remote.revision || 0) === 0);
+  const remoteIsEmpty = !remote || !remote.pokedex;
   if (!remoteIsEmpty || !hasMeaningfulLocalPokedexState()) return false;
-  accountStateRevision = Number(remote.revision || 0);
   await pushCloudBundle();
   return true;
 }
 
 async function pullCloudBundleAndApply(options = {}) {
   const remote = await fetchAccountState();
-  applyRemoteBundle(remote);
+  const applied = applyRemoteBundle(remote);
   buildControls();
   render();
   if (!options.silent) {
-    await window.Swal.fire({ icon: "success", title: "Account sync complete", text: "This device is now aligned with your live site data.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    if (applied) {
+      await window.Swal.fire({ icon: "success", title: "Account sync complete", text: "This device is now aligned with your live Pokedex data.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    } else {
+      await window.Swal.fire({ icon: "info", title: "No live Pokedex data yet", text: "There is no saved cloud Pokedex state for this account yet.", timer: 1800, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+    }
   }
-  return true;
+  return applied;
 }
 
 async function openCloudSyncDialog() {
@@ -1705,7 +1658,6 @@ async function openCloudSyncDialog() {
     if (result.isDenied) {
       await fetch(ACCOUNT_LOGOUT_API, { method: "POST", credentials: "same-origin" });
       accountSessionState.loggedIn = false;
-      accountStateRevision = 0;
       stopAccountSyncPolling();
       refreshCloudSyncButton();
       await window.Swal.fire({ icon: "success", title: "Signed out", timer: 1200, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
@@ -1826,9 +1778,9 @@ async function toggleSyncPause() {
 
 function flushCloudPushOnPageHide() {
   if (!cloudSyncDirty || !accountSessionState.loggedIn || accountSyncPrefs.paused) return;
-  const payload = JSON.stringify({ payload: { pokedex: state } });
+  const payload = JSON.stringify({ pokedex: state });
   try {
-    fetch(POGO_ACCOUNT_STATE_API, {
+    fetch(POGO_DEX_STATE_API, {
       method: "PUT",
       credentials: "same-origin",
       keepalive: true,
