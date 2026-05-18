@@ -1693,14 +1693,12 @@ function getSpriteSources(entry, mode) {
 
   if (mode === "shiny") {
     if (legacyAltSlug) {
+      const candidates = getAltSpriteCandidates(entry, legacyAltSlug, "shiny");
       return {
-        primary: getAltSpriteUrl(legacyAltSlug, familyKey, "shiny"),
+        primary: candidates[0],
         fallbacks: uniqueSpriteUrls([
-          getAltSpriteUrl(legacyAltSlug, familyKey, "normal"),
-          `https://img.pokemondb.net/sprites/black-white/shiny/${legacyAltSlug}.png`,
-          `https://img.pokemondb.net/sprites/black-white/normal/${legacyAltSlug}.png`,
-          `https://img.pokemondb.net/sprites/home/shiny/${legacyAltSlug}.png`,
-          `https://img.pokemondb.net/sprites/home/normal/${legacyAltSlug}.png`,
+          ...candidates.slice(1),
+          ...getAltSpriteCandidates(entry, legacyAltSlug, "normal"),
           classicShiny,
           classic
         ])
@@ -1713,11 +1711,11 @@ function getSpriteSources(entry, mode) {
   }
 
   if (entry.isAltForm && legacyAltSlug) {
+    const candidates = getAltSpriteCandidates(entry, legacyAltSlug, "normal");
     return {
-      primary: getAltSpriteUrl(legacyAltSlug, familyKey, "normal"),
+      primary: candidates[0],
       fallbacks: uniqueSpriteUrls([
-        `https://img.pokemondb.net/sprites/black-white/normal/${legacyAltSlug}.png`,
-        `https://img.pokemondb.net/sprites/home/normal/${legacyAltSlug}.png`,
+        ...candidates.slice(1),
         classic,
         official
       ])
@@ -1737,12 +1735,35 @@ function getSpriteSources(entry, mode) {
   return { primary: classic, fallbacks: [official] };
 }
 
-function getAltSpriteUrl(slug, familyKey, variant) {
+function getAltSpriteUrl(style, slug, variant) {
   const normalizedVariant = variant === "shiny" ? "shiny" : "normal";
-  if (familyKey === "alolan") {
-    return `https://img.pokemondb.net/sprites/sun-moon/${normalizedVariant}/${slug}.png`;
+  return `https://img.pokemondb.net/sprites/${style}/${normalizedVariant}/${slug}.png`;
+}
+
+function getAltSpriteCandidates(entry, slug, variant) {
+  const familyKey = getFormFamilyKey(entry);
+  const styles = getPreferredAltSpriteStyles(entry, slug, familyKey, variant);
+  return uniqueSpriteUrls(styles.map(style => getAltSpriteUrl(style, slug, variant)));
+}
+
+function getPreferredAltSpriteStyles(entry, slug, familyKey, variant) {
+  const key = `${entry.dex}:${slug}`;
+  const specialStyles = {
+    "646:kyurem-white": ["x-y", "omega-ruby-alpha-sapphire", "sun-moon", "scarlet-violet", "black-white", "home"],
+    "646:kyurem-black": ["x-y", "omega-ruby-alpha-sapphire", "sun-moon", "scarlet-violet", "black-white", "home"],
+    "800:necrozma-dawn-wings": ["bank", "sun-moon", "scarlet-violet", "home"],
+    "800:necrozma-dusk-mane": ["bank", "sun-moon", "scarlet-violet", "home"]
+  };
+  if (specialStyles[key]) {
+    return specialStyles[key];
   }
-  return `https://img.pokemondb.net/sprites/black-white/${normalizedVariant}/${slug}.png`;
+  if (familyKey === "alolan") {
+    return ["sun-moon", "x-y", "omega-ruby-alpha-sapphire", "scarlet-violet", "black-white", "home"];
+  }
+  if (familyKey === "galarian" || familyKey === "hisuian" || familyKey === "paldean") {
+    return ["scarlet-violet", "sun-moon", "bank", "omega-ruby-alpha-sapphire", "x-y", "black-white", "home"];
+  }
+  return ["sun-moon", "bank", "omega-ruby-alpha-sapphire", "x-y", "scarlet-violet", "black-white", "home"];
 }
 
 function uniqueSpriteUrls(urls) {
