@@ -1509,21 +1509,12 @@ async function pushCloudBundle() {
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      baseRevision: accountStateRevision,
       payload: {
-        medals: getCurrentMedalState(),
         pokedex: state
       }
     })
   });
   const data = await response.json().catch(() => ({}));
-  if (response.status === 409) {
-    if (data.state) {
-      applyRemoteBundle(data.state);
-      return pushCloudBundle();
-    }
-    throw new Error(data.error || "State conflict. Reload and try again.");
-  }
   if (!response.ok) throw new Error(data.error || "Account save failed.");
   accountStateRevision = Number(data.state?.revision || accountStateRevision || 0);
   return data;
