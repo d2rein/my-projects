@@ -544,6 +544,13 @@ async function bootstrapAccountFromLocalIfEmpty() {
   return true;
 }
 
+async function syncMedalsOnLoginOrLoad() {
+  const seeded = await bootstrapAccountFromLocalIfEmpty().catch(() => false);
+  if (!seeded) {
+    await pullCloudMedalsAndApply({ silent: true }).catch(() => false);
+  }
+}
+
 async function pullCloudMedalsAndApply(options = {}) {
   const remote = await fetchAccountState();
   applyRemoteAccountState(remote);
@@ -635,7 +642,7 @@ async function openCloudSyncDialog() {
       throw new Error(data.error || "Could not sign in.");
     }
     await fetchCloudMedals();
-    await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+    await syncMedalsOnLoginOrLoad().catch(() => null);
     await Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
     await Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
@@ -645,7 +652,7 @@ async function initializeCloudSync() {
   try {
     await fetchCloudMedals();
     if (accountSessionState.loggedIn) {
-      await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+      await syncMedalsOnLoginOrLoad().catch(() => null);
     }
   } catch (error) {
     console.warn("Initial medal account sync failed:", error);

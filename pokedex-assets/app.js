@@ -1607,6 +1607,13 @@ async function bootstrapAccountFromLocalIfEmpty() {
   return true;
 }
 
+async function syncPokedexOnLoginOrLoad() {
+  const seeded = await bootstrapAccountFromLocalIfEmpty().catch(() => false);
+  if (!seeded) {
+    await pullCloudBundleAndApply({ silent: true }).catch(() => false);
+  }
+}
+
 async function pullCloudBundleAndApply(options = {}) {
   const remote = await fetchAccountState();
   const applied = applyRemoteBundle(remote);
@@ -1709,7 +1716,7 @@ async function openCloudSyncDialog() {
       throw new Error(data.error || "Could not sign in.");
     }
     await fetchCloudBundle();
-    await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+    await syncPokedexOnLoginOrLoad().catch(() => null);
     await window.Swal.fire({ icon: "success", title: "Signed in", text: "This device now has live sitewide access.", timer: 1600, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   } catch (error) {
     await window.Swal.fire({ icon: "error", title: "Login failed", text: error.message || "The account login failed.", background: "#121c34", color: "#eef4ff" });
@@ -1720,7 +1727,7 @@ async function initializeCloudSync() {
   try {
     await fetchCloudBundle();
     if (accountSessionState.loggedIn) {
-      await bootstrapAccountFromLocalIfEmpty().catch(() => null);
+      await syncPokedexOnLoginOrLoad().catch(() => null);
     }
   } catch (error) {
     console.warn("Initial pokedex account sync failed:", error);
