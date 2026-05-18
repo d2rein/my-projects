@@ -1433,29 +1433,24 @@ function safeJsonParse(value) {
   }
 }
 
-function getCurrentMedalState() {
-  return safeJsonParse(localStorage.getItem(MEDAL_STORAGE_KEY));
-}
-
-function buildCombinedBackup() {
+function buildPokedexBackup() {
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
     data: {
-      medals: getCurrentMedalState(),
       pokedex: state
     }
   };
 }
 
-function downloadCombinedBackup() {
-  const payload = buildCombinedBackup();
+function downloadPokedexBackup() {
+  const payload = buildPokedexBackup();
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const stamp = payload.exportedAt.slice(0, 19).replace(/[:T]/g, "-");
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `pogo-all-data-backup-${stamp}.json`;
+  anchor.download = `pogo-pokedex-backup-${stamp}.json`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -1465,7 +1460,7 @@ function downloadCombinedBackup() {
 async function openBackupDialog() {
   const result = await window.Swal.fire({
     title: "Backup / Restore",
-    html: "Download one file with medal tracker and Pokedex data, or restore both from a previous backup.",
+    html: "Download a Pokedex-only backup file, or restore the Pokedex from a previous backup.",
     showCancelButton: true,
     showDenyButton: true,
     confirmButtonText: "Download backup",
@@ -1477,7 +1472,7 @@ async function openBackupDialog() {
     color: "#eef4ff"
   });
   if (result.isConfirmed) {
-    downloadCombinedBackup();
+    downloadPokedexBackup();
     return;
   }
   if (result.isDenied) {
@@ -1494,16 +1489,15 @@ async function handleCombinedImport(file) {
     await window.Swal.fire({ icon: "error", title: "Invalid backup", text: "That file is not valid JSON.", background: "#121c34", color: "#eef4ff" });
     return;
   }
-  const medals = parsed?.data?.medals;
   const pokedex = parsed?.data?.pokedex;
-  if (!medals || !pokedex) {
-    await window.Swal.fire({ icon: "error", title: "Invalid backup", text: "That file is missing medal or Pokedex data.", background: "#121c34", color: "#eef4ff" });
+  if (!pokedex) {
+    await window.Swal.fire({ icon: "error", title: "Invalid backup", text: "That file is missing Pokedex data.", background: "#121c34", color: "#eef4ff" });
     return;
   }
   const confirm = await window.Swal.fire({
     icon: "warning",
-    title: "Restore all data?",
-    text: "This will overwrite the current medal tracker and Pokedex local data on this device.",
+    title: "Restore Pokedex?",
+    text: "This will overwrite the current Pokedex local data on this device.",
     showCancelButton: true,
     confirmButtonText: "Restore",
     cancelButtonText: "Cancel",
@@ -1511,9 +1505,8 @@ async function handleCombinedImport(file) {
     color: "#eef4ff"
   });
   if (!confirm.isConfirmed) return;
-  localStorage.setItem(MEDAL_STORAGE_KEY, JSON.stringify(medals));
   persistPokedexLocalState(JSON.stringify(pokedex));
-  await window.Swal.fire({ icon: "success", title: "Backup restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
+  await window.Swal.fire({ icon: "success", title: "Pokedex restored", text: "Reloading with the restored data now.", timer: 1400, showConfirmButton: false, background: "#121c34", color: "#eef4ff" });
   location.reload();
 }
 
