@@ -717,7 +717,8 @@ function seedStateFromData() {
     statusMeta: {}
   };
 
-  Object.assign(state, fallback, state);
+  const existing = structuredClone(state);
+  Object.assign(state, fallback, existing);
 
   let changed = false;
 
