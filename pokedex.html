@@ -4,7 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pokemon GO Pokedex Tracker</title>
-<link rel="stylesheet" href="./pokedex-assets/styles.css?v=20260518f">
+<script>
+const CURRENT_BUILD = "20260518g";
+{
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("b") !== CURRENT_BUILD) {
+    url.searchParams.set("b", CURRENT_BUILD);
+    window.location.replace(url.toString());
+  }
+}
+</script>
+<link rel="stylesheet" href="./pokedex-assets/styles.css?v=20260518g">
 </head>
 <body>
 <div class="app-shell">
@@ -21,8 +31,8 @@
           <button class="nav-link" id="cloudSyncBtn" type="button">Account</button>
           <button class="nav-link" id="accountRefreshBtn" type="button">Refresh live</button>
           <button class="nav-link" id="syncPauseBtn" type="button">Pause sync</button>
-          <a class="nav-link" href="./pogo-availability.html">Availability</a>
-          <a class="nav-link" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
+          <a class="nav-link" href="./pogo-availability.html?b=20260518g">Availability</a>
+          <a class="nav-link" href="./pogo_medal_tracker_v3_1.html?b=20260518g">Back to Medal Tracker</a>
         </div>
       </div>
 
@@ -112,8 +122,8 @@
 </div>
 <input id="importAllInput" type="file" accept=".json,application/json" hidden>
 
-<script src="./pokedex-assets/seed-data.js?v=20260518f"></script>
+<script src="./pokedex-assets/seed-data.js?v=20260518g"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="./pokedex-assets/app.js?v=20260518f"></script>
+<script src="./pokedex-assets/app.js?v=20260518g"></script>
 </body>
 </html>

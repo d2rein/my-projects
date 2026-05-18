@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+const CURRENT_BUILD = "20260518g";
+{
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("b") !== CURRENT_BUILD) {
+    url.searchParams.set("b", CURRENT_BUILD);
+    window.location.replace(url.toString());
+  }
+}
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pokémon GO Medal Forecast Tracker</title>
@@ -133,7 +143,7 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
     <button class="tab-btn active" data-tab="entry">Entry</button>
     <button class="tab-btn" data-tab="forecast">Level Forecast</button>
     <button class="tab-btn" data-tab="graphs">Graphs</button>
-    <a class="tab-link" href="./pokedex.html">Pokedex</a>
+    <a class="tab-link" href="./pokedex.html?b=20260518g">Pokedex</a>
   </div>
 
   <section id="entry" class="tab-pane active">
