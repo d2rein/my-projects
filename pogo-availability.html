@@ -317,6 +317,7 @@
         <a class="button" href="./index.html">Homepage</a>
       </div>
       <div id="status" class="warning">Loading feed...</div>
+      <div id="seasonMeta" class="warning" style="display:none;"></div>
       <div id="summary" class="summary"></div>
     </section>
 
@@ -359,6 +360,7 @@
       generatedAt: document.querySelector("#generatedAt"),
       generatedFrom: document.querySelector("#generatedFrom"),
       status: document.querySelector("#status"),
+      seasonMeta: document.querySelector("#seasonMeta"),
       summary: document.querySelector("#summary"),
       tableBody: document.querySelector("#tableBody"),
       searchInput: document.querySelector("#searchInput"),
@@ -407,6 +409,7 @@
         if (!response.ok) throw new Error(await response.text());
         const payload = await response.json();
         flatRows = flattenFeed(payload);
+        renderSeasonMeta(payload);
         els.updatedAt.textContent = formatDate(payload.updatedAt);
         els.generatedAt.textContent = formatDate(payload.generatedAt);
         els.generatedFrom.textContent = payload.generatedFrom || "unknown";
@@ -415,8 +418,21 @@
       } catch (error) {
         els.status.textContent = error.message || "Feed load failed.";
         els.tableBody.innerHTML = `<tr><td colspan="8" class="empty">${escapeHtml(error.message || "Feed load failed.")}</td></tr>`;
+        els.seasonMeta.style.display = "none";
+        els.seasonMeta.textContent = "";
         els.summary.innerHTML = "";
       }
+    }
+
+    function renderSeasonMeta(payload) {
+      const season = deriveSeasonWindow(payload.catalog || {});
+      if (!season) {
+        els.seasonMeta.style.display = "none";
+        els.seasonMeta.textContent = "";
+        return;
+      }
+      els.seasonMeta.style.display = "";
+      els.seasonMeta.textContent = `Season: ${season.name} • ${formatShortDate(season.startsAt)} to ${formatShortDate(season.endsAt)}`;
     }
 
     function render() {
@@ -489,6 +505,7 @@
       }
       rows.sort((a, b) =>
         eventOrderBucket(a) - eventOrderBucket(b)
+        || compareDuration(a.durationMs, b.durationMs)
         || a.sectionOrder - b.sectionOrder
         || a.entryOrder - b.entryOrder
         || a.dex - b.dex
@@ -501,6 +518,12 @@
       if (!row.isUpcoming) return 0;
       if (row.isSoonRaid) return 1;
       return 2;
+    }
+
+    function compareDuration(a, b) {
+      const left = Number.isFinite(a) ? a : Number.POSITIVE_INFINITY;
+      const right = Number.isFinite(b) ? b : Number.POSITIVE_INFINITY;
+      return left - right;
     }
 
     function flattenFeed(payload) {
@@ -559,6 +582,43 @@
       return !!serverUpcoming;
     }
 
+    function computeDurationMs(section) {
+      const startTs = parseComparableTimestamp(section?.startsAt);
+      const endTs = parseComparableTimestamp(section?.endsAt);
+      if (Number.isFinite(startTs) && Number.isFinite(endTs) && endTs >= startTs) {
+        return endTs - startTs;
+      }
+      return Number.POSITIVE_INFINITY;
+    }
+
+    function deriveSeasonWindow(catalog) {
+      const seasonMap = new Map();
+      const sections = [...(catalog.current || []), ...(catalog.upcoming || [])];
+      sections.forEach(section => {
+        const seasonName = extractSeasonName(section);
+        if (!seasonName) return;
+        const existing = seasonMap.get(seasonName) || { name: seasonName, startsAt: null, endsAt: null, count: 0 };
+        existing.count += 1;
+        if (section.startsAt && (!existing.startsAt || parseComparableTimestamp(section.startsAt) < parseComparableTimestamp(existing.startsAt))) {
+          existing.startsAt = section.startsAt;
+        }
+        if (section.endsAt && (!existing.endsAt || parseComparableTimestamp(section.endsAt) > parseComparableTimestamp(existing.endsAt))) {
+          existing.endsAt = section.endsAt;
+        }
+        seasonMap.set(seasonName, existing);
+      });
+      const seasons = [...seasonMap.values()].filter(item => item.startsAt || item.endsAt);
+      seasons.sort((a, b) => b.count - a.count || compareText(a.name, b.name));
+      return seasons[0] || null;
+    }
+
+    function extractSeasonName(section) {
+      const title = String(section?.title || "");
+      if (!/league/i.test(title) || !title.includes("|")) return "";
+      const parts = title.split("|").map(part => part.trim()).filter(Boolean);
+      return parts.at(-1) || "";
+    }
+
     function pushSectionRows(target, section, sectionOrder, isUpcoming) {
       const entries = section.entries || [];
       const rowBase = {
@@ -568,6 +628,7 @@
         group: deriveGroup(section),
         startsAt: section.startsAt || null,
         endsAt: section.endsAt || null,
+        durationMs: computeDurationMs(section),
         isUpcoming
       };
 

@@ -178,6 +178,7 @@ async function parseEvents(html) {
     const anchorAttrs = match[2];
     const body = match[3];
     const href = absolutizeUrl(extractAttr(anchorAttrs, "href") || "", FEED_SOURCES.events);
+    const isLocalTime = extractAttr(spanAttrs, "data-event-local-time") === "true";
     const startsAt = normalizeIso(
       extractAttr(spanAttrs, "data-event-start-date")
       || extractAttr(spanAttrs, "data-event-start-date-check")
@@ -194,14 +195,15 @@ async function parseEvents(html) {
       subtitle: category,
       startsAt,
       endsAt,
+      localTime: isLocalTime,
       source: href,
       sourceLabel: "Leek Duck Events",
       updatedAt: startsAt || endsAt || new Date().toISOString(),
       entries: pokemon.length ? pokemon : []
     });
 
-    const startTime = startsAt ? Date.parse(startsAt) : Number.POSITIVE_INFINITY;
-    const endTime = endsAt ? Date.parse(endsAt) : Number.POSITIVE_INFINITY;
+    const startTime = startsAt ? parseComparableDateValue(startsAt) : Number.POSITIVE_INFINITY;
+    const endTime = endsAt ? parseComparableDateValue(endsAt) : Number.POSITIVE_INFINITY;
     if (startTime <= now && endTime >= now) {
       current.push(item);
     } else if (startTime > now) {
@@ -516,6 +518,7 @@ function makeCatalogSection(section) {
     subtitle: section.subtitle || "",
     startsAt: section.startsAt || null,
     endsAt: section.endsAt || null,
+    localTime: !!section.localTime,
     source: section.source || "",
     sourceLabel: section.sourceLabel || "",
     updatedAt: section.updatedAt || null,
@@ -616,6 +619,17 @@ function normalizeIso(value) {
   if (floating) return floating;
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function parseComparableDateValue(value) {
+  if (!value) return Number.NaN;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(String(value))) {
+    const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return Number.NaN;
+    const [, year, month, day, hour, minute, second = "00"] = match;
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)).getTime();
+  }
+  return Date.parse(value);
 }
 
 function normalizeFloatingLocalDateTime(raw) {
