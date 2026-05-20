@@ -5,7 +5,7 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v5";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v6";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
@@ -784,6 +784,18 @@ function normalizeFloatingLocalDateTime(raw) {
     return `${year}-${month}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${minute}:00`;
   }
 
+  const verboseMonthLike = raw.match(/^(?:[A-Za-z]+,\s+)?([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4}),\s*at\s*(\d{1,2}):(\d{2})\s*([AP]M)(?:\s+Local\s+Time)?$/i);
+  if (verboseMonthLike) {
+    const [, monthName, day, year, hourText, minute, meridiem] = verboseMonthLike;
+    const month = monthNameToNumber(monthName);
+    if (!month) return null;
+    let hour = Number(hourText);
+    const upperMeridiem = meridiem.toUpperCase();
+    if (upperMeridiem === "AM" && hour === 12) hour = 0;
+    if (upperMeridiem === "PM" && hour !== 12) hour += 12;
+    return `${year}-${month}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${minute}:00`;
+  }
+
   return null;
 }
 
@@ -898,9 +910,19 @@ async function enrichEventSections(sections) {
     if (!section?.source) return;
     try {
       const html = await fetchText(section.source);
+      const articleWindow = extractEventArticleWindow(html);
       const detailedEntries = extractEventArticleEntries(html);
       if (detailedEntries.length) {
         section.entries = mergeEntries([...(section.entries || []), ...detailedEntries]);
+      }
+      if (articleWindow.startsAt) {
+        section.startsAt = articleWindow.startsAt;
+      }
+      if (articleWindow.endsAt) {
+        section.endsAt = articleWindow.endsAt;
+      }
+      if (articleWindow.localTime) {
+        section.localTime = true;
       }
       const articleUpdatedAt = extractPageUpdatedAt(html);
       if (articleUpdatedAt) {
@@ -910,6 +932,27 @@ async function enrichEventSections(sections) {
       // Keep the lightweight list-page section if the detail page fails.
     }
   }));
+}
+
+function extractEventArticleWindow(html) {
+  const text = decodeHtml(stripTags(html)).replace(/\s+/g, " ").trim();
+  const startsRaw = extractArticleTimeLabel(text, "Starts:");
+  const endsRaw = extractArticleTimeLabel(text, "Ends:");
+  return {
+    startsAt: normalizeIso(startsRaw),
+    endsAt: normalizeIso(endsRaw),
+    localTime: /\bLocal Time\b/i.test(startsRaw || "") || /\bLocal Time\b/i.test(endsRaw || "")
+  };
+}
+
+function extractArticleTimeLabel(text, label) {
+  if (!text) return null;
+  const regex = new RegExp(
+    `${escapeRegex(label)}\\s*((?:[A-Za-z]+,\\s+)?[A-Za-z]+\\s+\\d{1,2},\\s*\\d{4},\\s*at\\s*\\d{1,2}:\\d{2}\\s*[AP]M(?:\\s+Local\\s+Time)?)`,
+    "i"
+  );
+  const match = text.match(regex);
+  return match ? match[1].replace(/\s+/g, " ").trim() : null;
 }
 
 function extractEventArticleEntries(html) {
