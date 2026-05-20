@@ -611,8 +611,58 @@ function normalizeName(value) {
 
 function normalizeIso(value) {
   if (!value) return null;
-  const date = new Date(value);
+  const raw = String(value).trim();
+  const floating = normalizeFloatingLocalDateTime(raw);
+  if (floating) return floating;
+  const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function normalizeFloatingLocalDateTime(raw) {
+  if (!raw || hasExplicitTimeZone(raw)) return null;
+
+  const isoLike = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (isoLike) {
+    const [, year, month, day, hour, minute, second = "00"] = isoLike;
+    return `${year}-${month}-${day}T${String(hour).padStart(2, "0")}:${minute}:${second}`;
+  }
+
+  const monthLike = raw.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4}),\s*(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (monthLike) {
+    const [, monthName, day, year, hourText, minute, meridiem] = monthLike;
+    const month = monthNameToNumber(monthName);
+    if (!month) return null;
+    let hour = Number(hourText);
+    const upperMeridiem = meridiem.toUpperCase();
+    if (upperMeridiem === "AM" && hour === 12) hour = 0;
+    if (upperMeridiem === "PM" && hour !== 12) hour += 12;
+    return `${year}-${month}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${minute}:00`;
+  }
+
+  return null;
+}
+
+function hasExplicitTimeZone(raw) {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)
+    || /\b(?:UTC|GMT)\b/i.test(raw);
+}
+
+function monthNameToNumber(name) {
+  const key = String(name || "").trim().toLowerCase();
+  return {
+    january: "01",
+    february: "02",
+    march: "03",
+    april: "04",
+    may: "05",
+    june: "06",
+    july: "07",
+    august: "08",
+    september: "09",
+    october: "10",
+    november: "11",
+    december: "12"
+  }[key] || null;
 }
 
 function mergeEntries(entries) {

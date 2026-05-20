@@ -304,6 +304,11 @@
           <option value="source">Event order</option>
           <option value="dex">Pokedex order</option>
         </select>
+        <select id="timeZoneSelect" aria-label="Timezone display">
+          <option value="local">Local time</option>
+          <option value="Australia/Brisbane">Brisbane</option>
+          <option value="UTC">UTC</option>
+        </select>
         <button id="missingToggle" class="toggle-btn" type="button">Only missing</button>
         <button id="upcomingToggle" class="toggle-btn active" type="button">Show upcoming</button>
         <button id="refreshBtn" type="button">Refresh feed</button>
@@ -340,7 +345,14 @@
 
   <script>
     const POKEDEX_STORAGE_KEY = "pogo-fresh-pokedex-v2";
-    const state = { search: "", sort: "source", missingOnly: false, showUpcoming: true };
+    const TIMEZONE_PREF_KEY = "pogo-availability-timezone";
+    const state = {
+      search: "",
+      sort: "source",
+      missingOnly: false,
+      showUpcoming: true,
+      timeZone: localStorage.getItem(TIMEZONE_PREF_KEY) || "local"
+    };
 
     const els = {
       updatedAt: document.querySelector("#updatedAt"),
@@ -351,6 +363,7 @@
       tableBody: document.querySelector("#tableBody"),
       searchInput: document.querySelector("#searchInput"),
       sortSelect: document.querySelector("#sortSelect"),
+      timeZoneSelect: document.querySelector("#timeZoneSelect"),
       missingToggle: document.querySelector("#missingToggle"),
       upcomingToggle: document.querySelector("#upcomingToggle"),
       refreshBtn: document.querySelector("#refreshBtn")
@@ -364,6 +377,12 @@
     });
     els.sortSelect.addEventListener("change", () => {
       state.sort = els.sortSelect.value;
+      render();
+    });
+    els.timeZoneSelect.value = state.timeZone;
+    els.timeZoneSelect.addEventListener("change", () => {
+      state.timeZone = els.timeZoneSelect.value || "local";
+      localStorage.setItem(TIMEZONE_PREF_KEY, state.timeZone);
       render();
     });
     els.missingToggle.addEventListener("click", () => {
@@ -486,8 +505,7 @@
 
     function flattenFeed(payload) {
       const rows = [];
-      const currentSections = payload.catalog?.current || [];
-      const upcomingSections = payload.catalog?.upcoming || [];
+      const { currentSections, upcomingSections } = classifySectionsForViewer(payload.catalog || {});
 
       currentSections.forEach((section, sectionOrder) => {
         pushSectionRows(rows, section, sectionOrder, false);
@@ -496,6 +514,49 @@
         pushSectionRows(rows, section, currentSections.length + index, true);
       });
       return dedupeRows(rows);
+    }
+
+    function classifySectionsForViewer(catalog) {
+      const combined = [];
+      const seen = new Set();
+      const rawCurrent = catalog.current || [];
+      const rawUpcoming = catalog.upcoming || [];
+
+      rawCurrent.forEach((section, index) => push(section, index, false));
+      rawUpcoming.forEach((section, index) => push(section, rawCurrent.length + index, true));
+
+      function push(section, order, serverUpcoming) {
+        const key = String(section?.id || `${section?.title || "section"}::${order}`);
+        if (seen.has(key)) return;
+        seen.add(key);
+        combined.push({ section, order, serverUpcoming });
+      }
+
+      const currentSections = [];
+      const upcomingSections = [];
+      combined.forEach(item => {
+        const upcoming = isSectionUpcomingForViewer(item.section, item.serverUpcoming);
+        (upcoming ? upcomingSections : currentSections).push(item);
+      });
+
+      currentSections.sort((a, b) => a.order - b.order);
+      upcomingSections.sort((a, b) => a.order - b.order);
+
+      return {
+        currentSections: currentSections.map(item => item.section),
+        upcomingSections: upcomingSections.map(item => item.section)
+      };
+    }
+
+    function isSectionUpcomingForViewer(section, serverUpcoming) {
+      const startTs = parseComparableTimestamp(section?.startsAt);
+      const endTs = parseComparableTimestamp(section?.endsAt);
+      const now = Date.now();
+
+      if (Number.isFinite(startTs) && startTs > now) return true;
+      if (Number.isFinite(endTs) && endTs < now) return false;
+      if (Number.isFinite(startTs) || Number.isFinite(endTs)) return false;
+      return !!serverUpcoming;
     }
 
     function pushSectionRows(target, section, sectionOrder, isUpcoming) {
@@ -567,8 +628,7 @@
     }
 
     function isWithinDays(value, days) {
-      if (!value) return false;
-      const ts = Date.parse(value);
+      const ts = parseComparableTimestamp(value);
       if (Number.isNaN(ts)) return false;
       const diff = ts - Date.now();
       return diff > 0 && diff <= days * 24 * 60 * 60 * 1000;
@@ -619,22 +679,76 @@
 
     function formatDate(value) {
       if (!value) return "n/a";
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return value;
-      return date.toLocaleString();
+      return formatDateValue(value, false);
     }
 
     function formatShortDate(value) {
       if (!value) return "-";
+      return formatDateValue(value, true);
+    }
+
+    function formatDateValue(value, shortMode) {
+      if (isFloatingLocalTimestamp(value)) {
+        return formatFloatingLocalTimestamp(value, shortMode);
+      }
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return value;
-      return date.toLocaleString([], {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit"
-      });
+      const options = shortMode
+        ? {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit"
+          }
+        : undefined;
+      if (state.timeZone !== "local") {
+        options ? options.timeZone = state.timeZone : null;
+      }
+      return shortMode
+        ? date.toLocaleString([], options)
+        : date.toLocaleString([], state.timeZone === "local" ? undefined : { timeZone: state.timeZone });
+    }
+
+    function parseComparableTimestamp(value) {
+      if (!value) return Number.NaN;
+      if (isFloatingLocalTimestamp(value)) {
+        const parts = parseFloatingLocalParts(value);
+        if (!parts) return Number.NaN;
+        const date = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+        return date.getTime();
+      }
+      return Date.parse(value);
+    }
+
+    function isFloatingLocalTimestamp(value) {
+      return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(String(value || ""));
+    }
+
+    function parseFloatingLocalParts(value) {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (!match) return null;
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]),
+        day: Number(match[3]),
+        hour: Number(match[4]),
+        minute: Number(match[5]),
+        second: Number(match[6] || "0")
+      };
+    }
+
+    function formatFloatingLocalTimestamp(value, shortMode) {
+      const parts = parseFloatingLocalParts(value);
+      if (!parts) return value;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const hour12 = ((parts.hour + 11) % 12) + 1;
+      const meridiem = parts.hour >= 12 ? "PM" : "AM";
+      const minute = String(parts.minute).padStart(2, "0");
+      const base = `${String(parts.day).padStart(2, "0")} ${months[parts.month - 1]} ${parts.year}, ${hour12}:${minute} ${meridiem}`;
+      if (state.timeZone === "UTC") return `${base} local`;
+      if (state.timeZone === "Australia/Brisbane") return `${base} AEST`;
+      return shortMode ? base : `${base} local`;
     }
 
     function compareText(a, b) {
