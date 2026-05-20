@@ -5,13 +5,15 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v7";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v8";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
 const FEED_SOURCES = {
   events: "https://leekduck.com/events/",
   raidBosses: "https://leekduck.com/raid-bosses/",
+  raidManifest: "https://leekduck.com/raids/manifest.json",
+  raidContentBase: "https://leekduck.com/raids/",
   rocket: "https://leekduck.com/rocket-lineups/",
   research: "https://leekduck.com/research/",
   eggs: "https://leekduck.com/eggs/"
@@ -107,27 +109,25 @@ export async function onRequestPost(context) {
 }
 
 async function buildAutomaticFeed() {
-  const [eventsHtml, raidsHtml, rocketHtml, researchHtml, eggsHtml] = await Promise.all([
+  const [eventsHtml, raidManifest, rocketHtml, researchHtml, eggsHtml] = await Promise.all([
     fetchText(FEED_SOURCES.events),
-    fetchText(FEED_SOURCES.raidBosses),
+    fetchJson(FEED_SOURCES.raidManifest),
     fetchText(FEED_SOURCES.rocket),
     fetchText(FEED_SOURCES.research),
     fetchText(FEED_SOURCES.eggs)
   ]);
 
   const eventSections = await parseEvents(eventsHtml);
-  const raidSections = parseRaidBosses(raidsHtml);
-  const raidFallbackSections = deriveRaidFallbackSectionsFromEvents(eventSections.current, raidSections.current);
+  const raidSections = await parseRaidBossesFromManifest(raidManifest);
   const rocketSection = parseRocketLineups(rocketHtml);
   const researchSections = parseResearch(researchHtml);
   const eggSections = parseEggs(eggsHtml);
 
-  const filteredCurrentEvents = filterOutEventRaidSections(eventSections.current, raidFallbackSections);
+  const filteredCurrentEvents = filterOutCurrentRaidEventSections(eventSections.current);
 
   const currentCatalog = [
     ...filteredCurrentEvents,
     ...raidSections.current,
-    ...raidFallbackSections,
     rocketSection,
     ...researchSections.current,
     ...eggSections.current
@@ -137,7 +137,7 @@ async function buildAutomaticFeed() {
 
   const releases = [
     ...buildEventReleases(eventSections),
-    ...buildSectionReleases([...raidSections.current, ...raidFallbackSections, rocketSection, ...researchSections.current, ...eggSections.current])
+    ...buildSectionReleases([...raidSections.current, rocketSection, ...researchSections.current, ...eggSections.current])
   ];
 
   const updatedAtCandidates = [
@@ -158,77 +158,7 @@ async function buildAutomaticFeed() {
   };
 }
 
-function deriveRaidFallbackSectionsFromEvents(currentEventSections, currentRaidSections) {
-  const hasLiveRaidSection = currentRaidSections.some(section => section?.id === "raids");
-  const hasLiveShadowRaidSection = currentRaidSections.some(section => section?.id === "shadow-raids");
-  if (hasLiveRaidSection && hasLiveShadowRaidSection) {
-    return [];
-  }
-
-  const raidBattleEvents = (currentEventSections || []).filter(section => isPrimaryCurrentRaidSection(section));
-  if (!raidBattleEvents.length) {
-    return [];
-  }
-
-  const pokemonEntries = [];
-  const megaEntries = [];
-  let startsAt = null;
-  let endsAt = null;
-
-  for (const section of raidBattleEvents) {
-    startsAt = minDateValue(startsAt, section.startsAt);
-    endsAt = maxDateValue(endsAt, section.endsAt);
-    for (const entry of section.entries || []) {
-      const enriched = {
-        ...entry,
-        details: uniqueStrings([section.title, ...(entry.details || [])])
-      };
-      if (entry.list === "mega") {
-        megaEntries.push(enriched);
-      } else if (entry.list === "pokemon") {
-        pokemonEntries.push(enriched);
-      }
-    }
-  }
-
-  const fallbackSections = [];
-  if (!hasLiveRaidSection && pokemonEntries.length) {
-    fallbackSections.push(makeCatalogSection({
-      id: "raids-from-events",
-      category: "Raids",
-      title: "Current Raids",
-      subtitle: "Derived from current raid event pages",
-      startsAt,
-      endsAt,
-      localTime: containsLocalTimeSection(raidBattleEvents),
-      source: FEED_SOURCES.events,
-      sourceLabel: "Leek Duck Events",
-      updatedAt: maxUpdatedAt(raidBattleEvents),
-      entries: mergeEntries(pokemonEntries)
-    }));
-  }
-  if (!hasLiveRaidSection && megaEntries.length) {
-    fallbackSections.push(makeCatalogSection({
-      id: "mega-raids-from-events",
-      category: "Mega Raids",
-      title: "Current Mega Raids",
-      subtitle: "Derived from current raid event pages",
-      startsAt,
-      endsAt,
-      localTime: containsLocalTimeSection(raidBattleEvents),
-      source: FEED_SOURCES.events,
-      sourceLabel: "Leek Duck Events",
-      updatedAt: maxUpdatedAt(raidBattleEvents),
-      entries: mergeEntries(megaEntries)
-    }));
-  }
-  return fallbackSections;
-}
-
-function filterOutEventRaidSections(eventSections, fallbackSections) {
-  if (!fallbackSections.length) {
-    return eventSections;
-  }
+function filterOutCurrentRaidEventSections(eventSections) {
   return (eventSections || []).filter(section => !isPrimaryCurrentRaidSection(section));
 }
 
@@ -281,6 +211,18 @@ async function fetchText(url) {
     throw new Error(`Fetch failed for ${url}: ${response.status}`);
   }
   return await response.text();
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "pogo-tracker-feed-bot/1.0 (+https://my-projects-cqs.pages.dev/)"
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`Fetch failed for ${url}: ${response.status}`);
+  }
+  return await response.json();
 }
 
 async function parseEvents(html) {
@@ -408,6 +350,114 @@ function parseRaidBosses(html) {
   }
 
   return { current };
+}
+
+async function parseRaidBossesFromManifest(manifest) {
+  const current = [];
+  const updatedAt = manifest?.generated_at ? normalizeIso(manifest.generated_at) : null;
+  const currentRegular = selectActiveManifestRaid(manifest?.regular_raids || []);
+  const currentShadow = selectActiveManifestRaid(manifest?.shadow_raids || []);
+
+  if (currentRegular) {
+    const html = await fetchText(`${FEED_SOURCES.raidContentBase}${currentRegular.slug}.html`);
+    const entries = extractRaidEntriesFromContainer(html);
+    const pokemonEntries = entries.filter(entry => entry.list === "pokemon");
+    const megaEntries = entries.filter(entry => entry.list === "mega");
+
+    if (pokemonEntries.length) {
+      current.push(makeCatalogSection({
+        id: "raids",
+        category: "Raids",
+        title: "Current Raids",
+        subtitle: currentRegular.title,
+        startsAt: normalizeManifestRaidIso(currentRegular.start_date, currentRegular.local_time),
+        endsAt: normalizeManifestRaidIso(currentRegular.end_date, currentRegular.local_time),
+        localTime: !!currentRegular.local_time,
+        source: FEED_SOURCES.raidBosses,
+        sourceLabel: "Leek Duck Raid Bosses",
+        updatedAt,
+        entries: pokemonEntries
+      }));
+    }
+
+    if (megaEntries.length) {
+      current.push(makeCatalogSection({
+        id: "mega-raids",
+        category: "Mega Raids",
+        title: "Current Mega Raids",
+        subtitle: currentRegular.title,
+        startsAt: normalizeManifestRaidIso(currentRegular.start_date, currentRegular.local_time),
+        endsAt: normalizeManifestRaidIso(currentRegular.end_date, currentRegular.local_time),
+        localTime: !!currentRegular.local_time,
+        source: FEED_SOURCES.raidBosses,
+        sourceLabel: "Leek Duck Raid Bosses",
+        updatedAt,
+        entries: megaEntries
+      }));
+    }
+  }
+
+  if (currentShadow) {
+    const html = await fetchText(`${FEED_SOURCES.raidContentBase}${currentShadow.slug}.html`);
+    const entries = extractRaidEntriesFromContainer(html, { shadow: true });
+    if (entries.length) {
+      current.push(makeCatalogSection({
+        id: "shadow-raids",
+        category: "Shadow Raids",
+        title: "Current Shadow Raids",
+        subtitle: currentShadow.title,
+        startsAt: normalizeManifestRaidIso(currentShadow.start_date, currentShadow.local_time),
+        endsAt: normalizeManifestRaidIso(currentShadow.end_date, currentShadow.local_time),
+        localTime: !!currentShadow.local_time,
+        source: FEED_SOURCES.raidBosses,
+        sourceLabel: "Leek Duck Raid Bosses",
+        updatedAt,
+        entries
+      }));
+    }
+  }
+
+  return { current };
+}
+
+function selectActiveManifestRaid(raids) {
+  const now = Date.now();
+  return (raids || []).find(raid => {
+    const start = parseManifestRaidDate(raid?.start_date, raid?.local_time);
+    const end = parseManifestRaidDate(raid?.end_date, raid?.local_time);
+    return start && end && now >= start.getTime() && now <= end.getTime();
+  }) || null;
+}
+
+function normalizeManifestRaidIso(value, localTime) {
+  if (!value) return null;
+  if (localTime) {
+    const match = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})/);
+    if (match) {
+      return `${match[1]}-${match[2]}-${match[3]}T${match[4]}`;
+    }
+  }
+  return normalizeIso(value);
+}
+
+function parseManifestRaidDate(value, localTime) {
+  const normalized = normalizeManifestRaidIso(value, localTime);
+  if (!normalized) return null;
+  if (localTime) {
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return null;
+    const [, year, month, day, hour, minute, second = "00"] = match;
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+  }
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function isWindowActiveForNow(meta, now = Date.now()) {
