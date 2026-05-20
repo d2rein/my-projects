@@ -5,7 +5,7 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v3";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v4";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
@@ -224,6 +224,7 @@ async function parseEvents(html) {
 function parseRaidBosses(html) {
   const current = [];
   const updatedAt = extractPageUpdatedAt(html);
+  const now = Date.now();
 
   const regularMeta = extractRaidSelectorMeta(html, "regular-raid-selector");
   const shadowMeta = extractRaidSelectorMeta(html, "shadow-raid-selector");
@@ -232,7 +233,7 @@ function parseRaidBosses(html) {
   const shadowSlice = sliceFrom(html, '<div class="shadow-raid-bosses"', 40000);
 
   const regularEntries = extractRaidEntriesFromContainer(regularSlice);
-  if (regularEntries.length) {
+  if (regularEntries.length && isWindowActiveForNow(regularMeta, now)) {
     current.push(makeCatalogSection({
       id: "raids",
       category: "Raids",
@@ -248,7 +249,7 @@ function parseRaidBosses(html) {
   }
 
   const shadowEntries = extractRaidEntriesFromContainer(shadowSlice, { shadow: true });
-  if (shadowEntries.length) {
+  if (shadowEntries.length && isWindowActiveForNow(shadowMeta, now)) {
     current.push(makeCatalogSection({
       id: "shadow-raids",
       category: "Shadow Raids",
@@ -264,6 +265,14 @@ function parseRaidBosses(html) {
   }
 
   return { current };
+}
+
+function isWindowActiveForNow(meta, now = Date.now()) {
+  const startTs = parseComparableDateValue(meta?.startsAt);
+  const endTs = parseComparableDateValue(meta?.endsAt);
+  if (Number.isFinite(startTs) && startTs > now) return false;
+  if (Number.isFinite(endTs) && endTs < now) return false;
+  return true;
 }
 
 function parseRocketLineups(html) {
