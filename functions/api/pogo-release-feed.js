@@ -5,7 +5,7 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v4";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v5";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
@@ -278,12 +278,38 @@ async function fetchText(url) {
 }
 
 async function parseEvents(html) {
-  const current = [];
-  const upcoming = [];
-  const now = Date.now();
-  const regex = /<span\b[^>]*class="[^"]*event-header-item-wrapper[^"]*"([^>]*)>\s*<a\b([^>]*)>([\s\S]*?)<\/a>\s*<\/span>/gi;
+  const liveSlice = sliceBetween(
+    html,
+    '<div class="events-section events-section-live">',
+    '<div class="events-section events-section-upcoming">'
+  );
+  const upcomingSlice = sliceFrom(
+    html,
+    '<div class="events-section events-section-upcoming">',
+    html.length
+  );
 
+  // Trust Leek Duck's own live/upcoming buckets when they exist.
+  const current = extractEventItemsFromSlice(liveSlice || html);
+  const upcoming = extractEventItemsFromSlice(upcomingSlice);
+
+  const mergedCurrent = mergeSectionsById(current).sort(compareByStart);
+  const mergedUpcoming = mergeSectionsById(upcoming).sort(compareByStart);
+  await enrichEventSections([...mergedCurrent, ...mergedUpcoming]);
+
+  return {
+    current: mergedCurrent,
+    upcoming: mergedUpcoming
+  };
+}
+
+function extractEventItemsFromSlice(html) {
+  if (!html) return [];
+
+  const items = [];
+  const regex = /<span\b[^>]*class="[^"]*event-header-item-wrapper[^"]*"([^>]*)>\s*<a\b([^>]*)>([\s\S]*?)<\/a>\s*<\/span>/gi;
   let match;
+
   while ((match = regex.exec(html))) {
     const spanAttrs = match[1];
     const anchorAttrs = match[2];
@@ -299,7 +325,7 @@ async function parseEvents(html) {
     if (/^Example Event Template/i.test(title)) continue;
     const category = extractCategory(body) || "Event";
     const pokemon = extractPokemonMentions(`${title} ${category}`);
-    const item = makeCatalogSection({
+    items.push(makeCatalogSection({
       id: slugify(`event-${href || title}`),
       category: "Event",
       title,
@@ -311,25 +337,10 @@ async function parseEvents(html) {
       sourceLabel: "Leek Duck Events",
       updatedAt: startsAt || endsAt || new Date().toISOString(),
       entries: pokemon.length ? pokemon : []
-    });
-
-    const startTime = startsAt ? parseComparableDateValue(startsAt) : Number.POSITIVE_INFINITY;
-    const endTime = endsAt ? parseComparableDateValue(endsAt) : Number.POSITIVE_INFINITY;
-    if (startTime <= now && endTime >= now) {
-      current.push(item);
-    } else if (startTime > now) {
-      upcoming.push(item);
-    }
+    }));
   }
 
-  const mergedCurrent = mergeSectionsById(current).sort(compareByStart);
-  const mergedUpcoming = mergeSectionsById(upcoming).sort(compareByStart);
-  await enrichEventSections([...mergedCurrent, ...mergedUpcoming]);
-
-  return {
-    current: mergedCurrent,
-    upcoming: mergedUpcoming
-  };
+  return items;
 }
 
 function parseRaidBosses(html) {
