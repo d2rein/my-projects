@@ -117,13 +117,17 @@ async function buildAutomaticFeed() {
 
   const eventSections = await parseEvents(eventsHtml);
   const raidSections = parseRaidBosses(raidsHtml);
+  const raidFallbackSections = deriveRaidFallbackSectionsFromEvents(eventSections.current, raidSections.current);
   const rocketSection = parseRocketLineups(rocketHtml);
   const researchSections = parseResearch(researchHtml);
   const eggSections = parseEggs(eggsHtml);
 
+  const filteredCurrentEvents = filterOutEventRaidSections(eventSections.current, raidFallbackSections);
+
   const currentCatalog = [
-    ...eventSections.current,
+    ...filteredCurrentEvents,
     ...raidSections.current,
+    ...raidFallbackSections,
     rocketSection,
     ...researchSections.current,
     ...eggSections.current
@@ -133,7 +137,7 @@ async function buildAutomaticFeed() {
 
   const releases = [
     ...buildEventReleases(eventSections),
-    ...buildSectionReleases([...raidSections.current, rocketSection, ...researchSections.current, ...eggSections.current])
+    ...buildSectionReleases([...raidSections.current, ...raidFallbackSections, rocketSection, ...researchSections.current, ...eggSections.current])
   ];
 
   const updatedAtCandidates = [
@@ -152,6 +156,113 @@ async function buildAutomaticFeed() {
       upcoming: upcomingCatalog
     }
   };
+}
+
+function deriveRaidFallbackSectionsFromEvents(currentEventSections, currentRaidSections) {
+  const hasLiveRaidSection = currentRaidSections.some(section => section?.id === "raids");
+  const hasLiveShadowRaidSection = currentRaidSections.some(section => section?.id === "shadow-raids");
+  if (hasLiveRaidSection && hasLiveShadowRaidSection) {
+    return [];
+  }
+
+  const raidBattleEvents = (currentEventSections || []).filter(section => isEventRaidBattleSection(section));
+  if (!raidBattleEvents.length) {
+    return [];
+  }
+
+  const pokemonEntries = [];
+  const megaEntries = [];
+  let startsAt = null;
+  let endsAt = null;
+
+  for (const section of raidBattleEvents) {
+    startsAt = minDateValue(startsAt, section.startsAt);
+    endsAt = maxDateValue(endsAt, section.endsAt);
+    for (const entry of section.entries || []) {
+      const enriched = {
+        ...entry,
+        details: uniqueStrings([section.title, ...(entry.details || [])])
+      };
+      if (entry.list === "mega") {
+        megaEntries.push(enriched);
+      } else if (entry.list === "pokemon") {
+        pokemonEntries.push(enriched);
+      }
+    }
+  }
+
+  const fallbackSections = [];
+  if (!hasLiveRaidSection && pokemonEntries.length) {
+    fallbackSections.push(makeCatalogSection({
+      id: "raids-from-events",
+      category: "Raids",
+      title: "Current Raids",
+      subtitle: "Derived from current raid event pages",
+      startsAt,
+      endsAt,
+      localTime: containsLocalTimeSection(raidBattleEvents),
+      source: FEED_SOURCES.events,
+      sourceLabel: "Leek Duck Events",
+      updatedAt: maxUpdatedAt(raidBattleEvents),
+      entries: mergeEntries(pokemonEntries)
+    }));
+  }
+  if (!hasLiveRaidSection && megaEntries.length) {
+    fallbackSections.push(makeCatalogSection({
+      id: "mega-raids-from-events",
+      category: "Mega Raids",
+      title: "Current Mega Raids",
+      subtitle: "Derived from current raid event pages",
+      startsAt,
+      endsAt,
+      localTime: containsLocalTimeSection(raidBattleEvents),
+      source: FEED_SOURCES.events,
+      sourceLabel: "Leek Duck Events",
+      updatedAt: maxUpdatedAt(raidBattleEvents),
+      entries: mergeEntries(megaEntries)
+    }));
+  }
+  return fallbackSections;
+}
+
+function filterOutEventRaidSections(eventSections, fallbackSections) {
+  if (!fallbackSections.length) {
+    return eventSections;
+  }
+  return (eventSections || []).filter(section => !isEventRaidBattleSection(section));
+}
+
+function isEventRaidBattleSection(section) {
+  const subtitle = String(section?.subtitle || "").toLowerCase();
+  const title = String(section?.title || "").toLowerCase();
+  return subtitle === "raid battles"
+    || subtitle === "raid hour"
+    || title.includes(" in 5-star raid battles")
+    || title.includes(" in mega raids");
+}
+
+function containsLocalTimeSection(sections) {
+  return (sections || []).some(section => !!section?.localTime);
+}
+
+function maxUpdatedAt(sections) {
+  return (sections || [])
+    .map(section => section?.updatedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null;
+}
+
+function minDateValue(a, b) {
+  if (!a) return b || null;
+  if (!b) return a || null;
+  return parseComparableDateValue(a) <= parseComparableDateValue(b) ? a : b;
+}
+
+function maxDateValue(a, b) {
+  if (!a) return b || null;
+  if (!b) return a || null;
+  return parseComparableDateValue(a) >= parseComparableDateValue(b) ? a : b;
 }
 
 async function fetchText(url) {
