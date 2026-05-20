@@ -5,7 +5,7 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v6";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v7";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
@@ -165,7 +165,7 @@ function deriveRaidFallbackSectionsFromEvents(currentEventSections, currentRaidS
     return [];
   }
 
-  const raidBattleEvents = (currentEventSections || []).filter(section => isEventRaidBattleSection(section));
+  const raidBattleEvents = (currentEventSections || []).filter(section => isPrimaryCurrentRaidSection(section));
   if (!raidBattleEvents.length) {
     return [];
   }
@@ -229,7 +229,7 @@ function filterOutEventRaidSections(eventSections, fallbackSections) {
   if (!fallbackSections.length) {
     return eventSections;
   }
-  return (eventSections || []).filter(section => !isEventRaidBattleSection(section));
+  return (eventSections || []).filter(section => !isPrimaryCurrentRaidSection(section));
 }
 
 function isEventRaidBattleSection(section) {
@@ -238,6 +238,12 @@ function isEventRaidBattleSection(section) {
   return subtitle === "raid battles"
     || subtitle === "raid hour"
     || title.includes(" in 5-star raid battles")
+    || title.includes(" in mega raids");
+}
+
+function isPrimaryCurrentRaidSection(section) {
+  const title = String(section?.title || "").toLowerCase();
+  return title.includes(" in 5-star raid battles")
     || title.includes(" in mega raids");
 }
 
@@ -294,13 +300,28 @@ async function parseEvents(html) {
   const upcoming = extractEventItemsFromSlice(upcomingSlice);
 
   const mergedCurrent = mergeSectionsById(current).sort(compareByStart);
-  const mergedUpcoming = mergeSectionsById(upcoming).sort(compareByStart);
+  const mergedUpcoming = filterUpcomingEventDuplicates(
+    mergeSectionsById(upcoming),
+    mergedCurrent
+  ).sort(compareByStart);
   await enrichEventSections([...mergedCurrent, ...mergedUpcoming]);
 
   return {
     current: mergedCurrent,
     upcoming: mergedUpcoming
   };
+}
+
+function filterUpcomingEventDuplicates(upcomingSections, currentSections) {
+  const currentIds = new Set((currentSections || []).map(section => section?.id).filter(Boolean));
+  const now = Date.now();
+  return (upcomingSections || []).filter(section => {
+    if (!section) return false;
+    if (currentIds.has(section.id)) return false;
+    const startTime = parseComparableDateValue(section.startsAt);
+    if (Number.isFinite(startTime) && startTime <= now) return false;
+    return true;
+  });
 }
 
 function extractEventItemsFromSlice(html) {
