@@ -5,7 +5,7 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v8";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v9";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
 
@@ -174,7 +174,8 @@ function isEventRaidBattleSection(section) {
 function isPrimaryCurrentRaidSection(section) {
   const title = String(section?.title || "").toLowerCase();
   return title.includes(" in 5-star raid battles")
-    || title.includes(" in mega raids");
+    || title.includes(" in mega raids")
+    || title.includes(" in shadow raids");
 }
 
 function containsLocalTimeSection(sections) {
