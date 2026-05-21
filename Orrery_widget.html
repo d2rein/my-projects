@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orrery Widget View</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #020304;
+    --panel: rgba(8, 10, 14, 0.9);
+    --line: rgba(255, 255, 255, 0.12);
+    --text: #f5f7fb;
+    --muted: #97a3b6;
+    --accent: #28e6ff;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(35, 64, 120, 0.14), transparent 28%),
+      radial-gradient(circle at 80% 15%, rgba(24, 108, 92, 0.12), transparent 24%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Arial, sans-serif;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .shell {
+    width: min(100vw, 100vh);
+    aspect-ratio: 1;
+    position: relative;
+    padding: 14px;
+  }
+
+  .frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(12, 15, 22, 0.96), rgba(4, 6, 10, 0.98));
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: transparent;
+  }
+
+  .actions {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+  }
+
+  .actions a {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 8px 11px;
+    border-radius: 999px;
+    background: rgba(10, 13, 18, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .legend {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    z-index: 5;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(7, 9, 13, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    max-width: 54%;
+  }
+
+  .legend strong {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .legend div {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+
+  .time {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    z-index: 5;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(7, 9, 13, 0.74);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .time strong {
+    display: block;
+    color: var(--text);
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="frame">
+      <div class="actions">
+        <a href="/Orrery.html">Full</a>
+      </div>
+      <div class="time">
+        <strong id="timeUtc">--</strong>
+        <span id="timeLocal">--</span>
+      </div>
+      <canvas id="orreryWidgetCanvas" width="1000" height="1000"></canvas>
+      <div class="legend">
+        <strong>Widget View</strong>
+        <div>Sun to Saturn, Earth's Moon, and visibility cone. Outer orbits are radius-compressed for readability while keeping orbital angle correct.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const AU = 149597870.7;
+const JD_J2000 = 2451545.0;
+const MU = 1.32712440018e11;
+
+const planets = [
+  { name:"Mercury", a:0.38709927*AU, e:0.20563593, i:7.00498, Omega:48.33077, omega:29.12703, M0:174.79253, epoch_jd:JD_J2000, color:"#b9b5b1", labelDx: 8, labelDy: -8, r: 2.2 },
+  { name:"Venus",   a:0.72333566*AU, e:0.00677672, i:3.39468, Omega:76.67984, omega:54.92262, M0:50.37663, epoch_jd:JD_J2000, color:"#ead7a6", labelDx: 8, labelDy: -6, r: 2.8 },
+  { name:"Earth",   a:1.0*AU,        e:0.01671022, i:0.00005, Omega:348.73936, omega:102.93735, M0:357.51716, epoch_jd:JD_J2000, color:"#7dd8ff", labelDx: 7, labelDy: 12, r: 3.2 },
+  { name:"Mars",    a:1.52371034*AU, e:0.0933941,  i:1.84969, Omega:49.55954, omega:286.49683, M0:19.3902, epoch_jd:JD_J2000, color:"#ff8f74", labelDx: 8, labelDy: -6, r: 2.7 },
+  { name:"Jupiter", a:5.202887*AU,   e:0.04838624, i:1.3044,  Omega:100.47391, omega:-85.74543, M0:19.66796, epoch_jd:JD_J2000, color:"#f4cb9a", labelDx: 9, labelDy: -7, r: 4.1 },
+  { name:"Saturn",  a:9.53667594*AU, e:0.05386179, i:2.48599, Omega:113.66242, omega:-21.06355, M0:-42.64463, epoch_jd:JD_J2000, color:"#f0dea4", labelDx: 10, labelDy: -8, r: 3.8 }
+];
+planets.forEach(p => p.path = precomputeOrbit(p));
+
+const moon = {
+  name: "Moon",
+  a: 384468.2473034434,
+  e: 0.03734811627474723,
+  i: 5.181172365263922,
+  Omega: 338.9687234402554,
+  omega: 93.7784131708599,
+  M0: 270.4763861989066,
+  n: 0.0001526706049434192 * 86400,
+  epoch_jd: 2461062.5
+};
+
+const canvas = document.getElementById("orreryWidgetCanvas");
+const ctx = canvas.getContext("2d");
+let currentJD = Date.now() / 86400000 + 2440587.5;
+let lastTick = performance.now();
+const observerLongitude = 153;
+const timeZoneOffset = 10;
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+function rotateToEcliptic(obj, r, nu){
+  const OmegaRad = (obj.Omega || 0) * Math.PI / 180;
+  const omegaRad = (obj.omega || 0) * Math.PI / 180;
+  const iRad = (obj.i || 0) * Math.PI / 180;
+  const theta = omegaRad + nu;
+  const cosOmega = Math.cos(OmegaRad);
+  const sinOmega = Math.sin(OmegaRad);
+  const cosTheta = Math.cos(theta);
+  const sinTheta = Math.sin(theta);
+  const cosI = Math.cos(iRad);
+  const sinI = Math.sin(iRad);
+  const x = r * (cosOmega * cosTheta - sinOmega * sinTheta * cosI);
+  const y = r * (sinOmega * cosTheta + cosOmega * sinTheta * cosI);
+  const z = r * (sinTheta * sinI);
+  return { x, y, z };
+}
+
+function orbitPos(obj, jd){
+  const a = obj.a;
+  const e = obj.e || 0;
+  const M0 = obj.M0 || 0;
+  const n = obj.n || Math.sqrt(MU/(a**3))*180/Math.PI*86400;
+  const dJ = jd - (obj.epoch_jd || JD_J2000);
+  const M = (M0 + n*dJ) % 360;
+  let E = M*Math.PI/180;
+  for(let i=0;i<8;i++) E = M*Math.PI/180 + e*Math.sin(E);
+  const nu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  const r = a*(1-e*e)/(1+e*Math.cos(nu));
+  const rotated = rotateToEcliptic(obj, r, nu);
+  return { ...rotated, r, nu: nu*180/Math.PI };
+}
+
+function precomputeOrbit(p, steps=480){
+  const pts = [];
+  for(let t = 0; t <= steps; t++){
+    const nu = t * Math.PI / 180;
+    const r = p.a * (1 - p.e * p.e) / (1 + p.e * Math.cos(nu));
+    pts.push(rotateToEcliptic(p, r, nu));
+  }
+  return pts;
+}
+
+function moonPosAroundEarth(jd){
+  return orbitPos(moon, jd);
+}
+
+function compressRadius(au) {
+  if (au <= 1.8) return au;
+  if (au <= 5.5) return 1.8 + Math.pow(au - 1.8, 0.76);
+  return 1.8 + Math.pow(5.5 - 1.8, 0.76) + Math.pow(au - 5.5, 0.54);
+}
+
+function projectBody(pos, scale, cx, cy) {
+  const rawR = Math.hypot(pos.x, pos.y) / AU;
+  const angle = Math.atan2(pos.y, pos.x);
+  const compressed = compressRadius(rawR);
+  return {
+    x: cx + Math.cos(angle) * compressed * scale,
+    y: cy - Math.sin(angle) * compressed * scale,
+    rawR,
+    angle
+  };
+}
+
+function drawVisibilityCone(earthHelio, earthScreen, scale, maxCompressed = 7.2){
+  const sunDir = Math.atan2(-earthHelio.y, -earthHelio.x);
+  const utcHours = (((currentJD + 0.5) % 1 + 1) % 1) * 24;
+  const localSolarHours = ((utcHours + observerLongitude / 15) % 24 + 24) % 24;
+  const hourAngle = (localSolarHours - 12) * Math.PI / 12;
+  const zenith = sunDir + hourAngle;
+  const L = maxCompressed * scale;
+  const halfCone = 60 * Math.PI / 180;
+  const hx = Math.cos(zenith + Math.PI / 2);
+  const hy = Math.sin(zenith + Math.PI / 2);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([7, 7]);
+  ctx.beginPath();
+  ctx.moveTo(earthScreen.x - hx * L, earthScreen.y + hy * L);
+  ctx.lineTo(earthScreen.x + hx * L, earthScreen.y - hy * L);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = "rgba(40,230,255,0.45)";
+  ctx.beginPath();
+  ctx.moveTo(earthScreen.x, earthScreen.y);
+  ctx.lineTo(
+    earthScreen.x + Math.cos(zenith - halfCone) * L,
+    earthScreen.y - Math.sin(zenith - halfCone) * L
+  );
+  ctx.moveTo(earthScreen.x, earthScreen.y);
+  ctx.lineTo(
+    earthScreen.x + Math.cos(zenith + halfCone) * L,
+    earthScreen.y - Math.sin(zenith + halfCone) * L
+  );
+  ctx.stroke();
+}
+
+function updateTimeLabels(){
+  const dateUTC = new Date((currentJD - 2440587.5) * 86400000);
+  const dateLocal = new Date(dateUTC.getTime() + timeZoneOffset * 3600 * 1000);
+  document.getElementById("timeUtc").textContent = dateUTC.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  document.getElementById("timeLocal").textContent = dateLocal.toISOString().replace("T", " ").slice(0, 16) + ` GMT+${timeZoneOffset}`;
+}
+
+function drawScene(){
+  const w = canvas.getBoundingClientRect().width;
+  const h = canvas.getBoundingClientRect().height;
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxCompressed = compressRadius(10.2);
+  const scale = (Math.min(w, h) * 0.42) / maxCompressed;
+
+  ctx.save();
+  ctx.translate(0.5, 0.5);
+
+  planets.forEach((planet) => {
+    ctx.strokeStyle = planet.name === "Earth" ? "rgba(125,216,255,0.14)" : "rgba(255,255,255,0.08)";
+    ctx.lineWidth = planet.name === "Earth" ? 1.2 : 1;
+    ctx.beginPath();
+    planet.path.forEach((pt, idx) => {
+      const projected = projectBody(pt, scale, cx, cy);
+      if (idx === 0) ctx.moveTo(projected.x, projected.y);
+      else ctx.lineTo(projected.x, projected.y);
+    });
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = "#ffe45c";
+  ctx.shadowBlur = 16;
+  ctx.shadowColor = "rgba(255,228,92,0.55)";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  const positions = new Map();
+  planets.forEach((planet) => {
+    const heliocentric = orbitPos(planet, currentJD);
+    const screen = projectBody(heliocentric, scale, cx, cy);
+    positions.set(planet.name, { heliocentric, screen, planet });
+  });
+
+  const earth = positions.get("Earth");
+  drawVisibilityCone(earth.heliocentric, earth.screen, scale, compressRadius(7.6));
+
+  planets.forEach((planet) => {
+    const { screen } = positions.get(planet.name);
+    ctx.fillStyle = planet.color;
+    ctx.beginPath();
+    ctx.arc(screen.x, screen.y, planet.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(245,247,251,0.92)";
+    ctx.font = "12px Segoe UI, Arial, sans-serif";
+    ctx.fillText(planet.name, screen.x + planet.labelDx, screen.y + planet.labelDy);
+  });
+
+  const moonRelative = moonPosAroundEarth(currentJD);
+  const moonAngle = Math.atan2(moonRelative.y, moonRelative.x);
+  const moonDistancePx = 16;
+  const moonX = earth.screen.x + Math.cos(moonAngle) * moonDistancePx;
+  const moonY = earth.screen.y - Math.sin(moonAngle) * moonDistancePx;
+
+  ctx.strokeStyle = "rgba(125,216,255,0.28)";
+  ctx.beginPath();
+  ctx.moveTo(earth.screen.x, earth.screen.y);
+  ctx.lineTo(moonX, moonY);
+  ctx.stroke();
+
+  ctx.fillStyle = "#c9d2e3";
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(201,210,227,0.95)";
+  ctx.font = "11px Segoe UI, Arial, sans-serif";
+  ctx.fillText("Moon", moonX + 6, moonY + 10);
+
+  ctx.restore();
+}
+
+function tick(now){
+  const dt = (now - lastTick) / 1000;
+  lastTick = now;
+  currentJD += dt / 86400;
+  updateTimeLabels();
+  drawScene();
+  requestAnimationFrame(tick);
+}
+
+updateTimeLabels();
+drawScene();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

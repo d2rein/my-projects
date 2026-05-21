@@ -53,6 +53,19 @@
     font-size: 14px;
     touch-action: manipulation;
   }
+  .widget-link {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    text-decoration: none;
+    color: #fff;
+    border: 1px solid #3d3d3d;
+    border-radius: 999px;
+    background: rgba(14, 18, 24, 0.95);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
   .control-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -110,6 +123,7 @@
 <body>
 
 <div id="controls">
+  <a class="widget-link" href="/Orrery_widget.html">Widget</a>
   <div class="time-readout">
     Current Time: <span id="currentTime"></span><br>
     Current Local Time: <span id="localTime"></span><br>
