@@ -79,51 +79,6 @@
     backdrop-filter: blur(12px);
   }
 
-  .legend {
-    position: absolute;
-    left: 16px;
-    bottom: 16px;
-    z-index: 5;
-    padding: 10px 12px;
-    border-radius: 16px;
-    background: rgba(7, 9, 13, 0.78);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
-    max-width: 54%;
-  }
-
-  .legend strong {
-    display: block;
-    font-size: 12px;
-    margin-bottom: 4px;
-  }
-
-  .legend div {
-    font-size: 11px;
-    color: var(--muted);
-    line-height: 1.35;
-  }
-
-  .time {
-    position: absolute;
-    left: 16px;
-    top: 16px;
-    z-index: 5;
-    padding: 8px 10px;
-    border-radius: 14px;
-    background: rgba(7, 9, 13, 0.74);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  .time strong {
-    display: block;
-    color: var(--text);
-    font-size: 12px;
-    margin-bottom: 2px;
-  }
 </style>
 </head>
 <body>
@@ -132,15 +87,7 @@
       <div class="actions">
         <a href="/Orrery.html">Full</a>
       </div>
-      <div class="time">
-        <strong id="timeUtc">--</strong>
-        <span id="timeLocal">--</span>
-      </div>
       <canvas id="orreryWidgetCanvas" width="1000" height="1000"></canvas>
-      <div class="legend">
-        <strong>Widget View</strong>
-        <div>Sun to Saturn, Earth's Moon, and visibility cone. Outer orbits are radius-compressed for readability while keeping orbital angle correct.</div>
-      </div>
     </div>
   </div>
 
@@ -176,7 +123,6 @@ const ctx = canvas.getContext("2d");
 let currentJD = Date.now() / 86400000 + 2440587.5;
 let lastTick = performance.now();
 const observerLongitude = 153;
-const timeZoneOffset = 10;
 
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
@@ -236,17 +182,21 @@ function moonPosAroundEarth(jd){
   return orbitPos(moon, jd);
 }
 
+function smoothstep(t) {
+  return t * t * (3 - 2 * t);
+}
+
+function mapSegment(value, inMin, inMax, outMin, outMax) {
+  const rawT = (value - inMin) / (inMax - inMin);
+  const t = Math.max(0, Math.min(1, rawT));
+  return outMin + smoothstep(t) * (outMax - outMin);
+}
+
 function compressRadius(au) {
   if (au <= 1.7) return au;
-  if (au <= 5.2) {
-    const t = (au - 1.7) / (5.2 - 1.7);
-    return 1.7 + t * (2.3 - 1.7);
-  }
-  if (au <= 9.6) {
-    const t = (au - 5.2) / (9.6 - 5.2);
-    return 2.3 + t * (2.85 - 2.3);
-  }
-  return 2.85 + Math.pow(au - 9.6, 0.35) * 0.18;
+  if (au <= 5.2) return mapSegment(au, 1.7, 5.2, 1.7, 2.3);
+  if (au <= 9.6) return mapSegment(au, 5.2, 9.6, 2.3, 2.85);
+  return 2.85 + Math.log1p(Math.max(0, au - 9.6)) * 0.16;
 }
 
 function projectBody(pos, scale, cx, cy) {
@@ -294,13 +244,6 @@ function drawVisibilityCone(earthHelio, earthScreen, scale, maxCompressed = 7.2)
     earthScreen.y - Math.sin(zenith + halfCone) * L
   );
   ctx.stroke();
-}
-
-function updateTimeLabels(){
-  const dateUTC = new Date((currentJD - 2440587.5) * 86400000);
-  const dateLocal = new Date(dateUTC.getTime() + timeZoneOffset * 3600 * 1000);
-  document.getElementById("timeUtc").textContent = dateUTC.toISOString().replace("T", " ").slice(0, 16) + " UTC";
-  document.getElementById("timeLocal").textContent = dateLocal.toISOString().replace("T", " ").slice(0, 16) + ` GMT+${timeZoneOffset}`;
 }
 
 function drawScene(){
@@ -385,12 +328,10 @@ function tick(now){
   const dt = (now - lastTick) / 1000;
   lastTick = now;
   currentJD += dt / 86400;
-  updateTimeLabels();
   drawScene();
   requestAnimationFrame(tick);
 }
 
-updateTimeLabels();
 drawScene();
 requestAnimationFrame(tick);
 </script>
