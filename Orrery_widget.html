@@ -238,8 +238,15 @@ function moonPosAroundEarth(jd){
 
 function compressRadius(au) {
   if (au <= 1.7) return au;
-  if (au <= 5.5) return 1.7 + Math.pow(au - 1.7, 0.52) * 0.72;
-  return 2.45 + Math.pow(au - 5.5, 0.42) * 0.48;
+  if (au <= 5.2) {
+    const t = (au - 1.7) / (5.2 - 1.7);
+    return 1.7 + t * (2.3 - 1.7);
+  }
+  if (au <= 9.6) {
+    const t = (au - 5.2) / (9.6 - 5.2);
+    return 2.3 + t * (2.85 - 2.3);
+  }
+  return 2.85 + Math.pow(au - 9.6, 0.35) * 0.18;
 }
 
 function projectBody(pos, scale, cx, cy) {
