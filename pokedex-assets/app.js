@@ -53,6 +53,59 @@ const GMAX_SPECIES = new Map([
   [861, "Grimmsnarl"], [869, "Alcremie"], [879, "Copperajah"], [884, "Duraludon"], [892, "Urshifu"]
 ]);
 
+const MAINSTREAM_MEGA_FORMS = [
+  { dex: 3, rawName: "Venusaur#Mega" },
+  { dex: 6, rawName: "Charizard#Mega X", type1: "Fire", type2: "Dragon" },
+  { dex: 6, rawName: "Charizard#Mega Y" },
+  { dex: 9, rawName: "Blastoise#Mega" },
+  { dex: 15, rawName: "Beedrill#Mega" },
+  { dex: 18, rawName: "Pidgeot#Mega" },
+  { dex: 65, rawName: "Alakazam#Mega" },
+  { dex: 80, rawName: "Slowbro#Mega" },
+  { dex: 94, rawName: "Gengar#Mega" },
+  { dex: 115, rawName: "Kangaskhan#Mega" },
+  { dex: 127, rawName: "Pinsir#Mega", type1: "Bug", type2: "Flying" },
+  { dex: 130, rawName: "Gyarados#Mega", type1: "Water", type2: "Dark" },
+  { dex: 142, rawName: "Aerodactyl#Mega" },
+  { dex: 150, rawName: "Mewtwo#Mega X", type1: "Psychic", type2: "Fighting" },
+  { dex: 150, rawName: "Mewtwo#Mega Y" },
+  { dex: 181, rawName: "Ampharos#Mega", type1: "Electric", type2: "Dragon" },
+  { dex: 208, rawName: "Steelix#Mega" },
+  { dex: 212, rawName: "Scizor#Mega" },
+  { dex: 214, rawName: "Heracross#Mega" },
+  { dex: 229, rawName: "Houndoom#Mega" },
+  { dex: 248, rawName: "Tyranitar#Mega" },
+  { dex: 254, rawName: "Sceptile#Mega", type1: "Grass", type2: "Dragon" },
+  { dex: 257, rawName: "Blaziken#Mega" },
+  { dex: 260, rawName: "Swampert#Mega" },
+  { dex: 282, rawName: "Gardevoir#Mega" },
+  { dex: 302, rawName: "Sableye#Mega" },
+  { dex: 303, rawName: "Mawile#Mega" },
+  { dex: 306, rawName: "Aggron#Mega", type1: "Steel", type2: "" },
+  { dex: 308, rawName: "Medicham#Mega" },
+  { dex: 310, rawName: "Manectric#Mega" },
+  { dex: 319, rawName: "Sharpedo#Mega" },
+  { dex: 323, rawName: "Camerupt#Mega" },
+  { dex: 334, rawName: "Altaria#Mega", type1: "Dragon", type2: "Fairy" },
+  { dex: 354, rawName: "Banette#Mega" },
+  { dex: 359, rawName: "Absol#Mega" },
+  { dex: 362, rawName: "Glalie#Mega" },
+  { dex: 373, rawName: "Salamence#Mega" },
+  { dex: 376, rawName: "Metagross#Mega" },
+  { dex: 380, rawName: "Latias#Mega" },
+  { dex: 381, rawName: "Latios#Mega" },
+  { dex: 382, rawName: "Kyogre#Primal" },
+  { dex: 383, rawName: "Groudon#Primal", type1: "Ground", type2: "Fire" },
+  { dex: 384, rawName: "Rayquaza#Mega" },
+  { dex: 428, rawName: "Lopunny#Mega", type1: "Normal", type2: "Fighting" },
+  { dex: 445, rawName: "Garchomp#Mega" },
+  { dex: 448, rawName: "Lucario#Mega" },
+  { dex: 460, rawName: "Abomasnow#Mega" },
+  { dex: 475, rawName: "Gallade#Mega" },
+  { dex: 531, rawName: "Audino#Mega", type1: "Normal", type2: "Fairy" },
+  { dex: 719, rawName: "Diancie#Mega" }
+];
+
 const SPECIAL_SPRITE_SLUGS = {
   "mega::3::Venusaur#Mega": "venusaur-mega",
   "mega::6::Charizard#Mega X": "charizard-mega-x",
@@ -67,6 +120,8 @@ const SPECIAL_SPRITE_SLUGS = {
   "mega::127::Pinsir#Mega": "pinsir-mega",
   "mega::130::Gyarados#Mega": "gyarados-mega",
   "mega::142::Aerodactyl#Mega": "aerodactyl-mega",
+  "mega::150::Mewtwo#Mega X": "mewtwo-mega-x",
+  "mega::150::Mewtwo#Mega Y": "mewtwo-mega-y",
   "mega::181::Ampharos#Mega": "ampharos-mega",
   "mega::208::Steelix#Mega": "steelix-mega",
   "mega::212::Scizor#Mega": "scizor-mega",
@@ -82,11 +137,14 @@ const SPECIAL_SPRITE_SLUGS = {
   "mega::306::Aggron#Mega": "aggron-mega",
   "mega::308::Medicham#Mega": "medicham-mega",
   "mega::310::Manectric#Mega": "manectric-mega",
+  "mega::319::Sharpedo#Mega": "sharpedo-mega",
+  "mega::323::Camerupt#Mega": "camerupt-mega",
   "mega::334::Altaria#Mega": "altaria-mega",
   "mega::354::Banette#Mega": "banette-mega",
   "mega::359::Absol#Mega": "absol-mega",
   "mega::362::Glalie#Mega": "glalie-mega",
   "mega::373::Salamence#Mega": "salamence-mega",
+  "mega::376::Metagross#Mega": "metagross-mega",
   "mega::380::Latias#Mega": "latias-mega",
   "mega::381::Latios#Mega": "latios-mega",
   "mega::382::Kyogre#Primal": "kyogre-primal",
@@ -278,6 +336,7 @@ const els = {
   showAltFormsToggle: document.querySelector("#showAltFormsToggle"),
   editUnreleasedToggle: document.querySelector("#editUnreleasedToggle"),
   showUnavailableToggle: document.querySelector("#showUnavailableToggle"),
+  showAllPokemonToggle: document.querySelector("#showAllPokemonToggle"),
   summaryTitle: document.querySelector("#summaryTitle"),
   summaryPills: document.querySelector("#summaryPills"),
   summaryTableBody: document.querySelector("#summaryTableBody"),
@@ -301,6 +360,8 @@ let canonicalEntries = [];
 let altEntries = [];
 let megaEntries = [];
 let gmaxEntries = [];
+let megaExpandedEntries = [];
+let gmaxExpandedEntries = [];
 let entriesByMode = new Map();
 let speciesEntriesByDex = new Map();
 let stickyVisibleEntryIds = new Set();
@@ -440,7 +501,7 @@ function buildCollections() {
   const built = buildSpeciesCollections(chooseCanonicalRow);
   canonicalEntries = built.canonicalEntries;
   altEntries = built.altEntries;
-  megaEntries = built.megaEntries;
+  megaEntries = buildMainstreamMegaEntries(built.megaEntries);
   speciesEntriesByDex = new Map();
   canonicalEntries.forEach(entry => {
     speciesEntriesByDex.set(entry.dex, [entry, ...altEntries.filter(candidate => candidate.dex === entry.dex)]);
@@ -465,6 +526,9 @@ function buildCollections() {
     };
   });
 
+  megaExpandedEntries = buildExpandedAvailabilityEntries("mega", megaEntries);
+  gmaxExpandedEntries = buildExpandedAvailabilityEntries("gmax", gmaxEntries);
+
   entriesByMode = new Map([
     ["pokemon", canonicalEntries],
     ["shiny", canonicalEntries],
@@ -477,6 +541,68 @@ function buildCollections() {
     ["mega", megaEntries],
     ["gmax", gmaxEntries]
   ]);
+}
+
+function buildMainstreamMegaEntries(existingEntries) {
+  const byKey = new Map(existingEntries.map(entry => [`${entry.dex}|${entry.rawName}`, entry]));
+  const merged = existingEntries.slice();
+  for (const form of MAINSTREAM_MEGA_FORMS) {
+    const key = `${form.dex}|${form.rawName}`;
+    if (byKey.has(key)) continue;
+    merged.push(buildMainstreamMegaPlaceholder(form));
+  }
+  merged.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+  return merged;
+}
+
+function buildMainstreamMegaPlaceholder(form) {
+  const base = canonicalEntries.find(entry => entry.dex === form.dex);
+  const formName = form.rawName.includes("#") ? form.rawName.split("#")[1].trim() : "Mega";
+  return {
+    id: `mega::${form.dex}::${form.rawName}`,
+    dex: form.dex,
+    dexLabel: `#${String(form.dex).padStart(4, "0")}`,
+    rawName: form.rawName,
+    baseName: form.rawName.split("#")[0].trim(),
+    formName,
+    type1: form.type1 || base?.type1 || "",
+    type2: Object.prototype.hasOwnProperty.call(form, "type2") ? (form.type2 || "") : (base?.type2 || ""),
+    region: base?.region || "",
+    note: "Main series Mega/Primal form",
+    isRegional: false,
+    isUnreleased: false,
+    spriteHint: buildSpriteHint(form.rawName, formName),
+    importedBaseStatus: "missing"
+  };
+}
+
+function buildExpandedAvailabilityEntries(mode, knownEntries) {
+  const knownDexes = new Set(knownEntries.map(entry => entry.dex));
+  const placeholders = canonicalEntries
+    .filter(entry => !knownDexes.has(entry.dex))
+    .map(entry => buildAvailabilityPlaceholderEntry(entry, mode));
+  return [...knownEntries, ...placeholders].sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+}
+
+function buildAvailabilityPlaceholderEntry(entry, mode) {
+  const label = mode === "mega" ? "Mega" : "GMAX";
+  return {
+    id: `${mode}-manual::${entry.dex}`,
+    dex: entry.dex,
+    dexLabel: entry.dexLabel,
+    rawName: `${entry.baseName}#${label}`,
+    baseName: entry.baseName,
+    formName: label,
+    type1: entry.type1,
+    type2: entry.type2,
+    region: entry.region,
+    note: `Manual ${label} placeholder`,
+    isRegional: false,
+    isUnreleased: false,
+    spriteHint: label,
+    isManualAvailabilityPlaceholder: true,
+    importedBaseStatus: "missing"
+  };
 }
 
 function buildSpeciesCollections(canonicalSelector) {
@@ -727,6 +853,9 @@ function seedStateFromData() {
     state.availability[mode.id] ||= {};
     state.statusMeta[mode.id] ||= {};
   }
+  if (state.showAllPokemon == null) {
+    state.showAllPokemon = false;
+  }
 
   canonicalEntries.forEach(entry => {
     if (state.statuses.pokemon[entry.id] == null) {
@@ -776,6 +905,24 @@ function seedStateFromData() {
     }
   });
 
+  changed = ensureAvailabilityEntriesSeeded(megaExpandedEntries, "mega") || changed;
+  changed = ensureAvailabilityEntriesSeeded(gmaxExpandedEntries, "gmax") || changed;
+
+}
+
+function ensureAvailabilityEntriesSeeded(entries, mode) {
+  let changed = false;
+  for (const entry of entries) {
+    if (state.statuses[mode][entry.id] == null) {
+      state.statuses[mode][entry.id] = entry.importedBaseStatus || "missing";
+      changed = true;
+    }
+    if (state.availability[mode][entry.id] == null) {
+      state.availability[mode][entry.id] = !!(entry.importedBaseStatus === "owned");
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function loadState() {
@@ -790,6 +937,7 @@ function loadState() {
       showAltForms: true,
       editUnreleased: false,
       showUnavailable: false,
+      showAllPokemon: false,
       statuses: {},
       availability: {},
       unreleasedOverrides: {},
@@ -809,6 +957,7 @@ function loadState() {
       showAltForms: true,
       editUnreleased: false,
       showUnavailable: false,
+      showAllPokemon: false,
       statuses: {},
       availability: {},
       unreleasedOverrides: {},
@@ -881,6 +1030,7 @@ function buildControls() {
   els.showAltFormsToggle.checked = state.showAltForms;
   els.editUnreleasedToggle.checked = state.editUnreleased;
   els.showUnavailableToggle.checked = state.showUnavailable;
+  els.showAllPokemonToggle.checked = state.showAllPokemon;
 }
 
 function bindEvents() {
@@ -944,6 +1094,21 @@ function bindEvents() {
 
   els.showUnavailableToggle.addEventListener("change", () => {
     state.showUnavailable = els.showUnavailableToggle.checked;
+    if (!state.showUnavailable && state.showAllPokemon) {
+      state.showAllPokemon = false;
+      els.showAllPokemonToggle.checked = false;
+    }
+    clearStickyVisibility();
+    saveState({ sync: false });
+    render();
+  });
+
+  els.showAllPokemonToggle.addEventListener("change", () => {
+    state.showAllPokemon = els.showAllPokemonToggle.checked;
+    if (state.showAllPokemon) {
+      state.showUnavailable = true;
+      els.showUnavailableToggle.checked = true;
+    }
     clearStickyVisibility();
     saveState({ sync: false });
     render();
@@ -1071,12 +1236,13 @@ function renderAvailabilityLegend() {
     return;
   }
 
-  const entries = getEntriesForMode(state.activeMode);
+  const entries = getAvailabilityEntriesForMode(state.activeMode);
   const available = entries.filter(entry => isAvailable(entry)).length;
   const unavailable = entries.length - available;
   els.availabilityLegend.innerHTML = `
     <span class="availability-pill">Available ${available}</span>
     <span class="availability-pill">Unavailable ${unavailable}</span>
+    ${state.showAllPokemon ? `<span class="availability-pill">All Pokemon view</span>` : ""}
   `;
 }
 
@@ -1139,11 +1305,11 @@ function shouldShowUnreleasedButton(entry) {
 
 function getSummaryEntries() {
   if (state.activeMode === "mega") {
-    return filterByAvailability(megaEntries);
+    return filterByAvailability(getAvailabilityEntriesForMode("mega"));
   }
 
   if (state.activeMode === "gmax") {
-    return filterByAvailability(gmaxEntries);
+    return filterByAvailability(getAvailabilityEntriesForMode("gmax"));
   }
 
   return canonicalEntries.slice();
@@ -1154,7 +1320,20 @@ function filterByAvailability(entries) {
 }
 
 function getEntriesForMode(mode) {
+  if (mode === "mega" || mode === "gmax") {
+    return getAvailabilityEntriesForMode(mode);
+  }
   return entriesByMode.get(mode) || [];
+}
+
+function getAvailabilityEntriesForMode(mode) {
+  if (mode === "mega") {
+    return state.showAllPokemon ? megaExpandedEntries : megaEntries;
+  }
+  if (mode === "gmax") {
+    return state.showAllPokemon ? gmaxExpandedEntries : gmaxEntries;
+  }
+  return [];
 }
 
 function getVisibleEntries() {
@@ -1371,7 +1550,7 @@ function isAutoDerivedCanEvolve(mode, entryId) {
 }
 
 function getEntryById(entryId) {
-  const all = [...canonicalEntries, ...altEntries, ...megaEntries, ...gmaxEntries];
+  const all = [...canonicalEntries, ...altEntries, ...megaExpandedEntries, ...gmaxExpandedEntries];
   return all.find(entry => entry.id === entryId) || null;
 }
 
