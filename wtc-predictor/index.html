@@ -6,24 +6,19 @@
   <title>WTC Predictor</title>
   <style>
     :root {
-      --bg: #f4efe3;
       --ink: #1a241d;
       --muted: #5b665d;
-      --panel: rgba(255, 251, 242, 0.9);
+      --panel: rgba(255, 251, 242, 0.92);
       --line: rgba(26, 36, 29, 0.18);
       --line-strong: rgba(26, 36, 29, 0.28);
       --green: #c4ddb1;
-      --green-deep: #597a41;
       --yellow: #f4df8f;
-      --yellow-deep: #8a6920;
       --accent: #183f2f;
       --shadow: 0 18px 46px rgba(40, 34, 22, 0.09);
       --radius: 20px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -36,7 +31,7 @@
     }
 
     .page {
-      width: min(1700px, calc(100% - 16px));
+      width: min(1720px, calc(100% - 16px));
       margin: 0 auto;
       padding: 10px 0 24px;
     }
@@ -45,20 +40,8 @@
       background: linear-gradient(135deg, rgba(24, 63, 47, 0.93), rgba(58, 91, 68, 0.86));
       color: #f7f2e6;
       border-radius: 30px;
-      padding: 20px 22px 18px;
+      padding: 18px 22px 16px;
       box-shadow: var(--shadow);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      inset: auto -70px -70px auto;
-      width: 220px;
-      height: 220px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(244, 219, 128, 0.16), transparent 72%);
     }
 
     .eyebrow {
@@ -71,15 +54,15 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(1.8rem, 2.9vw, 3.15rem);
+      font-size: clamp(1.8rem, 2.8vw, 3.1rem);
       line-height: 0.98;
       max-width: 680px;
     }
 
     .hero-copy {
-      max-width: 760px;
-      color: rgba(247, 242, 230, 0.86);
-      font-size: 0.98rem;
+      max-width: 900px;
+      color: rgba(247, 242, 230, 0.88);
+      font-size: 0.96rem;
       line-height: 1.45;
       margin: 10px 0 0;
     }
@@ -88,24 +71,21 @@
       display: flex;
       flex-wrap: wrap;
       gap: 10px 16px;
-      margin-top: 14px;
+      margin-top: 12px;
       font-size: 0.84rem;
       color: rgba(247, 242, 230, 0.82);
     }
 
-    .meta-strip strong {
-      color: #fff6e8;
-    }
+    .meta-strip strong { color: #fff6e8; }
 
-    .meta-links a {
+    .meta-links a,
+    .hero a {
       color: #fff6e8;
-      margin-right: 12px;
-      white-space: nowrap;
     }
 
     .panel {
       background: var(--panel);
-      border: 1px solid rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.55);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 14px 16px;
@@ -114,15 +94,14 @@
 
     .panel h2 {
       margin: 0 0 6px;
-      font-size: 1.18rem;
+      font-size: 1.16rem;
       line-height: 1.05;
     }
 
-    .panel-copy {
-      margin: 0 0 10px;
+    .small-note {
+      font-size: 0.79rem;
       color: var(--muted);
       line-height: 1.4;
-      font-size: 0.88rem;
     }
 
     .two-up {
@@ -132,9 +111,9 @@
       align-items: start;
     }
 
+    .status-bar,
     .legend,
-    .actions,
-    .status-bar {
+    .actions {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -146,6 +125,11 @@
       margin-bottom: 10px;
       font-size: 0.82rem;
       color: var(--muted);
+    }
+
+    .actions {
+      justify-content: space-between;
+      margin-bottom: 8px;
     }
 
     .legend {
@@ -178,7 +162,7 @@
       background: rgba(255, 255, 255, 0.5);
     }
 
-    .table-shell.matrix-shell {
+    .scroll-shell {
       overflow-x: auto;
     }
 
@@ -190,6 +174,10 @@
     .matrix-table {
       table-layout: fixed;
       min-width: 690px;
+    }
+
+    .series-table {
+      min-width: 980px;
     }
 
     th,
@@ -236,13 +224,8 @@
       padding: 6px 4px;
     }
 
-    .matrix-cell.done {
-      background: rgba(196, 221, 177, 0.62);
-    }
-
-    .matrix-cell.projected {
-      background: rgba(244, 223, 143, 0.54);
-    }
+    .matrix-cell.done { background: rgba(196, 221, 177, 0.62); }
+    .matrix-cell.projected { background: rgba(244, 223, 143, 0.54); }
 
     .diagonal {
       text-align: center;
@@ -253,7 +236,6 @@
     .cell-score {
       font-size: 0.92rem;
       font-weight: 700;
-      color: var(--ink);
       line-height: 1;
     }
 
@@ -272,20 +254,22 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
       font-weight: 700;
+      background: rgba(24, 63, 47, 0.1);
+      color: var(--accent);
     }
 
     .status-pill.completed {
       background: rgba(89, 122, 65, 0.14);
-      color: var(--green-deep);
+      color: #597a41;
     }
 
     .status-pill.upcoming {
       background: rgba(138, 105, 32, 0.16);
-      color: var(--yellow-deep);
+      color: #8a6920;
     }
 
-    .mini-input {
-      width: 52px;
+    .category-select {
+      width: 160px;
       padding: 5px 7px;
       border-radius: 10px;
       border: 1px solid var(--line);
@@ -305,11 +289,6 @@
       font-size: 0.82rem;
     }
 
-    .actions {
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
     .sync-pill {
       display: inline-flex;
       align-items: center;
@@ -326,21 +305,11 @@
 
     .sync-pill.live {
       background: rgba(185, 216, 163, 0.16);
-      color: #f7f2e6;
     }
 
     .sync-pill.fallback {
       background: rgba(244, 223, 143, 0.14);
       color: #fff3d0;
-    }
-
-    .small-note {
-      font-size: 0.78rem;
-      color: var(--muted);
-    }
-
-    .series-table {
-      min-width: 940px;
     }
 
     @media (max-width: 1200px) {
@@ -351,22 +320,25 @@
 
     @media (max-width: 720px) {
       .page {
-        width: min(100% - 10px, 1700px);
+        width: min(100% - 10px, 1720px);
         padding-top: 6px;
       }
 
+      .hero,
+      .panel {
+        border-radius: 20px;
+      }
+
       .hero {
-        border-radius: 22px;
-        padding: 16px 16px 14px;
+        padding: 15px 16px 14px;
       }
 
       .panel {
-        border-radius: 18px;
         padding: 12px;
       }
 
       h1 {
-        font-size: 2.1rem;
+        font-size: 2.05rem;
       }
     }
   </style>
@@ -375,10 +347,11 @@
   <main class="page">
     <section class="hero">
       <div class="eyebrow">World Test Championship 2025-27</div>
-      <h1>Predict the road to the 2027 final.</h1>
+      <h1>Simulate the road to the 2027 final.</h1>
       <p class="hero-copy">
-        Official results are seeded through Bangladesh v Pakistan on 20 May 2026. Yellow cells are projected series.
-        Green cells are completed. Matrix records are shown from the home side's view as wins-draws-losses.
+        Choose a category for each remaining series, then let the Monte Carlo model simulate the rest of the cycle.
+        Completed series stay fixed. Upcoming series use category-based win, draw and loss probabilities by series length.
+        Scoreline odds reference: <a href="./odds.html">open the probability page</a>.
       </p>
       <div class="meta-strip">
         <span><strong>Snapshot:</strong> <span id="snapshot-date"></span></span>
@@ -391,50 +364,54 @@
     <section class="panel">
       <div class="status-bar">
         <div>
-          <strong>Official and projected ladders</strong>
-          <span class="small-note">Current table includes deductions and rank range. Projected table applies your remaining picks.</span>
+          <strong>Official ladder</strong>
+          <span class="small-note">Current standings from the seeded ICC snapshot.</span>
         </div>
         <div class="small-note" id="sync-detail">Using seeded ICC snapshot.</div>
       </div>
-      <div class="two-up">
-        <div class="table-shell">
-          <table class="compact">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Team</th>
-                <th>P</th>
-                <th>W</th>
-                <th>D</th>
-                <th>L</th>
-                <th>Pts</th>
-                <th>Ded</th>
-                <th>Pct</th>
-                <th>Best</th>
-                <th>Worst</th>
-              </tr>
-            </thead>
-            <tbody id="current-body"></tbody>
-          </table>
+      <div class="table-shell">
+        <table class="compact">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Team</th>
+              <th>P</th>
+              <th>W</th>
+              <th>D</th>
+              <th>L</th>
+              <th>Pts</th>
+              <th>Ded</th>
+              <th>Pct</th>
+            </tr>
+          </thead>
+          <tbody id="current-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="status-bar">
+        <div>
+          <strong>Monte Carlo projection</strong>
+          <span class="small-note">Average totals, most likely rank, top-two chance, and middle-80% rank band.</span>
         </div>
-        <div class="table-shell">
-          <table class="compact">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Team</th>
-                <th>P</th>
-                <th>W</th>
-                <th>D</th>
-                <th>L</th>
-                <th>Pts</th>
-                <th>Ded</th>
-                <th>Pct</th>
-              </tr>
-            </thead>
-            <tbody id="projected-body"></tbody>
-          </table>
-        </div>
+        <div class="small-note" id="simulation-status">Running simulations...</div>
+      </div>
+      <div class="table-shell">
+        <table class="compact">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Avg Pts</th>
+              <th>Avg Pct</th>
+              <th>Avg W-D-L</th>
+              <th>Likely Rank</th>
+              <th>Top 2</th>
+              <th>Middle 80%</th>
+            </tr>
+          </thead>
+          <tbody id="simulation-body"></tbody>
+        </table>
       </div>
     </section>
 
@@ -442,9 +419,9 @@
       <h2>Home v Away Matrix</h2>
       <div class="legend">
         <span><i class="swatch done"></i> completed</span>
-        <span><i class="swatch projected"></i> projected</span>
+        <span><i class="swatch projected"></i> category-driven most likely finish</span>
       </div>
-      <div class="table-shell matrix-shell">
+      <div class="table-shell scroll-shell">
         <table id="matrix-table" class="matrix-table"></table>
       </div>
     </section>
@@ -452,12 +429,12 @@
     <section class="panel">
       <div class="actions">
         <div>
-          <h2>Series Predictor</h2>
-          <div class="small-note">Enter extra home wins and away wins from the remaining Tests. Draws fill automatically.</div>
+          <h2>Series Categories</h2>
+          <div class="small-note">Pick the category, then the simulation reruns automatically. The "Likely added" column shows the most likely scoreline from that category for the remaining Tests only.</div>
         </div>
         <button id="reset-picks" type="button">Reset Picks</button>
       </div>
-      <div class="table-shell matrix-shell">
+      <div class="table-shell scroll-shell">
         <table class="series-table compact">
           <thead>
             <tr>
@@ -466,10 +443,9 @@
               <th>Tests</th>
               <th>Actual</th>
               <th>Left</th>
-              <th>Home W</th>
-              <th>Away W</th>
-              <th>Draws</th>
-              <th>Projected</th>
+              <th>Category</th>
+              <th>Likely Added</th>
+              <th>Likely Final</th>
             </tr>
           </thead>
           <tbody id="series-body"></tbody>
@@ -479,6 +455,7 @@
   </main>
 
   <script src="./data.js"></script>
+  <script src="./model.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

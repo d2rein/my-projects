@@ -1,118 +1,100 @@
 (function () {
-  const STORAGE_KEY = "wtc-predictor-series-picks-v1";
+  const STORAGE_KEY = "wtc-predictor-category-picks-v1";
+  const SIMULATION_COUNT = 12000;
   const data = window.WTC_DATA;
+  const model = window.WTC_MODEL;
   const teamMap = new Map(data.teams.map((team) => [team.id, team]));
   const seriesById = new Map(data.series.map((series) => [String(series.id), series]));
 
-  const defaultPredictions = buildDefaultPredictions();
-  let savedPredictions = loadSavedPredictions();
+  const defaultSelections = buildDefaultSelections();
+  let savedSelections = loadSavedSelections();
   let liveSyncState = {
     mode: "fallback",
-    detail: `Using seeded ICC snapshot from ${data.snapshotLabel}.`,
-    checkedAt: null
+    detail: `Using seeded ICC snapshot from ${data.snapshotLabel}.`
   };
+  let simulationTimer = null;
+  let simulationSummary = null;
 
   const currentTable = computeCurrentTable();
-  const rangeMap = computeRankRange(currentTable);
 
   renderHeaderMeta();
   renderCurrentTable();
-  renderProjectedTable();
   renderMatrix();
   renderSeriesTable();
   wireGlobalActions();
   syncLiveStatus();
+  scheduleSimulation();
 
-  function buildDefaultPredictions() {
+  function buildDefaultSelections() {
     const defaults = {};
     for (const series of data.series) {
-      const remaining = getRemainingMatches(series);
-      defaults[series.id] = {
-        homeExtraWins: defaultHomeWins(remaining),
-        awayExtraWins: defaultAwayWins(remaining)
-      };
+      defaults[series.id] = getRemainingMatches(series) > 0 ? "even" : "completed";
     }
     return defaults;
   }
 
-  function defaultHomeWins(remaining) {
-    if (remaining <= 0) {
-      return 0;
-    }
-    if (remaining === 2) {
-      return 1;
-    }
-    if (remaining === 3) {
-      return 2;
-    }
-    if (remaining === 4) {
-      return 2;
-    }
-    return 3;
-  }
-
-  function defaultAwayWins(remaining) {
-    if (remaining <= 3) {
-      return 0;
-    }
-    return 1;
-  }
-
-  function loadSavedPredictions() {
+  function loadSavedSelections() {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) {
-        return structuredClone(defaultPredictions);
+        return structuredClone(defaultSelections);
       }
       const parsed = JSON.parse(raw);
-      const merged = structuredClone(defaultPredictions);
-      for (const [seriesId, prediction] of Object.entries(parsed)) {
-        if (!merged[seriesId]) {
+      const merged = structuredClone(defaultSelections);
+      for (const [seriesId, value] of Object.entries(parsed)) {
+        if (!(seriesId in merged)) {
           continue;
         }
-        merged[seriesId] = sanitizePrediction(seriesById.get(seriesId), prediction);
+        merged[seriesId] = sanitizeSelection(seriesById.get(seriesId), value);
       }
       return merged;
     } catch (error) {
-      return structuredClone(defaultPredictions);
+      return structuredClone(defaultSelections);
     }
   }
 
-  function savePredictions() {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPredictions));
+  function saveSelections() {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedSelections));
   }
 
-  function sanitizePrediction(series, prediction) {
-    const remaining = getRemainingMatches(series);
-    const homeExtraWins = clampInt(prediction.homeExtraWins, 0, remaining);
-    const awayExtraWins = clampInt(prediction.awayExtraWins, 0, remaining - homeExtraWins);
-    return { homeExtraWins, awayExtraWins };
-  }
-
-  function clampInt(value, min, max) {
-    const numeric = Number.parseInt(value, 10);
-    if (Number.isNaN(numeric)) {
-      return min;
+  function sanitizeSelection(series, value) {
+    if (!series || getRemainingMatches(series) <= 0) {
+      return "completed";
     }
-    return Math.max(min, Math.min(max, numeric));
+    return model.CATEGORY_OPTIONS.some((option) => option.key === value) ? value : "even";
   }
 
   function getRemainingMatches(series) {
     return series.matches - (series.actual.homeWins + series.actual.awayWins + series.actual.draws);
   }
 
-  function getProjectedSeries(series) {
-    const prediction = sanitizePrediction(series, savedPredictions[series.id] || defaultPredictions[series.id]);
+  function getSeriesSelection(series) {
+    return sanitizeSelection(series, savedSelections[series.id] || defaultSelections[series.id]);
+  }
+
+  function getMostLikelyProjectedSeries(series) {
+    const selection = getSeriesSelection(series);
     const remaining = getRemainingMatches(series);
-    const projectedDraws = remaining - prediction.homeExtraWins - prediction.awayExtraWins;
+    if (remaining <= 0) {
+      return {
+        categoryKey: "completed",
+        categoryLabel: "Completed",
+        shortLabel: "FIN",
+        homeWins: series.actual.homeWins,
+        draws: series.actual.draws,
+        awayWins: series.actual.awayWins
+      };
+    }
+
+    const scoreline = model.getMostLikelyScoreline(remaining, selection);
+    const option = model.getCategoryOption(selection);
     return {
-      ...series.actual,
-      homeWins: series.actual.homeWins + prediction.homeExtraWins,
-      awayWins: series.actual.awayWins + prediction.awayExtraWins,
-      draws: series.actual.draws + projectedDraws,
-      remaining,
-      projectedDraws,
-      prediction
+      categoryKey: selection,
+      categoryLabel: option.label,
+      shortLabel: option.short,
+      homeWins: series.actual.homeWins + scoreline.homeWins,
+      draws: series.actual.draws + scoreline.draws,
+      awayWins: series.actual.awayWins + scoreline.awayWins
     };
   }
 
@@ -121,16 +103,6 @@
     for (const series of data.series) {
       applyRecord(totals[series.home], series.actual.homeWins, series.actual.awayWins, series.actual.draws);
       applyRecord(totals[series.away], series.actual.awayWins, series.actual.homeWins, series.actual.draws);
-    }
-    return finalizeTable(totals);
-  }
-
-  function computeProjectedTable() {
-    const totals = buildBlankTeamTotals();
-    for (const series of data.series) {
-      const projected = getProjectedSeries(series);
-      applyRecord(totals[series.home], projected.homeWins, projected.awayWins, projected.draws);
-      applyRecord(totals[series.away], projected.awayWins, projected.homeWins, projected.draws);
     }
     return finalizeTable(totals);
   }
@@ -145,20 +117,10 @@
         losses: 0,
         draws: 0,
         rawPoints: 0,
-        deductions: data.deductions[team.id] || 0,
-        totalMatches: getTotalScheduledMatches(team.id)
+        deductions: data.deductions[team.id] || 0
       };
     }
     return totals;
-  }
-
-  function getTotalScheduledMatches(teamId) {
-    return data.series.reduce((sum, series) => {
-      if (series.home === teamId || series.away === teamId) {
-        return sum + series.matches;
-      }
-      return sum;
-    }, 0);
   }
 
   function applyRecord(entry, wins, losses, draws) {
@@ -200,47 +162,6 @@
     return teamMap.get(a.teamId).name.localeCompare(teamMap.get(b.teamId).name);
   }
 
-  function computeRankRange(tableRows) {
-    const rowsById = new Map(tableRows.map((row) => [row.teamId, row]));
-    const rangeByTeam = {};
-
-    for (const team of data.teams) {
-      const row = rowsById.get(team.id);
-      const totalAvailable = row.totalMatches * 12;
-      const remainingMatches = row.totalMatches - row.played;
-      const minPct = totalAvailable > 0 ? (row.points / totalAvailable) * 100 : 0;
-      const maxPct = totalAvailable > 0 ? ((row.points + (remainingMatches * 12)) / totalAvailable) * 100 : 0;
-
-      let guaranteedAbove = 0;
-      let guaranteedBelow = 0;
-
-      for (const other of data.teams) {
-        if (other.id === team.id) {
-          continue;
-        }
-        const otherRow = rowsById.get(other.id);
-        const otherTotal = otherRow.totalMatches * 12;
-        const otherRemaining = otherRow.totalMatches - otherRow.played;
-        const otherMinPct = otherTotal > 0 ? (otherRow.points / otherTotal) * 100 : 0;
-        const otherMaxPct = otherTotal > 0 ? ((otherRow.points + (otherRemaining * 12)) / otherTotal) * 100 : 0;
-
-        if (otherMinPct > maxPct) {
-          guaranteedAbove += 1;
-        }
-        if (otherMaxPct < minPct) {
-          guaranteedBelow += 1;
-        }
-      }
-
-      rangeByTeam[team.id] = {
-        bestRank: guaranteedAbove + 1,
-        worstRank: data.teams.length - guaranteedBelow
-      };
-    }
-
-    return rangeByTeam;
-  }
-
   function renderHeaderMeta() {
     document.getElementById("snapshot-date").textContent = data.snapshotLabel;
     document.getElementById("update-cadence").textContent = data.updateCadence;
@@ -255,6 +176,47 @@
     syncPill.className = `sync-pill ${liveSyncState.mode}`;
     syncPill.textContent = liveSyncState.mode === "live" ? "Live source checked" : "Seeded snapshot";
     document.getElementById("sync-detail").textContent = liveSyncState.detail;
+  }
+
+  function renderCurrentTable() {
+    const tbody = document.getElementById("current-body");
+    tbody.innerHTML = currentTable.map((row) => `
+      <tr>
+        <td>${row.rank}</td>
+        <td><strong>${teamMap.get(row.teamId).name}</strong></td>
+        <td>${row.played}</td>
+        <td>${row.wins}</td>
+        <td>${row.draws}</td>
+        <td>${row.losses}</td>
+        <td>${row.points}</td>
+        <td>${row.deductions}</td>
+        <td>${row.pct.toFixed(2)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderSimulationTable() {
+    const tbody = document.getElementById("simulation-body");
+    const status = document.getElementById("simulation-status");
+
+    if (!simulationSummary) {
+      status.textContent = `Running ${SIMULATION_COUNT.toLocaleString()} simulations...`;
+      tbody.innerHTML = "";
+      return;
+    }
+
+    status.textContent = `${simulationSummary.simulations.toLocaleString()} simulations. Middle 80% rank band uses the 10th-90th percentile ranks.`;
+    tbody.innerHTML = simulationSummary.rows.map((row) => `
+      <tr>
+        <td><strong>${teamMap.get(row.teamId).name}</strong></td>
+        <td>${row.avgPoints.toFixed(1)}</td>
+        <td>${row.avgPct.toFixed(2)}</td>
+        <td>${row.avgWins.toFixed(2)}-${row.avgDraws.toFixed(2)}-${row.avgLosses.toFixed(2)}</td>
+        <td>${row.mostLikelyRank}</td>
+        <td>${formatPercent(row.topTwoChance)}</td>
+        <td>${row.middle80Low}-${row.middle80High}</td>
+      </tr>
+    `).join("");
   }
 
   function renderMatrix() {
@@ -281,12 +243,12 @@
           continue;
         }
 
-        const projected = getProjectedSeries(series);
+        const projected = getMostLikelyProjectedSeries(series);
         const remaining = getRemainingMatches(series);
         const classes = series.status === "completed" ? "matrix-cell done" : "matrix-cell projected";
         const content = `
           <div class="cell-score">${projected.homeWins}-${projected.draws}-${projected.awayWins}</div>
-          <div class="cell-meta">${remaining ? `${remaining} left` : "final"}</div>
+          <div class="cell-meta">${remaining ? projected.shortLabel : "final"}</div>
         `;
         row.appendChild(cell(content, classes));
       }
@@ -300,10 +262,11 @@
     tbody.innerHTML = "";
 
     for (const series of data.series) {
-      const projected = getProjectedSeries(series);
+      const projected = getMostLikelyProjectedSeries(series);
       const remaining = getRemainingMatches(series);
       const home = teamMap.get(series.home);
       const away = teamMap.get(series.away);
+      const scoreline = remaining > 0 ? model.getMostLikelyScoreline(remaining, projected.categoryKey) : null;
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -312,93 +275,157 @@
         <td>${series.matches}</td>
         <td>${formatRecord(series.actual.homeWins, series.actual.draws, series.actual.awayWins)}</td>
         <td>${remaining}</td>
-        <td><input class="mini-input" type="number" min="0" max="${remaining}" value="${projected.prediction.homeExtraWins}" data-role="home-extra" data-series-id="${series.id}" ${remaining ? "" : "disabled"}></td>
-        <td><input class="mini-input" type="number" min="0" max="${remaining}" value="${projected.prediction.awayExtraWins}" data-role="away-extra" data-series-id="${series.id}" ${remaining ? "" : "disabled"}></td>
-        <td>${projected.projectedDraws}</td>
+        <td>
+          ${remaining > 0 ? buildCategorySelect(series.id, projected.categoryKey) : '<span class="small-note">Locked</span>'}
+        </td>
+        <td>${remaining > 0 ? formatRecord(scoreline.homeWins, scoreline.draws, scoreline.awayWins) : '-'}</td>
         <td>${formatRecord(projected.homeWins, projected.draws, projected.awayWins)}</td>
       `;
       tbody.appendChild(tr);
     }
 
-    tbody.querySelectorAll("input").forEach((input) => {
-      input.addEventListener("input", handlePredictionInput);
+    tbody.querySelectorAll("select").forEach((select) => {
+      select.addEventListener("change", handleCategoryChange);
     });
   }
 
-  function handlePredictionInput(event) {
-    const input = event.target;
-    const seriesId = input.dataset.seriesId;
-    const role = input.dataset.role;
+  function buildCategorySelect(seriesId, selectedKey) {
+    const options = model.CATEGORY_OPTIONS.map((option) => `
+      <option value="${option.key}" ${option.key === selectedKey ? "selected" : ""}>${option.label}</option>
+    `).join("");
+    return `<select class="category-select" data-series-id="${seriesId}">${options}</select>`;
+  }
+
+  function handleCategoryChange(event) {
+    const select = event.target;
+    const seriesId = select.dataset.seriesId;
     const series = seriesById.get(seriesId);
-    const remaining = getRemainingMatches(series);
+    savedSelections[seriesId] = sanitizeSelection(series, select.value);
+    saveSelections();
+    renderMatrix();
+    renderSeriesTable();
+    scheduleSimulation();
+  }
 
-    const next = sanitizePrediction(series, savedPredictions[seriesId] || defaultPredictions[seriesId]);
-    next[role === "home-extra" ? "homeExtraWins" : "awayExtraWins"] = clampInt(input.value, 0, remaining);
+  function scheduleSimulation() {
+    if (simulationTimer) {
+      window.clearTimeout(simulationTimer);
+    }
+    simulationSummary = null;
+    renderSimulationTable();
+    simulationTimer = window.setTimeout(runSimulation, 20);
+  }
 
-    if ((next.homeExtraWins + next.awayExtraWins) > remaining) {
-      if (role === "home-extra") {
-        next.awayExtraWins = Math.max(0, remaining - next.homeExtraWins);
-      } else {
-        next.homeExtraWins = Math.max(0, remaining - next.awayExtraWins);
+  function runSimulation() {
+    const aggregate = buildSimulationAggregate();
+
+    for (let simIndex = 0; simIndex < SIMULATION_COUNT; simIndex += 1) {
+      const totals = buildBlankTeamTotals();
+      for (const series of data.series) {
+        applyRecord(totals[series.home], series.actual.homeWins, series.actual.awayWins, series.actual.draws);
+        applyRecord(totals[series.away], series.actual.awayWins, series.actual.homeWins, series.actual.draws);
+
+        const remaining = getRemainingMatches(series);
+        if (remaining <= 0) {
+          continue;
+        }
+
+        const categoryKey = getSeriesSelection(series);
+        const simResult = model.simulateSeries(remaining, categoryKey);
+        applyRecord(totals[series.home], simResult.homeWins, simResult.awayWins, simResult.draws);
+        applyRecord(totals[series.away], simResult.awayWins, simResult.homeWins, simResult.draws);
+      }
+
+      const finalRows = finalizeTable(totals);
+      for (const row of finalRows) {
+        const bucket = aggregate[row.teamId];
+        bucket.points += row.points;
+        bucket.pct += row.pct;
+        bucket.wins += row.wins;
+        bucket.draws += row.draws;
+        bucket.losses += row.losses;
+        bucket.rankCounts[row.rank] += 1;
+        bucket.ranks.push(row.rank);
+        if (row.rank <= 2) {
+          bucket.topTwo += 1;
+        }
       }
     }
 
-    savedPredictions[seriesId] = next;
-    savePredictions();
-    rerenderDynamicSections();
+    simulationSummary = {
+      simulations: SIMULATION_COUNT,
+      rows: data.teams.map((team) => buildSummaryRow(team.id, aggregate[team.id]))
+        .sort((a, b) => {
+          if (b.avgPct !== a.avgPct) {
+            return b.avgPct - a.avgPct;
+          }
+          return a.mostLikelyRank - b.mostLikelyRank;
+        })
+    };
+
+    renderSimulationTable();
   }
 
-  function renderCurrentTable() {
-    const tbody = document.getElementById("current-body");
-    tbody.innerHTML = currentTable.map((row) => {
-      const range = rangeMap[row.teamId];
-      return `
-        <tr>
-          <td>${row.rank}</td>
-          <td><strong>${teamMap.get(row.teamId).name}</strong></td>
-          <td>${row.played}</td>
-          <td>${row.wins}</td>
-          <td>${row.draws}</td>
-          <td>${row.losses}</td>
-          <td>${row.points}</td>
-          <td>${row.deductions}</td>
-          <td>${row.pct.toFixed(2)}</td>
-          <td>${range.bestRank}</td>
-          <td>${range.worstRank}</td>
-        </tr>
-      `;
-    }).join("");
+  function buildSimulationAggregate() {
+    const aggregate = {};
+    for (const team of data.teams) {
+      aggregate[team.id] = {
+        points: 0,
+        pct: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        topTwo: 0,
+        ranks: [],
+        rankCounts: Array(data.teams.length + 1).fill(0)
+      };
+    }
+    return aggregate;
   }
 
-  function renderProjectedTable() {
-    const projectedTable = computeProjectedTable();
-    const tbody = document.getElementById("projected-body");
-    tbody.innerHTML = projectedTable.map((row) => `
-      <tr>
-        <td>${row.rank}</td>
-        <td><strong>${teamMap.get(row.teamId).name}</strong></td>
-        <td>${row.played}</td>
-        <td>${row.wins}</td>
-        <td>${row.draws}</td>
-        <td>${row.losses}</td>
-        <td>${row.points}</td>
-        <td>${row.deductions}</td>
-        <td>${row.pct.toFixed(2)}</td>
-      </tr>
-    `).join("");
+  function buildSummaryRow(teamId, bucket) {
+    const sortedRanks = bucket.ranks.slice().sort((a, b) => a - b);
+    return {
+      teamId,
+      avgPoints: bucket.points / SIMULATION_COUNT,
+      avgPct: bucket.pct / SIMULATION_COUNT,
+      avgWins: bucket.wins / SIMULATION_COUNT,
+      avgDraws: bucket.draws / SIMULATION_COUNT,
+      avgLosses: bucket.losses / SIMULATION_COUNT,
+      mostLikelyRank: getMostLikelyRank(bucket.rankCounts),
+      topTwoChance: bucket.topTwo / SIMULATION_COUNT,
+      middle80Low: percentileRank(sortedRanks, 0.10),
+      middle80High: percentileRank(sortedRanks, 0.90)
+    };
   }
 
-  function rerenderDynamicSections() {
-    renderMatrix();
-    renderSeriesTable();
-    renderProjectedTable();
+  function getMostLikelyRank(rankCounts) {
+    let bestRank = 1;
+    let bestCount = -1;
+    for (let rank = 1; rank < rankCounts.length; rank += 1) {
+      if (rankCounts[rank] > bestCount) {
+        bestCount = rankCounts[rank];
+        bestRank = rank;
+      }
+    }
+    return bestRank;
+  }
+
+  function percentileRank(sortedRanks, percentile) {
+    if (!sortedRanks.length) {
+      return "-";
+    }
+    const index = Math.min(sortedRanks.length - 1, Math.max(0, Math.ceil(sortedRanks.length * percentile) - 1));
+    return sortedRanks[index];
   }
 
   function wireGlobalActions() {
     document.getElementById("reset-picks").addEventListener("click", function () {
-      savedPredictions = structuredClone(defaultPredictions);
-      savePredictions();
-      rerenderDynamicSections();
+      savedSelections = structuredClone(defaultSelections);
+      saveSelections();
+      renderMatrix();
+      renderSeriesTable();
+      scheduleSimulation();
     });
   }
 
@@ -412,19 +439,21 @@
       if (payload && payload.ok) {
         liveSyncState = {
           mode: payload.liveDataAvailable ? "live" : "fallback",
-          detail: payload.message || liveSyncState.detail,
-          checkedAt: payload.checkedAt || null
+          detail: payload.message || liveSyncState.detail
         };
         renderSyncState();
       }
     } catch (error) {
       liveSyncState = {
         mode: "fallback",
-        detail: `Using seeded ICC snapshot from ${data.snapshotLabel}. Live check unavailable right now.`,
-        checkedAt: null
+        detail: `Using seeded ICC snapshot from ${data.snapshotLabel}. Live check unavailable right now.`
       };
       renderSyncState();
     }
+  }
+
+  function formatPercent(value) {
+    return `${(value * 100).toFixed(1)}%`;
   }
 
   function formatRecord(homeWins, draws, awayWins) {

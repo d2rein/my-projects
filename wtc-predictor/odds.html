@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WTC Scoreline Odds</title>
+  <style>
+    :root {
+      --ink: #1a241d;
+      --muted: #5b665d;
+      --panel: rgba(255, 251, 242, 0.92);
+      --line: rgba(26, 36, 29, 0.18);
+      --line-strong: rgba(26, 36, 29, 0.28);
+      --accent: #183f2f;
+      --shadow: 0 18px 46px rgba(40, 34, 22, 0.09);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(24, 63, 47, 0.1), transparent 28%),
+        radial-gradient(circle at top right, rgba(122, 47, 32, 0.08), transparent 24%),
+        linear-gradient(180deg, #efe7d3 0%, #f9f4e8 42%, #f4efe3 100%);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .page {
+      width: min(1720px, calc(100% - 16px));
+      margin: 0 auto;
+      padding: 10px 0 24px;
+    }
+
+    .hero,
+    .panel,
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 18px 22px 16px;
+    }
+
+    .eyebrow {
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.7rem, 2.6vw, 3rem);
+      line-height: 0.98;
+    }
+
+    .hero-copy,
+    .small-note {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.9rem;
+    }
+
+    .panel {
+      margin-top: 12px;
+      padding: 14px 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 1.18rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      padding: 12px;
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+    }
+
+    .table-shell {
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.5);
+      margin-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      text-align: left;
+      font-size: 0.8rem;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    th {
+      background: rgba(24, 63, 47, 0.08);
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    a { color: var(--accent); }
+
+    @media (max-width: 1280px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100% - 10px, 1720px);
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .panel,
+      .card {
+        border-radius: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">WTC Category Reference</div>
+      <h1>Exact scoreline odds by series strength.</h1>
+      <p class="hero-copy">
+        These tables show the full probability split for every possible scoreline in 5-Test, 3-Test and 2-Test series.
+        The home and away versions are mirrored, so only the neutral strength families are listed here.
+        Main simulator: <a href="./">return to the WTC predictor</a>.
+      </p>
+    </section>
+
+    <div id="odds-sections"></div>
+  </main>
+
+  <script src="./model.js"></script>
+  <script src="./odds.js"></script>
+</body>
+</html>
