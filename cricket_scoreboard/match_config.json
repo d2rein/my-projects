@@ -1,0 +1,97 @@
+{
+  "match_id": "755ec194-5d09-445d-aeb1-42fedae0b83d",
+  "use_local_only": true,
+  "refresh_seconds": 20,
+  "home_team": [
+    {
+      "name": "Travis Head",
+      "role": "middle-order batter"
+    },
+    {
+      "name": "Jake Weatherald",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Marnus Labuschagne",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Steven Smith (c)",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Usman Khawaja",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Alex Carey †",
+      "role": "wicketkeeper batter"
+    },
+    {
+      "name": "Cameron Green",
+      "role": "batting allrounder"
+    },
+    {
+      "name": "Michael Neser",
+      "role": "bowling allrounder"
+    },
+    {
+      "name": "Mitchell Starc",
+      "role": "bowler"
+    },
+    {
+      "name": "Jhye Richardson",
+      "role": "bowler"
+    },
+    {
+      "name": "Scott Boland",
+      "role": "bowler"
+    }
+  ],
+  "away_team": [
+    {
+      "name": "Zak Crawley",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Ben Duckett",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Jacob Bethell",
+      "role": "batting allrounder"
+    },
+    {
+      "name": "Joe Root",
+      "role": "top-order batter"
+    },
+    {
+      "name": "Harry Brook",
+      "role": "middle-order batter"
+    },
+    {
+      "name": "Ben Stokes (c)",
+      "role": "allrounder"
+    },
+    {
+      "name": "Jamie Smith †",
+      "role": "wicketkeeper batter"
+    },
+    {
+      "name": "Will Jacks",
+      "role": "batting allrounder"
+    },
+    {
+      "name": "Gus Atkinson",
+      "role": "bowler"
+    },
+    {
+      "name": "Brydon Carse",
+      "role": "bowling allrounder"
+    },
+    {
+      "name": "Josh Tongue",
+      "role": "bowler"
+    }
+  ]
+}
