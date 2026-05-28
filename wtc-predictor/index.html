@@ -9,17 +9,16 @@
       --bg: #f4efe3;
       --ink: #1a241d;
       --muted: #5b665d;
-      --panel: rgba(255, 251, 242, 0.86);
-      --panel-strong: #fffaf0;
-      --line: rgba(26, 36, 29, 0.14);
-      --green: #b9d8a3;
+      --panel: rgba(255, 251, 242, 0.9);
+      --line: rgba(26, 36, 29, 0.18);
+      --line-strong: rgba(26, 36, 29, 0.28);
+      --green: #c4ddb1;
       --green-deep: #597a41;
-      --yellow: #f4db80;
+      --yellow: #f4df8f;
       --yellow-deep: #8a6920;
       --accent: #183f2f;
-      --accent-2: #7a2f20;
-      --shadow: 0 24px 60px rgba(40, 34, 22, 0.12);
-      --radius: 24px;
+      --shadow: 0 18px 46px rgba(40, 34, 22, 0.09);
+      --radius: 20px;
     }
 
     * {
@@ -30,23 +29,23 @@
       margin: 0;
       color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(24, 63, 47, 0.12), transparent 32%),
-        radial-gradient(circle at top right, rgba(122, 47, 32, 0.12), transparent 26%),
+        radial-gradient(circle at top left, rgba(24, 63, 47, 0.1), transparent 28%),
+        radial-gradient(circle at top right, rgba(122, 47, 32, 0.08), transparent 24%),
         linear-gradient(180deg, #efe7d3 0%, #f9f4e8 42%, #f4efe3 100%);
       font-family: Georgia, "Times New Roman", serif;
     }
 
     .page {
-      width: min(1380px, calc(100% - 32px));
+      width: min(1700px, calc(100% - 16px));
       margin: 0 auto;
-      padding: 32px 0 56px;
+      padding: 10px 0 24px;
     }
 
     .hero {
-      background: linear-gradient(135deg, rgba(24, 63, 47, 0.92), rgba(58, 91, 68, 0.84));
+      background: linear-gradient(135deg, rgba(24, 63, 47, 0.93), rgba(58, 91, 68, 0.86));
       color: #f7f2e6;
-      border-radius: 32px;
-      padding: 28px;
+      border-radius: 30px;
+      padding: 20px 22px 18px;
       box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
@@ -55,199 +54,222 @@
     .hero::after {
       content: "";
       position: absolute;
-      inset: auto -80px -80px auto;
-      width: 240px;
-      height: 240px;
+      inset: auto -70px -70px auto;
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(244, 219, 128, 0.2), transparent 70%);
+      background: radial-gradient(circle, rgba(244, 219, 128, 0.16), transparent 72%);
     }
 
     .eyebrow {
-      font-size: 0.82rem;
-      letter-spacing: 0.14em;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      opacity: 0.8;
-      margin-bottom: 10px;
+      opacity: 0.82;
+      margin-bottom: 8px;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(2rem, 3vw, 3.8rem);
+      font-size: clamp(1.8rem, 2.9vw, 3.15rem);
       line-height: 0.98;
+      max-width: 680px;
+    }
+
+    .hero-copy {
       max-width: 760px;
+      color: rgba(247, 242, 230, 0.86);
+      font-size: 0.98rem;
+      line-height: 1.45;
+      margin: 10px 0 0;
     }
 
-    .hero p {
-      max-width: 720px;
-      color: rgba(247, 242, 230, 0.84);
-      font-size: 1.02rem;
-      line-height: 1.6;
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-top: 14px;
+      font-size: 0.84rem;
+      color: rgba(247, 242, 230, 0.82);
     }
 
-    .top-cards,
-    .two-up {
-      display: grid;
-      gap: 18px;
-      margin-top: 22px;
+    .meta-strip strong {
+      color: #fff6e8;
     }
 
-    .top-cards {
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    .meta-links a {
+      color: #fff6e8;
+      margin-right: 12px;
+      white-space: nowrap;
     }
 
-    .two-up {
-      grid-template-columns: 1.2fr 1fr;
-      align-items: start;
-    }
-
-    .card,
     .panel {
       background: var(--panel);
-      backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.5);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-    }
-
-    .card {
-      padding: 18px 18px 16px;
-    }
-
-    .card-label {
-      display: block;
-      color: var(--muted);
-      font-size: 0.82rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-
-    .card-value {
-      font-size: 1.55rem;
-      font-weight: 700;
-    }
-
-    .panel {
-      padding: 22px;
-      margin-top: 22px;
+      padding: 14px 16px;
+      margin-top: 12px;
     }
 
     .panel h2 {
-      margin: 0 0 8px;
-      font-size: 1.65rem;
+      margin: 0 0 6px;
+      font-size: 1.18rem;
+      line-height: 1.05;
     }
 
     .panel-copy {
-      margin: 0 0 18px;
+      margin: 0 0 10px;
       color: var(--muted);
-      line-height: 1.55;
+      line-height: 1.4;
+      font-size: 0.88rem;
+    }
+
+    .two-up {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .legend,
+    .actions,
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+    }
+
+    .status-bar {
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
     }
 
     .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 14px;
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+      color: var(--muted);
     }
 
     .legend span {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.92rem;
-      color: var(--muted);
+      gap: 7px;
     }
 
     .swatch {
-      width: 14px;
-      height: 14px;
+      width: 11px;
+      height: 11px;
       border-radius: 999px;
       display: inline-block;
+      border: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .swatch.done { background: var(--green); }
     .swatch.projected { background: var(--yellow); }
 
     .table-shell {
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .table-shell.matrix-shell {
       overflow-x: auto;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.56);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 860px;
+    }
+
+    .matrix-table {
+      table-layout: fixed;
+      min-width: 690px;
     }
 
     th,
     td {
-      padding: 12px 10px;
+      padding: 7px 9px;
       border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
       text-align: left;
-      vertical-align: top;
-      font-size: 0.95rem;
+      vertical-align: middle;
+      font-size: 0.84rem;
+      line-height: 1.2;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
     }
 
     th {
       background: rgba(24, 63, 47, 0.08);
-      font-size: 0.84rem;
-      letter-spacing: 0.06em;
+      font-size: 0.76rem;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--muted);
-      position: sticky;
-      top: 0;
-      z-index: 1;
+      white-space: nowrap;
     }
 
-    .team-axis span,
-    .row-note {
-      display: block;
-      color: var(--muted);
-      font-size: 0.83rem;
-      margin-top: 4px;
+    .compact th,
+    .compact td {
+      padding: 6px 8px;
+      font-size: 0.82rem;
+    }
+
+    .matrix-team,
+    .matrix-head {
+      width: 72px;
+      text-align: center;
+      font-weight: 700;
     }
 
     .matrix-cell {
-      min-width: 98px;
+      width: 68px;
       text-align: center;
-      border-left: 1px solid var(--line);
+      padding: 6px 4px;
     }
 
     .matrix-cell.done {
-      background: rgba(185, 216, 163, 0.55);
+      background: rgba(196, 221, 177, 0.62);
     }
 
     .matrix-cell.projected {
-      background: rgba(244, 219, 128, 0.48);
+      background: rgba(244, 223, 143, 0.54);
     }
 
     .diagonal {
       text-align: center;
-      color: rgba(26, 36, 29, 0.32);
-      background: rgba(26, 36, 29, 0.04);
+      color: rgba(26, 36, 29, 0.36);
+      background: rgba(26, 36, 29, 0.05);
     }
 
     .cell-score {
-      font-size: 1.1rem;
+      font-size: 0.92rem;
       font-weight: 700;
       color: var(--ink);
+      line-height: 1;
     }
 
-    .cell-meta,
-    .cell-note {
-      font-size: 0.76rem;
+    .cell-meta {
+      font-size: 0.68rem;
       color: var(--muted);
+      margin-top: 3px;
     }
 
     .status-pill {
       display: inline-flex;
       align-items: center;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 999px;
-      font-size: 0.78rem;
-      letter-spacing: 0.06em;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       font-weight: 700;
     }
@@ -263,52 +285,65 @@
     }
 
     .mini-input {
-      width: 70px;
-      padding: 8px 10px;
-      border-radius: 12px;
+      width: 52px;
+      padding: 5px 7px;
+      border-radius: 10px;
       border: 1px solid var(--line);
       background: #fff;
       font: inherit;
       color: var(--ink);
     }
 
-    .actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
     button {
       border: 0;
       border-radius: 999px;
-      padding: 10px 16px;
+      padding: 8px 12px;
       background: var(--accent);
       color: #f7f2e6;
       font: inherit;
       cursor: pointer;
+      font-size: 0.82rem;
+    }
+
+    .actions {
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      color: #f7f2e6;
+    }
+
+    .sync-pill.live {
+      background: rgba(185, 216, 163, 0.16);
+      color: #f7f2e6;
+    }
+
+    .sync-pill.fallback {
+      background: rgba(244, 223, 143, 0.14);
+      color: #fff3d0;
     }
 
     .small-note {
+      font-size: 0.78rem;
       color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.5;
     }
 
-    .source-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      margin-top: 8px;
+    .series-table {
+      min-width: 940px;
     }
 
-    a {
-      color: var(--accent);
-    }
-
-    @media (max-width: 980px) {
+    @media (max-width: 1200px) {
       .two-up {
         grid-template-columns: 1fr;
       }
@@ -316,18 +351,22 @@
 
     @media (max-width: 720px) {
       .page {
-        width: min(100% - 20px, 1380px);
-        padding-top: 16px;
+        width: min(100% - 10px, 1700px);
+        padding-top: 6px;
       }
 
-      .hero,
-      .panel,
-      .card {
+      .hero {
         border-radius: 22px;
+        padding: 16px 16px 14px;
+      }
+
+      .panel {
+        border-radius: 18px;
+        padding: 12px;
       }
 
       h1 {
-        font-size: 2.4rem;
+        font-size: 2.1rem;
       }
     }
   </style>
@@ -337,106 +376,29 @@
     <section class="hero">
       <div class="eyebrow">World Test Championship 2025-27</div>
       <h1>Predict the road to the 2027 final.</h1>
-      <p>
-        This page tracks the official WTC snapshot through Bangladesh v Pakistan on 20 May 2026, then lets you
-        fill in the remaining series. Yellow cells are still in prediction mode. Green cells are already finished.
-        Matrix records are shown from the home side's perspective as wins-draws-losses.
+      <p class="hero-copy">
+        Official results are seeded through Bangladesh v Pakistan on 20 May 2026. Yellow cells are projected series.
+        Green cells are completed. Matrix records are shown from the home side's view as wins-draws-losses.
       </p>
-
-      <div class="top-cards">
-        <article class="card">
-          <span class="card-label">Snapshot</span>
-          <div class="card-value" id="snapshot-date"></div>
-        </article>
-        <article class="card">
-          <span class="card-label">Official Leader</span>
-          <div class="card-value" id="current-leader"></div>
-        </article>
-        <article class="card">
-          <span class="card-label">Projected Leader</span>
-          <div class="card-value" id="projected-leader"></div>
-        </article>
-        <article class="card">
-          <span class="card-label">Data Source</span>
-          <div class="card-value" id="source-host"></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="two-up">
-      <article class="panel">
-        <h2>Refresh Rhythm</h2>
-        <p class="panel-copy">
-          This first version is seeded from official ICC data and designed around a weekly refresh cadence, with an
-          extra update target after known series end dates.
-        </p>
-        <div class="card">
-          <span class="card-label">Target cadence</span>
-          <div class="card-value" id="update-cadence"></div>
-        </div>
-      </article>
-
-      <article class="panel">
-        <h2>Sources</h2>
-        <p class="panel-copy">
-          Current standings and completed series have been seeded from official ICC schedule and standings material.
-        </p>
-        <div class="source-list" id="source-list"></div>
-      </article>
-    </section>
-
-    <section class="panel">
-      <h2>Home v Away Matrix</h2>
-      <p class="panel-copy">
-        Rows are the home side, columns are the away side. Each cell shows the final or projected series record from
-        the home team's point of view.
-      </p>
-      <div class="legend">
-        <span><i class="swatch done"></i> completed series</span>
-        <span><i class="swatch projected"></i> projected series</span>
-      </div>
-      <div class="table-shell">
-        <table id="matrix-table"></table>
+      <div class="meta-strip">
+        <span><strong>Snapshot:</strong> <span id="snapshot-date"></span></span>
+        <span><strong>Refresh:</strong> <span id="update-cadence"></span></span>
+        <span><strong>Sync:</strong> <span id="sync-pill" class="sync-pill fallback">Seeded snapshot</span></span>
+        <span class="meta-links" id="source-list"></span>
       </div>
     </section>
 
     <section class="panel">
-      <div class="actions">
+      <div class="status-bar">
         <div>
-          <h2>Series Picker</h2>
-          <p class="panel-copy">Enter extra home wins and away wins from the remaining Tests. Draws are filled automatically.</p>
+          <strong>Official and projected ladders</strong>
+          <span class="small-note">Current table includes deductions and rank range. Projected table applies your remaining picks.</span>
         </div>
-        <button id="reset-picks" type="button">Reset My Picks</button>
+        <div class="small-note" id="sync-detail">Using seeded ICC snapshot.</div>
       </div>
-      <div class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Series</th>
-              <th>Tests</th>
-              <th>Actual</th>
-              <th>Left</th>
-              <th>Extra Home W</th>
-              <th>Extra Away W</th>
-              <th>Auto Draws</th>
-              <th>Projected Final</th>
-            </tr>
-          </thead>
-          <tbody id="series-body"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="two-up">
-      <article class="panel">
-        <h2>Official Table</h2>
-        <p class="panel-copy">
-          Includes current points deductions and a live best-case / worst-case finish band based on the remaining
-          points still mathematically available.
-        </p>
+      <div class="two-up">
         <div class="table-shell">
-          <table>
+          <table class="compact">
             <thead>
               <tr>
                 <th>Rank</th>
@@ -455,16 +417,8 @@
             <tbody id="current-body"></tbody>
           </table>
         </div>
-      </article>
-
-      <article class="panel">
-        <h2>Projected Table</h2>
-        <p class="panel-copy">
-          This table applies your remaining series picks on top of the official snapshot. Future over-rate deductions
-          are not projected here.
-        </p>
         <div class="table-shell">
-          <table>
+          <table class="compact">
             <thead>
               <tr>
                 <th>Rank</th>
@@ -481,7 +435,46 @@
             <tbody id="projected-body"></tbody>
           </table>
         </div>
-      </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Home v Away Matrix</h2>
+      <div class="legend">
+        <span><i class="swatch done"></i> completed</span>
+        <span><i class="swatch projected"></i> projected</span>
+      </div>
+      <div class="table-shell matrix-shell">
+        <table id="matrix-table" class="matrix-table"></table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="actions">
+        <div>
+          <h2>Series Predictor</h2>
+          <div class="small-note">Enter extra home wins and away wins from the remaining Tests. Draws fill automatically.</div>
+        </div>
+        <button id="reset-picks" type="button">Reset Picks</button>
+      </div>
+      <div class="table-shell matrix-shell">
+        <table class="series-table compact">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Series</th>
+              <th>Tests</th>
+              <th>Actual</th>
+              <th>Left</th>
+              <th>Home W</th>
+              <th>Away W</th>
+              <th>Draws</th>
+              <th>Projected</th>
+            </tr>
+          </thead>
+          <tbody id="series-body"></tbody>
+        </table>
+      </div>
     </section>
   </main>
 

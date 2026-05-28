@@ -6,16 +6,22 @@
 
   const defaultPredictions = buildDefaultPredictions();
   let savedPredictions = loadSavedPredictions();
+  let liveSyncState = {
+    mode: "fallback",
+    detail: `Using seeded ICC snapshot from ${data.snapshotLabel}.`,
+    checkedAt: null
+  };
 
   const currentTable = computeCurrentTable();
   const rangeMap = computeRankRange(currentTable);
 
-  renderHeaderCards();
-  renderMatrix();
-  renderSeriesTable();
+  renderHeaderMeta();
   renderCurrentTable();
   renderProjectedTable();
+  renderMatrix();
+  renderSeriesTable();
   wireGlobalActions();
+  syncLiveStatus();
 
   function buildDefaultPredictions() {
     const defaults = {};
@@ -46,10 +52,7 @@
   }
 
   function defaultAwayWins(remaining) {
-    if (remaining <= 2) {
-      return 0;
-    }
-    if (remaining === 3) {
+    if (remaining <= 3) {
       return 0;
     }
     return 1;
@@ -231,51 +234,50 @@
 
       rangeByTeam[team.id] = {
         bestRank: guaranteedAbove + 1,
-        worstRank: data.teams.length - guaranteedBelow,
-        minPct,
-        maxPct
+        worstRank: data.teams.length - guaranteedBelow
       };
     }
 
     return rangeByTeam;
   }
 
-  function renderHeaderCards() {
+  function renderHeaderMeta() {
     document.getElementById("snapshot-date").textContent = data.snapshotLabel;
     document.getElementById("update-cadence").textContent = data.updateCadence;
-    document.getElementById("current-leader").textContent = teamMap.get(currentTable[0].teamId).name;
-
-    const projectedTable = computeProjectedTable();
-    document.getElementById("projected-leader").textContent = teamMap.get(projectedTable[0].teamId).name;
-
-    const sourceHost = new URL(data.sources[0].url).hostname.replace(/^www\./, "");
-    document.getElementById("source-host").textContent = sourceHost;
-
-    const sourceList = document.getElementById("source-list");
-    sourceList.innerHTML = data.sources
+    document.getElementById("source-list").innerHTML = data.sources
       .map((source) => `<a href="${source.url}" target="_blank" rel="noopener">${source.label}</a>`)
       .join("");
+    renderSyncState();
+  }
+
+  function renderSyncState() {
+    const syncPill = document.getElementById("sync-pill");
+    syncPill.className = `sync-pill ${liveSyncState.mode}`;
+    syncPill.textContent = liveSyncState.mode === "live" ? "Live source checked" : "Seeded snapshot";
+    document.getElementById("sync-detail").textContent = liveSyncState.detail;
   }
 
   function renderMatrix() {
     const table = document.getElementById("matrix-table");
+    table.innerHTML = "";
+
     const header = document.createElement("tr");
-    header.innerHTML = `<th>Home \\ Away</th>${data.teams.map((team) => `<th>${team.short}</th>`).join("")}`;
+    header.innerHTML = `<th class="matrix-head">Home</th>${data.teams.map((team) => `<th class="matrix-head">${team.short}</th>`).join("")}`;
     table.appendChild(header);
 
     for (const home of data.teams) {
       const row = document.createElement("tr");
-      row.appendChild(cell(`<strong>${home.short}</strong><span>${home.name}</span>`, "team-axis"));
+      row.appendChild(cell(home.short, "matrix-team"));
 
       for (const away of data.teams) {
         if (home.id === away.id) {
-          row.appendChild(cell("-", "diagonal"));
+          row.appendChild(cell("-", "diagonal matrix-cell"));
           continue;
         }
 
         const series = data.series.find((item) => item.home === home.id && item.away === away.id);
         if (!series) {
-          row.appendChild(cell("-", "diagonal"));
+          row.appendChild(cell("-", "diagonal matrix-cell"));
           continue;
         }
 
@@ -285,7 +287,6 @@
         const content = `
           <div class="cell-score">${projected.homeWins}-${projected.draws}-${projected.awayWins}</div>
           <div class="cell-meta">${remaining ? `${remaining} left` : "final"}</div>
-          <div class="cell-note">${series.matches} Tests</div>
         `;
         row.appendChild(cell(content, classes));
       }
@@ -307,19 +308,12 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><span class="status-pill ${series.status}">${series.stageLabel}</span></td>
-        <td>
-          <strong>${home.name} v ${away.name}</strong>
-          <div class="row-note">${series.windowLabel}</div>
-        </td>
+        <td><strong>${home.name} v ${away.name}</strong><div class="small-note">${series.windowLabel}</div></td>
         <td>${series.matches}</td>
         <td>${formatRecord(series.actual.homeWins, series.actual.draws, series.actual.awayWins)}</td>
         <td>${remaining}</td>
-        <td>
-          <input class="mini-input" type="number" min="0" max="${remaining}" value="${projected.prediction.homeExtraWins}" data-role="home-extra" data-series-id="${series.id}" ${remaining ? "" : "disabled"}>
-        </td>
-        <td>
-          <input class="mini-input" type="number" min="0" max="${remaining}" value="${projected.prediction.awayExtraWins}" data-role="away-extra" data-series-id="${series.id}" ${remaining ? "" : "disabled"}>
-        </td>
+        <td><input class="mini-input" type="number" min="0" max="${remaining}" value="${projected.prediction.homeExtraWins}" data-role="home-extra" data-series-id="${series.id}" ${remaining ? "" : "disabled"}></td>
+        <td><input class="mini-input" type="number" min="0" max="${remaining}" value="${projected.prediction.awayExtraWins}" data-role="away-extra" data-series-id="${series.id}" ${remaining ? "" : "disabled"}></td>
         <td>${projected.projectedDraws}</td>
         <td>${formatRecord(projected.homeWins, projected.draws, projected.awayWins)}</td>
       `;
@@ -378,8 +372,6 @@
 
   function renderProjectedTable() {
     const projectedTable = computeProjectedTable();
-    document.getElementById("projected-leader").textContent = teamMap.get(projectedTable[0].teamId).name;
-
     const tbody = document.getElementById("projected-body");
     tbody.innerHTML = projectedTable.map((row) => `
       <tr>
@@ -397,7 +389,6 @@
   }
 
   function rerenderDynamicSections() {
-    document.getElementById("matrix-table").innerHTML = "";
     renderMatrix();
     renderSeriesTable();
     renderProjectedTable();
@@ -409,6 +400,31 @@
       savePredictions();
       rerenderDynamicSections();
     });
+  }
+
+  async function syncLiveStatus() {
+    try {
+      const response = await fetch("/api/wtc-live", { headers: { "Accept": "application/json" } });
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      const payload = await response.json();
+      if (payload && payload.ok) {
+        liveSyncState = {
+          mode: payload.liveDataAvailable ? "live" : "fallback",
+          detail: payload.message || liveSyncState.detail,
+          checkedAt: payload.checkedAt || null
+        };
+        renderSyncState();
+      }
+    } catch (error) {
+      liveSyncState = {
+        mode: "fallback",
+        detail: `Using seeded ICC snapshot from ${data.snapshotLabel}. Live check unavailable right now.`,
+        checkedAt: null
+      };
+      renderSyncState();
+    }
   }
 
   function formatRecord(homeWins, draws, awayWins) {
