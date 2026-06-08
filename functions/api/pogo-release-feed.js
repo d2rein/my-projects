@@ -5,9 +5,10 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v9";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v10";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
+const EVENT_DETAIL_FETCH_LIMIT = 8;
 
 const FEED_SOURCES = {
   events: "https://leekduck.com/events/",
@@ -52,7 +53,7 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const feed = await buildAutomaticFeed();
+    const feed = await buildAutomaticFeed(env);
     if (env.POGO_TRACKER_KV) {
       await env.POGO_TRACKER_KV.put(AUTO_CACHE_KEY, JSON.stringify(feed));
     }
@@ -108,7 +109,7 @@ export async function onRequestPost(context) {
   return json({ ok: true, publishedAt: envelope.publishedAt });
 }
 
-async function buildAutomaticFeed() {
+async function buildAutomaticFeed(env) {
   const [eventsHtml, raidManifest, rocketHtml, researchHtml, eggsHtml] = await Promise.all([
     fetchText(FEED_SOURCES.events),
     fetchJson(FEED_SOURCES.raidManifest),
@@ -117,7 +118,7 @@ async function buildAutomaticFeed() {
     fetchText(FEED_SOURCES.eggs)
   ]);
 
-  const eventSections = await parseEvents(eventsHtml);
+  const eventSections = await parseEvents(eventsHtml, env);
   const raidSections = await parseRaidBossesFromManifest(raidManifest);
   const rocketSection = parseRocketLineups(rocketHtml);
   const researchSections = parseResearch(researchHtml);
@@ -226,7 +227,7 @@ async function fetchJson(url) {
   return await response.json();
 }
 
-async function parseEvents(html) {
+async function parseEvents(html, env) {
   const liveSlice = sliceBetween(
     html,
     '<div class="events-section events-section-live">',
@@ -247,7 +248,7 @@ async function parseEvents(html) {
     mergeSectionsById(upcoming),
     mergedCurrent
   ).sort(compareByStart);
-  await enrichEventSections([...mergedCurrent, ...mergedUpcoming]);
+  await enrichEventSections([...mergedCurrent, ...mergedUpcoming], env);
 
   return {
     current: mergedCurrent,
@@ -977,9 +978,10 @@ function decodeHtml(value) {
     .replace(/&gt;/gi, ">");
 }
 
-async function enrichEventSections(sections) {
-  await Promise.all(sections.map(async section => {
-    if (!section?.source) return;
+async function enrichEventSections(sections, env) {
+  const candidates = prioritizeEventSectionEnrichment(sections).slice(0, EVENT_DETAIL_FETCH_LIMIT);
+  for (const section of candidates) {
+    if (!section?.source) continue;
     try {
       const html = await fetchText(section.source);
       const articleWindow = extractEventArticleWindow(html);
@@ -1003,7 +1005,45 @@ async function enrichEventSections(sections) {
     } catch {
       // Keep the lightweight list-page section if the detail page fails.
     }
-  }));
+  }
+
+  const skippedCount = Math.max(0, (sections || []).length - candidates.length);
+  if (skippedCount > 0) {
+    for (const section of sections || []) {
+      section.detailRefreshLimited = true;
+      section.detailRefreshSkipped = !candidates.includes(section);
+    }
+    if (env?.POGO_TRACKER_KV) {
+      // No-op hook to make the limited refresh decision visible in cached payloads via section flags.
+    }
+  }
+}
+
+function prioritizeEventSectionEnrichment(sections) {
+  const now = Date.now();
+  return [...new Set((sections || []).filter(section => !!section?.source))]
+    .sort((left, right) => scoreEventSectionForEnrichment(right, now) - scoreEventSectionForEnrichment(left, now));
+}
+
+function scoreEventSectionForEnrichment(section, now = Date.now()) {
+  let score = 0;
+  const start = parseComparableDateValue(section?.startsAt);
+  const end = parseComparableDateValue(section?.endsAt);
+  const hasEntries = (section?.entries || []).length > 0;
+  const title = String(section?.title || "").toLowerCase();
+
+  if (!Number.isFinite(start)) score += 16;
+  if (!Number.isFinite(end)) score += 16;
+  if (!hasEntries) score += 20;
+  if (Number.isFinite(start) && Number.isFinite(end) && start <= now && end >= now) score += 30;
+  if (Number.isFinite(start) && start > now) {
+    const daysAway = (start - now) / (24 * 60 * 60 * 1000);
+    score += Math.max(0, 18 - daysAway);
+  }
+  if (title.includes("go fest") || title.includes("raid") || title.includes("spotlight") || title.includes("community day")) {
+    score += 6;
+  }
+  return score;
 }
 
 function extractEventArticleWindow(html) {
