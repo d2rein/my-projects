@@ -12,6 +12,7 @@
 </script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="./favicons/pogo-medal-tracker.svg" />
 <title>Pokémon GO Medal Forecast Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
@@ -774,6 +775,7 @@ function getCurrentDexCompleted(snapshot) {
 function getTotalCompletedMedals(snapshot) {
   return getVisibleCompletedCount(snapshot) + Number(state.hiddenBonusMedals || 0);
 }
+const MAX_PROJECTION_DATE = "2099-12-31";
 function computeRate(id) {
   const sorted = snapshotSorted();
   const segments = [];
@@ -805,28 +807,40 @@ function computeXpRate() {
   const blended = seg.length ? recent * 0.65 + historical * 0.35 : Number(state.xpPerDayRecent || 0);
   return { recent, historical, blended };
 }
+function clampProjectionDate(dateStr) {
+  if (!dateStr) return MAX_PROJECTION_DATE;
+  return dateStr > MAX_PROJECTION_DATE ? MAX_PROJECTION_DATE : dateStr;
+}
 function computeMedalProjection(medal, snapshot = latestSnapshot()) {
   const current = Number(snapshot.medals[medal.id] || 0);
   if (current >= medal.platinum) return { projectedDate: snapshot.date, daysRemaining:0, current, rate:0 };
-  if (["Pokedex","Impossible","Optional"].includes(medal.type)) {
+  if (["Pokedex","Optional"].includes(medal.type)) {
+    const projectedDate = clampProjectionDate(medal.manualExpected || MAX_PROJECTION_DATE);
     return {
-      projectedDate: medal.manualExpected || null,
-      daysRemaining: medal.manualExpected ? Math.max(0, daysBetween(snapshot.date, medal.manualExpected)) : Infinity,
+      projectedDate,
+      daysRemaining: Math.max(0, daysBetween(snapshot.date, projectedDate)),
       current,
       rate:0
     };
   }
   const rate = computeRate(medal.id);
-  if (!rate.blended || rate.blended <= 0) {
+  if (!Number.isFinite(rate.blended) || rate.blended <= 0) {
+    const projectedDate = clampProjectionDate(medal.manualExpected || MAX_PROJECTION_DATE);
     return {
-      projectedDate: medal.manualExpected || null,
-      daysRemaining: medal.manualExpected ? Math.max(0, daysBetween(snapshot.date, medal.manualExpected)) : Infinity,
+      projectedDate,
+      daysRemaining: Math.max(0, daysBetween(snapshot.date, projectedDate)),
       current,
       rate:0
     };
   }
   const daysRemaining = Math.max(0, (medal.platinum - current) / rate.blended);
-  return { projectedDate: addDays(snapshot.date, daysRemaining), daysRemaining, current, rate: rate.blended };
+  const projectedDate = clampProjectionDate(addDays(snapshot.date, daysRemaining));
+  return {
+    projectedDate,
+    daysRemaining: Math.max(0, daysBetween(snapshot.date, projectedDate)),
+    current,
+    rate: rate.blended
+  };
 }
 function computeAllProjections() {
   const latest = latestSnapshot();
@@ -1202,8 +1216,8 @@ function projectValueAtDate(dateStr, seriesType, id=null) {
     }
     const latest = latestSnapshot();
     const current = Number(latest.medals[id] || 0);
-    if (["Pokedex","Impossible","Optional"].includes(medal.type)) {
-      if (medal.manualExpected && medal.manualExpected <= dateStr) return 100;
+    if (["Pokedex","Optional"].includes(medal.type)) {
+      if (clampProjectionDate(medal.manualExpected || MAX_PROJECTION_DATE) <= dateStr) return 100;
       return 100 * (current / medal.platinum);
     }
     const rate = computeRate(id).blended;
