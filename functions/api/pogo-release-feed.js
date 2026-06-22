@@ -5,10 +5,10 @@ const DEFAULT_HEADERS = {
   "Cache-Control": "no-store"
 };
 
-const AUTO_CACHE_KEY = "pogo-release-feed-auto-v10";
+const AUTO_CACHE_KEY = "pogo-release-feed-auto-v11";
 const MANUAL_KEY = "pogo-release-feed-manual";
 const CACHE_MS = 30 * 60 * 1000;
-const EVENT_DETAIL_FETCH_LIMIT = 8;
+const EVENT_DETAIL_FETCH_LIMIT = 12;
 
 const FEED_SOURCES = {
   events: "https://leekduck.com/events/",
@@ -1039,6 +1039,8 @@ function scoreEventSectionForEnrichment(section, now = Date.now()) {
   if (Number.isFinite(start) && start > now) {
     const daysAway = (start - now) / (24 * 60 * 60 * 1000);
     score += Math.max(0, 18 - daysAway);
+    if (!hasEntries && daysAway <= 7) score += 28;
+    if (!hasEntries && daysAway <= 3) score += 12;
   }
   if (title.includes("go fest") || title.includes("raid") || title.includes("spotlight") || title.includes("community day")) {
     score += 6;
