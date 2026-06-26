@@ -34,19 +34,19 @@ input,select,button { outline:none; }
 }
 .hero-main { display:grid; gap:12px; min-width:0; }
 .hero-side { display:grid; gap:10px; justify-items:end; }
-.hero-side-top { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; }
+.hero-side-top { display:grid; grid-template-columns:auto auto; gap:10px; align-items:start; justify-content:end; }
 .title-wrap { display:grid; gap:4px; }
 .eyebrow { margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:700; }
 .title { font-size:32px; font-weight:700; line-height:1; white-space:nowrap; }
 .lede { margin:0; color:var(--muted); font-size:13px; line-height:1.35; max-width:760px; }
-.mini-stats { display:grid; grid-template-columns:repeat(2, minmax(180px, 1fr)); gap:8px; min-width:0; }
+.mini-stats { display:grid; grid-template-columns:repeat(2, minmax(160px, 1fr)); gap:8px; min-width:0; }
 .mini-pill {
   background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; font-size:12px;
 }
 .mini-pill.link-pill {
   color:var(--text); text-decoration:none; font-weight:700;
 }
-.summary-stack { display:grid; gap:8px; width:min(540px, 100%); }
+.summary-stack { display:grid; gap:8px; width:min(430px, 100%); }
 .next-pill { width:100%; }
 .tabs { display:flex; gap:6px; margin:0; flex-wrap:wrap; }
 .tab-btn {
@@ -72,9 +72,14 @@ input,select,button { outline:none; }
 .row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
 .field { min-width:130px; }
 .field.small { min-width:110px; }
+.field.note-field { min-width:260px; flex:1 1 260px; }
 label { display:block; font-size:11px; color:var(--muted); margin-bottom:2px; }
 .text-input, .date-input {
   width:100%; background:#0e1730; color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:6px 8px; height:32px;
+}
+.static-input {
+  display:flex; align-items:center; min-height:32px; padding:6px 10px;
+  background:#0e1730; color:var(--text); border:1px solid rgba(255,255,255,.12); border-radius:8px; font-size:11px;
 }
 button.primary, button.secondary {
   height:32px; padding:0 12px; border-radius:8px; cursor:pointer; font-weight:700;
@@ -84,7 +89,6 @@ button.secondary { border:1px solid var(--line); background:#0f1730; color:var(-
 .top-action-btn {
   border:1px solid var(--line); background:#111d33; color:var(--text); height:36px; padding:0 12px; border-radius:10px; cursor:pointer; font-weight:700;
 }
-.compact-note { font-size:11px; color:var(--muted); margin-left:auto; }
 .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
 table { width:100%; border-collapse:collapse; min-width:1100px; }
 .forecast-table { min-width:720px; }
@@ -129,15 +133,17 @@ td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellip
 @media (max-width:1200px) {
   .topbar,
   .hero-side-top { grid-template-columns:1fr; }
-  .hero-side { justify-items:stretch; }
+  .hero-side { justify-items:start; order:-1; width:100%; }
   .action-row { justify-content:flex-start; }
-  .summary-stack { width:100%; }
+  .summary-stack { width:min(430px, 100%); }
   .mini-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .tracker-nav { justify-self:start; }
   .grid-2 { grid-template-columns:1fr; }
 }
 
 @media (max-width:720px) {
   body { padding:8px; }
+  .summary-stack { width:100%; }
   .mini-stats { grid-template-columns:1fr; }
 }
 
@@ -197,9 +203,9 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
         <div class="field"><label for="snapshotDate">Record date</label><input class="date-input" id="snapshotDate" type="date"></div>
         <div class="field"><label for="xpInput">XP</label><input class="text-input format-number" id="xpInput" type="text" inputmode="numeric"></div>
         <div class="field small"><label for="hiddenBonusInput">Hidden bonus medals</label><input class="text-input format-number" id="hiddenBonusInput" type="text" inputmode="numeric"></div>
+        <div class="field note-field"><label for="entryHeaderNote">Previous snapshot</label><div class="static-input" id="entryHeaderNote">-</div></div>
         <button class="primary" id="saveSnapshotBtn">Save snapshot</button>
         <button class="secondary" id="resetDataBtn">Reset seeded data</button>
-        <div class="compact-note" id="entryHeaderNote">â€”</div>
       </div>
     </div>
 
@@ -932,8 +938,6 @@ function renderTopBar() {
     <span class="mini-pill">XP <strong>${fmtNum(latest.xp)}</strong></span>
     <span class="mini-pill">XP/day <strong>${fmtNum(xpRate.blended)}</strong></span>
     <span class="mini-pill">Medals <strong>${total}</strong> (${getVisibleCompletedCount(latest)} visible + ${state.hiddenBonusMedals} hidden)</span>
-    <span class="mini-pill">Dex now <strong>${getCurrentDexCompleted(latest)}</strong></span>
-    <span class="mini-pill">Catch platinum <strong>${state.medals.filter(m => m.group === "catch" && (Number(latest.medals[m.id]) || 0) >= m.platinum).length}</strong></span>
     <span class="mini-pill">Next gate <strong>L${nextGate.level}</strong></span>
   `;
   document.getElementById("nextSoonBar").innerHTML = nextPlatinum
@@ -1000,7 +1004,7 @@ function renderEntry() {
   state.medalOrder.main.forEach((id, idx) => { if (byId[id]) mainBody.appendChild(makeRow(byId[id], idx, latest, prev, projectionsById)); });
   state.medalOrder.catch.forEach((id, idx) => { if (byId[id]) catchBody.appendChild(makeRow(byId[id], idx, latest, prev, projectionsById)); });
   attachSortables();
-  document.getElementById("entryHeaderNote").textContent = `Previous snapshot: ${prev ? fmtDate(prev.date) : "none"} Â· current total medals: ${getTotalCompletedMedals(latest)}`;
+  document.getElementById("entryHeaderNote").textContent = `${prev ? fmtDate(prev.date) : "None"} · ${getTotalCompletedMedals(latest)} medals`;
   Object.keys(liveTierAnnouncements).forEach(k => delete liveTierAnnouncements[k]);
   bindLiveEntryInputs();
 }
@@ -1042,7 +1046,7 @@ function applyLiveRowCalculations() {
 
   const liveHidden = parseNumber(document.getElementById("hiddenBonusInput").value);
   const draftTotal = getVisibleCompletedCount(draft) + Number(liveHidden || 0);
-  document.getElementById("entryHeaderNote").textContent = `Previous snapshot: ${prev ? fmtDate(prev.date) : "none"} Â· current total medals: ${draftTotal}`;
+  document.getElementById("entryHeaderNote").textContent = `${prev ? fmtDate(prev.date) : "None"} · ${draftTotal} medals`;
 
 }
 function bindLiveEntryInputs() {
@@ -1443,3 +1447,4 @@ initializeCloudSync();
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
 </body>
 </html>
+
