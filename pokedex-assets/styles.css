@@ -264,8 +264,7 @@ main {
 .stats-panel .table-wrap {
   display: inline-block;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
 }
 
 .summary-table {
@@ -295,8 +294,7 @@ main {
 
 .summary-table th {
   background: #14203a;
-  position: sticky;
-  top: 0;
+  position: static;
 }
 
 .summary-table tfoot td {
