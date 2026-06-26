@@ -34,8 +34,8 @@ input,select,button { outline:none; }
 }
 .hero-main { display:grid; gap:12px; min-width:0; }
 .hero-side { display:grid; gap:10px; justify-items:end; min-width:0; }
-.hero-side-top { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; width:100%; }
-.hero-side-bottom { display:grid; justify-items:end; }
+.hero-side-top { display:flex; justify-content:flex-end; width:100%; }
+.hero-side-bottom { display:grid; grid-template-columns:minmax(0, 430px) auto; gap:10px; align-items:start; justify-content:end; width:max-content; max-width:100%; }
 .title-wrap { display:grid; gap:4px; }
 .eyebrow { margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:700; }
 .title { font-size:32px; font-weight:700; line-height:1; white-space:nowrap; }
@@ -132,9 +132,9 @@ td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellip
 .footer { font-size:11px; color:var(--muted); margin-top:4px; }
 @media (max-width:1200px) {
   .topbar { grid-template-columns:1fr; }
-  .hero-side { justify-items:stretch; width:100%; }
-  .hero-side-top { grid-template-columns:minmax(0,1fr) auto; width:100%; }
-  .hero-side-bottom { justify-items:start; }
+  .hero-side { justify-items:start; width:max-content; max-width:100%; }
+  .hero-side-top { justify-content:flex-start; width:100%; }
+  .hero-side-bottom { justify-content:start; width:max-content; max-width:100%; }
   .action-row { justify-content:flex-start; }
   .summary-stack { width:min(430px, 100%); }
   .mini-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -143,7 +143,9 @@ td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellip
 
 @media (max-width:720px) {
   body { padding:8px; }
-  .hero-side-top { grid-template-columns:minmax(0,1fr) auto; align-items:start; }
+  .hero-side { width:100%; }
+  .hero-side-top { justify-content:flex-start; }
+  .hero-side-bottom { grid-template-columns:minmax(0, 1fr) auto; width:100%; }
   .summary-stack { width:100%; }
   .mini-stats { grid-template-columns:1fr; }
 }
@@ -183,17 +185,17 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
           <button class="top-action-btn" id="syncPauseBtn" type="button">Pause sync</button>
           <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
         </div>
-        <nav class="tracker-nav" aria-label="Tracker pages">
-          <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
-          <a class="tracker-nav-link is-current" href="./pogo_medal_tracker_v3_1.html" aria-current="page">Medals</a>
-          <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
-        </nav>
       </div>
       <div class="hero-side-bottom">
         <div class="summary-stack">
           <div id="summaryBar" class="mini-stats"></div>
           <div class="mini-pill next-pill" id="nextSoonBar">-</div>
         </div>
+        <nav class="tracker-nav" aria-label="Tracker pages">
+          <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
+          <a class="tracker-nav-link is-current" href="./pogo_medal_tracker_v3_1.html" aria-current="page">Medals</a>
+          <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
+        </nav>
       </div>
     </div>
   </div>
