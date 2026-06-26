@@ -67,7 +67,7 @@ input {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, auto);
   gap: 16px;
   align-items: start;
   padding: 0 0 10px;
@@ -230,10 +230,8 @@ main {
 }
 
 .header-side {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  justify-content: flex-end;
+  position: relative;
+  min-width: 300px;
 }
 
 .header-actions {
@@ -242,9 +240,13 @@ main {
   flex-wrap: wrap;
   justify-content: flex-end;
   max-width: 560px;
+  margin-left: auto;
 }
 
 .tracker-nav {
+  position: absolute;
+  top: 46px;
+  right: 0;
   display: grid;
   gap: 8px;
   min-width: 150px;
@@ -515,29 +517,24 @@ main {
     padding: 8px;
   }
 
-  .topbar,
   .stats-head,
   .grid-head {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .topbar {
-    grid-template-columns: 1fr;
-  }
-
   .header-side {
-    display: grid;
-    justify-items: stretch;
+    min-width: 260px;
   }
 
   .header-actions {
     justify-content: flex-start;
     max-width: none;
+    margin-left: 0;
   }
 
   .tracker-nav {
-    justify-self: start;
+    top: 86px;
   }
 
   .search-wrap,
@@ -547,5 +544,20 @@ main {
 
   .card-grid {
     grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .header-side {
+    min-width: 0;
+  }
+
+  .tracker-nav {
+    position: static;
+    margin-top: 10px;
   }
 }
