@@ -28,11 +28,15 @@ html,body { margin:0; background:linear-gradient(180deg,#09111f,#0d1426 30%,#101
 body { padding:10px; }
 button,input,select { font:inherit; }
 input,select,button { outline:none; }
-.app { max-width:1900px; margin:0 auto; }
+.app { max-width:1580px; margin:0 auto; }
 .topbar {
   display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; margin-bottom:8px;
 }
-.title { font-size:18px; font-weight:700; white-space:nowrap; }
+.title-wrap { display:grid; gap:4px; }
+.eyebrow { margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:700; }
+.title { font-size:32px; font-weight:700; line-height:1; white-space:nowrap; }
+.lede { margin:0; color:var(--muted); font-size:13px; line-height:1.35; max-width:760px; }
+.topbar > .title { display:none; }
 .mini-stats { display:flex; gap:8px; flex-wrap:wrap; min-width:0; }
 .mini-pill {
   background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; font-size:12px; white-space:nowrap;
@@ -48,6 +52,13 @@ input,select,button { outline:none; }
   display:inline-flex; align-items:center; border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:7px 12px; border-radius:10px; cursor:pointer; font-weight:700; text-decoration:none;
 }
 .tab-btn.active { background:#21345e; }
+.tabs .tab-link { display:none; }
+.tracker-nav { display:grid; gap:8px; min-width:150px; }
+.tracker-nav-link {
+  display:inline-flex; align-items:center; justify-content:center; min-height:36px;
+  border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:0 12px; border-radius:10px; font-weight:700; text-decoration:none;
+}
+.tracker-nav-link.is-current { background:linear-gradient(135deg, rgba(127,212,255,.26), rgba(118,227,159,.22)); border-color:rgba(127,212,255,.35); }
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
 .panel {
@@ -127,6 +138,11 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
 <body>
 <div class="app">
   <div class="topbar">
+    <div class="title-wrap">
+      <p class="eyebrow">Pokemon GO</p>
+      <div class="title">Medal Planner</div>
+      <p class="lede">Track historical snapshots, forecast level-readiness, and compare medal momentum against your recent pace.</p>
+    </div>
     <div class="title">Pokémon GO medal planner</div>
     <div id="summaryBar" class="mini-stats"></div>
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -134,6 +150,11 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
       <button class="top-action-btn" id="cloudSyncBtn" type="button">Account</button>
       <button class="top-action-btn" id="accountRefreshBtn" type="button">Refresh live</button>
       <button class="top-action-btn" id="syncPauseBtn" type="button">Pause sync</button>
+      <nav class="tracker-nav" aria-label="Tracker pages">
+        <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
+        <a class="tracker-nav-link is-current" href="./pogo_medal_tracker_v3_1.html" aria-current="page">Medals</a>
+        <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
+      </nav>
       <div class="mini-pill" id="nextSoonBar">—</div>
     </div>
   </div>
@@ -747,6 +768,10 @@ function addDays(dateStr, days) {
   d.setDate(d.getDate() + Math.round(days));
   return d.toISOString().slice(0,10);
 }
+function localDateInputValue(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
 function monthRange(startDate, endDate) {
   const out = [];
   const s = new Date(startDate + "T00:00:00");
@@ -1088,7 +1113,7 @@ function renderForecast() {
 }
 function setupEntryForm() {
   const latest = latestSnapshot();
-  document.getElementById("snapshotDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("snapshotDate").value = localDateInputValue();
   document.getElementById("xpInput").value = Number(latest.xp).toLocaleString();
   document.getElementById("hiddenBonusInput").value = Number(state.hiddenBonusMedals || 0).toLocaleString();
 }

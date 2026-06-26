@@ -1207,6 +1207,8 @@ function renderSummary() {
     const regionEntries = entries.filter(entry => entry.region === region);
     const counts = computeCounts(regionEntries);
     const tr = document.createElement("tr");
+    const rowClass = getSummaryRowClass(counts);
+    if (rowClass) tr.classList.add(rowClass);
     tr.innerHTML = `
       <td>${region}</td>
       <td>${counts.total}</td>
@@ -1228,6 +1230,13 @@ function renderSummary() {
       <td>${totals.unreleased}</td>
     </tr>
   `;
+}
+
+function getSummaryRowClass(counts) {
+  if (!counts.total) return "";
+  if (counts.unreleased === 0 && counts.missing === 0 && counts.evolutions === 0) return "summary-complete";
+  if (counts.unreleased === 0) return "summary-completable";
+  return "";
 }
 
 function renderAvailabilityLegend() {
@@ -1327,13 +1336,22 @@ function getEntriesForMode(mode) {
 }
 
 function getAvailabilityEntriesForMode(mode) {
+  const expandedEntries = mode === "mega" ? megaExpandedEntries : mode === "gmax" ? gmaxExpandedEntries : [];
   if (mode === "mega") {
-    return state.showAllPokemon ? megaExpandedEntries : megaEntries;
+    return state.showAllPokemon ? megaExpandedEntries : expandedEntries.filter(entry => shouldIncludeCollapsedAvailabilityEntry(entry, mode));
   }
   if (mode === "gmax") {
-    return state.showAllPokemon ? gmaxExpandedEntries : gmaxEntries;
+    return state.showAllPokemon ? gmaxExpandedEntries : expandedEntries.filter(entry => shouldIncludeCollapsedAvailabilityEntry(entry, mode));
   }
   return [];
+}
+
+function shouldIncludeCollapsedAvailabilityEntry(entry, mode) {
+  if (!entry?.isManualAvailabilityPlaceholder) return true;
+  if (isAvailableInMode(mode, entry)) return true;
+  if (Object.prototype.hasOwnProperty.call(state.unreleasedOverrides || {}, entry.id)) return true;
+  const storedStatus = state.statuses?.[mode]?.[entry.id];
+  return !!storedStatus && storedStatus !== "missing" && storedStatus !== "missing-lock";
 }
 
 function getVisibleEntries() {
@@ -1600,7 +1618,11 @@ function toggleAvailability(entryId) {
 }
 
 function isAvailable(entry) {
-  return !!state.availability[state.activeMode]?.[entry.id];
+  return isAvailableInMode(state.activeMode, entry);
+}
+
+function isAvailableInMode(mode, entry) {
+  return !!state.availability?.[mode]?.[entry.id];
 }
 
 function safeJsonParse(value) {

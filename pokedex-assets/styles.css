@@ -35,7 +35,7 @@ body {
 }
 
 body {
-  padding: 14px;
+  padding: 12px;
 }
 
 a,
@@ -45,7 +45,7 @@ input {
 }
 
 .app-shell {
-  max-width: 1800px;
+  max-width: 1580px;
   margin: 0 auto;
 }
 
@@ -58,7 +58,7 @@ input {
 }
 
 .hero-panel {
-  padding: 16px 18px;
+  padding: 14px 16px;
 }
 
 .topbar {
@@ -70,8 +70,8 @@ input {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
-  padding: 0 0 12px;
-  margin-bottom: 12px;
+  padding: 0 0 10px;
+  margin-bottom: 10px;
 }
 
 .eyebrow {
@@ -96,15 +96,17 @@ input {
 
 .lede {
   max-width: 760px;
-  margin: 8px 0 0;
-  line-height: 1.5;
+  margin: 6px 0 0;
+  line-height: 1.38;
 }
 
-.nav-link {
+.nav-link,
+.tracker-nav-link {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 0 14px;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 10px;
   color: var(--text);
   text-decoration: none;
@@ -115,7 +117,7 @@ input {
 
 .panel,
 .grid-panel {
-  padding: 14px;
+  padding: 12px;
 }
 
 main {
@@ -167,13 +169,13 @@ main {
   gap: 10px;
   align-items: end;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .search-wrap {
   display: grid;
   gap: 4px;
-  min-width: 280px;
+  min-width: 240px;
 }
 
 .search-wrap span,
@@ -183,8 +185,8 @@ main {
 }
 
 .search-wrap input {
-  height: 40px;
-  min-width: 260px;
+  height: 36px;
+  min-width: 220px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -196,7 +198,7 @@ main {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 10px;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -213,7 +215,7 @@ main {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .stats-head.compact {
@@ -222,9 +224,33 @@ main {
 
 .mini-pill,
 .availability-pill {
-  padding: 7px 10px;
-  font-size: 12px;
+  padding: 6px 9px;
+  font-size: 11px;
   white-space: nowrap;
+}
+
+.header-side {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tracker-nav {
+  display: grid;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.tracker-nav-link.is-current {
+  background: linear-gradient(135deg, rgba(121, 215, 255, 0.28), rgba(110, 240, 171, 0.24));
+  border-color: rgba(121, 215, 255, 0.35);
 }
 
 .table-wrap {
@@ -235,15 +261,17 @@ main {
 
 .summary-table {
   width: 100%;
-  min-width: 700px;
+  min-width: 580px;
   border-collapse: collapse;
 }
 
 .summary-table th,
 .summary-table td {
-  padding: 10px 12px;
+  padding: 6px 8px;
   text-align: left;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  line-height: 1.1;
+  font-size: 12px;
 }
 
 .summary-table th {
@@ -257,10 +285,18 @@ main {
   background: rgba(121, 215, 255, 0.08);
 }
 
+.summary-table tbody tr.summary-complete {
+  background: rgba(123, 229, 163, 0.14);
+}
+
+.summary-table tbody tr.summary-completable {
+  background: rgba(255, 216, 111, 0.12);
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .dex-card {
@@ -462,6 +498,12 @@ main {
   .grid-head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .header-side,
+  .header-actions {
+    justify-items: stretch;
+    justify-content: stretch;
   }
 
   .search-wrap,

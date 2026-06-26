@@ -40,14 +40,14 @@
       font: 14px/1.2 "Trebuchet MS", Verdana, sans-serif;
     }
     .shell {
-      width: min(1640px, calc(100vw - 16px));
-      margin: 10px auto 18px;
+      width: min(1580px, calc(100vw - 24px));
+      margin: 12px auto 18px;
     }
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 18px;
-      padding: 12px;
+      padding: 14px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
       backdrop-filter: blur(10px);
     }
@@ -58,24 +58,30 @@
       gap: 14px;
       align-items: start;
     }
+    .hero-side {
+      display: grid;
+      gap: 10px;
+      justify-items: end;
+    }
     .eyebrow {
-      color: #9bb6ff;
+      margin: 0 0 6px;
+      color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.18em;
-      font-size: 0.72rem;
-      margin-bottom: 4px;
+      letter-spacing: 0.16em;
+      font-size: 11px;
+      font-weight: 700;
     }
     h1 {
-      margin: 0 0 4px;
-      font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+      margin: 0;
+      font-size: clamp(2rem, 3.5vw, 2.45rem);
       line-height: 1;
     }
     .hero p {
-      margin: 0;
+      margin: 6px 0 0;
       color: var(--muted);
       max-width: 72ch;
-      font-size: 0.88rem;
-      line-height: 1.2;
+      font-size: 13px;
+      line-height: 1.35;
     }
     .meta {
       display: grid;
@@ -118,6 +124,30 @@
     }
     button, select { cursor: pointer; }
     button:hover, a.button:hover, select:hover { border-color: var(--accent); }
+    .tracker-nav {
+      display: grid;
+      gap: 8px;
+      min-width: 150px;
+    }
+    .tracker-nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      border: 1px solid #35517c;
+      background: #182a49;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .tracker-nav-link.is-current {
+      background: linear-gradient(135deg, rgba(121, 215, 255, 0.28), rgba(110, 240, 171, 0.24));
+      border-color: rgba(121, 215, 255, 0.35);
+    }
     .toggle-btn.active {
       background: linear-gradient(180deg, #2d506e, #23445e);
       border-color: #5fc2ee;
@@ -280,6 +310,7 @@
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
       .meta { text-align: left; min-width: 0; }
+      .hero-side { justify-items: stretch; }
     }
   </style>
 </head>
@@ -291,10 +322,17 @@
         <h1>Availability Tracker</h1>
         <p>Live Leek Duck availability in a dense tracker table with current sources, upcoming windows, and local Pokedex-aware missing highlights.</p>
       </div>
-      <div class="meta">
-        <div><strong>Feed updated:</strong> <span id="updatedAt">Loading...</span></div>
-        <div><strong>Generated:</strong> <span id="generatedAt">Loading...</span></div>
-        <div><strong>Mode:</strong> <span id="generatedFrom">Loading...</span></div>
+      <div class="hero-side">
+        <div class="meta">
+          <div><strong>Feed updated:</strong> <span id="updatedAt">Loading...</span></div>
+          <div><strong>Generated:</strong> <span id="generatedAt">Loading...</span></div>
+          <div><strong>Mode:</strong> <span id="generatedFrom">Loading...</span></div>
+        </div>
+        <nav class="tracker-nav" aria-label="Tracker pages">
+          <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
+          <a class="tracker-nav-link" href="./pogo_medal_tracker_v3_1.html">Medals</a>
+          <a class="tracker-nav-link is-current" href="./pogo-availability.html" aria-current="page">Availability</a>
+        </nav>
       </div>
     </section>
 
@@ -313,9 +351,6 @@
         <button id="missingToggle" class="toggle-btn" type="button">Only missing</button>
         <button id="upcomingToggle" class="toggle-btn active" type="button">Show upcoming</button>
         <button id="refreshBtn" type="button">Refresh feed</button>
-        <a class="button" href="./pokedex.html">Open Pokedex</a>
-        <a class="button" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
-        <a class="button" href="./index.html">Homepage</a>
       </div>
       <div id="status" class="warning">Loading feed...</div>
       <div id="seasonMeta" class="warning" style="display:none;"></div>

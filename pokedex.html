@@ -26,13 +26,18 @@
           <h1>Pokedex Tracker</h1>
           <p class="lede">A fresh collection page for your dex progress, special dexes, alternate forms, and evolution gaps.</p>
         </div>
-        <div class="header-actions">
-          <button class="nav-link" id="backupAllBtn" type="button">Backup / Restore</button>
-          <button class="nav-link" id="cloudSyncBtn" type="button">Account</button>
-          <button class="nav-link" id="accountRefreshBtn" type="button">Refresh live</button>
-          <button class="nav-link" id="syncPauseBtn" type="button">Pause sync</button>
-          <a class="nav-link" href="./pogo-availability.html">Availability</a>
-          <a class="nav-link" href="./pogo_medal_tracker_v3_1.html">Back to Medal Tracker</a>
+        <div class="header-side">
+          <div class="header-actions">
+            <button class="nav-link" id="backupAllBtn" type="button">Backup / Restore</button>
+            <button class="nav-link" id="cloudSyncBtn" type="button">Account</button>
+            <button class="nav-link" id="accountRefreshBtn" type="button">Refresh live</button>
+            <button class="nav-link" id="syncPauseBtn" type="button">Pause sync</button>
+          </div>
+          <nav class="tracker-nav" aria-label="Tracker pages">
+            <a class="tracker-nav-link is-current" href="./pokedex.html" aria-current="page">Pokedex</a>
+            <a class="tracker-nav-link" href="./pogo_medal_tracker_v3_1.html">Medals</a>
+            <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
+          </nav>
         </div>
       </div>
 
