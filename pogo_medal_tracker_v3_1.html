@@ -25,26 +25,30 @@
 }
 * { box-sizing:border-box; }
 html,body { margin:0; background:linear-gradient(180deg,#09111f,#0d1426 30%,#10182f); color:var(--text); font-family:Arial, Helvetica, sans-serif; }
-body { padding:10px; }
+body { padding:12px; }
 button,input,select { font:inherit; }
 input,select,button { outline:none; }
 .app { max-width:1580px; margin:0 auto; }
 .topbar {
-  display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; margin-bottom:8px;
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:start; margin-bottom:8px;
 }
+.hero-main { display:grid; gap:12px; min-width:0; }
+.hero-side { display:grid; gap:10px; justify-items:end; }
+.hero-side-top { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; }
 .title-wrap { display:grid; gap:4px; }
 .eyebrow { margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:700; }
 .title { font-size:32px; font-weight:700; line-height:1; white-space:nowrap; }
 .lede { margin:0; color:var(--muted); font-size:13px; line-height:1.35; max-width:760px; }
-.topbar > .title { display:none; }
-.mini-stats { display:flex; gap:8px; flex-wrap:wrap; min-width:0; }
+.mini-stats { display:grid; grid-template-columns:repeat(2, minmax(180px, 1fr)); gap:8px; min-width:0; }
 .mini-pill {
-  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; font-size:12px; white-space:nowrap;
+  background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; font-size:12px;
 }
 .mini-pill.link-pill {
   color:var(--text); text-decoration:none; font-weight:700;
 }
-.tabs { display:flex; gap:6px; margin-bottom:8px; }
+.summary-stack { display:grid; gap:8px; width:min(540px, 100%); }
+.next-pill { width:100%; }
+.tabs { display:flex; gap:6px; margin:0; flex-wrap:wrap; }
 .tab-btn {
   border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:7px 12px; border-radius:10px; cursor:pointer; font-weight:700;
 }
@@ -59,6 +63,7 @@ input,select,button { outline:none; }
   border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:0 12px; border-radius:10px; font-weight:700; text-decoration:none;
 }
 .tracker-nav-link.is-current { background:linear-gradient(135deg, rgba(127,212,255,.26), rgba(118,227,159,.22)); border-color:rgba(127,212,255,.35); }
+.action-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
 .panel {
@@ -76,7 +81,9 @@ button.primary, button.secondary {
 }
 button.primary { border:none; background:linear-gradient(135deg,var(--accent),#9bffb2); color:#031018; }
 button.secondary { border:1px solid var(--line); background:#0f1730; color:var(--text); }
-.top-action-btn { border:1px solid var(--line); background:#0f1730; color:var(--text); height:32px; padding:0 12px; border-radius:8px; cursor:pointer; font-weight:700; }
+.top-action-btn {
+  border:1px solid var(--line); background:#111d33; color:var(--text); height:36px; padding:0 12px; border-radius:10px; cursor:pointer; font-weight:700;
+}
 .compact-note { font-size:11px; color:var(--muted); margin-left:auto; }
 .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
 table { width:100%; border-collapse:collapse; min-width:1100px; }
@@ -120,8 +127,18 @@ td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellip
 .graph-title { margin:0 0 6px; font-size:14px; }
 .footer { font-size:11px; color:var(--muted); margin-top:4px; }
 @media (max-width:1200px) {
-  .topbar { grid-template-columns:1fr; }
+  .topbar,
+  .hero-side-top { grid-template-columns:1fr; }
+  .hero-side { justify-items:stretch; }
+  .action-row { justify-content:flex-start; }
+  .summary-stack { width:100%; }
+  .mini-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .grid-2 { grid-template-columns:1fr; }
+}
+
+@media (max-width:720px) {
+  body { padding:8px; }
+  .mini-stats { grid-template-columns:1fr; }
 }
 
 tr.tier-Bronze { background: rgba(185,118,59,.12); }
@@ -138,34 +155,41 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="title-wrap">
-      <p class="eyebrow">Pokemon GO</p>
-      <div class="title">Medal Planner</div>
-      <p class="lede">Track historical snapshots, forecast level-readiness, and compare medal momentum against your recent pace.</p>
+    <div class="hero-main">
+      <div class="title-wrap">
+        <p class="eyebrow">Pokemon GO</p>
+        <div class="title">Medal Planner</div>
+        <p class="lede">Track historical snapshots, forecast level-readiness, and compare medal momentum against your recent pace.</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="entry">Entry</button>
+        <button class="tab-btn" data-tab="forecast">Level Forecast</button>
+        <button class="tab-btn" data-tab="graphs">Graphs</button>
+        <a class="tab-link" href="./pokedex.html">Pokedex</a>
+      </div>
     </div>
-    <div class="title">Pokémon GO medal planner</div>
-    <div id="summaryBar" class="mini-stats"></div>
-    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
-      <button class="top-action-btn" id="cloudSyncBtn" type="button">Account</button>
-      <button class="top-action-btn" id="accountRefreshBtn" type="button">Refresh live</button>
-      <button class="top-action-btn" id="syncPauseBtn" type="button">Pause sync</button>
-      <nav class="tracker-nav" aria-label="Tracker pages">
-        <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
-        <a class="tracker-nav-link is-current" href="./pogo_medal_tracker_v3_1.html" aria-current="page">Medals</a>
-        <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
-      </nav>
-      <div class="mini-pill" id="nextSoonBar">—</div>
+    <div class="hero-side">
+      <div class="hero-side-top">
+        <div class="action-row">
+          <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
+          <button class="top-action-btn" id="cloudSyncBtn" type="button">Account Login</button>
+          <button class="top-action-btn" id="accountRefreshBtn" type="button">Refresh live</button>
+          <button class="top-action-btn" id="syncPauseBtn" type="button">Pause sync</button>
+        </div>
+        <nav class="tracker-nav" aria-label="Tracker pages">
+          <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
+          <a class="tracker-nav-link is-current" href="./pogo_medal_tracker_v3_1.html" aria-current="page">Medals</a>
+          <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
+        </nav>
+      </div>
+      <div class="summary-stack">
+        <div id="summaryBar" class="mini-stats"></div>
+        <div class="mini-pill next-pill" id="nextSoonBar">-</div>
+      </div>
     </div>
   </div>
   <input id="importAllInput" type="file" accept=".json,application/json" hidden>
-
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="entry">Entry</button>
-    <button class="tab-btn" data-tab="forecast">Level Forecast</button>
-    <button class="tab-btn" data-tab="graphs">Graphs</button>
-    <a class="tab-link" href="./pokedex.html">Pokedex</a>
-  </div>
 
   <section id="entry" class="tab-pane active">
     <div class="panel">
@@ -1419,5 +1443,3 @@ initializeCloudSync();
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
 </body>
 </html>
-
-

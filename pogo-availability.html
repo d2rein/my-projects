@@ -59,9 +59,10 @@
       align-items: start;
     }
     .hero-side {
-      display: grid;
-      gap: 10px;
-      justify-items: end;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: flex-end;
     }
     .eyebrow {
       margin: 0 0 6px;
@@ -310,7 +311,11 @@
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
       .meta { text-align: left; min-width: 0; }
-      .hero-side { justify-items: stretch; }
+      .hero-side {
+        display: grid;
+        gap: 10px;
+        justify-items: stretch;
+      }
     }
   </style>
 </head>

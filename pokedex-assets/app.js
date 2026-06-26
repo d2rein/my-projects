@@ -1348,7 +1348,7 @@ function getAvailabilityEntriesForMode(mode) {
 
 function shouldIncludeCollapsedAvailabilityEntry(entry, mode) {
   if (!entry?.isManualAvailabilityPlaceholder) return true;
-  if (isAvailableInMode(mode, entry)) return true;
+  if (isEffectivelyAvailableInMode(mode, entry)) return true;
   if (Object.prototype.hasOwnProperty.call(state.unreleasedOverrides || {}, entry.id)) return true;
   const storedStatus = state.statuses?.[mode]?.[entry.id];
   return !!storedStatus && storedStatus !== "missing" && storedStatus !== "missing-lock";
@@ -1618,11 +1618,19 @@ function toggleAvailability(entryId) {
 }
 
 function isAvailable(entry) {
-  return isAvailableInMode(state.activeMode, entry);
+  return isEffectivelyAvailableInMode(state.activeMode, entry);
 }
 
 function isAvailableInMode(mode, entry) {
   return !!state.availability?.[mode]?.[entry.id];
+}
+
+function isEffectivelyAvailableInMode(mode, entry) {
+  if (isAvailableInMode(mode, entry)) return true;
+  if (!entry?.isManualAvailabilityPlaceholder) return false;
+  if (isCurrentlyUnreleased(entry)) return false;
+  const storedStatus = state.statuses?.[mode]?.[entry.id];
+  return !!storedStatus && storedStatus !== "missing" && storedStatus !== "missing-lock";
 }
 
 function safeJsonParse(value) {

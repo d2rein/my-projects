@@ -259,6 +259,10 @@ main {
   border-radius: 12px;
 }
 
+.stats-panel .table-wrap {
+  max-height: 340px;
+}
+
 .summary-table {
   width: 100%;
   min-width: 580px;
@@ -291,6 +295,11 @@ main {
 
 .summary-table tbody tr.summary-completable {
   background: rgba(255, 216, 111, 0.12);
+}
+
+.summary-table tbody tr.summary-complete td:first-child,
+.summary-table tbody tr.summary-completable td:first-child {
+  font-weight: 700;
 }
 
 .card-grid {
@@ -491,6 +500,10 @@ main {
 @media (max-width: 900px) {
   body {
     padding: 8px;
+  }
+
+  .stats-panel .table-wrap {
+    max-height: none;
   }
 
   .topbar,
