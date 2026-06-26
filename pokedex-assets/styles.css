@@ -218,6 +218,10 @@ main {
   margin-bottom: 10px;
 }
 
+.stats-panel .stats-head {
+  margin-bottom: 6px;
+}
+
 .stats-head.compact {
   margin-bottom: 8px;
 }
@@ -315,6 +319,17 @@ main {
 .summary-table tbody tr.summary-complete td:first-child,
 .summary-table tbody tr.summary-completable td:first-child {
   font-weight: 700;
+}
+
+.summary-region-btn {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.summary-table td:first-child .summary-region-btn {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .card-grid {
@@ -510,6 +525,10 @@ main {
   border: 1px dashed var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.grid-panel {
+  padding-top: 8px;
 }
 
 @media (max-width: 900px) {

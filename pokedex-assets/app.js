@@ -1033,6 +1033,19 @@ function buildControls() {
   els.showAllPokemonToggle.checked = state.showAllPokemon;
 }
 
+function applyRegionFilter(region) {
+  state.regionFilter = region;
+  clearStickyVisibility();
+  saveState({ sync: false });
+  buildControls();
+  render();
+}
+
+function renderRegionFilterControl(region, label = region) {
+  const isActive = state.regionFilter === region;
+  return `<button class="filter-btn summary-region-btn ${isActive ? "active" : ""}" data-region-filter="${escapeAttribute(region)}">${escapeHtml(label)}</button>`;
+}
+
 function bindEvents() {
   els.dexModeBar.addEventListener("click", event => {
     const button = event.target.closest("[data-mode]");
@@ -1057,11 +1070,19 @@ function bindEvents() {
   els.regionFilterBar.addEventListener("click", event => {
     const button = event.target.closest("[data-region-filter]");
     if (!button) return;
-    state.regionFilter = button.dataset.regionFilter;
-    clearStickyVisibility();
-    saveState({ sync: false });
-    buildControls();
-    render();
+    applyRegionFilter(button.dataset.regionFilter);
+  });
+
+  els.summaryTableBody.addEventListener("click", event => {
+    const button = event.target.closest("[data-region-filter]");
+    if (!button) return;
+    applyRegionFilter(button.dataset.regionFilter);
+  });
+
+  els.summaryTableFoot.addEventListener("click", event => {
+    const button = event.target.closest("[data-region-filter]");
+    if (!button) return;
+    applyRegionFilter(button.dataset.regionFilter);
   });
 
   els.searchInput.addEventListener("input", () => {
@@ -1192,15 +1213,13 @@ function renderSummary() {
   const totals = computeCounts(entries);
 
   els.summaryTitle.textContent = `${mode.label} Dex`;
-  els.gridTitle.textContent = `${mode.label} Cards`;
+  if (els.gridTitle) {
+    els.gridTitle.textContent = `${mode.label} Cards`;
+  }
   els.availabilityTitle.textContent = `${mode.label} availability`;
-  els.summaryPills.innerHTML = [
-    summaryPill(`Total ${totals.total}`),
-    summaryPill(`Owned ${totals.owned}`),
-    summaryPill(`Evolutions ${totals.evolutions}`),
-    summaryPill(`Missing ${totals.missing}`),
-    summaryPill(`Unreleased ${totals.unreleased}`)
-  ].join("");
+  if (els.summaryPills) {
+    els.summaryPills.innerHTML = "";
+  }
 
   els.summaryTableBody.innerHTML = "";
   REGIONS.forEach(region => {
@@ -1210,7 +1229,7 @@ function renderSummary() {
     const rowClass = getSummaryRowClass(counts);
     if (rowClass) tr.classList.add(rowClass);
     tr.innerHTML = `
-      <td>${region}</td>
+      <td>${renderRegionFilterControl(region)}</td>
       <td>${counts.total}</td>
       <td>${counts.owned}</td>
       <td>${counts.evolutions}</td>
@@ -1222,7 +1241,7 @@ function renderSummary() {
 
   els.summaryTableFoot.innerHTML = `
     <tr>
-      <td>Total</td>
+      <td>${renderRegionFilterControl("all", "All Regions")}</td>
       <td>${totals.total}</td>
       <td>${totals.owned}</td>
       <td>${totals.evolutions}</td>
@@ -1257,7 +1276,9 @@ function renderAvailabilityLegend() {
 
 function renderGrid() {
   const entries = getVisibleEntries();
-  els.gridCountNote.textContent = `${entries.length.toLocaleString()} cards shown`;
+  if (els.gridCountNote) {
+    els.gridCountNote.textContent = "";
+  }
 
   if (!entries.length) {
     els.cardGrid.innerHTML = `<div class="empty-state">No entries match the current tab, search, and filters.</div>`;
