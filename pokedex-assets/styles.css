@@ -547,6 +547,15 @@ main {
   }
 }
 
+@media (max-width: 1100px) and (min-width: 721px) {
+  .dex-mode-bar,
+  #regionFilterBar,
+  .control-row {
+    max-width: calc(100% - 210px);
+    padding-right: 12px;
+  }
+}
+
 @media (max-width: 720px) {
   .topbar {
     grid-template-columns: 1fr;

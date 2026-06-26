@@ -33,9 +33,9 @@ input,select,button { outline:none; }
   display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:start; margin-bottom:8px;
 }
 .hero-main { display:grid; gap:12px; min-width:0; }
-.hero-side { display:grid; gap:10px; justify-items:end; }
-.hero-side-top { display:flex; justify-content:flex-end; }
-.hero-side-bottom { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:10px; align-items:start; }
+.hero-side { display:grid; gap:10px; justify-items:end; min-width:0; }
+.hero-side-top { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; width:100%; }
+.hero-side-bottom { display:grid; justify-items:end; }
 .title-wrap { display:grid; gap:4px; }
 .eyebrow { margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:700; }
 .title { font-size:32px; font-weight:700; line-height:1; white-space:nowrap; }
@@ -47,7 +47,7 @@ input,select,button { outline:none; }
 .mini-pill.link-pill {
   color:var(--text); text-decoration:none; font-weight:700;
 }
-.summary-stack { display:grid; gap:8px; width:min(430px, 100%); order:1; }
+.summary-stack { display:grid; gap:8px; width:min(430px, 100%); }
 .next-pill { width:100%; }
 .tabs { display:flex; gap:6px; margin:0; flex-wrap:wrap; }
 .tab-btn {
@@ -58,13 +58,13 @@ input,select,button { outline:none; }
 }
 .tab-btn.active { background:#21345e; }
 .tabs .tab-link { display:none; }
-.tracker-nav { display:grid; gap:8px; min-width:150px; order:2; margin-top:-46px; }
+.tracker-nav { display:grid; gap:8px; min-width:150px; align-self:start; }
 .tracker-nav-link {
   display:inline-flex; align-items:center; justify-content:center; min-height:36px;
   border:1px solid var(--line); background:var(--bg2); color:var(--text); padding:0 12px; border-radius:10px; font-weight:700; text-decoration:none;
 }
 .tracker-nav-link.is-current { background:linear-gradient(135deg, rgba(127,212,255,.26), rgba(118,227,159,.22)); border-color:rgba(127,212,255,.35); }
-.action-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.action-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; min-width:0; }
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
 .panel {
@@ -132,9 +132,10 @@ td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellip
 .footer { font-size:11px; color:var(--muted); margin-top:4px; }
 @media (max-width:1200px) {
   .topbar { grid-template-columns:1fr; }
-  .hero-side { justify-items:start; width:100%; }
+  .hero-side { justify-items:stretch; width:100%; }
+  .hero-side-top { grid-template-columns:minmax(0,1fr) auto; width:100%; }
+  .hero-side-bottom { justify-items:start; }
   .action-row { justify-content:flex-start; }
-  .hero-side-top { justify-content:flex-start; }
   .summary-stack { width:min(430px, 100%); }
   .mini-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .grid-2 { grid-template-columns:1fr; }
@@ -142,8 +143,7 @@ td.name { font-weight:700; max-width:170px; overflow:hidden; text-overflow:ellip
 
 @media (max-width:720px) {
   body { padding:8px; }
-  .hero-side-top { grid-template-columns:1fr auto; align-items:start; }
-  .tracker-nav { justify-self:end; }
+  .hero-side-top { grid-template-columns:minmax(0,1fr) auto; align-items:start; }
   .summary-stack { width:100%; }
   .mini-stats { grid-template-columns:1fr; }
 }
@@ -166,7 +166,6 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
       <div class="title-wrap">
         <p class="eyebrow">Pokemon GO</p>
         <div class="title">Medal Planner</div>
-        <p class="lede">Track historical snapshots, forecast level-readiness, and compare medal momentum against your recent pace.</p>
       </div>
 
       <div class="tabs">
@@ -179,18 +178,18 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
     <div class="hero-side">
       <div class="hero-side-top">
         <div class="action-row">
-          <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
           <button class="top-action-btn" id="cloudSyncBtn" type="button">Account Login</button>
           <button class="top-action-btn" id="accountRefreshBtn" type="button">Refresh live</button>
           <button class="top-action-btn" id="syncPauseBtn" type="button">Pause sync</button>
+          <button class="top-action-btn" id="backupAllBtn" type="button">Backup / Restore</button>
         </div>
-      </div>
-      <div class="hero-side-bottom">
         <nav class="tracker-nav" aria-label="Tracker pages">
           <a class="tracker-nav-link" href="./pokedex.html">Pokedex</a>
           <a class="tracker-nav-link is-current" href="./pogo_medal_tracker_v3_1.html" aria-current="page">Medals</a>
           <a class="tracker-nav-link" href="./pogo-availability.html">Availability</a>
         </nav>
+      </div>
+      <div class="hero-side-bottom">
         <div class="summary-stack">
           <div id="summaryBar" class="mini-stats"></div>
           <div class="mini-pill next-pill" id="nextSoonBar">-</div>
