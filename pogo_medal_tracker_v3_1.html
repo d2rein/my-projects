@@ -91,8 +91,9 @@ button.secondary { border:1px solid var(--line); background:#0f1730; color:var(-
 }
 .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
 table { width:100%; border-collapse:collapse; min-width:1100px; }
-.forecast-table { min-width:720px; }
-.additional-table { min-width:520px; }
+.entry-table { width:1240px; min-width:1240px; table-layout:fixed; }
+.forecast-table { width:780px; min-width:780px; table-layout:fixed; }
+.additional-table { width:600px; min-width:600px; table-layout:fixed; }
 th,td {
   padding:2px 4px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; font-size:12px; line-height:1.15; white-space:nowrap;
 }
@@ -219,7 +220,10 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
         <div class="small">Drag to match the in-app order. Current cells accept commas.</div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="entry-table">
+          <colgroup>
+            <col style="width:44px"><col style="width:180px"><col style="width:360px"><col style="width:88px"><col style="width:88px"><col style="width:100px"><col style="width:76px"><col style="width:110px"><col style="width:90px"><col style="width:110px"><col style="width:94px">
+          </colgroup>
           <thead>
             <tr>
               <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Rate/day</th><th>Progress</th><th>Expected</th><th>Type</th>
@@ -236,7 +240,10 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
         <div class="small">Separate section kept for entry, graphing, and forecasting.</div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="entry-table">
+          <colgroup>
+            <col style="width:44px"><col style="width:180px"><col style="width:360px"><col style="width:88px"><col style="width:88px"><col style="width:100px"><col style="width:76px"><col style="width:110px"><col style="width:90px"><col style="width:110px"><col style="width:94px">
+          </colgroup>
           <thead>
             <tr>
               <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Rate/day</th><th>Progress</th><th>Expected</th><th>Type</th>
@@ -256,6 +263,9 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
       </div>
       <div class="table-wrap">
         <table class="forecast-table">
+          <colgroup>
+            <col style="width:72px"><col style="width:90px"><col style="width:96px"><col style="width:124px"><col style="width:110px"><col style="width:110px"><col style="width:110px"><col style="width:92px">
+          </colgroup>
           <thead>
             <tr>
               <th>Level</th><th>Medals req</th><th>Dex assumed</th><th>XP required</th><th>XP date</th><th>Medal date</th><th>Ready</th><th>Bottleneck</th>
@@ -832,6 +842,9 @@ function getTier(value, medal) {
 function getVisibleCompletedCount(snapshot) {
   return state.medals.filter(m => (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
 }
+function getCompletedNonDexCount(snapshot) {
+  return state.medals.filter(m => m.type !== "Pokedex" && (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
+}
 function getCurrentDexCompleted(snapshot) {
   return state.medals.filter(m => m.type === "Pokedex" && (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
 }
@@ -1092,18 +1105,21 @@ function computeForecastRows() {
   const latest = latestSnapshot();
   const xpRate = computeXpRate();
   const projections = computeAllProjections();
-  const visible = projections.filter(m => m.type !== "Pokedex").sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"));
-  let prevNonDexNeeded = 0;
+  const completedNonDex = getCompletedNonDexCount(latest) + Number(state.hiddenBonusMedals || 0);
+  const incompleteVisible = projections
+    .filter(m => m.type !== "Pokedex" && Number(latest.medals[m.id] || 0) < m.platinum)
+    .sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"));
+  let prevAdditionalNeeded = 0;
   return state.levels.map(level => {
     const nonDexReq = Math.max(0, level.medalsRequired - level.dexAssumed);
-    const medalSlotsNeeded = Math.max(0, nonDexReq - Number(state.hiddenBonusMedals || 0));
+    const medalSlotsNeeded = Math.max(0, nonDexReq - completedNonDex);
     const xpDate = latest.xp >= level.xpRequired ? latest.date : (xpRate.blended > 0 ? addDays(latest.date, (level.xpRequired - latest.xp) / xpRate.blended) : null);
-    const medalDate = medalSlotsNeeded > 0 ? (visible[medalSlotsNeeded - 1]?.projectedDate || null) : latest.date;
+    const medalDate = medalSlotsNeeded > 0 ? (incompleteVisible[medalSlotsNeeded - 1]?.projectedDate || null) : latest.date;
     const readyDate = !xpDate || !medalDate ? null : (xpDate > medalDate ? xpDate : medalDate);
     const bottleneck = !xpDate || !medalDate ? "Unknown" : (xpDate > medalDate ? "XP" : medalDate > xpDate ? "Medals" : "Tie");
-    const additional = visible.slice(prevNonDexNeeded, medalSlotsNeeded);
-    prevNonDexNeeded = medalSlotsNeeded;
-    return { ...level, nonDexReq, medalSlotsNeeded, xpDate, medalDate, readyDate, bottleneck, additional };
+    const additional = incompleteVisible.slice(prevAdditionalNeeded, medalSlotsNeeded);
+    prevAdditionalNeeded = medalSlotsNeeded;
+    return { ...level, nonDexReq, medalSlotsNeeded, xpDate, medalDate, readyDate, bottleneck, additional, completedNonDex };
   });
 }
 function renderForecast() {
@@ -1136,6 +1152,9 @@ function renderForecast() {
       </div>
       <div class="mini-table-wrap">
         <table class="additional-table">
+          <colgroup>
+            <col style="width:42px"><col style="width:210px"><col style="width:98px"><col style="width:130px"><col style="width:120px">
+          </colgroup>
           <thead><tr><th>#</th><th>Medal</th><th>Type</th><th>Progress</th><th>Expected</th></tr></thead>
           <tbody>
             ${
