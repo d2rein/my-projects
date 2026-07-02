@@ -29,7 +29,8 @@ const STATUS_FILTERS = [
   { id: "can-evolve", label: "Can evolve" },
   { id: "missing", label: "Missing" },
   { id: "unreleased", label: "Unreleased" },
-  { id: "regional", label: "Regional" }
+  { id: "regional", label: "Regional" },
+  { id: "mega", label: "Mega" }
 ];
 
 const REGIONS = ["Kanto", "Johto", "Hoenn", "Sinnoh", "Unova", "Kalos", "Alola", "Galar", "Hisui", "Paldea", "Unidentified"];
@@ -1382,6 +1383,7 @@ function getVisibleEntries() {
     : getEntriesForMode(state.activeMode).slice();
   const activeStickyKey = getStickyFilterKey();
   const keepEditedVisible = stickyFilterKey === activeStickyKey ? stickyVisibleEntryIds : new Set();
+  const availableMegaDexes = state.statusFilter === "mega" ? getAvailableMegaDexes() : null;
 
   if (["mega", "gmax"].includes(state.activeMode) && !state.showUnavailable) {
     entries = entries.filter(entry => isAvailable(entry));
@@ -1393,11 +1395,22 @@ function getVisibleEntries() {
     if (state.regionFilter !== "all" && entry.region !== state.regionFilter) return false;
     if (state.statusFilter === "unreleased" && !isCurrentlyUnreleased(entry)) return false;
     else if (state.statusFilter === "regional" && !entry.isRegional) return false;
+    else if (state.statusFilter === "mega" && !availableMegaDexes?.has(entry.dex)) return false;
     else if (state.statusFilter === "unowned" && !["missing", "can-evolve", "trade", "unreleased"].includes(status)) return false;
-    else if (!["all", "unreleased", "regional", "unowned"].includes(state.statusFilter) && status !== state.statusFilter) return false;
+    else if (!["all", "unreleased", "regional", "mega", "unowned"].includes(state.statusFilter) && status !== state.statusFilter) return false;
     if (!search) return true;
     return cleanDisplayName(entry).toLowerCase().includes(search) || String(entry.dex).includes(search);
   });
+}
+
+function getAvailableMegaDexes() {
+  const megaEntriesToCheck = getAvailabilityEntriesForMode("mega");
+  return new Set(
+    megaEntriesToCheck
+      .filter(entry => isEffectivelyAvailableInMode("mega", entry))
+      .map(entry => Number(entry.dex))
+      .filter(Number.isFinite)
+  );
 }
 
 function getStandardEntriesInDisplayOrder() {
