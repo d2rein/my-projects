@@ -222,7 +222,7 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Vs avg</th><th>Progress</th><th>Expected</th><th>Type</th>
+              <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Rate/day</th><th>Progress</th><th>Expected</th><th>Type</th>
             </tr>
           </thead>
           <tbody id="mainMedalTable"></tbody>
@@ -239,7 +239,7 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Vs avg</th><th>Progress</th><th>Expected</th><th>Type</th>
+              <th>#</th><th>Medal</th><th>Description</th><th>Platinum</th><th>Previous</th><th>Current</th><th>Δ</th><th>Rate/day</th><th>Progress</th><th>Expected</th><th>Type</th>
             </tr>
           </thead>
           <tbody id="catchMedalTable"></tbody>
@@ -789,6 +789,10 @@ function fmtMonth(s) {
   const d = new Date(s + "T00:00:00");
   return d.toLocaleDateString(undefined, { month:"short", year:"numeric" });
 }
+function fmtRatePerDay(rate, digits=2) {
+  if (rate == null || Number.isNaN(Number(rate))) return `${fmtNum(0, digits)}/day`;
+  return `${fmtNum(rate, digits)}/day`;
+}
 function parseNumber(value) {
   if (value == null) return 0;
   const cleaned = String(value).replace(/,/g, "").trim();
@@ -925,6 +929,9 @@ function makeEditableInput(value, decimals, id) {
   const digits = Math.abs(value % 1) > 0 ? decimals : 0;
   return `<input class="cell-input format-number medal-input" data-id="${id}" data-decimals="${digits}" type="text" inputmode="decimal" value="${Number(value).toLocaleString(undefined, { maximumFractionDigits:digits, minimumFractionDigits:digits })}">`;
 }
+function makeForecastDexInput(level, value) {
+  return `<input class="cell-input format-number forecast-dex-input" data-level="${level}" data-decimals="0" type="text" inputmode="numeric" value="${fmtNum(value)}">`;
+}
 function progressText(current, max) {
   return `${fmtNum(current, current % 1 ? 1 : 0)} / ${fmtNum(max)}`;
 }
@@ -942,10 +949,10 @@ function renderTopBar() {
     <span class="mini-pill">XP <strong>${fmtNum(latest.xp)}</strong></span>
     <span class="mini-pill">XP/day <strong>${fmtNum(xpRate.blended)}</strong></span>
     <span class="mini-pill">Medals <strong>${total}</strong> (${getVisibleCompletedCount(latest)} visible + ${state.hiddenBonusMedals} hidden)</span>
-    <span class="mini-pill">Next gate <strong>L${nextGate.level}</strong></span>
+    <span class="mini-pill"><strong>L${nextGate.level}</strong> - XP ${fmtNum(nextGate.xpRequired)} / Medals ${fmtNum(nextGate.medalsRequired)}</span>
   `;
   document.getElementById("nextSoonBar").innerHTML = nextPlatinum
-    ? `Next platinum <strong>${nextPlatinum.name}</strong> · ${fmtNum(nextPlatinum.current)} / ${fmtNum(nextPlatinum.platinum)} · ${fmtMonth(nextPlatinum.projectedDate)}`
+    ? `Next platinum <strong>${nextPlatinum.name}</strong> · ${fmtNum(nextPlatinum.current)} / ${fmtNum(nextPlatinum.platinum)} · ${fmtDate(nextPlatinum.projectedDate)}`
     : "All shown medals platinum";
 }
 function makeRow(medal, orderIndex, currentSnapshot, prevSnapshot, projectionsById) {
@@ -966,9 +973,9 @@ function makeRow(medal, orderIndex, currentSnapshot, prevSnapshot, projectionsBy
     <td>${fmtNum(previous, previous % 1 ? 1 : 0)}</td>
     <td>${makeEditableInput(current, 1, medal.id)}</td>
     <td>${delta >= 0 ? "+" : ""}${fmtNum(delta, delta % 1 ? 1 : 0)}</td>
-    <td><span class="status-dot status-${vs.cls}"></span>${vs.label}</td>
+    <td><span class="status-dot status-${vs.cls}"></span>${fmtRatePerDay(proj.rate)}</td>
     <td class="progress-text">${fmtNum((current / medal.platinum) * 100,1)}%</td>
-    <td>${fmtMonth(proj.projectedDate)}</td>
+    <td>${fmtDate(proj.projectedDate)}</td>
   `;
   return tr;
 }
@@ -1040,9 +1047,9 @@ function applyLiveRowCalculations() {
     const cells = tr.children;
 
     if (cells[6]) cells[6].textContent = `${delta >= 0 ? "+" : ""}${fmtNum(delta, delta % 1 ? 1 : 0)}`;
-    if (cells[7]) cells[7].innerHTML = `<span class="status-dot status-${vs.cls}"></span>${vs.label}`;
+    if (cells[7]) cells[7].innerHTML = `<span class="status-dot status-${vs.cls}"></span>${fmtRatePerDay(projected.rate)}`;
     if (cells[8]) cells[8].textContent = `${fmtNum((current / medal.platinum) * 100,1)}%`;
-    if (cells[9]) cells[9].textContent = fmtMonth(projected.projectedDate);
+    if (cells[9]) cells[9].textContent = fmtDate(projected.projectedDate);
 
     tr.classList.remove("tier-None","tier-Bronze","tier-Silver","tier-Gold","tier-Platinum");
     tr.classList.add(`tier-${getTier(current, medal)}`);
@@ -1070,9 +1077,9 @@ function bindLiveEntryInputs() {
       const newTier = getTier(after, medal);
       if (newTier !== oldTier && ["Bronze","Silver","Gold","Platinum"].includes(newTier)) {
         if (newTier === "Platinum") {
-          showCelebrations([{ kind:"platinum", medal, current:after, levelsUnlocked:[] }]);
+          showCelebrations([{ kind:"platinum", medal, current:after, levelsUnlocked:[] }], { modal:false });
         } else {
-          showCelebrations([{ kind:"tier", medal, to:newTier, current:after }]);
+          showCelebrations([{ kind:"tier", medal, to:newTier, current:after }], { modal:false });
         }
       }
       input.dataset.startValue = String(after);
@@ -1110,12 +1117,12 @@ function renderForecast() {
     tr.innerHTML = `
       <td><strong>${row.level}</strong></td>
       <td>${row.medalsRequired}</td>
-      <td>${row.dexAssumed}</td>
+      <td>${makeForecastDexInput(row.level, row.dexAssumed)}</td>
       
       <td>${fmtNum(row.xpRequired)}</td>
-      <td>${fmtMonth(row.xpDate)}</td>
-      <td>${fmtMonth(row.medalDate)}</td>
-      <td><strong>${fmtMonth(row.readyDate)}</strong></td>
+      <td>${fmtDate(row.xpDate)}</td>
+      <td>${fmtDate(row.medalDate)}</td>
+      <td><strong>${fmtDate(row.readyDate)}</strong></td>
       <td>${row.bottleneck}</td>
     `;
     tbody.appendChild(tr);
@@ -1133,7 +1140,7 @@ function renderForecast() {
           <tbody>
             ${
               row.additional.length
-                ? row.additional.map((m, i) => `<tr><td>${i+1}</td><td class="name">${m.name}</td><td>${m.type}</td><td>${progressText(m.current, m.platinum)}</td><td>${fmtMonth(m.projectedDate)}</td></tr>`).join("")
+                ? row.additional.map((m, i) => `<tr><td>${i+1}</td><td class="name">${m.name}</td><td>${m.type}</td><td>${progressText(m.current, m.platinum)}</td><td>${fmtDate(m.projectedDate)}</td></tr>`).join("")
                 : '<tr><td colspan="5" class="small">No extra shown medals needed for this level.</td></tr>'
             }
           </tbody>
@@ -1169,16 +1176,25 @@ function celebrationHtml(evt) {
   return "";
 }
 function launchConfetti() { confetti({ particleCount:150, spread:95, origin:{ y:0.6 } }); }
-async function showCelebrations(events) {
+async function showCelebrations(events, options={}) {
+  const modal = options.modal !== false;
   for (const evt of events) {
     if (evt.kind === "platinum" || evt.kind === "levelReady") launchConfetti();
     await Swal.fire({
       html: celebrationHtml(evt),
       background:"#0f1730",
       color:"#eef4ff",
-      width:420,
-      showConfirmButton:true,
-      confirmButtonText:"Nice"
+      width: modal ? 420 : 360,
+      showConfirmButton: modal,
+      confirmButtonText:"Nice",
+      toast: !modal,
+      position: modal ? "center" : "top-end",
+      timer: modal ? undefined : 1100,
+      timerProgressBar: false,
+      showCloseButton:false,
+      allowOutsideClick: !modal,
+      allowEscapeKey:true,
+      didOpen: popup => { if (!modal) popup.setAttribute("aria-live", "polite"); }
     });
   }
 }
@@ -1225,7 +1241,7 @@ function handleSaveSnapshot() {
   state.snapshots.sort((a,b) => a.date.localeCompare(b.date));
   saveState();
   renderAll();
-  showCelebrations(events);
+  showCelebrations(events, { modal:true });
 }
 function resetData() {
   if (!confirm("Reset local data to the seeded version?")) return;
@@ -1406,6 +1422,23 @@ function buildCharts() {
     }
   });
 }
+function bindForecastInputs() {
+  document.querySelectorAll(".forecast-dex-input").forEach(input => {
+    const applyChange = () => {
+      const level = Number(input.dataset.level);
+      const target = state.levels.find(item => item.level === level);
+      if (!target) return;
+      target.dexAssumed = Math.max(0, Math.round(parseNumber(input.value)));
+      saveState();
+      renderTopBar();
+      renderForecast();
+      bindFormatting();
+      bindForecastInputs();
+      if (document.getElementById("graphs").classList.contains("active")) buildCharts();
+    };
+    input.addEventListener("change", applyChange);
+  });
+}
 function bindFormatting() {
   document.querySelectorAll(".format-number").forEach(el => {
     el.addEventListener("focus", () => {
@@ -1423,6 +1456,7 @@ function renderAll() {
   renderEntry();
   renderForecast();
   bindFormatting();
+  bindForecastInputs();
   if (document.getElementById("graphs").classList.contains("active")) buildCharts();
 }
 document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
