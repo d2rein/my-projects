@@ -845,6 +845,39 @@ function getVisibleCompletedCount(snapshot) {
 function getCompletedNonDexCount(snapshot) {
   return state.medals.filter(m => m.type !== "Pokedex" && (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
 }
+function getMedalOrderRank() {
+  const rank = {};
+  [...(state.medalOrder?.main || []), ...(state.medalOrder?.catch || [])].forEach((id, index) => {
+    if (!(id in rank)) rank[id] = index;
+  });
+  state.medals.forEach((medal, index) => {
+    if (!(medal.id in rank)) rank[medal.id] = 1000 + index;
+  });
+  return rank;
+}
+function getFirstPlatinumDates() {
+  const out = {};
+  const sorted = snapshotSorted();
+  state.medals.forEach(medal => {
+    for (const snapshot of sorted) {
+      if (Number(snapshot.medals[medal.id] || 0) >= medal.platinum) {
+        out[medal.id] = snapshot.date;
+        break;
+      }
+    }
+  });
+  return out;
+}
+function getCompletedMedalsAtSnapshot(snapshot, firstDates, orderRank) {
+  return state.medals
+    .filter(m => m.type !== "Pokedex" && Number(snapshot.medals[m.id] || 0) >= m.platinum)
+    .sort((a, b) => {
+      const dateA = firstDates[a.id] || snapshot.date;
+      const dateB = firstDates[b.id] || snapshot.date;
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return (orderRank[a.id] ?? 9999) - (orderRank[b.id] ?? 9999);
+    });
+}
 function getCurrentDexCompleted(snapshot) {
   return state.medals.filter(m => m.type === "Pokedex" && (Number(snapshot.medals[m.id]) || 0) >= m.platinum).length;
 }
@@ -1105,21 +1138,58 @@ function computeForecastRows() {
   const latest = latestSnapshot();
   const xpRate = computeXpRate();
   const projections = computeAllProjections();
-  const completedNonDex = getCompletedNonDexCount(latest) + Number(state.hiddenBonusMedals || 0);
+  const sortedSnapshots = snapshotSorted();
+  const hiddenBonus = Number(state.hiddenBonusMedals || 0);
+  const completedNonDex = getCompletedNonDexCount(latest) + hiddenBonus;
+  const orderRank = getMedalOrderRank();
+  const firstPlatinumDates = getFirstPlatinumDates();
   const incompleteVisible = projections
     .filter(m => m.type !== "Pokedex" && Number(latest.medals[m.id] || 0) < m.platinum)
     .sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"));
   let prevAdditionalNeeded = 0;
+  let prevCompletedVisibleNeeded = 0;
   return state.levels.map(level => {
     const nonDexReq = Math.max(0, level.medalsRequired - level.dexAssumed);
+    const visibleMedalsNeeded = Math.max(0, nonDexReq - hiddenBonus);
     const medalSlotsNeeded = Math.max(0, nonDexReq - completedNonDex);
+    const isComplete = medalSlotsNeeded === 0;
+    const completionSnapshot = isComplete
+      ? (sortedSnapshots.find(snapshot => getCompletedNonDexCount(snapshot) + hiddenBonus >= nonDexReq) || latest)
+      : null;
     const xpDate = latest.xp >= level.xpRequired ? latest.date : (xpRate.blended > 0 ? addDays(latest.date, (level.xpRequired - latest.xp) / xpRate.blended) : null);
     const medalDate = medalSlotsNeeded > 0 ? (incompleteVisible[medalSlotsNeeded - 1]?.projectedDate || null) : latest.date;
     const readyDate = !xpDate || !medalDate ? null : (xpDate > medalDate ? xpDate : medalDate);
     const bottleneck = !xpDate || !medalDate ? "Unknown" : (xpDate > medalDate ? "XP" : medalDate > xpDate ? "Medals" : "Tie");
     const additional = incompleteVisible.slice(prevAdditionalNeeded, medalSlotsNeeded);
     prevAdditionalNeeded = medalSlotsNeeded;
-    return { ...level, nonDexReq, medalSlotsNeeded, xpDate, medalDate, readyDate, bottleneck, additional, completedNonDex };
+    const completedAtSnapshot = completionSnapshot
+      ? getCompletedMedalsAtSnapshot(completionSnapshot, firstPlatinumDates, orderRank)
+      : [];
+    const completedLikely = isComplete
+      ? completedAtSnapshot
+          .slice(prevCompletedVisibleNeeded, visibleMedalsNeeded)
+          .map(medal => ({
+            ...medal,
+            current: Number(completionSnapshot.medals[medal.id] || 0),
+            recordedDate: firstPlatinumDates[medal.id] || completionSnapshot.date
+          }))
+      : [];
+    if (isComplete) prevCompletedVisibleNeeded = visibleMedalsNeeded;
+    return {
+      ...level,
+      nonDexReq,
+      visibleMedalsNeeded,
+      medalSlotsNeeded,
+      xpDate,
+      medalDate,
+      readyDate,
+      bottleneck,
+      additional,
+      completedLikely,
+      completedNonDex,
+      isComplete,
+      completionSnapshotDate: completionSnapshot?.date || null
+    };
   });
 }
 function renderForecast() {
@@ -1144,23 +1214,32 @@ function renderForecast() {
     tbody.appendChild(tr);
 
     const panel = document.createElement("div");
+    const panelItems = row.isComplete ? row.completedLikely : row.additional;
+    const panelDate = row.isComplete ? row.completionSnapshotDate : null;
+    const panelEmpty = row.isComplete
+      ? "No extra shown medals were needed here after hidden bonus medals."
+      : "No extra shown medals needed for this level.";
+    const panelHead = row.isComplete
+      ? `Likely medals counted by the first recorded complete snapshot (${fmtDate(panelDate)}). Ordered by first recorded platinum date.`
+      : "Only the extra medals for this level, not medals already needed for earlier levels.";
+    const finalHeader = row.isComplete ? "Recorded" : "Expected";
     panel.className = "panel";
     panel.innerHTML = `
       <div class="section-head">
-        <h3>Level ${row.level} additional medals</h3>
-        <div class="small">Only the extra medals for this level, not medals already needed for earlier levels.</div>
+        <h3>Level ${row.level} ${row.isComplete ? "recorded medals" : "additional medals"}</h3>
+        <div class="small">${panelHead}</div>
       </div>
       <div class="mini-table-wrap">
         <table class="additional-table">
           <colgroup>
             <col style="width:42px"><col style="width:210px"><col style="width:98px"><col style="width:130px"><col style="width:120px">
           </colgroup>
-          <thead><tr><th>#</th><th>Medal</th><th>Type</th><th>Progress</th><th>Expected</th></tr></thead>
+          <thead><tr><th>#</th><th>Medal</th><th>Type</th><th>Progress</th><th>${finalHeader}</th></tr></thead>
           <tbody>
             ${
-              row.additional.length
-                ? row.additional.map((m, i) => `<tr><td>${i+1}</td><td class="name">${m.name}</td><td>${m.type}</td><td>${progressText(m.current, m.platinum)}</td><td>${fmtDate(m.projectedDate)}</td></tr>`).join("")
-                : '<tr><td colspan="5" class="small">No extra shown medals needed for this level.</td></tr>'
+              panelItems.length
+                ? panelItems.map((m, i) => `<tr><td>${i+1}</td><td class="name">${m.name}</td><td>${m.type}</td><td>${progressText(m.current, m.platinum)}</td><td>${fmtDate(row.isComplete ? m.recordedDate : m.projectedDate)}</td></tr>`).join("")
+                : `<tr><td colspan="5" class="small">${panelEmpty}</td></tr>`
             }
           </tbody>
         </table>
