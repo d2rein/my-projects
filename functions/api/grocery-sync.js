@@ -12,19 +12,12 @@ function getStore(env) {
   return env?.POGO_TRACKER_KV || null;
 }
 
-function normalizeCode(value) {
-  return String(value || "").trim().replace(/\s+/g, "-").toLowerCase();
-}
-
 function getKey(request) {
   const url = new URL(request.url);
-  const code = normalizeCode(url.searchParams.get("code"));
-  if (!code) {
-    return null;
-  }
+  const code = String(url.searchParams.get("code") || "").trim().toLowerCase();
   return {
-    code,
-    key: "grocery-sync:" + code
+    code: code || "default",
+    key: "grocery-sync:" + (code || "default")
   };
 }
 
@@ -50,13 +43,9 @@ export async function onRequestGet(context) {
   }
 
   const info = getKey(context.request);
-  if (!info) {
-    return json({ error: "Missing sync code." }, 400);
-  }
-
   const record = await readRecord(store, info.key);
   if (!record) {
-    return json({ error: "No synced grocery list found for that code." }, 404);
+    return json({ error: "No synced grocery list found." }, 404);
   }
 
   return json({
@@ -73,18 +62,9 @@ export async function onRequestPut(context) {
   }
 
   const info = getKey(context.request);
-  if (!info) {
-    return json({ error: "Missing sync code." }, 400);
-  }
-
   const body = await context.request.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return json({ error: "Invalid request body." }, 400);
-  }
-
-  const pin = String(body.pin || "").trim();
-  if (!/^\d{4}$/.test(pin)) {
-    return json({ error: "A 4-digit PIN is required." }, 400);
   }
 
   if (!isValidPayload(body.payload)) {
@@ -92,11 +72,6 @@ export async function onRequestPut(context) {
   }
 
   const existing = await readRecord(store, info.key);
-  const pinHash = await sha256(pin);
-
-  if (existing && existing.pinHash !== pinHash) {
-    return json({ error: "Incorrect PIN." }, 403);
-  }
 
   const lastKnownUpdatedAt = body.lastKnownUpdatedAt || null;
   if (existing && lastKnownUpdatedAt && existing.updatedAt !== lastKnownUpdatedAt) {
@@ -109,7 +84,6 @@ export async function onRequestPut(context) {
 
   const record = {
     code: info.code,
-    pinHash,
     updatedAt: new Date().toISOString(),
     payload: body.payload
   };
