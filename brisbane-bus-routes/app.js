@@ -107,6 +107,7 @@ async function initialize() {
   renderSelectionPanel();
   fitVisibleBounds();
   map.on("zoomend", () => {
+    updateRouteOffsets();
     updateStopMarkerSizes();
     updateRouteStopMarkerPositions();
     refreshRouteStopVisibility();
@@ -192,7 +193,7 @@ function buildRouteOffsetMap(routes) {
   const sortedRoutes = [...routes].sort((a, b) => Number(a.route_short_name) - Number(b.route_short_name));
   const midpoint = (sortedRoutes.length - 1) / 2;
   return new Map(
-    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 0.9]),
+    sortedRoutes.map((route, index) => [route.route_short_name, index - midpoint]),
   );
 }
 
@@ -313,6 +314,7 @@ function renderMapLayers() {
   }
 
   buildRouteStopMarkers();
+  updateRouteOffsets();
   updateStopMarkerSizes();
   refreshUi();
 }
@@ -408,6 +410,7 @@ function refreshRouteStopVisibility() {
       if (!routeStopLayerGroup.hasLayer(entry.marker)) {
         entry.marker.addTo(routeStopLayerGroup);
       }
+      entry.marker.bringToFront();
     } else if (routeStopLayerGroup.hasLayer(entry.marker)) {
       routeStopLayerGroup.removeLayer(entry.marker);
     }
@@ -588,6 +591,7 @@ function buildRouteStopMarkers() {
             stopFeature.geometry.coordinates[1],
             stopFeature.geometry.coordinates[0],
             route.route_short_name,
+            String(direction.direction_id),
           ),
           {
             radius: getRouteStopDotRadius(map.getZoom()),
@@ -614,7 +618,7 @@ function buildRouteStopMarkers() {
 
 function updateRouteStopMarkerPositions() {
   for (const entry of state.routeStopMarkers) {
-    entry.marker.setLatLng(offsetLatLngForRoute(entry.lat, entry.lon, entry.routeNumber));
+    entry.marker.setLatLng(offsetLatLngForRoute(entry.lat, entry.lon, entry.routeNumber, entry.directionId));
   }
 }
 
@@ -638,9 +642,10 @@ function getVisibleRouteNumbersForStop(feature) {
 }
 
 function getRouteOffset(routeNumber, directionId) {
-  const baseOffset = state.routeOffsetByNumber.get(routeNumber) ?? 0;
-  const directionOffset = directionId === "0" ? -0.18 : 0.18;
-  return baseOffset + directionOffset;
+  const baseOffsetUnits = state.routeOffsetByNumber.get(routeNumber) ?? 0;
+  const directionOffsetUnits = directionId === "0" ? -0.5 : 0.5;
+  const scale = getRouteOffsetScale(map.getZoom());
+  return (baseOffsetUnits + directionOffsetUnits) * scale;
 }
 
 function applyRouteOffset(routeLayer, routeNumber, directionId) {
@@ -654,9 +659,9 @@ function applyRouteOffset(routeLayer, routeNumber, directionId) {
   }
 }
 
-function offsetLatLngForRoute(lat, lon, routeNumber) {
+function offsetLatLngForRoute(lat, lon, routeNumber, directionId) {
   const point = map.latLngToLayerPoint([lat, lon]);
-  const offsetPoint = L.point(point.x + (state.routeOffsetByNumber.get(routeNumber) ?? 0), point.y);
+  const offsetPoint = L.point(point.x + getRouteOffset(routeNumber, directionId), point.y);
   return map.layerPointToLatLng(offsetPoint);
 }
 
@@ -723,6 +728,33 @@ function getRouteStopDotRadius(zoom) {
     return 2.2;
   }
   return 2;
+}
+
+function getRouteOffsetScale(zoom) {
+  if (zoom >= 17) {
+    return 3.2;
+  }
+  if (zoom >= 16) {
+    return 2.6;
+  }
+  if (zoom >= 15) {
+    return 2.1;
+  }
+  if (zoom >= 14) {
+    return 1.5;
+  }
+  if (zoom >= 13) {
+    return 0.95;
+  }
+  return 0.45;
+}
+
+function updateRouteOffsets() {
+  for (const [routeNumber, entries] of state.routeLayersByNumber.entries()) {
+    for (const entry of entries) {
+      applyRouteOffset(entry.layer, routeNumber, entry.directionId);
+    }
+  }
 }
 
 function formatDirectionLabel(directionId) {
