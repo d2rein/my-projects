@@ -31,9 +31,9 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const routeLayerGroup = L.layerGroup().addTo(map);
-const routeStopLayerGroup = L.layerGroup().addTo(map);
 const labelLayerGroup = L.layerGroup().addTo(map);
 const stopLayerGroup = L.layerGroup().addTo(map);
+const routeStopLayerGroup = L.layerGroup().addTo(map);
 
 const state = {
   routeFeatures: [],
@@ -192,7 +192,7 @@ function buildRouteOffsetMap(routes) {
   const sortedRoutes = [...routes].sort((a, b) => Number(a.route_short_name) - Number(b.route_short_name));
   const midpoint = (sortedRoutes.length - 1) / 2;
   return new Map(
-    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 2]),
+    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 0.9]),
   );
 }
 
@@ -258,9 +258,9 @@ function renderRouteControls() {
 
 function renderMapLayers() {
   routeLayerGroup.clearLayers();
-  routeStopLayerGroup.clearLayers();
   labelLayerGroup.clearLayers();
   stopLayerGroup.clearLayers();
+  routeStopLayerGroup.clearLayers();
   state.stopLayerById.clear();
   state.routeStopMarkers = [];
   buildRouteIndex();
@@ -395,7 +395,7 @@ function refreshStopVisibility() {
 
 function refreshRouteStopVisibility() {
   const zoom = map.getZoom();
-  const showRouteStopDots = zoom >= 14;
+  const showRouteStopDots = zoom >= 13;
 
   for (const entry of state.routeStopMarkers) {
     const routeSelected = state.selectedRoutes.has(entry.routeNumber);
@@ -639,7 +639,7 @@ function getVisibleRouteNumbersForStop(feature) {
 
 function getRouteOffset(routeNumber, directionId) {
   const baseOffset = state.routeOffsetByNumber.get(routeNumber) ?? 0;
-  const directionOffset = directionId === "0" ? -0.75 : 0.75;
+  const directionOffset = directionId === "0" ? -0.18 : 0.18;
   return baseOffset + directionOffset;
 }
 
@@ -718,6 +718,9 @@ function getRouteStopDotRadius(zoom) {
   }
   if (zoom >= 14) {
     return 2.5;
+  }
+  if (zoom >= 13) {
+    return 2.2;
   }
   return 2;
 }
