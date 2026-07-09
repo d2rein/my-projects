@@ -46,6 +46,15 @@ ELO/backend/node_modules/.mf/
 chatgpt_meme_guide.html
 New Text Document.txt
 "iss-tracker - Copy"/
+brisbane-bus-routes/data/input/*
+!brisbane-bus-routes/data/input/README.md
 pogo-pokedex/local-scanner/output/
 pogo-pokedex/local-scanner/__pycache__/
 pogo-pokedex/local-scanner/config.json
+pokemon-red-bot/local-roms/
+pokemon-red-bot/runs/
+pokemon-red-bot/archive/
+pokemon-red-bot/test_detects_firered_profile_from_gba_header/
+pokemon-red-bot/test_prepare_writes_mgba_bundle/
+!pokemon-red-bot/runs/
+!pokemon-red-bot/runs/*.log
