@@ -42,6 +42,17 @@
           <button id="reset-btn" type="button">Reset map</button>
         </div>
 
+        <div class="direction-row" aria-label="Direction filters">
+          <label class="direction-toggle">
+            <input id="direction-0-toggle" type="checkbox" checked>
+            <span>Inbound / dir 0</span>
+          </label>
+          <label class="direction-toggle">
+            <input id="direction-1-toggle" type="checkbox" checked>
+            <span>Outbound / dir 1</span>
+          </label>
+        </div>
+
         <label class="toggle-row">
           <input id="interchanges-only-toggle" type="checkbox">
           <span>Show only stops served by 2+ selected routes</span>
@@ -84,6 +95,7 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
+  <script src="https://unpkg.com/leaflet-polylineoffset@1.1.1/leaflet.polylineoffset.js"></script>
   <script src="./app.js" type="module"></script>
 </body>
 </html>

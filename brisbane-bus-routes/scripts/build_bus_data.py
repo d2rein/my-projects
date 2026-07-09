@@ -143,6 +143,7 @@ def build_from_directory(gtfs_dir: Path, output_dir: Path) -> None:
                     "headsign_summary": headsign_summary,
                     "bounds": bounds,
                     "stop_count": len(direction_stop_ids[(route_number, direction_id)]),
+                    "stop_ids": sorted(direction_stop_ids[(route_number, direction_id)]),
                 }
             )
             route_features.append(

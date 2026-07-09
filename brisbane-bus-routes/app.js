@@ -15,6 +15,11 @@ const STORAGE_KEYS = {
   homeStop: "brisbane-bus-routes:homeStop",
 };
 
+const DIRECTION_LABELS = {
+  "0": "Inbound / dir 0",
+  "1": "Outbound / dir 1",
+};
+
 const map = L.map("map", {
   zoomControl: true,
   preferCanvas: true,
@@ -35,6 +40,7 @@ const state = {
   stopRoutes: {},
   summary: null,
   selectedRoutes: new Set(),
+  visibleDirections: new Set(["0", "1"]),
   focusRoute: null,
   highlightedStopId: null,
   interchangesOnly: false,
@@ -42,6 +48,9 @@ const state = {
   routeLayersByNumber: new Map(),
   stopLayerById: new Map(),
   labelLayersByNumber: new Map(),
+  routeOffsetByNumber: new Map(),
+  routeByNumber: new Map(),
+  routeDirectionStopIds: new Map(),
 };
 
 const els = {
@@ -55,6 +64,8 @@ const els = {
   clearFocusBtn: document.querySelector("#clear-focus-btn"),
   searchInput: document.querySelector("#search-input"),
   interchangesOnlyToggle: document.querySelector("#interchanges-only-toggle"),
+  direction0Toggle: document.querySelector("#direction-0-toggle"),
+  direction1Toggle: document.querySelector("#direction-1-toggle"),
   mapMessage: document.querySelector("#map-message"),
   popupTemplate: document.querySelector("#stop-popup-template"),
 };
@@ -79,6 +90,9 @@ async function initialize() {
   state.stopFeatures = stopsGeoJson.features ?? [];
   state.stopRoutes = stopRoutes;
   state.summary = summary;
+  state.routeOffsetByNumber = buildRouteOffsetMap(summary.routes);
+  state.routeByNumber = new Map(summary.routes.map((route) => [route.route_short_name, route]));
+  state.routeDirectionStopIds = buildRouteDirectionStopIndex(summary.routes);
 
   const availableRoutes = summary.routes.map((route) => route.route_short_name);
   const persistedRoutes = readPersistedRoutes(availableRoutes);
@@ -101,7 +115,6 @@ function bindControls() {
     state.focusRoute = null;
     persistRoutes();
     refreshUi();
-    fitVisibleBounds();
   });
 
   els.clearBtn.addEventListener("click", () => {
@@ -134,6 +147,22 @@ function bindControls() {
     state.interchangesOnly = event.target.checked;
     refreshStopVisibility();
   });
+
+  els.direction0Toggle.addEventListener("change", () => updateDirectionFilter("0", els.direction0Toggle.checked));
+  els.direction1Toggle.addEventListener("change", () => updateDirectionFilter("1", els.direction1Toggle.checked));
+}
+
+function updateDirectionFilter(directionId, enabled) {
+  if (enabled) {
+    state.visibleDirections.add(directionId);
+  } else if (state.visibleDirections.size > 1) {
+    state.visibleDirections.delete(directionId);
+  } else {
+    const toggle = directionId === "0" ? els.direction0Toggle : els.direction1Toggle;
+    toggle.checked = true;
+    return;
+  }
+  refreshUi();
 }
 
 async function fetchJson(path) {
@@ -151,6 +180,26 @@ function buildRouteIndex() {
     state.routeLayersByNumber.set(route.route_short_name, []);
     state.labelLayersByNumber.set(route.route_short_name, []);
   }
+}
+
+function buildRouteOffsetMap(routes) {
+  const sortedRoutes = [...routes].sort((a, b) => Number(a.route_short_name) - Number(b.route_short_name));
+  const midpoint = (sortedRoutes.length - 1) / 2;
+  return new Map(
+    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 3.2]),
+  );
+}
+
+function buildRouteDirectionStopIndex(routes) {
+  const index = new Map();
+  for (const route of routes) {
+    const directionMap = new Map();
+    for (const direction of route.directions) {
+      directionMap.set(String(direction.direction_id), new Set(direction.stop_ids ?? []));
+    }
+    index.set(route.route_short_name, directionMap);
+  }
+  return index;
 }
 
 function renderRouteControls() {
@@ -202,8 +251,7 @@ function renderRouteControls() {
       if (event.target instanceof HTMLInputElement) {
         return;
       }
-      const routeNumber = row.getAttribute("data-route");
-      focusRoute(routeNumber);
+      focusRoute(row.getAttribute("data-route"));
     });
   }
 }
@@ -217,6 +265,7 @@ function renderMapLayers() {
 
   for (const feature of state.routeFeatures) {
     const routeNumber = feature.properties.route_short_name;
+    const directionId = String(feature.properties.direction_id);
     const latLngs = feature.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
     const routeLayer = L.polyline(latLngs, {
       color: feature.properties.display_color,
@@ -224,11 +273,12 @@ function renderMapLayers() {
       opacity: 0.84,
       lineCap: "round",
       lineJoin: "round",
+      offset: getRouteOffset(routeNumber, directionId),
     });
 
     routeLayer.on("click", () => focusRoute(routeNumber));
     routeLayer.addTo(routeLayerGroup);
-    state.routeLayersByNumber.get(routeNumber).push(routeLayer);
+    state.routeLayersByNumber.get(routeNumber).push({ layer: routeLayer, directionId });
 
     const [labelLon, labelLat] = feature.properties.label_point;
     const labelMarker = L.marker([labelLat, labelLon], {
@@ -242,7 +292,7 @@ function renderMapLayers() {
 
     labelMarker.on("click", () => focusRoute(routeNumber));
     labelMarker.addTo(labelLayerGroup);
-    state.labelLayersByNumber.get(routeNumber).push(labelMarker);
+    state.labelLayersByNumber.get(routeNumber).push({ layer: labelMarker, directionId });
   }
 
   for (const feature of state.stopFeatures) {
@@ -253,8 +303,8 @@ function renderMapLayers() {
     const icon = L.divIcon({
       className: "",
       html: `<div class="stop-dot ${routeCount > 1 ? "is-interchange" : ""}" data-stop-dot="${stopId}"></div>`,
-      iconSize: routeCount > 1 ? [16, 16] : [12, 12],
-      iconAnchor: routeCount > 1 ? [8, 8] : [6, 6],
+      iconSize: routeCount > 1 ? [11, 11] : [8, 8],
+      iconAnchor: routeCount > 1 ? [5.5, 5.5] : [4, 4],
     });
 
     const marker = L.marker([lat, lon], { icon });
@@ -282,34 +332,39 @@ function refreshRouteVisibility() {
     const routeNumber = route.route_short_name;
     const isSelected = state.selectedRoutes.has(routeNumber);
     const isFocused = !state.focusRoute || state.focusRoute === routeNumber;
-    const visible = isSelected;
-    const faded = visible && state.focusRoute && !isFocused;
 
-    for (const layer of state.routeLayersByNumber.get(routeNumber) ?? []) {
-      layer.setStyle({
-        opacity: visible ? (faded ? 0.16 : 0.96) : 0,
+    for (const entry of state.routeLayersByNumber.get(routeNumber) ?? []) {
+      const directionVisible = state.visibleDirections.has(entry.directionId);
+      const visible = isSelected && directionVisible;
+      const faded = visible && state.focusRoute && !isFocused;
+
+      entry.layer.setStyle({
+        opacity: visible ? (faded ? 0.18 : 0.96) : 0,
         weight: visible ? (state.focusRoute === routeNumber ? 8 : 6) : 1,
       });
+
       if (visible) {
-        if (!routeLayerGroup.hasLayer(layer)) {
-          layer.addTo(routeLayerGroup);
+        if (!routeLayerGroup.hasLayer(entry.layer)) {
+          entry.layer.addTo(routeLayerGroup);
         }
-      } else if (routeLayerGroup.hasLayer(layer)) {
-        routeLayerGroup.removeLayer(layer);
+      } else if (routeLayerGroup.hasLayer(entry.layer)) {
+        routeLayerGroup.removeLayer(entry.layer);
       }
     }
 
-    for (const labelLayer of state.labelLayersByNumber.get(routeNumber) ?? []) {
-      const el = labelLayer.getElement();
+    for (const entry of state.labelLayersByNumber.get(routeNumber) ?? []) {
+      const visible = isSelected && state.visibleDirections.has(entry.directionId);
+      const faded = visible && state.focusRoute && !isFocused;
+      const el = entry.layer.getElement();
       if (el) {
         el.classList.toggle("is-muted", Boolean(faded));
       }
       if (visible) {
-        if (!labelLayerGroup.hasLayer(labelLayer)) {
-          labelLayer.addTo(labelLayerGroup);
+        if (!labelLayerGroup.hasLayer(entry.layer)) {
+          entry.layer.addTo(labelLayerGroup);
         }
-      } else if (labelLayerGroup.hasLayer(labelLayer)) {
-        labelLayerGroup.removeLayer(labelLayer);
+      } else if (labelLayerGroup.hasLayer(entry.layer)) {
+        labelLayerGroup.removeLayer(entry.layer);
       }
     }
   }
@@ -325,14 +380,14 @@ function refreshStopVisibility() {
       continue;
     }
 
-    const stopRouteNumbers = feature.properties.routes.filter((route) => state.selectedRoutes.has(route));
-    const matchesFocusedRoute = !state.focusRoute || stopRouteNumbers.includes(state.focusRoute);
-    const matchesInterchange = !state.interchangesOnly || stopRouteNumbers.length >= 2;
+    const visibleRoutes = getVisibleRouteNumbersForStop(feature);
+    const matchesFocusedRoute = !state.focusRoute || visibleRoutes.includes(state.focusRoute);
+    const matchesInterchange = !state.interchangesOnly || visibleRoutes.length >= 2;
     const matchesSearch = !searchTerm
       || feature.properties.stop_name.toLowerCase().includes(searchTerm)
-      || stopRouteNumbers.some((route) => route.includes(searchTerm));
+      || visibleRoutes.some((route) => route.includes(searchTerm));
 
-    const visible = stopRouteNumbers.length > 0 && matchesFocusedRoute && matchesInterchange && matchesSearch;
+    const visible = visibleRoutes.length > 0 && matchesFocusedRoute && matchesInterchange && matchesSearch;
     if (visible) {
       if (!stopLayerGroup.hasLayer(marker)) {
         marker.addTo(stopLayerGroup);
@@ -358,29 +413,31 @@ function renderSelectionPanel() {
   }
 
   if (state.focusRoute) {
-    const route = state.summary.routes.find((item) => item.route_short_name === state.focusRoute);
+    const route = state.routeByNumber.get(state.focusRoute);
+    const enabledDirections = route.directions.filter((direction) => state.visibleDirections.has(String(direction.direction_id)));
     const visibleStopCount = countVisibleStopsForRoute(route.route_short_name);
-    const directions = route.directions
-      .map((direction) => `Dir ${direction.direction_id}: ${direction.headsign_summary}`)
-      .join(" • ");
+    const directions = enabledDirections
+      .map((direction) => `${formatDirectionLabel(direction.direction_id)}: ${direction.headsign_summary}`)
+      .join(" | ");
 
     els.selectionContent.innerHTML = `
       <div class="selection-badges">
         <span class="route-badge" style="background:${route.display_color}; color:${route.text_color};">${route.route_short_name}</span>
       </div>
       <h3>${route.route_long_name}</h3>
-      <p class="selection-directions">${directions}</p>
+      <p class="selection-directions">${directions || "No directions currently visible."}</p>
       <div class="selection-stats">
         <div class="selection-stat">
           <strong>${visibleStopCount}</strong>
           <span>Visible stops</span>
         </div>
         <div class="selection-stat">
-          <strong>${route.direction_count}</strong>
+          <strong>${enabledDirections.length}</strong>
           <span>Directions shown</span>
         </div>
       </div>
       <p class="selection-meta">${route.trip_count_total} trips contributed to the representative exported shapes.</p>
+      <p class="selection-warning">Shared corridors are offset slightly side-by-side to make overlapping routes easier to read.</p>
     `;
     return;
   }
@@ -391,10 +448,10 @@ function renderSelectionPanel() {
     return;
   }
 
-  const selectedRoutes = stopFeature.properties.routes.filter((route) => state.selectedRoutes.has(route));
+  const selectedRoutes = getVisibleRouteNumbersForStop(stopFeature);
   const badges = selectedRoutes
     .map((routeNumber) => {
-      const route = state.summary.routes.find((item) => item.route_short_name === routeNumber);
+      const route = state.routeByNumber.get(routeNumber);
       return `<span class="route-badge" style="background:${route.display_color}; color:${route.text_color};">${route.route_short_name}</span>`;
     })
     .join("");
@@ -407,7 +464,7 @@ function renderSelectionPanel() {
     <h3>${stopFeature.properties.stop_name}</h3>
     <p class="selection-meta">Stop ${stopFeature.properties.stop_code || stopFeature.properties.stop_id}</p>
     <div class="selection-badges">${badges}</div>
-    <p class="selection-meta">${selectedRoutes.length} selected routes serve this stop.</p>
+    <p class="selection-meta">${selectedRoutes.length} visible routes serve this stop.</p>
     ${homeButton}
   `;
 
@@ -419,12 +476,12 @@ function renderSelectionPanel() {
 
 function openStopPopup(marker, feature) {
   const popupNode = els.popupTemplate.content.firstElementChild.cloneNode(true);
-  const routeNumbers = feature.properties.routes.filter((route) => state.selectedRoutes.has(route));
+  const routeNumbers = getVisibleRouteNumbersForStop(feature);
 
   popupNode.querySelector(".stop-popup__title").textContent = feature.properties.stop_name;
   popupNode.querySelector(".stop-popup__meta").textContent = `Stop ${feature.properties.stop_code || feature.properties.stop_id}`;
   popupNode.querySelector(".stop-popup__routes").innerHTML = routeNumbers.map((routeNumber) => {
-    const route = state.summary.routes.find((item) => item.route_short_name === routeNumber);
+    const route = state.routeByNumber.get(routeNumber);
     return `<span class="route-badge" style="background:${route.display_color}; color:${route.text_color};">${route.route_short_name}</span>`;
   }).join("");
 
@@ -468,6 +525,9 @@ function fitVisibleBounds(forceDefault = false) {
       continue;
     }
     for (const direction of route.directions) {
+      if (!state.visibleDirections.has(String(direction.direction_id))) {
+        continue;
+      }
       bounds.push([direction.bounds.min_lat, direction.bounds.min_lon]);
       bounds.push([direction.bounds.max_lat, direction.bounds.max_lon]);
     }
@@ -491,11 +551,40 @@ function countVisibleStopsForRoute(routeNumber) {
     if (!marker || !stopLayerGroup.hasLayer(marker)) {
       continue;
     }
-    if (feature.properties.routes.includes(routeNumber)) {
+    if (getVisibleRouteNumbersForStop(feature).includes(routeNumber)) {
       count += 1;
     }
   }
   return count;
+}
+
+function getVisibleRouteNumbersForStop(feature) {
+  return feature.properties.routes.filter((routeNumber) => {
+    if (!state.selectedRoutes.has(routeNumber)) {
+      return false;
+    }
+    const directionMap = state.routeDirectionStopIds.get(routeNumber);
+    if (!directionMap) {
+      return false;
+    }
+    for (const directionId of state.visibleDirections) {
+      const stopIds = directionMap.get(directionId);
+      if (stopIds?.has(feature.properties.stop_id)) {
+        return true;
+      }
+    }
+    return false;
+  });
+}
+
+function getRouteOffset(routeNumber, directionId) {
+  const baseOffset = state.routeOffsetByNumber.get(routeNumber) ?? 0;
+  const directionOffset = directionId === "0" ? -1.4 : 1.4;
+  return baseOffset + directionOffset;
+}
+
+function formatDirectionLabel(directionId) {
+  return DIRECTION_LABELS[String(directionId)] ?? `Dir ${directionId}`;
 }
 
 function persistRoutes() {
