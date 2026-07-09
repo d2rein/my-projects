@@ -44,7 +44,6 @@ const state = {
   focusRoute: null,
   highlightedStopId: null,
   interchangesOnly: false,
-  searchTerm: "",
   routeLayersByNumber: new Map(),
   stopLayerById: new Map(),
   labelLayersByNumber: new Map(),
@@ -62,7 +61,6 @@ const els = {
   clearBtn: document.querySelector("#clear-btn"),
   resetBtn: document.querySelector("#reset-btn"),
   clearFocusBtn: document.querySelector("#clear-focus-btn"),
-  searchInput: document.querySelector("#search-input"),
   interchangesOnlyToggle: document.querySelector("#interchanges-only-toggle"),
   direction0Toggle: document.querySelector("#direction-0-toggle"),
   direction1Toggle: document.querySelector("#direction-1-toggle"),
@@ -97,6 +95,7 @@ async function initialize() {
   const availableRoutes = summary.routes.map((route) => route.route_short_name);
   const persistedRoutes = readPersistedRoutes(availableRoutes);
   state.selectedRoutes = new Set(persistedRoutes.length ? persistedRoutes : availableRoutes);
+  syncDirectionToggleState();
 
   buildRouteIndex();
   renderRouteControls();
@@ -110,11 +109,14 @@ async function initialize() {
 
 function bindControls() {
   els.showAllBtn.addEventListener("click", () => {
+    const currentCenter = map.getCenter();
+    const currentZoom = map.getZoom();
     const allRoutes = state.summary?.routes.map((route) => route.route_short_name) ?? [];
     state.selectedRoutes = new Set(allRoutes);
     state.focusRoute = null;
     persistRoutes();
     refreshUi();
+    map.setView(currentCenter, currentZoom, { animate: false });
   });
 
   els.clearBtn.addEventListener("click", () => {
@@ -137,12 +139,6 @@ function bindControls() {
     refreshUi();
   });
 
-  els.searchInput.addEventListener("input", (event) => {
-    state.searchTerm = event.target.value.trim().toLowerCase();
-    renderRouteControls();
-    refreshStopVisibility();
-  });
-
   els.interchangesOnlyToggle.addEventListener("change", (event) => {
     state.interchangesOnly = event.target.checked;
     refreshStopVisibility();
@@ -162,6 +158,7 @@ function updateDirectionFilter(directionId, enabled) {
     toggle.checked = true;
     return;
   }
+  syncDirectionToggleState();
   refreshUi();
 }
 
@@ -186,7 +183,7 @@ function buildRouteOffsetMap(routes) {
   const sortedRoutes = [...routes].sort((a, b) => Number(a.route_short_name) - Number(b.route_short_name));
   const midpoint = (sortedRoutes.length - 1) / 2;
   return new Map(
-    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 3.2]),
+    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 6]),
   );
 }
 
@@ -203,15 +200,9 @@ function buildRouteDirectionStopIndex(routes) {
 }
 
 function renderRouteControls() {
-  const searchTerm = state.searchTerm;
   const routeMarkup = [];
 
   for (const route of state.summary.routes) {
-    const haystack = `${route.route_short_name} ${route.route_long_name}`.toLowerCase();
-    if (searchTerm && !haystack.includes(searchTerm) && !route.stop_names_search.includes(searchTerm)) {
-      continue;
-    }
-
     const checked = state.selectedRoutes.has(route.route_short_name) ? "checked" : "";
     const dimmed = state.focusRoute && state.focusRoute !== route.route_short_name ? "is-dimmed" : "";
     routeMarkup.push(`
@@ -269,12 +260,13 @@ function renderMapLayers() {
     const latLngs = feature.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
     const routeLayer = L.polyline(latLngs, {
       color: feature.properties.display_color,
-      weight: 6,
-      opacity: 0.84,
+      weight: 5,
+      opacity: 0.92,
       lineCap: "round",
       lineJoin: "round",
-      offset: getRouteOffset(routeNumber, directionId),
+      dashArray: directionId === "1" ? "12 9" : null,
     });
+    applyRouteOffset(routeLayer, routeNumber, directionId);
 
     routeLayer.on("click", () => focusRoute(routeNumber));
     routeLayer.addTo(routeLayerGroup);
@@ -303,8 +295,8 @@ function renderMapLayers() {
     const icon = L.divIcon({
       className: "",
       html: `<div class="stop-dot ${routeCount > 1 ? "is-interchange" : ""}" data-stop-dot="${stopId}"></div>`,
-      iconSize: routeCount > 1 ? [11, 11] : [8, 8],
-      iconAnchor: routeCount > 1 ? [5.5, 5.5] : [4, 4],
+      iconSize: routeCount > 1 ? [7, 7] : [5, 5],
+      iconAnchor: routeCount > 1 ? [3.5, 3.5] : [2.5, 2.5],
     });
 
     const marker = L.marker([lat, lon], { icon });
@@ -340,7 +332,7 @@ function refreshRouteVisibility() {
 
       entry.layer.setStyle({
         opacity: visible ? (faded ? 0.18 : 0.96) : 0,
-        weight: visible ? (state.focusRoute === routeNumber ? 8 : 6) : 1,
+        weight: visible ? (state.focusRoute === routeNumber ? 7 : 5) : 1,
       });
 
       if (visible) {
@@ -371,8 +363,6 @@ function refreshRouteVisibility() {
 }
 
 function refreshStopVisibility() {
-  const searchTerm = state.searchTerm;
-
   for (const feature of state.stopFeatures) {
     const stopId = feature.properties.stop_id;
     const marker = state.stopLayerById.get(stopId);
@@ -383,11 +373,8 @@ function refreshStopVisibility() {
     const visibleRoutes = getVisibleRouteNumbersForStop(feature);
     const matchesFocusedRoute = !state.focusRoute || visibleRoutes.includes(state.focusRoute);
     const matchesInterchange = !state.interchangesOnly || visibleRoutes.length >= 2;
-    const matchesSearch = !searchTerm
-      || feature.properties.stop_name.toLowerCase().includes(searchTerm)
-      || visibleRoutes.some((route) => route.includes(searchTerm));
 
-    const visible = visibleRoutes.length > 0 && matchesFocusedRoute && matchesInterchange && matchesSearch;
+    const visible = visibleRoutes.length > 0 && matchesFocusedRoute && matchesInterchange;
     if (visible) {
       if (!stopLayerGroup.hasLayer(marker)) {
         marker.addTo(stopLayerGroup);
@@ -579,12 +566,28 @@ function getVisibleRouteNumbersForStop(feature) {
 
 function getRouteOffset(routeNumber, directionId) {
   const baseOffset = state.routeOffsetByNumber.get(routeNumber) ?? 0;
-  const directionOffset = directionId === "0" ? -1.4 : 1.4;
+  const directionOffset = directionId === "0" ? -4 : 4;
   return baseOffset + directionOffset;
+}
+
+function applyRouteOffset(routeLayer, routeNumber, directionId) {
+  if (typeof routeLayer.setOffset === "function") {
+    routeLayer.setOffset(getRouteOffset(routeNumber, directionId));
+    return;
+  }
+
+  if (routeLayer.options) {
+    routeLayer.options.offset = getRouteOffset(routeNumber, directionId);
+  }
 }
 
 function formatDirectionLabel(directionId) {
   return DIRECTION_LABELS[String(directionId)] ?? `Dir ${directionId}`;
+}
+
+function syncDirectionToggleState() {
+  els.direction0Toggle.checked = state.visibleDirections.has("0");
+  els.direction1Toggle.checked = state.visibleDirections.has("1");
 }
 
 function persistRoutes() {
