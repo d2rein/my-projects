@@ -31,6 +31,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const routeLayerGroup = L.layerGroup().addTo(map);
+const routeStopLayerGroup = L.layerGroup().addTo(map);
 const labelLayerGroup = L.layerGroup().addTo(map);
 const stopLayerGroup = L.layerGroup().addTo(map);
 
@@ -50,6 +51,8 @@ const state = {
   routeOffsetByNumber: new Map(),
   routeByNumber: new Map(),
   routeDirectionStopIds: new Map(),
+  stopById: new Map(),
+  routeStopMarkers: [],
 };
 
 const els = {
@@ -91,6 +94,7 @@ async function initialize() {
   state.routeOffsetByNumber = buildRouteOffsetMap(summary.routes);
   state.routeByNumber = new Map(summary.routes.map((route) => [route.route_short_name, route]));
   state.routeDirectionStopIds = buildRouteDirectionStopIndex(summary.routes);
+  state.stopById = new Map(state.stopFeatures.map((feature) => [feature.properties.stop_id, feature]));
 
   const availableRoutes = summary.routes.map((route) => route.route_short_name);
   const persistedRoutes = readPersistedRoutes(availableRoutes);
@@ -102,6 +106,11 @@ async function initialize() {
   renderMapLayers();
   renderSelectionPanel();
   fitVisibleBounds();
+  map.on("zoomend", () => {
+    updateStopMarkerSizes();
+    updateRouteStopMarkerPositions();
+    refreshRouteStopVisibility();
+  });
 
   const missingCount = summary.missing_target_routes?.length ?? 0;
   els.datasetStatus.textContent = `${availableRoutes.length} routes loaded${missingCount ? `, ${missingCount} missing from feed` : ""}.`;
@@ -183,7 +192,7 @@ function buildRouteOffsetMap(routes) {
   const sortedRoutes = [...routes].sort((a, b) => Number(a.route_short_name) - Number(b.route_short_name));
   const midpoint = (sortedRoutes.length - 1) / 2;
   return new Map(
-    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 6]),
+    sortedRoutes.map((route, index) => [route.route_short_name, (index - midpoint) * 2]),
   );
 }
 
@@ -249,9 +258,11 @@ function renderRouteControls() {
 
 function renderMapLayers() {
   routeLayerGroup.clearLayers();
+  routeStopLayerGroup.clearLayers();
   labelLayerGroup.clearLayers();
   stopLayerGroup.clearLayers();
   state.stopLayerById.clear();
+  state.routeStopMarkers = [];
   buildRouteIndex();
 
   for (const feature of state.routeFeatures) {
@@ -291,15 +302,7 @@ function renderMapLayers() {
     const stopId = feature.properties.stop_id;
     const [lon, lat] = feature.geometry.coordinates;
     const routeCount = feature.properties.route_count;
-
-    const icon = L.divIcon({
-      className: "",
-      html: `<div class="stop-dot ${routeCount > 1 ? "is-interchange" : ""}" data-stop-dot="${stopId}"></div>`,
-      iconSize: routeCount > 1 ? [7, 7] : [5, 5],
-      iconAnchor: routeCount > 1 ? [3.5, 3.5] : [2.5, 2.5],
-    });
-
-    const marker = L.marker([lat, lon], { icon });
+    const marker = L.circleMarker([lat, lon], buildStopMarkerStyle(routeCount, false));
     marker.on("click", () => {
       state.highlightedStopId = stopId;
       openStopPopup(marker, feature);
@@ -309,12 +312,15 @@ function renderMapLayers() {
     state.stopLayerById.set(stopId, marker);
   }
 
+  buildRouteStopMarkers();
+  updateStopMarkerSizes();
   refreshUi();
 }
 
 function refreshUi() {
   refreshRouteVisibility();
   refreshStopVisibility();
+  refreshRouteStopVisibility();
   renderRouteControls();
   renderSelectionPanel();
 }
@@ -383,10 +389,33 @@ function refreshStopVisibility() {
       stopLayerGroup.removeLayer(marker);
     }
 
-    const iconElement = marker.getElement()?.querySelector("[data-stop-dot]");
-    if (iconElement) {
-      iconElement.classList.toggle("is-highlighted", stopId === state.highlightedStopId);
+    marker.setStyle(buildStopMarkerStyle(feature.properties.route_count, stopId === state.highlightedStopId));
+  }
+}
+
+function refreshRouteStopVisibility() {
+  const zoom = map.getZoom();
+  const showRouteStopDots = zoom >= 14;
+
+  for (const entry of state.routeStopMarkers) {
+    const routeSelected = state.selectedRoutes.has(entry.routeNumber);
+    const directionVisible = state.visibleDirections.has(entry.directionId);
+    const focusVisible = !state.focusRoute || state.focusRoute === entry.routeNumber;
+    const baseStopVisible = stopLayerGroup.hasLayer(state.stopLayerById.get(entry.stopId));
+    const visible = showRouteStopDots && routeSelected && directionVisible && focusVisible && baseStopVisible;
+
+    if (visible) {
+      if (!routeStopLayerGroup.hasLayer(entry.marker)) {
+        entry.marker.addTo(routeStopLayerGroup);
+      }
+    } else if (routeStopLayerGroup.hasLayer(entry.marker)) {
+      routeStopLayerGroup.removeLayer(entry.marker);
     }
+
+    entry.marker.setStyle({
+      radius: getRouteStopDotRadius(zoom),
+      weight: 1,
+    });
   }
 }
 
@@ -545,6 +574,50 @@ function countVisibleStopsForRoute(routeNumber) {
   return count;
 }
 
+function buildRouteStopMarkers() {
+  for (const route of state.summary.routes) {
+    for (const direction of route.directions) {
+      for (const stopId of direction.stop_ids ?? []) {
+        const stopFeature = state.stopById.get(stopId);
+        if (!stopFeature) {
+          continue;
+        }
+
+        const marker = L.circleMarker(
+          offsetLatLngForRoute(
+            stopFeature.geometry.coordinates[1],
+            stopFeature.geometry.coordinates[0],
+            route.route_short_name,
+          ),
+          {
+            radius: getRouteStopDotRadius(map.getZoom()),
+            color: "#ffffff",
+            weight: 1,
+            fillColor: route.display_color,
+            fillOpacity: 1,
+            interactive: false,
+          },
+        );
+
+        state.routeStopMarkers.push({
+          marker,
+          routeNumber: route.route_short_name,
+          directionId: String(direction.direction_id),
+          stopId,
+          lat: stopFeature.geometry.coordinates[1],
+          lon: stopFeature.geometry.coordinates[0],
+        });
+      }
+    }
+  }
+}
+
+function updateRouteStopMarkerPositions() {
+  for (const entry of state.routeStopMarkers) {
+    entry.marker.setLatLng(offsetLatLngForRoute(entry.lat, entry.lon, entry.routeNumber));
+  }
+}
+
 function getVisibleRouteNumbersForStop(feature) {
   return feature.properties.routes.filter((routeNumber) => {
     if (!state.selectedRoutes.has(routeNumber)) {
@@ -566,7 +639,7 @@ function getVisibleRouteNumbersForStop(feature) {
 
 function getRouteOffset(routeNumber, directionId) {
   const baseOffset = state.routeOffsetByNumber.get(routeNumber) ?? 0;
-  const directionOffset = directionId === "0" ? -4 : 4;
+  const directionOffset = directionId === "0" ? -0.75 : 0.75;
   return baseOffset + directionOffset;
 }
 
@@ -579,6 +652,74 @@ function applyRouteOffset(routeLayer, routeNumber, directionId) {
   if (routeLayer.options) {
     routeLayer.options.offset = getRouteOffset(routeNumber, directionId);
   }
+}
+
+function offsetLatLngForRoute(lat, lon, routeNumber) {
+  const point = map.latLngToLayerPoint([lat, lon]);
+  const offsetPoint = L.point(point.x + (state.routeOffsetByNumber.get(routeNumber) ?? 0), point.y);
+  return map.layerPointToLatLng(offsetPoint);
+}
+
+function buildStopMarkerStyle(routeCount, highlighted) {
+  const radius = getBaseStopRadius(map.getZoom(), routeCount, highlighted);
+  return {
+    radius,
+    color: "#ffffff",
+    weight: highlighted ? 2 : 1,
+    fillColor: highlighted ? "#ff7f50" : routeCount > 1 ? "#1d7a63" : "#345e4d",
+    fillOpacity: highlighted ? 1 : 0.95,
+  };
+}
+
+function updateStopMarkerSizes() {
+  for (const feature of state.stopFeatures) {
+    const marker = state.stopLayerById.get(feature.properties.stop_id);
+    if (!marker) {
+      continue;
+    }
+    marker.setStyle(
+      buildStopMarkerStyle(
+        feature.properties.route_count,
+        feature.properties.stop_id === state.highlightedStopId,
+      ),
+    );
+  }
+}
+
+function getBaseStopRadius(zoom, routeCount, highlighted) {
+  let radius = 2;
+  if (zoom >= 16) {
+    radius = 5;
+  } else if (zoom >= 15) {
+    radius = 4;
+  } else if (zoom >= 14) {
+    radius = 3.5;
+  } else if (zoom >= 13) {
+    radius = 3;
+  } else if (zoom >= 12) {
+    radius = 2.5;
+  }
+
+  if (routeCount > 1) {
+    radius += 1;
+  }
+  if (highlighted) {
+    radius += 1.5;
+  }
+  return radius;
+}
+
+function getRouteStopDotRadius(zoom) {
+  if (zoom >= 16) {
+    return 3.5;
+  }
+  if (zoom >= 15) {
+    return 3;
+  }
+  if (zoom >= 14) {
+    return 2.5;
+  }
+  return 2;
 }
 
 function formatDirectionLabel(directionId) {
