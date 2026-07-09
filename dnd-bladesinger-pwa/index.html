@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DND - Alaric</title>
+<link rel="icon" href="./icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#09111a">
 <style>
@@ -384,15 +385,16 @@
   }
   .action-cluster{
     display:grid;
-    grid-template-columns:1.1fr 82px 124px;
+    grid-template-columns:24px 1fr 82px 124px;
     grid-template-areas:
-      "blade pips concheck"
-      "rests mage adv"
-      "spells shield active"
-      "extra extra extra";
+      "bladeinfo blade pips concheck"
+      "rests rests mage adv"
+      "spells spells shield active"
+      "extra extra extra extra";
     gap:5px;
     margin-top:7px;
   }
+  .cell-blade-info{grid-area:bladeinfo}
   .cell-blade{grid-area:blade}
   .cell-pips{grid-area:pips}
   .cell-concheck{grid-area:concheck}
@@ -421,7 +423,7 @@
   }
   #bladesongBtn{
     font-size:11px;
-    padding:6px 6px;
+    padding:6px 4px;
     white-space:nowrap;
   }
   #concentrationActiveBtn{
@@ -860,6 +862,66 @@
   .count-box.warn b{
     color:#ffd487;
   }
+  .inventory-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .magic-item-card{
+    display:grid;
+    gap:8px;
+    padding:10px;
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+  .item-head{
+    display:grid;
+    grid-template-columns:22px 1fr;
+    gap:8px;
+    align-items:start;
+  }
+  .item-name{
+    font-size:13px;
+    font-weight:900;
+    line-height:1.25;
+  }
+  .item-meta{
+    margin-top:3px;
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.35;
+  }
+  .item-checks{
+    display:grid;
+    gap:6px;
+  }
+  .item-check{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    font-size:11px;
+    font-weight:800;
+    color:#dbe7f6;
+  }
+  .item-check.disabled{
+    color:#70839d;
+  }
+  .item-check input{
+    width:15px;
+    height:15px;
+    margin:0;
+  }
+  .misc-editor{
+    display:grid;
+    gap:8px;
+  }
+  .inventory-hint{
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.35;
+  }
   .editor-shell{
     display:grid;
     gap:8px;
@@ -1094,7 +1156,7 @@
     max-width:430px;
     margin:0 auto;
     display:grid;
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(5,1fr);
     gap:8px;
   }
   .tab{
@@ -1270,6 +1332,7 @@
     <div class="card">
       <div class="combat-top" id="combatTop"></div>
       <div class="action-cluster">
+        <button class="icon-btn cell-blade-info" id="bladesongInfoBtn">i</button>
         <button class="action-btn yellow cell-blade" id="bladesongBtn"></button>
         <div class="pips-box cell-pips" id="bladesongPips"></div>
         <button class="action-btn blue cell-concheck" id="concentrationCheckBtn">Con</button>
@@ -1393,6 +1456,27 @@
     <div id="spellbookEditorView"></div>
   </section>
 
+  <section class="page" data-page="inventory">
+    <div class="card">
+      <div class="card-title">
+        <span>Magic Items</span>
+        <span class="tiny muted">Bonuses apply automatically when active</span>
+      </div>
+      <div class="inventory-grid" id="inventoryItems"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Miscellaneous</span>
+        <button class="small-btn" id="saveInventoryMiscBtn">Save</button>
+      </div>
+      <div class="misc-editor">
+        <div class="inventory-hint">One item per line.</div>
+        <textarea id="inventoryMiscInput" placeholder="Potion of Healing&#10;Spell scroll&#10;Key to tower"></textarea>
+      </div>
+    </div>
+  </section>
+
   <section class="page" data-page="notes">
     <div class="card">
       <div class="card-title">
@@ -1425,6 +1509,7 @@ const TABS = [
   { id:"stats", label:"Stats" },
   { id:"combat", label:"Combat" },
   { id:"spellbook", label:"Spell Book" },
+  { id:"inventory", label:"Inventory" },
   { id:"notes", label:"Notes" }
 ];
 const ABILITIES = ["STR","DEX","CON","INT","WIS","CHA"];
@@ -1532,6 +1617,40 @@ const DEFAULT_BONUS_SPELLS = [
   { name:"Misty Step", known:true, prepared:true },
   { name:"Identify", known:true, prepared:true }
 ];
+const MAGIC_ITEMS = [
+  {
+    id:"arcaneGrimoirePlus2",
+    name:"Arcane Grimoire +2",
+    requiresAttunement:true,
+    summary:"+2 spell attack rolls and Spell DC",
+    details:"Rare wondrous item requiring attunement by a wizard. While held, it can be used as a wizard spellcasting focus, adds +2 to wizard spell attack rolls and wizard spell save DCs, can serve as a spellbook, and improves Arcane Recovery by 1 spell slot level."
+  },
+  {
+    id:"weaponOfWarningRapier",
+    name:"Weapon of Warning - Rapier",
+    requiresAttunement:true,
+    summary:"Advantage on initiative",
+    details:"Uncommon magic weapon requiring attunement. While it is on your person, you have advantage on initiative rolls, you and companions within 30 feet cannot be surprised except while incapacitated by something other than nonmagical sleep, and it magically wakes nearby sleepers when combat begins."
+  },
+  {
+    id:"cloakOfProtection",
+    name:"Cloak of Protection",
+    requiresAttunement:true,
+    summary:"+1 AC and saving throws",
+    details:"Uncommon wondrous item requiring attunement. While worn, this cloak gives you +1 AC and +1 to saving throws."
+  },
+  {
+    id:"magicCrossbowPlus1",
+    name:"Magic Weapon +1 - Crossbow",
+    requiresAttunement:false,
+    summary:"+1 crossbow attack and damage rolls",
+    details:"Uncommon magic weapon. This +1 crossbow gives a +1 bonus to attack and damage rolls made with it."
+  }
+];
+const DEFAULT_INVENTORY_ITEMS = Object.fromEntries(MAGIC_ITEMS.map(item => [
+  item.id,
+  { equipped:false, attuned:false }
+]));
 const EXTRA_SPELL_DATA = [
   {
     name:"Toll the Dead",
@@ -1584,13 +1703,15 @@ const DEFAULT_STATE = {
   proficientSkills:["Arcana","History","Investigation","Perception","Insight","Religion"],
   bonusSpells:DEFAULT_BONUS_SPELLS.map(spell => ({ ...spell })),
   spellbookView:"book",
+  inventoryItems:structuredClone(DEFAULT_INVENTORY_ITEMS),
+  inventoryMisc:"",
   slotCur:{},
   hitDiceCur:{ d6:null, d8:null },
   spellUpcast:{},
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
   spellbookLimitsCollapsed:false,
   notes:DEFAULT_NOTES.map(note => ({ ...note })),
-  dataVersion:7,
+  dataVersion:8,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1607,6 +1728,7 @@ const DEFAULT_STATE = {
   history:[]
 };
 const SPELL_ACTIONS = {
+  "Acid Splash": spell => castAcidSplash(spell),
   "Fire Bolt": spell => castAttackSpell(spell, scaleCantrip("1d10"), "fire"),
   "Ray of Frost": spell => castAttackSpell(spell, scaleCantrip("1d8"), "cold", "Target speed -10 ft until your next turn."),
   "Chill Touch": spell => castAttackSpell(spell, scaleCantrip("1d10"), "necrotic", "Target cannot regain HP until the start of your next turn."),
@@ -1614,6 +1736,7 @@ const SPELL_ACTIONS = {
   "True Strike": spell => castTrueStrike(spell),
   "Toll the Dead": spell => castTollTheDead(spell),
   "Sacred Flame": spell => castSaveSpell(spell, scaleCantrip("1d8"), "radiant", "Dexterity save."),
+  "Guiding Bolt": spell => castGuidingBolt(spell),
   "Magic Missile": spell => castMagicMissile(spell),
   "Scorching Ray": spell => castScorchingRay(spell),
   "Fireball": spell => castSaveSpell(spell, `${8 + getUpcastLevel(spell.name)}d6`, "fire", "Dexterity save, half on success."),
@@ -1631,6 +1754,7 @@ const SPELL_ACTIONS = {
   "Greater Invisibility": spell => castUtilitySpell(spell, "Concentration started: Greater Invisibility."),
   "Animate Objects": spell => castAnimateObjects(spell),
   "Polymorph": spell => castUtilitySpell(spell, "Concentration started: Polymorph."),
+  "Wall of Fire": spell => castWallOfFire(spell),
   "Wall of Force": spell => castUtilitySpell(spell, "Concentration started: Wall of Force."),
   "Guidance": spell => castUtilitySpell(spell, "Concentration started: Guidance. Add 1d4 to one ability check."),
   "Light": spell => castUtilitySpell(spell, "Object glows with bright light 20 ft and dim light 20 ft."),
@@ -1698,6 +1822,14 @@ function ensureState(raw){
         expanded: note.expanded !== false
       }))
     : DEFAULT_NOTES.map(note => ({ ...note }));
+  raw.inventoryItems = Object.assign(structuredClone(DEFAULT_INVENTORY_ITEMS), raw.inventoryItems || {});
+  Object.keys(raw.inventoryItems).forEach(key => {
+    raw.inventoryItems[key] = {
+      equipped:Boolean(raw.inventoryItems[key] && raw.inventoryItems[key].equipped),
+      attuned:Boolean(raw.inventoryItems[key] && raw.inventoryItems[key].attuned)
+    };
+  });
+  raw.inventoryMisc = String(raw.inventoryMisc || "");
   raw.history = Array.isArray(raw.history) ? raw.history.slice(0, HISTORY_LIMIT) : [];
   raw.hpLog = Array.isArray(raw.hpLog) ? raw.hpLog.map((item, index) => Object.assign({ level:index + 2 }, item)) : [];
   raw.attackModes = Object.assign({}, DEFAULT_STATE.attackModes, raw.attackModes || {});
@@ -1740,6 +1872,11 @@ function ensureState(raw){
       ? raw.bonusSpells
       : DEFAULT_BONUS_SPELLS.map(spell => ({ ...spell }));
     raw.dataVersion = 7;
+  }
+  if (raw.dataVersion < 8){
+    raw.inventoryItems = Object.assign(structuredClone(DEFAULT_INVENTORY_ITEMS), raw.inventoryItems || {});
+    raw.inventoryMisc = String(raw.inventoryMisc || "");
+    raw.dataVersion = 8;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -2024,11 +2161,39 @@ function profBonus(){
   if (state.level >= 5) return 3;
   return 2;
 }
+function magicItemState(itemId, target = state){
+  return target.inventoryItems && target.inventoryItems[itemId]
+    ? target.inventoryItems[itemId]
+    : { equipped:false, attuned:false };
+}
+function isMagicItemActive(itemId, target = state){
+  const item = MAGIC_ITEMS.find(entry => entry.id === itemId);
+  if (!item) return false;
+  const current = magicItemState(itemId, target);
+  return item.requiresAttunement
+    ? Boolean(current.equipped && current.attuned)
+    : Boolean(current.equipped);
+}
+function spellcastingBonus(){
+  return isMagicItemActive("arcaneGrimoirePlus2") ? 2 : 0;
+}
+function saveBonus(){
+  return isMagicItemActive("cloakOfProtection") ? 1 : 0;
+}
+function acBonusFromItems(){
+  return isMagicItemActive("cloakOfProtection") ? 1 : 0;
+}
+function crossbowMagicBonus(){
+  return isMagicItemActive("magicCrossbowPlus1") ? 1 : 0;
+}
+function hasInitiativeAdvantage(){
+  return isMagicItemActive("weaponOfWarningRapier");
+}
 function spellAttackMod(){
-  return abilityMod(state.abilityScores.INT) + profBonus();
+  return abilityMod(state.abilityScores.INT) + profBonus() + spellcastingBonus();
 }
 function spellDc(){
-  return 8 + abilityMod(state.abilityScores.INT) + profBonus();
+  return 8 + abilityMod(state.abilityScores.INT) + profBonus() + spellcastingBonus();
 }
 function skillMod(name){
   const skill = SKILLS.find(item => item.name === name);
@@ -2036,7 +2201,7 @@ function skillMod(name){
   return abilityMod(state.abilityScores[skill.abil]) + (state.proficientSkills.includes(name) ? profBonus() : 0);
 }
 function saveMod(abil){
-  return abilityMod(state.abilityScores[abil]) + (state.saveProficiencies.includes(abil) ? profBonus() : 0);
+  return abilityMod(state.abilityScores[abil]) + (state.saveProficiencies.includes(abil) ? profBonus() : 0) + saveBonus();
 }
 function getBaseAc(){
   const dex = abilityMod(state.abilityScores.DEX);
@@ -2046,6 +2211,7 @@ function getBaseAc(){
 }
 function currentAc(){
   let total = getBaseAc();
+  total += acBonusFromItems();
   if (state.bladesongActive) total += Math.max(1, abilityMod(state.abilityScores.INT));
   if (state.shieldActive) total += 5;
   if (state.hasteActive) total += 2;
@@ -2518,6 +2684,7 @@ function render(){
   renderStatsPage();
   renderCombatPage();
   renderSpellbookPage();
+  renderInventoryPage();
   renderNotesPage();
   bindButtons();
   bindArmourLongPress();
@@ -2663,6 +2830,37 @@ function renderSpellbookPage(){
     renderSpellEditorView();
   }else{
     document.getElementById("spellbookEditorView").innerHTML = "";
+  }
+}
+function renderInventoryPage(){
+  const host = document.getElementById("inventoryItems");
+  host.innerHTML = MAGIC_ITEMS.map(item => {
+    const current = magicItemState(item.id);
+    return `
+      <div class="magic-item-card">
+        <div class="item-head">
+          <button class="icon-btn" data-item-info="${escapeAttr(item.id)}">i</button>
+          <div>
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            <div class="item-meta">${escapeHtml(item.summary)}</div>
+          </div>
+        </div>
+        <div class="item-checks">
+          <label class="item-check">
+            <span>Equipped</span>
+            <input type="checkbox" data-item-equipped="${escapeAttr(item.id)}" ${current.equipped ? "checked" : ""}>
+          </label>
+          <label class="item-check ${item.requiresAttunement ? "" : "disabled"}">
+            <span>Attuned</span>
+            <input type="checkbox" data-item-attuned="${escapeAttr(item.id)}" ${current.attuned ? "checked" : ""} ${item.requiresAttunement ? "" : "disabled"}>
+          </label>
+        </div>
+      </div>
+    `;
+  }).join("");
+  const miscInput = document.getElementById("inventoryMiscInput");
+  if (miscInput){
+    miscInput.value = state.inventoryMisc || "";
   }
 }
 function allNotesExpanded(){
@@ -3078,7 +3276,7 @@ function renderPips(id, current, max, extraClass){
 }
 function renderWeaponRows(){
   const host = document.getElementById("weaponRows");
-  const hit = abilityMod(state.abilityScores.DEX) + profBonus();
+  const hit = abilityMod(state.abilityScores.DEX) + profBonus() + crossbowMagicBonus();
   const weapons = [
     { id:"handCrossbow", name:"Hand Crossbow", detail:"Ranged weapon · 120 ft · 1d6 piercing" },
     { id:"bonusCrossbow", name:"Bonus Crossbow", detail:"Bonus action · 120 ft · 1d6 piercing" }
@@ -3182,6 +3380,7 @@ function bindButtons(){
   document.getElementById("levelUpBtn").onclick = levelUp;
   document.getElementById("levelDownBtn").onclick = levelDown;
   document.getElementById("initRollBtn").onclick = rollInitiative;
+  document.getElementById("bladesongInfoBtn").onclick = () => openResult("Bladesong", "Bonus action.\nAdds INT mod to AC.\nSpeed +10 ft.\nAdvantage on Acrobatics checks.\nAdd INT mod to concentration saves.");
   document.getElementById("bladesongBtn").onclick = toggleBladesong;
   document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
   document.getElementById("concentrationActiveBtn").onclick = () => {
@@ -3233,6 +3432,15 @@ function bindButtons(){
       saveState();
     };
   }
+  const saveInventoryMiscBtn = document.getElementById("saveInventoryMiscBtn");
+  if (saveInventoryMiscBtn){
+    saveInventoryMiscBtn.onclick = () => {
+      const miscInput = document.getElementById("inventoryMiscInput");
+      state.inventoryMisc = String(miscInput ? miscInput.value : "").trim();
+      saveState();
+      openResult("Inventory", "Miscellaneous inventory saved.");
+    };
+  }
   document.querySelectorAll("[data-slot]").forEach(pip => pip.onclick = () => toggleSlot(Number(pip.dataset.slot), Number(pip.dataset.index)));
   document.querySelectorAll("[data-skill-roll]").forEach(btn => btn.onclick = () => rollSkill(btn.dataset.skillRoll));
   document.querySelectorAll("[data-weapon]").forEach(btn => btn.onclick = () => rollWeapon(btn.dataset.weapon));
@@ -3240,6 +3448,20 @@ function bindButtons(){
   document.querySelectorAll("[data-crit]").forEach(btn => btn.onclick = () => toggleCrit(btn.dataset.crit));
   document.querySelectorAll("[data-adv]").forEach(btn => btn.onclick = () => toggleAdv(btn.dataset.adv));
   document.querySelectorAll("[data-damaged]").forEach(btn => btn.onclick = () => toggleDamaged(btn.dataset.damaged));
+  document.querySelectorAll("[data-item-info]").forEach(btn => btn.onclick = () => {
+    const item = MAGIC_ITEMS.find(entry => entry.id === btn.dataset.itemInfo);
+    if (item) openResult(item.name, item.details);
+  });
+  document.querySelectorAll("[data-item-equipped]").forEach(box => box.onchange = () => {
+    state.inventoryItems[box.dataset.itemEquipped] ||= { equipped:false, attuned:false };
+    state.inventoryItems[box.dataset.itemEquipped].equipped = box.checked;
+    saveState();
+  });
+  document.querySelectorAll("[data-item-attuned]").forEach(box => box.onchange = () => {
+    state.inventoryItems[box.dataset.itemAttuned] ||= { equipped:false, attuned:false };
+    state.inventoryItems[box.dataset.itemAttuned].attuned = box.checked;
+    saveState();
+  });
   document.querySelectorAll("[data-info]").forEach(btn => btn.onclick = () => openSpellCard(btn.dataset.info));
   document.querySelectorAll("[data-cast]").forEach(btn => btn.onclick = () => castSpellByName(btn.dataset.cast));
   document.querySelectorAll("[data-upcast]").forEach(btn => btn.onclick = () => openUpcastPicker(btn.dataset.upcast));
@@ -3376,8 +3598,8 @@ function applyAmountAction(type){
 }
 function rollWeapon(id){
   const mode = state.attackModes[id] || { crit:false, adv:"-" };
-  const hitMod = abilityMod(state.abilityScores.DEX) + profBonus();
-  const damageMod = abilityMod(state.abilityScores.DEX);
+  const hitMod = abilityMod(state.abilityScores.DEX) + profBonus() + crossbowMagicBonus();
+  const damageMod = abilityMod(state.abilityScores.DEX) + crossbowMagicBonus();
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + hitMod;
   const damage = rollSpec("1d6");
@@ -3398,6 +3620,12 @@ function rollWeapon(id){
   const title = id === "bonusCrossbow" ? "Bonus Crossbow" : "Hand Crossbow";
   openResult(title, text);
   pushHistory(`${title}: ${text.replace(/\n/g, " | ")}`);
+}
+function castAcidSplash(spell){
+  const diceSpec = scaleCantrip("1d6");
+  const damage = rollSpec(diceSpec);
+  const text = `${spell.casting_time || "Action"} / ${spell.range || "-"}\n${spell.description || "Spell cast."}\n\nRoll: Dex Save DC ${spellDc()} | ${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total} Acid damage`;
+  finalizeSpellCast(spell, text);
 }
 function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
   const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
@@ -3423,8 +3651,8 @@ function castAttackSpell(spell, diceSpec, damageType, extraText = ""){
 }
 function castTrueStrike(spell){
   const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
-  const hitMod = abilityMod(state.abilityScores.INT) + profBonus();
-  const damageMod = abilityMod(state.abilityScores.INT);
+  const hitMod = abilityMod(state.abilityScores.INT) + profBonus() + crossbowMagicBonus();
+  const damageMod = abilityMod(state.abilityScores.INT) + crossbowMagicBonus();
   const attack = rollD20(mode.adv);
   const toHit = attack.chosen + hitMod;
   const weaponDamage = rollSpec("1d6");
@@ -3460,9 +3688,15 @@ function castSaveSpell(spell, diceSpec, damageType, note = ""){
 function castTollTheDead(spell){
   const mode = state.attackModes[spell.name] || { damaged:true, adv:"-" };
   const dice = mode.damaged ? scaleCantrip("1d12") : scaleCantrip("1d8");
-  const damage = rollSpec(dice);
-  const text = `${dice} - ${damage.rolls.join(" + ")} = ${damage.total}\nWis Save (DC ${spellDc()})\nDamage: ${damage.total} Necrotic`;
+  const primary = rollSpec(dice);
+  const secondary = rollSpec(dice);
+  const text = `${dice} - ${primary.rolls.join(" + ")} = ${primary.total}\nSecond target within 5 ft: ${dice} - ${secondary.rolls.join(" + ")} = ${secondary.total}\nWis Save (DC ${spellDc()})\nDamage: ${primary.total} / ${secondary.total} Necrotic`;
   finalizeSpellCast(spell, text);
+}
+function castGuidingBolt(spell){
+  const castLevel = spellCastLevel(spell);
+  const diceSpec = `${4 + Math.max(0, castLevel - 1)}d6`;
+  castAttackSpell(spell, diceSpec, "radiant", "Next attack against the target before your next turn has advantage.");
 }
 function castScorchingRay(spell){
   const castLevel = spellCastLevel(spell);
@@ -3470,6 +3704,8 @@ function castScorchingRay(spell){
   const rays = 3 + Math.max(0, castLevel - 2);
   const mode = state.attackModes[spell.name] || { crit:false, adv:"-" };
   const sections = [];
+  let totalFire = 0;
+  let totalCme = 0;
   for (let i = 0; i < rays; i++){
     const attack = rollD20(mode.adv);
     const toHit = attack.chosen + spellAttackMod();
@@ -3477,11 +3713,13 @@ function castScorchingRay(spell){
     const critApplied = mode.crit || attack.isCrit;
     const critBonus = critApplied ? damage.max : 0;
     const fireTotal = damage.total + critBonus;
+    totalFire += fireTotal;
     let text = `Ray ${i + 1}\n1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} - ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n`;
     if (critText(attack)) text += `${critText(attack)}\n`;
     text += `${formatRollBreakdown("2d6", damage.rolls, 0, critBonus ? `Crit(${damage.max})` : "")} = ${fireTotal}`;
     if (state.minorElementalsActive){
       const cme = rollSpec("2d8");
+      totalCme += cme.total;
       text += `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
       text += `\nDamage: ${fireTotal} Fire + ${cme.total} Acid/Cold/Fire/Lightning`;
     }else{
@@ -3489,7 +3727,10 @@ function castScorchingRay(spell){
     }
     sections.push(text);
   }
-  const text = sections.join("\n\n");
+  const totalLine = totalCme
+    ? `Total Damage: ${totalFire} Fire + ${totalCme} Acid/Cold/Fire/Lightning = ${totalFire + totalCme}`
+    : `Total Damage: ${totalFire} Fire`;
+  const text = `${sections.join("\n\n")}\n\n${totalLine}`;
   openResult(`${spell.name} L${castLevel}`, text);
   pushHistory(`${spell.name} L${castLevel}: ${text.replace(/\n/g, " | ")}`);
   saveState();
@@ -3540,6 +3781,13 @@ function castShield(spell){
   openResult(spell.name, text);
   pushHistory(`${spell.name}: ${text}`);
   saveState();
+}
+function castWallOfFire(spell){
+  const castLevel = spellCastLevel(spell);
+  const diceSpec = `${5 + Math.max(0, castLevel - 4)}d8`;
+  const damage = rollSpec(diceSpec);
+  const text = `${spell.casting_time || "Action"} / ${spell.range || "-"}\n${spell.description || "Spell cast."}\n\nRoll: Dex Save DC ${spellDc()} | ${diceSpec} - ${damage.rolls.join(" + ")} = ${damage.total} Fire damage`;
+  finalizeSpellCast(spell, text);
 }
 function castShieldOfFaith(spell){
   toggleConcentrationSpell(spell.name, "shieldOfFaithActive", 1);
@@ -3606,6 +3854,7 @@ function runAnimateObjectsAction(event){
   const count = clamp(Number(state.animateObjectsCount) || 10, 1, 10);
   let totalDamage = 0;
   const sections = [];
+  const results = [];
   for (let i = 0; i < count; i++){
     const attack = rollD20("-");
     const toHit = attack.chosen + config.hit;
@@ -3613,12 +3862,19 @@ function runAnimateObjectsAction(event){
     const critBonus = attack.isCrit ? damage.max : 0;
     const damageTotal = damage.total + config.mod + critBonus;
     totalDamage += damageTotal;
+    results.push({ toHit, damage:damageTotal });
     let line = `Object ${i + 1}\n1d20+${config.hit} - ${attack.text}+${config.hit} = ${toHit}`;
     if (critText(attack)) line += `\n${critText(attack)}`;
     line += `\n${formatRollBreakdown(config.dice, damage.rolls, config.mod, critBonus ? `Crit(${damage.max})` : "")} = ${damageTotal}`;
     sections.push(line);
   }
-  const text = `${state.animateObjectsSize} x${count}\n\n${sections.join("\n\n")}\n\nTotal Damage: ${totalDamage}`;
+  const acSummary = Array.from({ length: 11 }, (_, index) => {
+    const ac = 10 + index;
+    const hits = results.filter(result => result.toHit >= ac);
+    const damage = hits.reduce((sum, result) => sum + result.damage, 0);
+    return `${ac}(${hits.length}/${damage})`;
+  }).join(", ");
+  const text = `${state.animateObjectsSize} x${count}\n\n${sections.join("\n\n")}\n\nTotal Damage: ${totalDamage}\nAC(hits/dmg): ${acSummary}`;
   openResult("Animate Objects", text);
   pushHistory(`Animate Objects ${state.animateObjectsSize} x${count}: ${text.replace(/\n/g, " | ")}`);
 }
@@ -3788,7 +4044,7 @@ function toggleClassPrepared(name, source, checked){
   saveState();
 }
 function rollInitiative(){
-  const roll = rollD20("-");
+  const roll = rollD20(hasInitiativeAdvantage() ? "adv" : "-");
   const total = roll.chosen + currentInit();
   const text = `${roll.text} + Init(${currentInit()}) = ${total}`;
   openResult("Initiative", text);
