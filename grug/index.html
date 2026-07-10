@@ -22,6 +22,7 @@
     --yellow:#f0d246;
     --shadow:0 10px 28px rgba(0,0,0,.28);
     --radius:14px;
+    --shell-width:430px;
   }
   *{box-sizing:border-box}
   body{
@@ -29,6 +30,7 @@
     color:var(--text);
     font-family:Arial,Helvetica,sans-serif;
     -webkit-text-size-adjust:100%;
+    overflow-x:hidden;
     background:
       radial-gradient(circle at top, rgba(41,103,155,.22), transparent 28%),
       linear-gradient(180deg, #09111a 0%, #06090e 100%);
@@ -36,7 +38,8 @@
   button,input,select,textarea{font:inherit}
   button{cursor:pointer}
   .app{
-    max-width:430px;
+    width:min(100%, var(--shell-width));
+    max-width:var(--shell-width);
     margin:0 auto;
     min-height:100vh;
     padding:10px 10px 86px;
@@ -804,22 +807,13 @@
     z-index:25;
   }
   .tabs{
-    max-width:430px;
+    width:min(100%, var(--shell-width));
+    max-width:var(--shell-width);
     margin:0 auto;
     display:grid;
     grid-template-columns:repeat(6,1fr);
     gap:6px;
     padding:8px 10px 10px;
-  }
-  @media (hover:none) and (pointer:coarse){
-    .app{
-      width:100%;
-      max-width:none;
-    }
-    .tabs{
-      width:100%;
-      max-width:none;
-    }
   }
   .tab{
     border:1px solid var(--line);
@@ -1171,6 +1165,18 @@
 
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
+<script>
+  (function(){
+    function applyShellWidth(){
+      const raw = Math.round((window.screen && window.screen.width) || window.innerWidth || 430);
+      const width = Math.min(430, Math.max(280, raw));
+      document.documentElement.style.setProperty("--shell-width", width + "px");
+    }
+    applyShellWidth();
+    window.addEventListener("resize", applyShellWidth);
+    window.addEventListener("orientationchange", applyShellWidth);
+  })();
+</script>
 <script src="./spell-data.js?v=20260710grug7"></script>
 <script src="./app.js?v=20260710grug7"></script>
 </body>
