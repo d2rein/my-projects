@@ -2849,7 +2849,7 @@ function useWarPriest(){
   const profile = activeProfile();
   const uses = Math.max(1, abilityMod(finalAbilityScores(profile).WIS));
   if (profile.resources.warPriestUsed >= uses){
-    openResult("War Priest", "No uses remaining until a long rest.");
+    openResult("War Priest", "No uses remaining until a short or long rest.");
     return;
   }
   profile.resources.warPriestUsed += 1;
@@ -2916,6 +2916,7 @@ function shortRest(){
   profile.resources.channelDivinityUsed = 0;
   profile.resources.hexbladeCurseUsed = 0;
   profile.resources.hexbladeCurseActive = false;
+  profile.resources.warPriestUsed = 0;
   profile.resources.bladesongActive = false;
   profile.resources.steadyAimActive = false;
   profile.resources.sneakAttackReady = false;
