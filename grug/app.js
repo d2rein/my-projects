@@ -1417,6 +1417,7 @@ function buildAbilityButtons(profile = activeProfile()){
       label:"War Priest",
       note:`${Math.max(0, wisUses - profile.resources.warPriestUsed)}/${wisUses}`,
       infoText:"As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. You can use this Bonus Action a number of times equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Short or Long Rest.",
+      showPips:true,
       used:profile.resources.warPriestUsed,
       max:wisUses,
       action:useWarPriest
@@ -1439,8 +1440,7 @@ function buildAbilityButtons(profile = activeProfile()){
       label:profile.resources.steadyAimActive ? "Steady Aim On" : "Steady Aim",
       note:"Toggle ADV",
       infoText:"Steady Aim grants advantage on your next attack in exchange for giving up movement this turn.",
-      used:profile.resources.steadyAimActive ? 1 : 0,
-      max:1,
+      showPips:false,
       action:toggleSteadyAim
     });
     buttons.push({
@@ -1448,8 +1448,7 @@ function buildAbilityButtons(profile = activeProfile()){
       label:profile.resources.sneakAttackReady ? "Sneak Attack On" : "Sneak Attack",
       note:sneakAttackDice(profile),
       infoText:"Prime Sneak Attack so the next eligible weapon hit adds your current sneak attack dice.",
-      used:profile.resources.sneakAttackReady ? 1 : 0,
-      max:1,
+      showPips:false,
       action:toggleSneakAttack
     });
   }
@@ -1487,7 +1486,8 @@ function channelDivinityUsesMax(profile = activeProfile()){
   return paladin >= 3 ? 1 : 0;
 }
 
-function renderAbilityPips(used, max){
+function renderAbilityPips(used, max, showPips = true){
+  if (!showPips) return `<div class="ability-empty"></div>`;
   if (!max) return `<div class="tag ability-note">-</div>`;
   return `<div class="ability-pips">${Array.from({ length:max }, (_, index) => `<span class="pip green ${index >= used ? "on" : ""}"></span>`).join("")}</div>`;
 }
@@ -1523,7 +1523,7 @@ function renderCombatPage(){
           <b>${escapeHtml(item.label)}</b>
           <span>${escapeHtml(item.note)}</span>
         </button>
-        <div class="ability-pips-shell">${renderAbilityPips(item.used || 0, item.max || 0)}</div>
+        <div class="ability-pips-shell">${renderAbilityPips(item.used || 0, item.max || 0, item.showPips !== false)}</div>
       </div>
     `).join("")
     : `<div class="empty">No active buttons detected for this build yet.</div>`;
