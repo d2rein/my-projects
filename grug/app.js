@@ -1275,8 +1275,8 @@ function renderStatsPage(){
   `;
   document.getElementById("eqText").textContent = `Eq ${(((profile.coins.cp || 0) / 100) + ((profile.coins.sp || 0) / 10) + (profile.coins.gp || 0)).toFixed(2)} gp`;
   document.getElementById("coreRollTypeBtn").textContent = profile.coreRollType === "save" ? "SAVE" : "CHECK";
-  document.getElementById("coreAdvModeBtn").textContent = profile.coreAdvMode === "-" ? "-" : profile.coreAdvMode.toUpperCase();
-  document.getElementById("skillAdvModeBtn").textContent = profile.skillAdvMode === "-" ? "-" : profile.skillAdvMode.toUpperCase();
+  document.getElementById("coreAdvModeBtn").textContent = profile.coreAdvMode === "-" ? "-" : profile.coreAdvMode === "adv" ? "ADV" : "DIS";
+  document.getElementById("skillAdvModeBtn").textContent = profile.skillAdvMode === "-" ? "-" : profile.skillAdvMode === "adv" ? "ADV" : "DIS";
   document.getElementById("statsGrid").innerHTML = ABILITIES.map(abil => `
     <div class="stat roll-row" data-roll-core="${abil}">
       <div class="stat-head">${abil}</div>
