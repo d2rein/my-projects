@@ -126,6 +126,10 @@
   .grug-page .top-actions{
     grid-template-columns:auto;
   }
+  .grug-page .stats-top-actions{
+    grid-template-columns:auto auto;
+    align-items:start;
+  }
   .grug-page #createNewBtn,
   .grug-page #duplicateProfileBtn,
   .grug-page #syncStatusBtn,
@@ -202,6 +206,7 @@
   .stat-pair{display:grid;gap:1px}
   .stat-pair:last-child{justify-items:end}
   .stat-pair b{font-size:14px;line-height:1;color:#fff}
+  .stat-foot .save{color:#8fe0a8}
   .stat-controls{
     display:grid;
     grid-template-columns:auto 1fr auto;
@@ -353,9 +358,23 @@
   }
   .control-row{
     display:grid;
-    grid-template-columns:1fr auto auto auto;
+    grid-template-columns:minmax(0,1fr) 72px auto;
     gap:6px;
     margin-bottom:6px;
+    align-items:stretch;
+  }
+  .control-row .mode-btn,
+  .control-row .small-btn{
+    min-height:36px;
+    font-weight:900;
+  }
+  .control-row .mode-btn{
+    background:#1b2c40;
+    border-color:#4b6b92;
+  }
+  .control-row .mode-btn.inactive{
+    background:#101922;
+    color:var(--muted);
   }
   .roll-row{
     cursor:pointer;
@@ -372,26 +391,36 @@
   .coin-stack{
     display:grid;
     gap:4px;
-    min-width:104px;
+    min-width:96px;
   }
   .coin-box,.eq-box{
     background:#0a1017;
     color:#fff;
     border:1px solid var(--line);
     border-radius:12px;
-    padding:8px;
+    padding:6px 7px;
   }
   .coin-box{
     display:grid;
     grid-template-columns:auto auto;
-    gap:3px 8px;
+    gap:2px 6px;
     align-content:start;
+    font-size:10px;
+    line-height:1.1;
   }
-  .coin-box strong{text-align:right}
-  .eq-box{
+  .coin-box strong{
+    text-align:right;
     font-size:11px;
+  }
+  .eq-box{
+    font-size:10px;
     font-weight:800;
     text-align:center;
+  }
+  #statsEditTopBtn{
+    min-width:68px;
+    align-self:start;
+    margin-top:26px;
   }
   .hitdice-row{
     display:grid;
@@ -921,12 +950,12 @@
           </div>
           <img class="portrait" src="./alaric-headshot.png" alt="DND character portrait" id="statsCharPortrait">
         </div>
-        <div class="top-actions">
-          <button class="small-btn" id="statsEditTopBtn">Edit</button>
+        <div class="top-actions stats-top-actions">
           <div class="coin-stack">
             <button class="coin-box" id="coinsBtn" type="button"></button>
             <div class="eq-box" id="eqText"></div>
           </div>
+          <button class="small-btn" id="statsEditTopBtn">Edit</button>
         </div>
       </div>
       <div class="chip-grid" id="statsTopChips"></div>
@@ -943,7 +972,6 @@
         <button class="mode-btn" id="coreRollTypeBtn"></button>
         <button class="mode-btn" id="coreAdvModeBtn"></button>
         <button class="small-btn" id="editCoreBtn">Edit</button>
-        <div></div>
       </div>
       <div class="stats-grid" id="statsGrid"></div>
     </div>
@@ -952,8 +980,6 @@
       <div class="control-row">
         <button class="mode-btn" id="skillAdvModeBtn"></button>
         <button class="small-btn" id="editSkillsBtn">Edit</button>
-        <div></div>
-        <div></div>
       </div>
       <div class="skills-grid" id="skillsGrid"></div>
     </div>

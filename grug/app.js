@@ -1274,16 +1274,16 @@ function renderStatsPage(){
     <div>GP</div><strong>${profile.coins.gp}</strong>
   `;
   document.getElementById("eqText").textContent = `Eq ${(((profile.coins.cp || 0) / 100) + ((profile.coins.sp || 0) / 10) + (profile.coins.gp || 0)).toFixed(2)} gp`;
-  document.getElementById("coreRollTypeBtn").textContent = profile.coreRollType === "save" ? "Save" : "Check";
-  document.getElementById("coreAdvModeBtn").textContent = profile.coreAdvMode === "-" ? "Adv/Dis" : profile.coreAdvMode.toUpperCase();
-  document.getElementById("skillAdvModeBtn").textContent = profile.skillAdvMode === "-" ? "Adv/Dis" : profile.skillAdvMode.toUpperCase();
+  document.getElementById("coreRollTypeBtn").textContent = profile.coreRollType === "save" ? "SAVE" : "CHECK";
+  document.getElementById("coreAdvModeBtn").textContent = profile.coreAdvMode === "-" ? "-" : profile.coreAdvMode.toUpperCase();
+  document.getElementById("skillAdvModeBtn").textContent = profile.skillAdvMode === "-" ? "-" : profile.skillAdvMode.toUpperCase();
   document.getElementById("statsGrid").innerHTML = ABILITIES.map(abil => `
     <div class="stat roll-row" data-roll-core="${abil}">
       <div class="stat-head">${abil}</div>
       <div class="stat-score">${scores[abil]}</div>
       <div class="stat-foot">
         <span class="stat-pair"><span class="muted">CHK</span><b>${fmtMod(abilityMod(scores[abil]))}</b></span>
-        <span class="stat-pair"><span class="muted">SAVE</span><b>${fmtMod(saveMod(abil, profile))}</b></span>
+        <span class="stat-pair save"><span class="muted">SAVE</span><b>${fmtMod(saveMod(abil, profile))}</b></span>
       </div>
     </div>
   `).join("");
