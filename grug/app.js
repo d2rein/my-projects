@@ -389,23 +389,7 @@ function ensureProfileShape(profile){
   blank.history = Array.isArray(blank.history) ? blank.history.slice(0, HISTORY_LIMIT) : [];
   blank.statRolls = Array.isArray(blank.statRolls) ? blank.statRolls : [];
   blank.hpRolls = Array.isArray(blank.hpRolls) ? blank.hpRolls : [];
-  applyJeffersonDefaults(blank);
   return blank;
-}
-
-function applyJeffersonDefaults(profile){
-  if (profile.id !== "jefferson") return;
-  const clericSubclassChosen = profile.progression.some(row => String(row.subclassSlug || "").startsWith("cleric:"));
-  if (!clericSubclassChosen && profile.progression[0]?.classSlug === "cleric"){
-    profile.progression[0].subclassSlug = "cleric:war";
-  }
-  const rogueSubclassChosen = profile.progression.some(row => String(row.subclassSlug || "").startsWith("rogue:"));
-  if (!rogueSubclassChosen){
-    const rogueSubclassIndex = profile.progression.findIndex((row, index) => row.classSlug === "rogue" && progressionUpTo(profile, index + 1).filter(item => item.classSlug === "rogue").length === 3);
-    if (rogueSubclassIndex >= 0){
-      profile.progression[rogueSubclassIndex].subclassSlug = "rogue:scout";
-    }
-  }
 }
 
 function activeProfile(){
