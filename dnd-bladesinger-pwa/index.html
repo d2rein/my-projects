@@ -29,6 +29,7 @@
     margin:0;
     color:var(--text);
     font-family:Arial,Helvetica,sans-serif;
+    -webkit-text-size-adjust:100%;
     background:
       radial-gradient(circle at top, rgba(41,103,155,.22), transparent 28%),
       linear-gradient(180deg, #09111a 0%, #06090e 100%);
@@ -1158,6 +1159,16 @@
     display:grid;
     grid-template-columns:repeat(5,1fr);
     gap:8px;
+  }
+  @media (hover:none) and (pointer:coarse){
+    .app{
+      width:100%;
+      max-width:none;
+    }
+    .tabs{
+      width:100%;
+      max-width:none;
+    }
   }
   .tab{
     border:1px solid var(--line);
