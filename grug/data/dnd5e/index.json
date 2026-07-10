@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-05-10T03:48:46.709917+00:00",
+  "source": "https://dnd5e.wikidot.com/",
+  "counts": {
+    "lineages": 46,
+    "backgrounds": 101,
+    "feats": 199,
+    "classes": 13,
+    "subclasses": 225
+  },
+  "files": {
+    "lineages": "lineages.json",
+    "backgrounds": "backgrounds.json",
+    "feats": "feats.json",
+    "classes": "classes.json",
+    "subclasses": "subclasses.json"
+  },
+  "official_classes": [
+    "artificer",
+    "barbarian",
+    "bard",
+    "cleric",
+    "druid",
+    "fighter",
+    "monk",
+    "paladin",
+    "ranger",
+    "rogue",
+    "sorcerer",
+    "warlock",
+    "wizard"
+  ]
+}
