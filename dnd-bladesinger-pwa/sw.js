@@ -1,4 +1,4 @@
-const CACHE_NAME = "bladesinger-pwa-v9";
+const CACHE_NAME = "bladesinger-pwa-v10";
 const ASSETS = [
   "./",
   "./index.html",
