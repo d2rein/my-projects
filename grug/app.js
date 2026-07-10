@@ -279,33 +279,104 @@ function createBlankProfile(id = `profile-${Date.now()}`){
 }
 
 function buildSampleProfiles(){
-  const jefferson = createBlankProfile("jefferson");
-  jefferson.name = "Jefferson Grug";
-  jefferson.speciesSlug = "lineage:half-orc";
-  jefferson.backgroundSlug = "background:mercenary-veteran";
-  jefferson.targetLevel = 10;
-  jefferson.pointBuyBase = { STR:10, DEX:15, CON:15, INT:8, WIS:14, CHA:8 };
-  jefferson.manualBase = clone(jefferson.pointBuyBase);
-  jefferson.speciesAsiChoices = [
-    { ability:"STR", amount:2 },
-    { ability:"CON", amount:1 }
-  ];
-  jefferson.progression.forEach((row, index) => {
-    row.classSlug = index < 2 ? "cleric" : "rogue";
+  const jefferson = ensureProfileShape({
+    id:"jefferson",
+    name:"Jefferson Grug",
+    portrait:"./alaric-headshot.png",
+    coins:{ cp:5, sp:17, gp:24 },
+    speciesSlug:"lineage:half-orc",
+    backgroundSlug:"background:mercenary-veteran",
+    targetLevel:10,
+    pointBuyBase:{ STR:10, DEX:16, CON:15, INT:10, WIS:18, CHA:12 },
+    manualBase:{ STR:10, DEX:15, CON:15, INT:8, WIS:14, CHA:8 },
+    statMode:"pointbuy",
+    statRolls:[],
+    rollAssignments:{},
+    speciesAsiChoices:[
+      { ability:"STR", amount:2 },
+      { ability:"CON", amount:1 }
+    ],
+    backgroundSelections:{ skills:[], tools:[], languages:[] },
+    selectedSkills:["Athletics","Sleight of Hand","Stealth","Nature","Religion","Insight","Perception","Survival","Persuasion"],
+    selectedSaves:[],
+    selectedFeats:[],
+    progression:[
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:["Nature","Survival"] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"rogue:scout", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"CON", amount:2 }], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"rogue:scout", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"DEX", amount:2 }], featSlug:"", expertiseChoices:["Perception","Sleight of Hand"] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"CHA", amount:2 }], featSlug:"", expertiseChoices:[] },
+      { classSlug:"cleric", subclassSlug:"cleric:war", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"cleric", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] }
+    ],
+    hpRolls:[
+      { level:2, classSlug:"cleric", hitDie:8, roll:4, chosen:4 },
+      { level:3, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:4, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:5, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:6, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:7, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:8, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:9, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
+      { level:10, classSlug:"rogue", hitDie:8, roll:4, chosen:4 }
+    ],
+    currentHp:84,
+    customBaseAc:null,
+    initBonus:0,
+    speedOverride:null,
+    profOverride:null,
+    thp:0,
+    slotCur:{ 1:3, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 },
+    pactSlotsCur:0,
+    hitDiceCur:{ d8:10 },
+    activePage:"stats",
+    attackModes:{
+      "longbow-plus-1":{ crit:false, adv:"-" },
+      "Word of Radiance":{ crit:false, adv:"adv" }
+    },
+    history:[],
+    equipment:{ armorId:"studded-leather", shieldId:"none", weaponIds:["rapier-plus-1","longbow-plus-1","shortbow"] },
+    knownSpells:["Guidance","Shield of Faith","Find Traps","Word of Radiance"],
+    preparedSpells:["Guidance","Shield of Faith","Find Traps","Word of Radiance"],
+    extraSpells:[],
+    spellbookView:"book",
+    spellbookLimitsCollapsed:false,
+    spellFilters:{ search:"word o", class:"all", minLevel:0, maxLevel:2, sort:"level" },
+    quickSpells:["Bless","Shield of Faith","Guidance","Toll the Dead"],
+    coreRollType:"save",
+    coreAdvMode:"-",
+    skillAdvMode:"-",
+    concentrationMode:"-",
+    concentrationActive:"",
+    notes:"",
+    syncCode:"",
+    autoSync:false,
+    resources:{
+      bladesongActive:false,
+      bladesongUsed:0,
+      breathWeaponUsed:0,
+      channelDivinityUsed:0,
+      hexbladeCurseUsed:0,
+      hexbladeCurseActive:false,
+      warPriestUsed:0,
+      rageUsed:0,
+      sneakAttackReady:false,
+      steadyAimActive:false
+    }
   });
-  jefferson.progression[0].subclassSlug = "cleric:war";
-  jefferson.progression[4].subclassSlug = "rogue:scout";
-  jefferson.progression[5].asiMode = "asi";
-  jefferson.progression[5].asiChoices = [{ ability:"DEX", amount:2 }];
-  jefferson.progression[9].asiMode = "feat";
-  jefferson.progression[9].featSlug = "feat:sharpshooter";
-  jefferson.equipment = { armorId:"breastplate", shieldId:"none", weaponIds:["rapier-plus-1","longbow-plus-1","shortbow"] };
-  jefferson.knownSpells = SAMPLE_SPELLS.jefferson.slice();
-  jefferson.preparedSpells = SAMPLE_SPELLS.jefferson.slice();
-  jefferson.quickSpells = ["Bless","Shield of Faith","Guidance","Toll the Dead"];
-  jefferson.coins = { cp:5, sp:17, gp:24 };
-  jefferson.syncCode = "";
-  jefferson.autoSync = false;
 
   return { jefferson };
 }
@@ -313,7 +384,7 @@ function buildSampleProfiles(){
 function createDefaultState(){
   return {
     version:1,
-    activePage:"stats",
+    activePage:"builder",
     currentProfileId:"jefferson",
     profiles:buildSampleProfiles(),
     lastSyncByProfile:{}
