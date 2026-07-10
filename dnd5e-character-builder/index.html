@@ -451,6 +451,17 @@
   .count-box b{
     float:right;
   }
+  .limits-toggle{
+    width:100%;
+    justify-content:space-between;
+    margin-top:8px;
+  }
+  .limits-panel{
+    margin-top:8px;
+  }
+  .limits-panel.collapsed{
+    display:none;
+  }
   .check-item{
     display:grid;
     grid-template-columns:28px 1fr auto auto auto;
@@ -789,6 +800,20 @@
 
   <section class="page" data-page="stats">
     <div class="card">
+      <div class="top-card">
+        <div class="top-identity">
+          <img class="portrait" src="./alaric-headshot.png" alt="DND character portrait" id="statsCharPortrait">
+          <div style="min-width:0;flex:1 1 auto;">
+            <div class="name" id="statsCharName">5e Builder</div>
+            <div class="subtitle" id="statsCharSubtitle"></div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="small-btn" id="statsEditTopBtn">Edit</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
       <div class="top-split">
         <div>
           <div class="chip-grid" id="statsTopChips"></div>
@@ -932,10 +957,16 @@
         <div class="slot-head"><span>Spell Slots</span><span id="spellbookSlotHeadText"></span></div>
         <div class="slot-grid" id="spellbookSlotGrid"></div>
       </div>
-      <div class="counts" id="spellCounts"></div>
-      <div class="detail-item editable" style="margin-top:8px;">
-        <div><strong>Extra Spells:</strong> <span id="bonusSpellSummary"></span></div>
-        <button class="small-btn" id="editBonusSpellsBtn">Edit</button>
+      <button class="small-btn limits-toggle" id="toggleSpellbookLimitsBtn">
+        <span>Spellbook Limits</span>
+        <span id="spellbookLimitsToggleText">+</span>
+      </button>
+      <div class="limits-panel" id="spellbookLimitsPanel">
+        <div class="counts" id="spellCounts"></div>
+        <div class="detail-item editable" style="margin-top:8px;">
+          <div><strong>Extra Spells:</strong> <span id="bonusSpellSummary"></span></div>
+          <button class="small-btn" id="editBonusSpellsBtn">Add Extra Spells</button>
+        </div>
       </div>
       <div class="stack" id="spellbookSummary"></div>
     </div>

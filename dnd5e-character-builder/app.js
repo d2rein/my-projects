@@ -131,6 +131,7 @@ let dbMaps = { lineages:new Map(), backgrounds:new Map(), feats:new Map(), class
 let state = null;
 let saveTimer = null;
 let pullInFlight = false;
+let spellEditorDraft = null;
 
 function clone(value){
   return JSON.parse(JSON.stringify(value));
@@ -226,6 +227,7 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     knownSpells:[],
     preparedSpells:[],
     extraSpells:[],
+    spellbookLimitsCollapsed:false,
     quickSpells:["","","",""],
     coreRollType:"check",
     coreAdvMode:"-",
@@ -396,6 +398,7 @@ function ensureProfileShape(profile){
     known:item?.known !== false,
     prepared:Boolean(item?.prepared)
   })).filter(item => item.name) : [];
+  blank.spellbookLimitsCollapsed = Boolean(profile.spellbookLimitsCollapsed);
   blank.quickSpells = Array.isArray(blank.quickSpells) ? blank.quickSpells.slice(0, 4) : ["","","",""];
   while (blank.quickSpells.length < 4) blank.quickSpells.push("");
   blank.selectedFeats = Array.isArray(blank.selectedFeats) ? blank.selectedFeats : [];
@@ -1207,6 +1210,11 @@ function renderProgressionList(){
 function renderStatsPage(){
   const profile = activeProfile();
   const scores = finalAbilityScores(profile);
+  const classes = classCounts(profile);
+  const classSummary = Object.entries(classes).map(([slug, count]) => `${CLASS_RULES[slug]?.name || slug} ${count}`).join(" / ");
+  document.getElementById("statsCharName").textContent = profile.name || "New Character";
+  document.getElementById("statsCharSubtitle").textContent = `L${currentLevel(profile)} / ${entrySummary("lineages", profile.speciesSlug) || "No species"} / ${classSummary || "No classes yet"}`;
+  document.getElementById("statsCharPortrait").src = profile.portrait || "./alaric-headshot.png";
   document.getElementById("statsTopChips").innerHTML = `
     <div class="chip green"><span>HP</span><b>${profile.currentHp}/${computeHpMax(profile)}</b></div>
     <div class="chip blue"><span>AC</span><b>${profileAc(profile)}</b></div>
@@ -1481,6 +1489,8 @@ function renderSpellsPage(){
   const prepared = unique([...(profile.preparedSpells || []), ...extraSpellNames(profile, "prepared")]).map(getSpellByName).filter(Boolean).sort((a, b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
   renderSlots("spellbookSlotGrid");
   document.getElementById("spellbookSlotHeadText").textContent = document.getElementById("slotHeadText").textContent;
+  document.getElementById("spellbookLimitsPanel").classList.toggle("collapsed", profile.spellbookLimitsCollapsed);
+  document.getElementById("spellbookLimitsToggleText").textContent = profile.spellbookLimitsCollapsed ? "+" : "-";
   document.getElementById("spellCounts").innerHTML = `
     <div class="count-box">Known <b>${allKnown.length}</b></div>
     <div class="count-box">Prepared <b>${prepared.length}/${preparedSpellLimit(profile)}</b></div>
@@ -1639,6 +1649,7 @@ function bindGlobalButtons(){
   document.getElementById("populateBuilderBtn").onclick = populateProfile;
   document.getElementById("levelUpBtn").onclick = levelUp;
   document.getElementById("repopulateBtn").onclick = populateProfile;
+  document.getElementById("statsEditTopBtn").onclick = openTopEditor;
   document.getElementById("coinsBtn").onclick = openCoinsEditor;
   document.getElementById("coreRollTypeBtn").onclick = () => {
     activeProfile().coreRollType = activeProfile().coreRollType === "check" ? "save" : "check";
@@ -1682,6 +1693,7 @@ function bindGlobalButtons(){
   document.getElementById("initRollBtn").onclick = rollInitiative;
   document.getElementById("shortRestBtn").onclick = shortRest;
   document.getElementById("longRestBtn").onclick = longRest;
+  document.getElementById("concentrationCheckBtn").textContent = "Con Check";
   document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
   document.getElementById("concentrationModeBtn").onclick = () => cycleMode("concentrationMode");
   document.getElementById("concentrationActiveBtn").onclick = () => toggleConcentration();
@@ -1727,6 +1739,13 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-spell-adv]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.spellAdv, "adv"));
   document.querySelectorAll("[data-toggle-known]").forEach(button => button.onclick = () => toggleSpellKnown(button.dataset.toggleKnown));
   document.querySelectorAll("[data-toggle-prepared]").forEach(button => button.onclick = () => toggleSpellPrepared(button.dataset.togglePrepared));
+  const toggleSpellbookLimitsBtn = document.getElementById("toggleSpellbookLimitsBtn");
+  if (toggleSpellbookLimitsBtn){
+    toggleSpellbookLimitsBtn.onclick = () => {
+      activeProfile().spellbookLimitsCollapsed = !activeProfile().spellbookLimitsCollapsed;
+      saveState();
+    };
+  }
   document.getElementById("editBonusSpellsBtn").onclick = openBonusSpellEditor;
   const importInput = document.getElementById("importSaveInput");
   importInput.onchange = event => {
@@ -2243,6 +2262,40 @@ function openBonusSpellEditor(){
   };
 }
 
+function createSpellEditorDraft(profile = activeProfile()){
+  return {
+    known:new Set(profile.knownSpells || []),
+    prepared:new Set(profile.preparedSpells || [])
+  };
+}
+
+function ensureSpellEditorDraft(profile = activeProfile()){
+  if (!spellEditorDraft){
+    spellEditorDraft = createSpellEditorDraft(profile);
+  }
+  return spellEditorDraft;
+}
+
+function setDraftSpellKnown(name, checked){
+  const draft = ensureSpellEditorDraft();
+  if (checked){
+    draft.known.add(name);
+    return;
+  }
+  draft.known.delete(name);
+  draft.prepared.delete(name);
+}
+
+function setDraftSpellPrepared(name, checked){
+  const draft = ensureSpellEditorDraft();
+  if (checked){
+    draft.prepared.add(name);
+    draft.known.add(name);
+    return;
+  }
+  draft.prepared.delete(name);
+}
+
 function populateProfile(){
   const profile = activeProfile();
   profile.targetLevel = clamp(Number(document.getElementById("targetLevelInput").value || 1), 1, 20);
@@ -2684,8 +2737,7 @@ function longRest(){
 
 function openSpellSelector(){
   const profile = activeProfile();
-  const known = new Set(profile.knownSpells || []);
-  const prepared = new Set(profile.preparedSpells || []);
+  spellEditorDraft = createSpellEditorDraft(profile);
   const items = spellItemsForProfile(profile);
   openModal(`
     <div class="modal-head">
@@ -2704,6 +2756,7 @@ function openSpellSelector(){
     </div>
   `);
   const renderList = query => {
+    const draft = ensureSpellEditorDraft(profile);
     const filtered = items.filter(item => item.search.includes(query));
     document.getElementById("spellSelectList").innerHTML = filtered.map(item => `
       <div class="check-item">
@@ -2712,8 +2765,8 @@ function openSpellSelector(){
           <div class="list-title">${escapeHtml(item.name)}</div>
           <div class="list-meta">${escapeHtml(item.meta)}</div>
         </div>
-        <label class="class-pick"><span>K</span><input type="checkbox" data-known-choice="${escapeAttr(item.slug)}"${known.has(item.slug) ? " checked" : ""}></label>
-        <label class="class-pick"><span>P</span><input type="checkbox" data-prepared-choice="${escapeAttr(item.slug)}"${prepared.has(item.slug) ? " checked" : ""}></label>
+        <label class="class-pick"><span>K</span><input type="checkbox" data-known-choice="${escapeAttr(item.slug)}"${draft.known.has(item.slug) ? " checked" : ""}></label>
+        <label class="class-pick"><span>P</span><input type="checkbox" data-prepared-choice="${escapeAttr(item.slug)}"${draft.prepared.has(item.slug) ? " checked" : ""}></label>
         <div></div>
       </div>
     `).join("") || `<div class="empty">No spells found.</div>`;
@@ -2721,6 +2774,24 @@ function openSpellSelector(){
       button.onclick = () => {
         const spell = getSpellByName(button.dataset.spellInfo);
         if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
+      };
+    });
+    document.querySelectorAll("[data-known-choice]").forEach(box => {
+      box.onchange = () => {
+        setDraftSpellKnown(box.dataset.knownChoice, box.checked);
+        if (!box.checked){
+          const preparedBox = document.querySelector(`[data-prepared-choice="${CSS.escape(box.dataset.knownChoice)}"]`);
+          if (preparedBox) preparedBox.checked = false;
+        }
+      };
+    });
+    document.querySelectorAll("[data-prepared-choice]").forEach(box => {
+      box.onchange = () => {
+        setDraftSpellPrepared(box.dataset.preparedChoice, box.checked);
+        if (box.checked){
+          const knownBox = document.querySelector(`[data-known-choice="${CSS.escape(box.dataset.preparedChoice)}"]`);
+          if (knownBox) knownBox.checked = true;
+        }
       };
     });
   };
@@ -2731,14 +2802,22 @@ function openSpellSelector(){
     renderList("");
   };
   document.getElementById("saveSpellSelectionBtn").onclick = () => {
-    profile.knownSpells = Array.from(document.querySelectorAll("[data-known-choice]:checked")).map(input => input.dataset.knownChoice);
-    profile.preparedSpells = Array.from(document.querySelectorAll("[data-prepared-choice]:checked")).map(input => input.dataset.preparedChoice);
+    const draft = ensureSpellEditorDraft(profile);
+    profile.knownSpells = Array.from(draft.known);
+    profile.preparedSpells = Array.from(draft.prepared);
     profile.preparedSpells.forEach(name => {
       if (!profile.knownSpells.includes(name)) profile.knownSpells.push(name);
     });
+    spellEditorDraft = null;
     closeModal();
     saveState();
   };
+  document.querySelectorAll("[data-close]").forEach(button => {
+    button.onclick = () => {
+      spellEditorDraft = null;
+      closeModal();
+    };
+  });
 }
 
 async function cloudSyncRequest(method, code, body = null){
