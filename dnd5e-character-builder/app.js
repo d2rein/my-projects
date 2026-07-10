@@ -53,6 +53,21 @@ const CLASS_RULES = {
   warlock:{ name:"Warlock", hitDie:8, saves:["WIS","CHA"], subclassLevel:1, spellcasting:"warlock", spellAbility:"CHA", asi:[4,8,12,16,19] },
   wizard:{ name:"Wizard", hitDie:6, saves:["INT","WIS"], subclassLevel:2, spellcasting:"full", spellAbility:"INT", asi:[4,8,12,16,19] }
 };
+const CLASS_SHORT_LABELS = {
+  artificer:"Art",
+  barbarian:"Barb",
+  bard:"Brd",
+  cleric:"Clr",
+  druid:"Drd",
+  fighter:"Ftr",
+  monk:"Monk",
+  paladin:"Pal",
+  ranger:"Rgr",
+  rogue:"Rog",
+  sorcerer:"Sor",
+  warlock:"Wlk",
+  wizard:"Wiz"
+};
 const FULL_CASTER_SLOTS = {
   1:[2,0,0,0,0,0,0,0,0],
   2:[3,0,0,0,0,0,0,0,0],
@@ -216,6 +231,10 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     progression,
     hpRolls:[],
     currentHp:1,
+    customBaseAc:null,
+    initBonus:0,
+    speedOverride:null,
+    profOverride:null,
     thp:0,
     slotCur:{},
     pactSlotsCur:0,
@@ -227,7 +246,15 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     knownSpells:[],
     preparedSpells:[],
     extraSpells:[],
+    spellbookView:"book",
     spellbookLimitsCollapsed:false,
+    spellFilters:{
+      search:"",
+      class:"all",
+      minLevel:0,
+      maxLevel:9,
+      sort:"level"
+    },
     quickSpells:["","","",""],
     coreRollType:"check",
     coreAdvMode:"-",
@@ -398,7 +425,14 @@ function ensureProfileShape(profile){
     known:item?.known !== false,
     prepared:Boolean(item?.prepared)
   })).filter(item => item.name) : [];
+  blank.spellbookView = profile.spellbookView === "edit" ? "edit" : "book";
   blank.spellbookLimitsCollapsed = Boolean(profile.spellbookLimitsCollapsed);
+  blank.spellFilters = Object.assign({}, blank.spellFilters, profile.spellFilters || {});
+  blank.spellFilters.search = String(blank.spellFilters.search || "");
+  blank.spellFilters.class = String(blank.spellFilters.class || "all");
+  blank.spellFilters.minLevel = clamp(Number(blank.spellFilters.minLevel || 0), 0, 9);
+  blank.spellFilters.maxLevel = clamp(Number(blank.spellFilters.maxLevel || 9), 0, 9);
+  blank.spellFilters.sort = blank.spellFilters.sort === "az" ? "az" : "level";
   blank.quickSpells = Array.isArray(blank.quickSpells) ? blank.quickSpells.slice(0, 4) : ["","","",""];
   while (blank.quickSpells.length < 4) blank.quickSpells.push("");
   blank.selectedFeats = Array.isArray(blank.selectedFeats) ? blank.selectedFeats : [];
@@ -452,6 +486,10 @@ function currentLevel(profile = activeProfile()){
   return clamp(Number(profile.targetLevel || 1), 1, 20);
 }
 
+function classShortLabel(classSlug){
+  return CLASS_SHORT_LABELS[classSlug] || CLASS_RULES[classSlug]?.name || classSlug;
+}
+
 function progressionUpTo(profile = activeProfile(), level = currentLevel(profile)){
   return profile.progression.slice(0, level);
 }
@@ -466,6 +504,9 @@ function classCounts(profile = activeProfile(), level = currentLevel(profile)){
 }
 
 function profBonus(profile = activeProfile()){
+  if (profile.profOverride != null && profile.profOverride !== ""){
+    return Number(profile.profOverride) || 0;
+  }
   const level = currentLevel(profile);
   if (level >= 17) return 6;
   if (level >= 13) return 5;
@@ -632,6 +673,15 @@ function profileSize(profile = activeProfile()){
 }
 
 function profileSpeed(profile = activeProfile()){
+  if (profile.speedOverride != null && profile.speedOverride !== ""){
+    let speed = Number(profile.speedOverride) || 0;
+    if (profile.resources.bladesongActive) speed += 10;
+    const counts = classCounts(profile);
+    if ((counts.rogue || 0) >= 9 && progressionUpTo(profile).some(row => row.subclassSlug === "rogue:scout")){
+      speed += 10;
+    }
+    return speed;
+  }
   const species = entryBySlug("lineages", profile.speciesSlug);
   const text = String((species && species.raw_text) || "");
   const match = text.match(/walking speed is (\d+)/i) || text.match(/base walking speed is (\d+)/i);
@@ -658,11 +708,7 @@ function weaponById(id){
 
 function profileAc(profile = activeProfile()){
   const scores = finalAbilityScores(profile);
-  const dexMod = abilityMod(scores.DEX);
-  const armor = armorById(profile.equipment.armorId);
-  const shield = shieldById(profile.equipment.shieldId);
-  const dexContribution = armor.dexCap == null ? dexMod : Math.min(dexMod, armor.dexCap);
-  let total = armor.base + dexContribution + shield.ac;
+  let total = profileBaseAc(profile);
   const counts = classCounts(profile);
   if (profile.resources.bladesongActive && (counts.wizard || 0) >= 2 && progressionUpTo(profile).some(row => row.subclassSlug === "wizard:bladesinging")){
     total += Math.max(1, abilityMod(scores.INT));
@@ -671,8 +717,20 @@ function profileAc(profile = activeProfile()){
   return total;
 }
 
+function profileBaseAc(profile = activeProfile()){
+  if (profile.customBaseAc != null && profile.customBaseAc !== ""){
+    return Number(profile.customBaseAc) || 0;
+  }
+  const scores = finalAbilityScores(profile);
+  const dexMod = abilityMod(scores.DEX);
+  const armor = armorById(profile.equipment.armorId);
+  const shield = shieldById(profile.equipment.shieldId);
+  const dexContribution = armor.dexCap == null ? dexMod : Math.min(dexMod, armor.dexCap);
+  return armor.base + dexContribution + shield.ac;
+}
+
 function profileInitiative(profile = activeProfile()){
-  return abilityMod(finalAbilityScores(profile).DEX);
+  return abilityMod(finalAbilityScores(profile).DEX) + Number(profile.initBonus || 0);
 }
 
 function profileHitDice(profile = activeProfile()){
@@ -1025,6 +1083,45 @@ function spellItemsForProfile(profile = activeProfile()){
   }));
 }
 
+function spellSearchText(spell){
+  return [
+    spell.name,
+    spell.school,
+    spell.classes,
+    spell.description,
+    spell.range,
+    spell.duration,
+    spell.casting_time,
+    spell.components
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function spellClassOptions(profile = activeProfile()){
+  const classes = Object.keys(classCounts(profile)).filter(classSlug => CLASS_RULES[classSlug]?.spellcasting !== "none");
+  return ["all", ...classes];
+}
+
+function spellClassFilterLabel(value){
+  return value === "all" ? "All Classes" : (CLASS_RULES[value]?.name || value);
+}
+
+function spellMatchesClassFilter(spell, classSlug){
+  if (classSlug === "all") return true;
+  const className = CLASS_RULES[classSlug]?.name || classSlug;
+  return String(spell.classes || "").toLowerCase().includes(className.toLowerCase());
+}
+
+function spellEditorCounts(profile = activeProfile()){
+  const draft = ensureSpellEditorDraft(profile);
+  const knownList = Array.from(draft.known).map(getSpellByName).filter(Boolean);
+  const preparedList = Array.from(draft.prepared).map(getSpellByName).filter(Boolean);
+  return {
+    known:knownList.length,
+    prepared:preparedList.length,
+    spellbook:knownList.filter(spell => Number(spell.level || 0) > 0).length
+  };
+}
+
 function selectedFeaturesNeedChoice(profile = activeProfile()){
   const features = [];
   const species = entryBySlug("lineages", profile.speciesSlug);
@@ -1211,9 +1308,9 @@ function renderStatsPage(){
   const profile = activeProfile();
   const scores = finalAbilityScores(profile);
   const classes = classCounts(profile);
-  const classSummary = Object.entries(classes).map(([slug, count]) => `${CLASS_RULES[slug]?.name || slug} ${count}`).join(" / ");
+  const classSummary = Object.entries(classes).map(([slug, count]) => `${classShortLabel(slug)} ${count}`).join(" / ");
   document.getElementById("statsCharName").textContent = profile.name || "New Character";
-  document.getElementById("statsCharSubtitle").textContent = `L${currentLevel(profile)} / ${entrySummary("lineages", profile.speciesSlug) || "No species"} / ${classSummary || "No classes yet"}`;
+  document.getElementById("statsCharSubtitle").textContent = `L${currentLevel(profile)} / ${classSummary || "No classes yet"}`;
   document.getElementById("statsCharPortrait").src = profile.portrait || "./alaric-headshot.png";
   document.getElementById("statsTopChips").innerHTML = `
     <div class="chip green"><span>HP</span><b>${profile.currentHp}/${computeHpMax(profile)}</b></div>
@@ -1491,13 +1588,21 @@ function renderSpellsPage(){
   document.getElementById("spellbookSlotHeadText").textContent = document.getElementById("slotHeadText").textContent;
   document.getElementById("spellbookLimitsPanel").classList.toggle("collapsed", profile.spellbookLimitsCollapsed);
   document.getElementById("spellbookLimitsToggleText").textContent = profile.spellbookLimitsCollapsed ? "+" : "-";
+  const counts = spellEditorCounts(profile);
   document.getElementById("spellCounts").innerHTML = `
     <div class="count-box">Known <b>${allKnown.length}</b></div>
-    <div class="count-box">Prepared <b>${prepared.length}/${preparedSpellLimit(profile)}</b></div>
-    <div class="count-box">Spellbook <b>${(profile.knownSpells || []).filter(name => Number(getSpellByName(name)?.level || 0) > 0).length}/${spellbookAllowance(profile) || "-"}</b></div>
+    <div class="count-box ${counts.prepared > preparedSpellLimit(profile) ? "warn" : ""}">Prepared <b>${prepared.length}/${preparedSpellLimit(profile)}</b></div>
+    <div class="count-box ${counts.spellbook > spellbookAllowance(profile) ? "warn" : ""}">Spellbook <b>${(profile.knownSpells || []).filter(name => Number(getSpellByName(name)?.level || 0) > 0).length}/${spellbookAllowance(profile) || "-"}</b></div>
     <div class="count-box">Spell DC <b>${spellDc(profile)}</b></div>
   `;
-  document.getElementById("bonusSpellSummary").textContent = `${extraSpellNames(profile, "known").length} known / ${extraSpellNames(profile, "prepared").length} prepared`;
+  document.getElementById("bonusSpellSummary").innerHTML = `Extra spells <b>${extraSpellNames(profile, "known").length} known / ${extraSpellNames(profile, "prepared").length} prepared</b>`;
+  document.getElementById("spellbookSubtabs").innerHTML = `
+    <button class="book-subtab ${profile.spellbookView !== "edit" ? "active" : ""}" data-spellbook-view="book">Spellbook</button>
+    <button class="book-subtab ${profile.spellbookView === "edit" ? "active" : ""}" data-spellbook-view="edit">Edit Spells</button>
+  `;
+  const showingEditor = profile.spellbookView === "edit";
+  document.getElementById("spellbookMainView").style.display = showingEditor ? "none" : "";
+  document.getElementById("spellbookEditorView").style.display = showingEditor ? "" : "none";
   const sections = [
     { title:"Prepared", list:prepared, prepared:true },
     { title:"Known", list:allKnown, prepared:false }
@@ -1520,6 +1625,11 @@ function renderSpellsPage(){
       </div>
     </div>
   `).join("");
+  if (showingEditor){
+    renderSpellEditorView();
+  }else{
+    document.getElementById("spellbookEditorView").innerHTML = "";
+  }
 }
 
 function renderNotesPage(){
@@ -1686,7 +1796,11 @@ function bindGlobalButtons(){
       saveState();
     };
   });
-  document.getElementById("editSpellsBtn").onclick = openSpellSelector;
+  document.getElementById("editSpellsBtn").onclick = () => {
+    activeProfile().spellbookView = "edit";
+    ensureSpellEditorDraft(activeProfile());
+    render();
+  };
   document.getElementById("exportSaveBtn").onclick = exportSave;
   document.getElementById("importSaveBtn").onclick = openImportModal;
   document.getElementById("syncStatusBtn").onclick = manualSyncNow;
@@ -1739,6 +1853,17 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-spell-adv]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.spellAdv, "adv"));
   document.querySelectorAll("[data-toggle-known]").forEach(button => button.onclick = () => toggleSpellKnown(button.dataset.toggleKnown));
   document.querySelectorAll("[data-toggle-prepared]").forEach(button => button.onclick = () => toggleSpellPrepared(button.dataset.togglePrepared));
+  document.querySelectorAll("[data-spellbook-view]").forEach(button => {
+    button.onclick = () => {
+      activeProfile().spellbookView = button.dataset.spellbookView;
+      if (activeProfile().spellbookView === "edit"){
+        ensureSpellEditorDraft(activeProfile());
+      }else{
+        spellEditorDraft = null;
+      }
+      render();
+    };
+  });
   const toggleSpellbookLimitsBtn = document.getElementById("toggleSpellbookLimitsBtn");
   if (toggleSpellbookLimitsBtn){
     toggleSpellbookLimitsBtn.onclick = () => {
@@ -1762,15 +1887,27 @@ function openTopEditor(){
   const profile = activeProfile();
   openModal(`
     <div class="modal-head">
-      <div class="modal-title">Edit Profile</div>
+      <div class="modal-title">Edit Top Box</div>
       <button class="small-btn" data-close>Close</button>
     </div>
     <div class="form-grid">
       <label>Name
         <input type="text" id="topNameInput" value="${escapeHtml(profile.name)}">
       </label>
-      <label>Portrait URL
-        <input type="text" id="topPortraitInput" value="${escapeHtml(profile.portrait || "./alaric-headshot.png")}">
+      <label>Current HP
+        <input type="number" id="topHpInput" value="${profile.currentHp}">
+      </label>
+      <label>Base AC
+        <input type="number" id="topBaseAcInput" value="${profile.customBaseAc == null ? profileBaseAc(profile) : profile.customBaseAc}">
+      </label>
+      <label>Init Bonus
+        <input type="number" id="topInitInput" value="${Number(profile.initBonus || 0)}">
+      </label>
+      <label>Speed
+        <input type="number" id="topSpeedInput" value="${profile.speedOverride == null ? profileSpeed(profile) : profile.speedOverride}">
+      </label>
+      <label>Proficiency Bonus
+        <input type="number" id="topProfInput" value="${profBonus(profile)}">
       </label>
     </div>
     <div class="modal-actions">
@@ -1779,7 +1916,11 @@ function openTopEditor(){
   `);
   document.getElementById("saveTopBtn").onclick = () => {
     profile.name = document.getElementById("topNameInput").value.trim() || profile.name;
-    profile.portrait = document.getElementById("topPortraitInput").value.trim() || "./alaric-headshot.png";
+    profile.currentHp = clamp(Number(document.getElementById("topHpInput").value || computeHpMax(profile)), 0, computeHpMax(profile));
+    profile.customBaseAc = document.getElementById("topBaseAcInput").value === "" ? null : Number(document.getElementById("topBaseAcInput").value || 0);
+    profile.initBonus = Number(document.getElementById("topInitInput").value || 0);
+    profile.speedOverride = document.getElementById("topSpeedInput").value === "" ? null : Number(document.getElementById("topSpeedInput").value || 0);
+    profile.profOverride = document.getElementById("topProfInput").value === "" ? null : Number(document.getElementById("topProfInput").value || 0);
     closeModal();
     saveState();
   };
@@ -2735,89 +2876,159 @@ function longRest(){
   saveState();
 }
 
-function openSpellSelector(){
+function renderSpellEditorView(options = {}){
   const profile = activeProfile();
-  spellEditorDraft = createSpellEditorDraft(profile);
-  const items = spellItemsForProfile(profile);
-  openModal(`
-    <div class="modal-head">
-      <div class="modal-title">Edit Spells</div>
-      <button class="small-btn" data-close>Close</button>
-    </div>
-    <div class="form-grid">
+  const host = document.getElementById("spellbookEditorView");
+  const oldGrid = document.getElementById("spellEditorGrid");
+  const previousScroll = oldGrid ? oldGrid.scrollTop : 0;
+  const draft = ensureSpellEditorDraft(profile);
+  const counts = spellEditorCounts(profile);
+  const warnings = [];
+  if (counts.prepared > preparedSpellLimit(profile)) warnings.push(`Prepared spells exceed the current limit (${counts.prepared}/${preparedSpellLimit(profile)}).`);
+  if (counts.spellbook > spellbookAllowance(profile)) warnings.push(`Known leveled spells exceed the current spellbook limit (${counts.spellbook}/${spellbookAllowance(profile)}).`);
+  const filters = profile.spellFilters;
+  const query = filters.search.trim().toLowerCase();
+  const minLevel = Math.min(filters.minLevel, filters.maxLevel);
+  const maxLevel = Math.max(filters.minLevel, filters.maxLevel);
+  const spells = (window.SPELL_DATA || []).filter(spell => {
+    const level = Number(spell.level || 0);
+    if (level < minLevel || level > maxLevel) return false;
+    if (!spellMatchesClassFilter(spell, filters.class)) return false;
+    if (query && !spellSearchText(spell).includes(query)) return false;
+    return true;
+  }).sort((a, b) => filters.sort === "az"
+    ? a.name.localeCompare(b.name)
+    : Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  host.innerHTML = `
+    <div class="book-section editor-shell">
+      <div class="counts">
+        <div class="count-box">Known <b>${counts.known}</b></div>
+        <div class="count-box ${counts.prepared > preparedSpellLimit(profile) ? "warn" : ""}">Prepared <b>${counts.prepared}/${preparedSpellLimit(profile)}</b></div>
+        <div class="count-box ${counts.spellbook > spellbookAllowance(profile) ? "warn" : ""}">Spellbook <b>${counts.spellbook}/${spellbookAllowance(profile) || "-"}</b></div>
+        <div class="count-box">Matches <b>${spells.length}</b></div>
+      </div>
+      <div class="editor-note">Selections stay checked while you search and filter. They only change when you uncheck them or save.</div>
+      ${warnings.map(text => `<div class="editor-warning">${escapeHtml(text)}</div>`).join("")}
       <div class="search-wrap">
-        <input type="text" id="spellSearchInput" placeholder="Search spells">
+        <input type="text" id="spellSearchInput" placeholder="Search all spell text, including ritual and concentration" value="${escapeAttr(filters.search)}">
         <button class="small-btn" id="spellSearchClear">X</button>
       </div>
-      <div class="list-grid" id="spellSelectList"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="action-btn blue" id="saveSpellSelectionBtn">Save</button>
-    </div>
-  `);
-  const renderList = query => {
-    const draft = ensureSpellEditorDraft(profile);
-    const filtered = items.filter(item => item.search.includes(query));
-    document.getElementById("spellSelectList").innerHTML = filtered.map(item => `
-      <div class="check-item">
-        <button class="icon-btn" data-spell-info="${escapeAttr(item.slug)}">i</button>
-        <div class="list-item-main">
-          <div class="list-title">${escapeHtml(item.name)}</div>
-          <div class="list-meta">${escapeHtml(item.meta)}</div>
-        </div>
-        <label class="class-pick"><span>K</span><input type="checkbox" data-known-choice="${escapeAttr(item.slug)}"${draft.known.has(item.slug) ? " checked" : ""}></label>
-        <label class="class-pick"><span>P</span><input type="checkbox" data-prepared-choice="${escapeAttr(item.slug)}"${draft.prepared.has(item.slug) ? " checked" : ""}></label>
-        <div></div>
+      <div class="form-grid">
+        <label>Class
+          <select id="spellClassFilter">
+            ${spellClassOptions(profile).map(option => `<option value="${option}"${filters.class === option ? " selected" : ""}>${escapeHtml(spellClassFilterLabel(option))}</option>`).join("")}
+          </select>
+        </label>
+        <label>Sort
+          <select id="spellSort">
+            <option value="level"${filters.sort === "level" ? " selected" : ""}>Level</option>
+            <option value="az"${filters.sort === "az" ? " selected" : ""}>A-Z</option>
+          </select>
+        </label>
       </div>
-    `).join("") || `<div class="empty">No spells found.</div>`;
-    document.querySelectorAll("[data-spell-info]").forEach(button => {
-      button.onclick = () => {
-        const spell = getSpellByName(button.dataset.spellInfo);
-        if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
-      };
-    });
-    document.querySelectorAll("[data-known-choice]").forEach(box => {
-      box.onchange = () => {
-        setDraftSpellKnown(box.dataset.knownChoice, box.checked);
-        if (!box.checked){
-          const preparedBox = document.querySelector(`[data-prepared-choice="${CSS.escape(box.dataset.knownChoice)}"]`);
-          if (preparedBox) preparedBox.checked = false;
-        }
-      };
-    });
-    document.querySelectorAll("[data-prepared-choice]").forEach(box => {
-      box.onchange = () => {
-        setDraftSpellPrepared(box.dataset.preparedChoice, box.checked);
-        if (box.checked){
-          const knownBox = document.querySelector(`[data-known-choice="${CSS.escape(box.dataset.preparedChoice)}"]`);
-          if (knownBox) knownBox.checked = true;
-        }
-      };
-    });
+      <div class="grid-2">
+        <label>Min Level
+          <input type="number" id="spellMinLevel" min="0" max="9" value="${filters.minLevel}">
+        </label>
+        <label>Max Level
+          <input type="number" id="spellMaxLevel" min="0" max="9" value="${filters.maxLevel}">
+        </label>
+      </div>
+      <div class="editor-grid" id="spellEditorGrid">
+        ${spells.map(spell => `
+          <div class="check-item editor-row">
+            <button class="icon-btn" data-editor-info="${escapeAttr(spell.name)}">i</button>
+            <div class="editor-row-main">
+              <div class="editor-row-title">${escapeHtml(spell.name)}</div>
+              <div class="editor-row-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+            </div>
+            <div class="class-picks">
+              <label class="class-pick">
+                <span>K</span>
+                <input type="checkbox" data-editor-known="${escapeAttr(spell.name)}" ${draft.known.has(spell.name) ? "checked" : ""}>
+              </label>
+              <label class="class-pick">
+                <span>P</span>
+                <input type="checkbox" data-editor-prepared="${escapeAttr(spell.name)}" ${draft.prepared.has(spell.name) ? "checked" : ""}>
+              </label>
+            </div>
+          </div>
+        `).join("") || `<div class="empty">No spells found.</div>`}
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn blue" id="saveSpellSelectionBtn">Save Spells</button>
+        <button class="action-btn gold" id="cancelSpellSelectionBtn">Cancel</button>
+      </div>
+    </div>
+  `;
+  const newGrid = document.getElementById("spellEditorGrid");
+  if (newGrid) newGrid.scrollTop = previousScroll;
+  document.getElementById("spellSearchInput").oninput = event => {
+    profile.spellFilters.search = event.target.value;
+    renderSpellEditorView({ focusSearch:true, selectionStart:event.target.selectionStart, selectionEnd:event.target.selectionEnd });
   };
-  renderList("");
-  document.getElementById("spellSearchInput").oninput = event => renderList(event.target.value.trim().toLowerCase());
   document.getElementById("spellSearchClear").onclick = () => {
-    document.getElementById("spellSearchInput").value = "";
-    renderList("");
+    profile.spellFilters.search = "";
+    renderSpellEditorView({ focusSearch:true, selectionStart:0, selectionEnd:0 });
   };
+  document.getElementById("spellClassFilter").onchange = event => {
+    profile.spellFilters.class = event.target.value;
+    renderSpellEditorView();
+  };
+  document.getElementById("spellSort").onchange = event => {
+    profile.spellFilters.sort = event.target.value;
+    renderSpellEditorView();
+  };
+  document.getElementById("spellMinLevel").oninput = event => {
+    profile.spellFilters.minLevel = clamp(Number(event.target.value || 0), 0, 9);
+    renderSpellEditorView();
+  };
+  document.getElementById("spellMaxLevel").oninput = event => {
+    profile.spellFilters.maxLevel = clamp(Number(event.target.value || 9), 0, 9);
+    renderSpellEditorView();
+  };
+  host.querySelectorAll("[data-editor-info]").forEach(button => {
+    button.onclick = () => {
+      const spell = getSpellByName(button.dataset.editorInfo);
+      if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
+    };
+  });
+  host.querySelectorAll("[data-editor-known]").forEach(box => {
+    box.onchange = () => {
+      setDraftSpellKnown(box.dataset.editorKnown, box.checked);
+      renderSpellEditorView();
+    };
+  });
+  host.querySelectorAll("[data-editor-prepared]").forEach(box => {
+    box.onchange = () => {
+      setDraftSpellPrepared(box.dataset.editorPrepared, box.checked);
+      renderSpellEditorView();
+    };
+  });
   document.getElementById("saveSpellSelectionBtn").onclick = () => {
-    const draft = ensureSpellEditorDraft(profile);
     profile.knownSpells = Array.from(draft.known);
     profile.preparedSpells = Array.from(draft.prepared);
     profile.preparedSpells.forEach(name => {
       if (!profile.knownSpells.includes(name)) profile.knownSpells.push(name);
     });
     spellEditorDraft = null;
-    closeModal();
+    profile.spellbookView = "book";
     saveState();
   };
-  document.querySelectorAll("[data-close]").forEach(button => {
-    button.onclick = () => {
-      spellEditorDraft = null;
-      closeModal();
-    };
-  });
+  document.getElementById("cancelSpellSelectionBtn").onclick = () => {
+    spellEditorDraft = null;
+    profile.spellbookView = "book";
+    render();
+  };
+  if (options.focusSearch){
+    const search = document.getElementById("spellSearchInput");
+    if (search){
+      search.focus();
+      const start = Number.isFinite(options.selectionStart) ? options.selectionStart : search.value.length;
+      const end = Number.isFinite(options.selectionEnd) ? options.selectionEnd : start;
+      search.setSelectionRange(start, end);
+    }
+  }
 }
 
 async function cloudSyncRequest(method, code, body = null){
