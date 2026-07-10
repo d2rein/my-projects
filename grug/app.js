@@ -206,7 +206,8 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     subclassSlug:"",
     asiMode:"",
     asiChoices:[],
-    featSlug:""
+    featSlug:"",
+    expertiseChoices:[]
   }));
   return {
     id,
@@ -362,9 +363,9 @@ function ensureProfileShape(profile){
   while (blank.equipment.weaponIds.length < 3) blank.equipment.weaponIds.push("none");
   blank.progression = Array.isArray(profile.progression) ? profile.progression.slice(0, 20) : blank.progression;
   while (blank.progression.length < 20){
-    blank.progression.push({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"" });
+    blank.progression.push({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] });
   }
-  blank.progression = blank.progression.map(row => Object.assign({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"" }, row));
+  blank.progression = blank.progression.map(row => Object.assign({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] }, row));
   blank.knownSpells = unique(blank.knownSpells || blank.preparedSpells || []);
   blank.preparedSpells = unique(blank.preparedSpells || []);
   blank.selectedSkills = unique(blank.selectedSkills || []);
@@ -786,7 +787,9 @@ function skillMod(skillName, profile = activeProfile()){
   const skill = SKILLS.find(item => item.name === skillName);
   if (!skill) return 0;
   const scores = finalAbilityScores(profile);
-  return abilityMod(scores[skill.abil]) + (profileSkillProficiencies(profile).includes(skillName) ? profBonus(profile) : 0);
+  const proficient = profileSkillProficiencies(profile).includes(skillName);
+  const expertise = profileExpertiseSkills(profile).includes(skillName);
+  return abilityMod(scores[skill.abil]) + (proficient ? profBonus(profile) : 0) + (expertise ? profBonus(profile) : 0);
 }
 
 function saveMod(ability, profile = activeProfile()){
@@ -811,6 +814,11 @@ function findClassFeatureText(profile = activeProfile(), levelIndex = 0){
   const row = profile.progression[levelIndex];
   if (!row.classSlug) return "";
   const classLevel = progressionUpTo(profile, levelIndex + 1).filter(item => item.classSlug === row.classSlug).length;
+  if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6)){
+    return row.expertiseChoices?.length === 2
+      ? `Expertise: ${row.expertiseChoices.join(", ")}`
+      : "Select Expertise";
+  }
   const subclassLevel = CLASS_RULES[row.classSlug]?.subclassLevel || 99;
   if (classLevel === subclassLevel){
     return row.subclassSlug ? entryBySlug("subclasses", row.subclassSlug)?.name || "Subclass" : "Select Subclass";
@@ -830,6 +838,20 @@ function findClassFeatureText(profile = activeProfile(), levelIndex = 0){
   const target = String(ordinal(classLevel)).toLowerCase();
   const mechanic = (classEntry.mechanics || []).find(item => String(item.text || "").toLowerCase().includes(target));
   return mechanic ? mechanic.section : "";
+}
+
+function profileExpertiseSkills(profile = activeProfile()){
+  return unique(progressionUpTo(profile).flatMap(row => row.expertiseChoices || []));
+}
+
+function expertiseEligibleSkills(profile = activeProfile(), levelIndex = 0){
+  const currentRow = profile.progression[levelIndex];
+  const alreadySelected = new Set(
+    progressionUpTo(profile, levelIndex + 1)
+      .filter((row, index) => index !== levelIndex)
+      .flatMap(row => row.expertiseChoices || [])
+  );
+  return profileSkillProficiencies(profile).filter(skill => !alreadySelected.has(skill) || (currentRow.expertiseChoices || []).includes(skill));
 }
 
 function entrySummary(kind, slug){
@@ -1092,6 +1114,9 @@ function selectedFeaturesNeedChoice(profile = activeProfile()){
     if (row.classSlug && classLevel === (CLASS_RULES[row.classSlug]?.subclassLevel || 99) && !row.subclassSlug){
       features.push(`Level ${index + 1}: choose a ${classLabel(row.classSlug)} subclass.`);
     }
+    if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6) && (row.expertiseChoices || []).length !== 2){
+      features.push(`Level ${index + 1}: choose 2 expertise skills.`);
+    }
     if ((CLASS_RULES[row.classSlug]?.asi || []).includes(classLevel) && !row.asiMode){
       features.push(`Level ${index + 1}: choose ASI or feat.`);
     }
@@ -1104,6 +1129,7 @@ function isFeatureChoicePending(profile, index){
   if (!row?.classSlug) return false;
   const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
   if (classLevel === (CLASS_RULES[row.classSlug]?.subclassLevel || 99) && !row.subclassSlug) return true;
+  if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6) && (row.expertiseChoices || []).length !== 2) return true;
   if ((CLASS_RULES[row.classSlug]?.asi || []).includes(classLevel) && !row.asiMode) return true;
   return false;
 }
@@ -1341,6 +1367,9 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"bladesong",
       label:profile.resources.bladesongActive ? "Bladesong On" : "Bladesong",
       note:`${Math.max(0, profBonus(profile) - profile.resources.bladesongUsed)}/${profBonus(profile)}`,
+      infoText:"Activate Bladesong to add your Intelligence modifier to AC, improve concentration checks, and increase speed by 10 feet.",
+      used:profile.resources.bladesongUsed,
+      max:profBonus(profile),
       action:toggleBladesong
     });
   }
@@ -1349,15 +1378,35 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"breath",
       label:"Breath Weapon",
       note:`${Math.max(0, 1 - profile.resources.breathWeaponUsed)}/1`,
+      infoText:"Use your draconic breath weapon. Damage scales by level and refreshes on a long rest in this tracker.",
+      used:profile.resources.breathWeaponUsed,
+      max:1,
       action:useBreathWeapon
     });
   }
   if ((counts.cleric || 0) >= 2 || (counts.paladin || 0) >= 3){
-    const uses = 1;
+    const uses = channelDivinityUsesMax(profile);
     buttons.push({
       id:"channel-divinity",
       label:"Channel Divinity",
       note:`${Math.max(0, uses - profile.resources.channelDivinityUsed)}/${uses}`,
+      infoText:[
+        "Channel Divinity: Turn Undead",
+        "",
+        "As an action, you present your holy symbol and speak a prayer censuring the undead. Each undead that can see or hear you within 30 feet of you must make a Wisdom saving throw. If the creature fails its saving throw, it is turned for 1 minute or until it takes any damage.",
+        "",
+        "A turned creature must spend its turns trying to move as far away from you as it can, and it can't willingly move to a space within 30 feet of you. It also can't take reactions. For its action, it can use only the Dash action or try to escape from an effect that prevents it from moving. If there's nowhere to move, the creature can use the Dodge action.",
+        "",
+        "Harness Divine Power (Optional)",
+        "",
+        "At 2nd level, you can expend a use of your Channel Divinity to fuel your spells. As a bonus action, you touch your holy symbol, utter a prayer, and regain one expended spell slot, the level of which can be no higher than half your proficiency bonus (rounded up). The number of times you can use this feature is based on the level you've reached in this class: 2nd level, once; 6th level, twice; and 18th level, thrice. You regain all expended uses when you finish a long rest.",
+        "",
+        "Channel Divinity: Guided Strike",
+        "",
+        "Starting at 2nd level, you can use your Channel Divinity to strike with supernatural accuracy. When you make an attack roll, you can use your Channel Divinity to gain a +10 bonus to the roll. You make this choice after you see the roll, but before the DM says whether the attack hits or misses."
+      ].join("\n"),
+      used:profile.resources.channelDivinityUsed,
+      max:uses,
       action:useChannelDivinity
     });
   }
@@ -1367,6 +1416,9 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"war-priest",
       label:"War Priest",
       note:`${Math.max(0, wisUses - profile.resources.warPriestUsed)}/${wisUses}`,
+      infoText:"As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. You can use this Bonus Action a number of times equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Short or Long Rest.",
+      used:profile.resources.warPriestUsed,
+      max:wisUses,
       action:useWarPriest
     });
   }
@@ -1375,6 +1427,9 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"hexblade-curse",
       label:profile.resources.hexbladeCurseActive ? "Hexblade's Curse On" : "Hexblade's Curse",
       note:`${Math.max(0, 1 - profile.resources.hexbladeCurseUsed)}/1`,
+      infoText:"Curse one target to gain bonus damage equal to proficiency bonus and score critical hits on 19-20 against it.",
+      used:profile.resources.hexbladeCurseUsed,
+      max:1,
       action:toggleHexbladeCurse
     });
   }
@@ -1383,12 +1438,18 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"steady-aim",
       label:profile.resources.steadyAimActive ? "Steady Aim On" : "Steady Aim",
       note:"Toggle ADV",
+      infoText:"Steady Aim grants advantage on your next attack in exchange for giving up movement this turn.",
+      used:profile.resources.steadyAimActive ? 1 : 0,
+      max:1,
       action:toggleSteadyAim
     });
     buttons.push({
       id:"sneak-attack",
       label:profile.resources.sneakAttackReady ? "Sneak Attack On" : "Sneak Attack",
       note:sneakAttackDice(profile),
+      infoText:"Prime Sneak Attack so the next eligible weapon hit adds your current sneak attack dice.",
+      used:profile.resources.sneakAttackReady ? 1 : 0,
+      max:1,
       action:toggleSneakAttack
     });
   }
@@ -1397,6 +1458,9 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"smite",
       label:"Divine Smite",
       note:"Roll",
+      infoText:"Spend a spell slot after a melee weapon hit to add radiant damage, with extra damage against fiends and undead.",
+      used:0,
+      max:0,
       action:rollDivineSmite
     });
   }
@@ -1405,10 +1469,27 @@ function buildAbilityButtons(profile = activeProfile()){
       id:"rage",
       label:"Rage",
       note:"Track",
+      infoText:"Toggle Rage tracking for damage resistance and bonus melee damage.",
+      used:profile.resources.rageUsed ? 1 : 0,
+      max:1,
       action:toggleRage
     });
   }
   return buttons;
+}
+
+function channelDivinityUsesMax(profile = activeProfile()){
+  const cleric = classCounts(profile).cleric || 0;
+  if (cleric >= 18) return 3;
+  if (cleric >= 6) return 2;
+  if (cleric >= 2) return 1;
+  const paladin = classCounts(profile).paladin || 0;
+  return paladin >= 3 ? 1 : 0;
+}
+
+function renderAbilityPips(used, max){
+  if (!max) return `<div class="tag ability-note">-</div>`;
+  return `<div class="ability-pips">${Array.from({ length:max }, (_, index) => `<span class="pip green ${index >= used ? "on" : ""}"></span>`).join("")}</div>`;
 }
 
 function sneakAttackDice(profile = activeProfile()){
@@ -1435,7 +1516,16 @@ function renderCombatPage(){
   `).join("");
   const buttons = buildAbilityButtons(profile);
   document.getElementById("abilityButtons").innerHTML = buttons.length
-    ? buttons.map(item => `<button class="action-btn ${item.id === "steady-aim" && profile.resources.steadyAimActive ? "yellow" : item.id === "sneak-attack" && profile.resources.sneakAttackReady ? "yellow" : "blue"}" data-ability-btn="${item.id}">${escapeHtml(item.label)}<br><span class="tiny">${escapeHtml(item.note)}</span></button>`).join("")
+    ? buttons.map(item => `
+      <div class="row-grid ability-row">
+        <button class="icon-btn" data-ability-info="${item.id}">i</button>
+        <button class="combat-action blue ${item.id === "steady-aim" && profile.resources.steadyAimActive ? "ability-active" : item.id === "sneak-attack" && profile.resources.sneakAttackReady ? "ability-active" : ""}" data-ability-btn="${item.id}">
+          <b>${escapeHtml(item.label)}</b>
+          <span>${escapeHtml(item.note)}</span>
+        </button>
+        <div class="ability-pips-shell">${renderAbilityPips(item.used || 0, item.max || 0)}</div>
+      </div>
+    `).join("")
     : `<div class="empty">No active buttons detected for this build yet.</div>`;
   renderWeaponRows();
   renderSpellRows();
@@ -1694,6 +1784,7 @@ function bindGlobalButtons(){
       row.asiMode = "";
       row.asiChoices = [];
       row.featSlug = "";
+      row.expertiseChoices = [];
       autoFillProgression(index);
       saveState();
     };
@@ -1786,6 +1877,12 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-ability-btn]").forEach(button => {
     const item = buildAbilityButtons().find(entry => entry.id === button.dataset.abilityBtn);
     if (item) button.onclick = item.action;
+  });
+  document.querySelectorAll("[data-ability-info]").forEach(button => {
+    button.onclick = () => {
+      const item = buildAbilityButtons().find(entry => entry.id === button.dataset.abilityInfo);
+      if (item) openResult(item.label, item.infoText || item.note || "No details available.");
+    };
   });
   document.querySelectorAll("[data-weapon-roll]").forEach(button => button.onclick = () => rollWeapon(button.dataset.weaponRoll));
   document.querySelectorAll("[data-weapon-info]").forEach(button => button.onclick = () => openResult(weaponById(button.dataset.weaponInfo).name, JSON.stringify(weaponById(button.dataset.weaponInfo), null, 2)));
@@ -2025,6 +2122,10 @@ function openFeatureChooser(index){
     return;
   }
   const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
+  if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6)){
+    openExpertiseChooser(index);
+    return;
+  }
   const subclassLevel = CLASS_RULES[row.classSlug]?.subclassLevel || 99;
   if (classLevel === subclassLevel){
     selectionModal({
@@ -2043,6 +2144,41 @@ function openFeatureChooser(index){
   }
   const text = findClassFeatureText(profile, index) || "No interactive choice for this level yet.";
   openResult(`Level ${index + 1}`, text);
+}
+
+function openExpertiseChooser(index){
+  const profile = activeProfile();
+  const row = profile.progression[index];
+  const options = expertiseEligibleSkills(profile, index);
+  const selected = new Set(row.expertiseChoices || []);
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Select Expertise</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="detail-box">Choose 2 proficient skills to gain double proficiency bonus.</div>
+    <div class="list-grid" style="margin-top:8px;">
+      ${options.map(option => `
+        <label class="list-item">
+          <input type="checkbox" data-expertise-skill="${escapeAttr(option)}" ${selected.has(option) ? "checked" : ""}>
+          <div class="list-item-main"><div class="list-title">${escapeHtml(option)}</div></div>
+        </label>
+      `).join("")}
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveExpertiseBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveExpertiseBtn").onclick = () => {
+    const picks = Array.from(document.querySelectorAll("[data-expertise-skill]:checked")).map(input => input.dataset.expertiseSkill);
+    if (picks.length !== 2){
+      openResult("Select Expertise", "Choose exactly 2 proficient skills.");
+      return;
+    }
+    row.expertiseChoices = picks;
+    closeModal();
+    saveState();
+  };
 }
 
 function openAsiOrFeatModal(index){
@@ -2700,12 +2836,13 @@ function useBreathWeapon(){
 
 function useChannelDivinity(){
   const profile = activeProfile();
-  if (profile.resources.channelDivinityUsed >= 1){
+  const max = channelDivinityUsesMax(profile);
+  if (profile.resources.channelDivinityUsed >= max){
     openResult("Channel Divinity", "No uses remaining until a short or long rest.");
     return;
   }
   profile.resources.channelDivinityUsed += 1;
-  openResult("Channel Divinity", "Use your chosen Channel Divinity option.");
+  openResult("Channel Divinity", buildAbilityButtons(profile).find(item => item.id === "channel-divinity")?.infoText || "Use your chosen Channel Divinity option.");
   pushHistory("Channel Divinity used.");
   saveState();
 }
@@ -2718,7 +2855,7 @@ function useWarPriest(){
     return;
   }
   profile.resources.warPriestUsed += 1;
-  openResult("War Priest", "Make one weapon attack as a bonus action.");
+  openResult("War Priest", "As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. You can use this Bonus Action a number of times equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Short or Long Rest.");
   pushHistory("War Priest used.");
   saveState();
 }

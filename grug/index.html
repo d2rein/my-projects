@@ -699,8 +699,32 @@
     background:#175c80;
     border-color:#468db4;
   }
+  .combat-action.ability-active{
+    background:#7c601b;
+    border-color:#c29a40;
+  }
   .combat-action b{display:block;font-size:11px}
   .combat-action span{display:block;font-size:8px;color:#d6edf8}
+  .ability-row .ability-pips-shell{
+    grid-column:3 / span 3;
+    min-height:34px;
+    background:#0c1118;
+    border:1px solid var(--line);
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:4px 6px;
+  }
+  .ability-pips{
+    display:flex;
+    gap:4px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .ability-note{
+    width:100%;
+  }
   .slot-panel{
     border:1px solid #ffffff;
     border-radius:12px;
