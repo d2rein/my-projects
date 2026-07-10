@@ -663,6 +663,9 @@ function profileAc(profile = activeProfile()){
   if (profile.resources.bladesongActive && (counts.wizard || 0) >= 2 && progressionUpTo(profile).some(row => row.subclassSlug === "wizard:bladesinging")){
     total += Math.max(1, abilityMod(scores.INT));
   }
+  if (String(profile.concentrationActive || "").toLowerCase() === "shield of faith"){
+    total += 2;
+  }
   if (profile.resources.hexbladeCurseActive) total += 0;
   return total;
 }
@@ -1511,9 +1514,6 @@ function renderCombatPage(){
   document.getElementById("concentrationModeBtn").textContent = profile.concentrationMode === "-" ? "Adv/Dis" : profile.concentrationMode.toUpperCase();
   document.getElementById("concentrationActiveBtn").textContent = profile.concentrationActive || "Concentration Off";
   document.getElementById("concentrationActiveBtn").className = `action-btn ${profile.concentrationActive ? "yellow" : "blue"}`;
-  document.getElementById("quickSpellRow").innerHTML = profile.quickSpells.map((name, index) => `
-    <button class="mode-btn ${name ? "active" : "inactive"}" data-quick-spell="${index}">${escapeHtml(name || "-")}</button>
-  `).join("");
   const buttons = buildAbilityButtons(profile);
   document.getElementById("abilityButtons").innerHTML = buttons.length
     ? buttons.map(item => `
@@ -1851,19 +1851,6 @@ function bindGlobalButtons(){
   document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
   document.getElementById("concentrationModeBtn").onclick = () => cycleMode("concentrationMode");
   document.getElementById("concentrationActiveBtn").onclick = () => toggleConcentration();
-  document.querySelectorAll("[data-quick-spell]").forEach(button => {
-    const index = Number(button.dataset.quickSpell);
-    let pressTimer = null;
-    button.onclick = () => castQuickSpell(index);
-    button.oncontextmenu = event => {
-      event.preventDefault();
-      openQuickSpellEditor(index);
-    };
-    button.ontouchstart = () => {
-      pressTimer = setTimeout(() => openQuickSpellEditor(index), 550);
-    };
-    button.ontouchend = () => clearTimeout(pressTimer);
-  });
   document.getElementById("damageBtn").onclick = () => applyHpAction("damage");
   document.getElementById("healBtn").onclick = () => applyHpAction("heal");
   document.getElementById("thpBtn").onclick = () => applyHpAction("thp");
@@ -2390,9 +2377,17 @@ function runConcentrationCheck(){
   const bonus = saveMod("CON", profile) + (profile.resources.bladesongActive ? Math.max(1, abilityMod(finalAbilityScores(profile).INT)) : 0);
   const roll = rollD20(profile.concentrationMode);
   const total = roll.chosen + bonus;
-  const text = total >= 10 ? `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${total}\nSAVE < ${total * 2} DMG` : `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${total}\nFAIL`;
+  const failed = total < 10;
+  let text = failed
+    ? `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${total}\nFAIL`
+    : `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${total}\nSAVE < ${total * 2} DMG`;
+  if (failed && profile.concentrationActive){
+    text += `\nConcentration broken: ${profile.concentrationActive}`;
+    profile.concentrationActive = "";
+  }
   openResult("Concentration Check", text);
   pushHistory(`Concentration: ${text.replace(/\n/g, " | ")}`);
+  saveState();
 }
 
 function openQuickSpellEditor(index){
@@ -2784,6 +2779,9 @@ function castSpell(name){
   if (/concentration/i.test(String(spell.duration || ""))){
     profile.concentrationActive = spell.name;
     text += `\nConcentration started: ${spell.name}`;
+    if (String(spell.name || "").toLowerCase() === "shield of faith"){
+      text += "\nAC +2 while concentration is active";
+    }
   }
   openResult(spell.name, text);
   pushHistory(text.replace(/\n/g, " | "));
