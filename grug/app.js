@@ -1512,7 +1512,7 @@ function renderCombatPage(){
   `;
   renderSlots("slotGrid");
   document.getElementById("concentrationModeBtn").textContent = profile.concentrationMode === "-" ? "Adv/Dis" : profile.concentrationMode.toUpperCase();
-  document.getElementById("concentrationActiveBtn").textContent = profile.concentrationActive || "Concentration Off";
+  document.getElementById("concentrationActiveBtn").textContent = "Concentration";
   document.getElementById("concentrationActiveBtn").className = `action-btn ${profile.concentrationActive ? "yellow" : "blue"}`;
   const buttons = buildAbilityButtons(profile);
   document.getElementById("abilityButtons").innerHTML = buttons.length
@@ -2368,7 +2368,7 @@ function openProficiencyEditor(kind){
 
 function toggleConcentration(name = ""){
   const profile = activeProfile();
-  profile.concentrationActive = profile.concentrationActive ? "" : (name || "Custom");
+  profile.concentrationActive = profile.concentrationActive ? "" : (name || "Concentration");
   saveState();
 }
 
@@ -2776,7 +2776,7 @@ function castSpell(name){
     const damage = rollDice(damageMatch[1]);
     text += `\nDamage: ${damage.rolls.join(" + ")} = ${damage.total} ${damageMatch[2]}`;
   }
-  if (/concentration/i.test(String(spell.duration || ""))){
+  if (Boolean(spell.concentration) || /concentration/i.test(String(spell.duration || ""))){
     profile.concentrationActive = spell.name;
     text += `\nConcentration started: ${spell.name}`;
     if (String(spell.name || "").toLowerCase() === "shield of faith"){
