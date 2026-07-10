@@ -1,10 +1,8 @@
-const CACHE_NAME = "bladesinger-pwa-v10";
+const CACHE_NAME = "bladesinger-pwa-v11";
 const ASSETS = [
   "./",
-  "./index.html",
   "./spells.html",
   "./manifest.webmanifest",
-  "./spell-data.js",
   "./alaric-headshot.png",
   "./icon-192.png",
   "./icon-512.png"
@@ -25,15 +23,36 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  if (event.request.mode === "navigate") {
+  if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const wantsFreshAppShell =
+    event.request.mode === "navigate" ||
+    event.request.destination === "script" ||
+    event.request.destination === "style" ||
+    event.request.destination === "worker" ||
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".json") ||
+    url.pathname.endsWith(".webmanifest");
+
+  if (wantsFreshAppShell) {
+    const reloadRequest = new Request(event.request, { cache: "reload" });
     event.respondWith(
-      fetch(event.request)
+      fetch(reloadRequest)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
           return response;
         })
-        .catch(() => caches.match(event.request).then(match => match || caches.match("./index.html")))
+        .catch(() => caches.match(event.request).then(match => match || (event.request.mode === "navigate" ? caches.match("./index.html") : Promise.reject(new Error("offline")))))
     );
     return;
   }
