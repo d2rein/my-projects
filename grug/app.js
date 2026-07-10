@@ -2698,6 +2698,12 @@ function rollDice(spec){
   return { rolls, total:rolls.reduce((sum, value) => sum + value, 0), max:count * die };
 }
 
+function formatDiceFormula(spec, bonus = 0){
+  const base = String(spec || "").toUpperCase();
+  if (!bonus) return base;
+  return `${base}${bonus > 0 ? `+${bonus}` : bonus}`;
+}
+
 function rollWeapon(weaponId){
   const profile = activeProfile();
   const weapon = weaponById(weaponId);
@@ -2718,11 +2724,13 @@ function rollWeapon(weaponId){
     extra = `\nSneak Attack: ${sneak.rolls.join(" + ")}${crit ? ` + crit(${sneak.max})` : ""} = ${sneakTotal}`;
     profile.resources.sneakAttackReady = false;
   }
+  const attackFormula = formatDiceFormula("1d20", data.attackBonus);
+  const damageFormula = formatDiceFormula(weapon.damage, bonusDamage);
   const text = [
-    `${weapon.name}`,
-    `Attack: ${attack.second ? `${attack.first}, ${attack.second}` : attack.first} -> ${attack.chosen} ${fmtMod(data.attackBonus)} = ${toHit}`,
-    `Damage: ${damage.rolls.join(" + ")}${bonusDamage ? ` ${fmtMod(bonusDamage)}` : ""}${crit ? ` + crit(${damage.max})` : ""} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
-  ].join("\n");
+      `${weapon.name}`,
+      `Attack: ${attackFormula} -> ${attack.chosen}${data.attackBonus ? `${fmtMod(data.attackBonus)}` : ""} = ${toHit}`,
+      `Damage: ${damageFormula} -> ${damage.total}${bonusDamage ? `${fmtMod(bonusDamage)}` : ""}${crit ? ` + crit(${damage.max})` : ""} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
+    ].join("\n");
   openResult(weapon.name, text);
   pushHistory(text.replace(/\n/g, " | "));
   profile.resources.steadyAimActive = false;
@@ -2767,14 +2775,14 @@ function castSpell(name){
   if (actionType === "attack"){
     const attack = rollD20(mode.adv);
     const toHit = attack.chosen + spellAttackMod(profile);
-    text += `\nSpell attack: ${attack.second ? `${attack.first}, ${attack.second}` : attack.first} -> ${attack.chosen} ${fmtMod(spellAttackMod(profile))} = ${toHit}`;
+    text += `\nSpell attack: ${formatDiceFormula("1d20", spellAttackMod(profile))} -> ${attack.chosen}${fmtMod(spellAttackMod(profile))} = ${toHit}`;
   } else if (actionType === "save"){
     text += `\nSave DC ${spellDc(profile)}`;
   }
   const damageMatch = String(spell.description || "").match(/take(?:s)? (\d+d\d+) ([A-Za-z]+) damage/i);
   if (damageMatch){
     const damage = rollDice(damageMatch[1]);
-    text += `\nDamage: ${damage.rolls.join(" + ")} = ${damage.total} ${damageMatch[2]}`;
+    text += `\nDamage: ${String(damageMatch[1]).toUpperCase()} -> ${damage.rolls.join(" + ")} = ${damage.total} ${damageMatch[2]}`;
   }
   if (Boolean(spell.concentration) || /concentration/i.test(String(spell.duration || ""))){
     profile.concentrationActive = spell.name;
