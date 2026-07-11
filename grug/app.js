@@ -243,6 +243,7 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     selectedFeats:[],
     progression,
     hpRolls:[],
+    hpMaxOverride:null,
     currentHp:1,
     customBaseAc:null,
     initBonus:0,
@@ -347,6 +348,7 @@ function buildSampleProfiles(){
       { level:9, classSlug:"rogue", hitDie:8, roll:4, chosen:4 },
       { level:10, classSlug:"rogue", hitDie:8, roll:4, chosen:4 }
     ],
+    hpMaxOverride:null,
     currentHp:84,
     customBaseAc:null,
     initBonus:0,
@@ -474,6 +476,7 @@ function ensureProfileShape(profile){
   blank.history = Array.isArray(blank.history) ? blank.history.slice(0, HISTORY_LIMIT) : [];
   blank.statRolls = Array.isArray(blank.statRolls) ? blank.statRolls : [];
   blank.hpRolls = Array.isArray(blank.hpRolls) ? blank.hpRolls : [];
+  blank.hpMaxOverride = blank.hpMaxOverride == null ? null : Number(blank.hpMaxOverride);
   return blank;
 }
 
@@ -781,7 +784,7 @@ function profileHitDice(profile = activeProfile()){
   return totals;
 }
 
-function computeHpMax(profile = activeProfile()){
+function calculatedHpMax(profile = activeProfile()){
   const rows = progressionUpTo(profile);
   const scores = finalAbilityScores(profile);
   const conMod = abilityMod(scores.CON);
@@ -797,6 +800,12 @@ function computeHpMax(profile = activeProfile()){
     total += roll + conMod;
   });
   return Math.max(1, total);
+}
+
+function computeHpMax(profile = activeProfile()){
+  const override = parseNumberOrNull(profile.hpMaxOverride);
+  if (override != null) return Math.max(1, override);
+  return calculatedHpMax(profile);
 }
 
 function seedAverageProgression(profile){
@@ -2012,8 +2021,8 @@ function openTopEditor(){
       <label>Name
         <input type="text" id="topNameInput" value="${escapeHtml(profile.name)}">
       </label>
-      <label>Current HP
-        <input type="number" id="topHpInput" value="${profile.currentHp}">
+      <label>Max HP
+        <input type="number" id="topHpInput" value="${computeHpMax(profile)}">
       </label>
       <label>Base AC
         <input type="number" id="topBaseAcInput" value="${profile.customBaseAc == null ? profileBaseAc(profile) : profile.customBaseAc}">
@@ -2033,12 +2042,15 @@ function openTopEditor(){
     </div>
   `);
   document.getElementById("saveTopBtn").onclick = () => {
+    const previousMaxHp = computeHpMax(profile);
     profile.name = document.getElementById("topNameInput").value.trim() || profile.name;
-    profile.currentHp = clamp(parseNumberOrFallback(document.getElementById("topHpInput").value, computeHpMax(profile)), 0, computeHpMax(profile));
+    profile.hpMaxOverride = parseNumberOrNull(document.getElementById("topHpInput").value);
     profile.customBaseAc = parseNumberOrNull(document.getElementById("topBaseAcInput").value);
     profile.initBonus = parseNumberOrFallback(document.getElementById("topInitInput").value, 0);
     profile.speedOverride = parseNumberOrNull(document.getElementById("topSpeedInput").value);
     profile.profOverride = parseNumberOrNull(document.getElementById("topProfInput").value);
+    const nextMaxHp = computeHpMax(profile);
+    profile.currentHp = profile.currentHp >= previousMaxHp ? nextMaxHp : clamp(profile.currentHp, 0, nextMaxHp);
     closeModal();
     saveState();
   };
