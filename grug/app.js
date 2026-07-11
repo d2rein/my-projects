@@ -1788,7 +1788,7 @@ function ensureProfileResources(profile){
     seedAverageProgression(profile);
   }
   const hpMax = computeHpMax(profile);
-  profile.currentHp = clamp(Number(profile.currentHp || hpMax), 0, hpMax);
+  profile.currentHp = clamp(parseNumberOrFallback(profile.currentHp, hpMax), 0, hpMax);
   const summary = spellcastingSummary(profile);
   for (let level = 1; level <= 9; level++){
     const max = summary.slots[level - 1] || 0;
