@@ -190,6 +190,20 @@ function unique(list){
   return Array.from(new Set((list || []).filter(Boolean)));
 }
 
+function parseNumberOrFallback(value, fallback){
+  const text = String(value ?? "").trim();
+  if (text === "") return fallback;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseNumberOrNull(value){
+  const text = String(value ?? "").trim();
+  if (text === "") return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function getSpellByName(name){
   const spells = window.SPELL_DATA || [];
   return spells.find(spell => spell.name === name) || null;
@@ -2020,11 +2034,11 @@ function openTopEditor(){
   `);
   document.getElementById("saveTopBtn").onclick = () => {
     profile.name = document.getElementById("topNameInput").value.trim() || profile.name;
-    profile.currentHp = clamp(Number(document.getElementById("topHpInput").value || computeHpMax(profile)), 0, computeHpMax(profile));
-    profile.customBaseAc = document.getElementById("topBaseAcInput").value === "" ? null : Number(document.getElementById("topBaseAcInput").value || 0);
-    profile.initBonus = Number(document.getElementById("topInitInput").value || 0);
-    profile.speedOverride = document.getElementById("topSpeedInput").value === "" ? null : Number(document.getElementById("topSpeedInput").value || 0);
-    profile.profOverride = document.getElementById("topProfInput").value === "" ? null : Number(document.getElementById("topProfInput").value || 0);
+    profile.currentHp = clamp(parseNumberOrFallback(document.getElementById("topHpInput").value, computeHpMax(profile)), 0, computeHpMax(profile));
+    profile.customBaseAc = parseNumberOrNull(document.getElementById("topBaseAcInput").value);
+    profile.initBonus = parseNumberOrFallback(document.getElementById("topInitInput").value, 0);
+    profile.speedOverride = parseNumberOrNull(document.getElementById("topSpeedInput").value);
+    profile.profOverride = parseNumberOrNull(document.getElementById("topProfInput").value);
     closeModal();
     saveState();
   };
