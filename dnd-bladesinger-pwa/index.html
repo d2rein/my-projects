@@ -2467,6 +2467,12 @@ function nextAvailableSlotAbove(level){
   }
   return 0;
 }
+function highestAvailableSlot(){
+  for (let slot = 9; slot >= 1; slot--){
+    if ((state.slotCur[slot] || 0) > 0) return slot;
+  }
+  return 0;
+}
 function canShowUpcastControl(spell){
   return Number(spell.level || 0) > 0;
 }
@@ -3823,13 +3829,22 @@ function castFindFamiliar(spell){
     <div class="result-box">Pay 10 gp in material components?</div>
     <div class="modal-actions">
       <button class="action-btn blue" id="findFamiliarPayBtn">Yes</button>
+      <button class="action-btn green" id="findFamiliarUpcastBtn">Upcast</button>
       <button class="action-btn gold" id="findFamiliarNoPayBtn">No</button>
     </div>
   `);
   document.getElementById("findFamiliarPayBtn").onclick = () => resolveFindFamiliarCast(spell, true);
+  document.getElementById("findFamiliarUpcastBtn").onclick = () => {
+    const slotLevel = highestAvailableSlot();
+    if (!slotLevel){
+      openResult("Find Familiar", "No spell slots are available to upcast Find Familiar.");
+      return;
+    }
+    resolveFindFamiliarCast(spell, true, slotLevel);
+  };
   document.getElementById("findFamiliarNoPayBtn").onclick = () => openFindFamiliarCastAnyway(spell, "Cast Find Familiar without paying 10 gp?");
 }
-function openFindFamiliarCastAnyway(spell, message){
+function openFindFamiliarCastAnyway(spell, message, forcedSlotLevel = 0){
   openModal(`
     <div class="modal-head">
       <div class="modal-title">Find Familiar</div>
@@ -3841,15 +3856,15 @@ function openFindFamiliarCastAnyway(spell, message){
       <button class="action-btn gold" data-close>No</button>
     </div>
   `);
-  document.getElementById("findFamiliarCastAnywayBtn").onclick = () => resolveFindFamiliarCast(spell, false);
+  document.getElementById("findFamiliarCastAnywayBtn").onclick = () => resolveFindFamiliarCast(spell, false, forcedSlotLevel);
 }
-function resolveFindFamiliarCast(spell, payCost){
+function resolveFindFamiliarCast(spell, payCost, forcedSlotLevel = 0){
   if (payCost && !canAffordGoldCost(10)){
-    openFindFamiliarCastAnyway(spell, "Insufficient funds for the 10 gp material cost. Cast anyway?");
+    openFindFamiliarCastAnyway(spell, `${forcedSlotLevel ? `Insufficient funds for the 10 gp material cost. Upcast with L${forcedSlotLevel} anyway?` : "Insufficient funds for the 10 gp material cost. Cast anyway?"}`, forcedSlotLevel);
     return;
   }
-  const castLevel = Math.max(1, spellCastLevel(spell) || 1);
-  const usesSpellSlot = getUpcastLevel(spell.name) > 0;
+  const castLevel = forcedSlotLevel || Math.max(1, spellCastLevel(spell) || 1);
+  const usesSpellSlot = forcedSlotLevel > 0 || getUpcastLevel(spell.name) > 0;
   if (usesSpellSlot && Number(spell.level || 0) > 0 && !spendSlotForSpell(castLevel, spell)) return saveState();
   if (payCost){
     deductGoldCost(10);
