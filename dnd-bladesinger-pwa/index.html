@@ -2857,7 +2857,10 @@ function renderCombatPage(){
     const value = state.quickCombatButtons[index] || "";
     button.textContent = quickCombatLabel(value);
     button.disabled = false;
-    button.className = `mode-btn ${value ? "active" : "inactive"}${value ? "" : " placeholder-btn"}`;
+    const isActiveOwl = value === "owl" && state.familiar.active;
+    button.className = isActiveOwl
+      ? "action-btn yellow"
+      : `mode-btn ${value ? "active" : "inactive"}${value ? "" : " placeholder-btn"}`;
   });
   renderPips("bladesongPips", bladesongUsesRemaining(), bladesongUsesMax(), "green");
   document.getElementById("slotHeadText").textContent = `Caster ${state.level} - Max HP ${maxHp()}`;
@@ -3846,7 +3849,8 @@ function resolveFindFamiliarCast(spell, payCost){
     return;
   }
   const castLevel = Math.max(1, spellCastLevel(spell) || 1);
-  if (Number(spell.level || 0) > 0 && !spendSlotForSpell(castLevel, spell)) return saveState();
+  const usesSpellSlot = getUpcastLevel(spell.name) > 0;
+  if (usesSpellSlot && Number(spell.level || 0) > 0 && !spendSlotForSpell(castLevel, spell)) return saveState();
   if (payCost){
     deductGoldCost(10);
   }
@@ -3854,7 +3858,7 @@ function resolveFindFamiliarCast(spell, payCost){
   state.familiar.spellLevel = castLevel;
   state.quickCombatButtons[0] = "owl";
   closeModal();
-  const text = `${payCost ? "Paid 10 gp and " : ""}summoned Owl familiar at spell level ${castLevel}.\nQuick Button 1 now tracks Owl.\nAC ${familiarAc()} / HP ${familiarHp()} / Damage ${1 + castLevel} ${familiarDamageType()}`;
+  const text = `${payCost ? "Paid 10 gp and " : ""}summoned Owl familiar at spell level ${castLevel}${usesSpellSlot ? " using a spell slot" : " as a ritual"}.\nQuick Button 1 now tracks Owl.\nAC ${familiarAc()} / HP ${familiarHp()} / Damage ${1 + castLevel} ${familiarDamageType()}`;
   openResult("Find Familiar", text);
   pushHistory(`Find Familiar L${castLevel}: ${text.replace(/\n/g, " | ")}`);
   saveState();
