@@ -2467,12 +2467,6 @@ function nextAvailableSlotAbove(level){
   }
   return 0;
 }
-function highestAvailableSlot(){
-  for (let slot = 9; slot >= 1; slot--){
-    if ((state.slotCur[slot] || 0) > 0) return slot;
-  }
-  return 0;
-}
 function canShowUpcastControl(spell){
   return Number(spell.level || 0) > 0;
 }
@@ -2540,31 +2534,41 @@ function deductGoldCost(gold){
   return true;
 }
 function familiarDamageType(){
-  if (state.familiar.type === "Fey") return "Psychic";
-  if (state.familiar.type === "Fiend") return "Necrotic";
-  return "Radiant";
+  return "Slashing";
 }
 function familiarAc(){
-  return 10 + Math.max(1, Number(state.familiar.spellLevel || 1));
+  return 11;
 }
 function familiarHp(){
-  return 2 + Math.max(1, Number(state.familiar.spellLevel || 1));
+  return 1;
 }
 function familiarInfoText(){
-  const level = Math.max(1, Number(state.familiar.spellLevel || 1));
-  return `Otherworldly Familiar - Tiny Celestial, Fey, or Fiend
-AC ${familiarAc()}, HP ${familiarHp()}, Speed 60 ft
-STR 3 (-4)   DEX 14 (+2)   CON 10 (+0)   INT 10 (+0)   WIS 14 (+2)   CHA 8 (-1)
-darkvision 60 ft., passive Perception 12, Telepathy 120 ft
-Extradimensional Escape (Recharges after a Long Rest). When the familiar would drop to 0 Hit Points, it instead drops to 1 Hit Point and vanishes into an extradimensional space, leaving behind anything it was wearing or carrying. It remains there for 1 hour or until you summon it as a Magic action, and then it reappears in your space.
+  return `Tiny Beast, Unaligned
+Armor Class 11
+Hit Points 1 (1d4 - 1)
+Speed 5 ft., Fly 60 ft.
+STR 3 (-4)
+DEX 13 (+1)
+CON 8 (-1)
+INT 2 (-4)
+WIS 12 (+1)
+CHA 7 (-2)
+Skills Perception +3, Stealth +3
+Senses Darkvision 120 ft., Passive Perception 13
+Languages --
+Challenge 0 (10 XP)
+Proficiency Bonus +2
 
-Otherworldly Scratch. Melee Spell Attack: your Spell Attack Modifier to hit, reach 5 ft., one target. Hit: 1 + the spell's level of ${familiarDamageType()} damage (current familiar: ${state.familiar.type}, spell level ${level}).
-Reaction - Deliver Spell. When you cast a spell with a range of touch, the familiar can deliver the spell with its touch. To do so, the familiar must be within 120 feet of you.
-Remote Viewing. As a Magic action, you can see what your familiar sees and hear what it hears until the end of your next turn.`;
+Traits
+Flyby. The owl doesn't provoke opportunity attacks when it flies out of an enemy's reach.
+Keen Hearing and Sight. The owl has advantage on Wisdom (Perception) checks that rely on hearing or sight.
+
+Actions
+Talons. Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 1 slashing damage.`;
 }
 function quickCombatLabel(value){
   if (value === "owl"){
-    return state.familiar.active ? `Owl (${Math.max(1, Number(state.familiar.spellLevel || 1))})` : "Owl";
+    return "Owl";
   }
   return value || "Set Quick";
 }
@@ -3785,13 +3789,13 @@ function rollWeapon(id){
     }
     const mode = state.attackModes[id] || { crit:false, adv:"-" };
     const attack = rollD20(mode.adv);
-    const toHit = attack.chosen + spellAttackMod();
+    const toHit = attack.chosen + 3;
     const critApplied = mode.crit || attack.isCrit;
-    const baseDamage = 1 + Math.max(1, Number(state.familiar.spellLevel || 1));
+    const baseDamage = 1;
     const totalDamage = baseDamage + (critApplied ? baseDamage : 0);
-    let text = `Attack: 1d20${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} -> ${attack.text}${spellAttackMod() >= 0 ? "+" : ""}${spellAttackMod()} = ${toHit}\n`;
+    let text = `Attack: 1d20+3 -> ${attack.text}+3 = ${toHit}\n`;
     if (critText(attack)) text += `${critText(attack)}\n`;
-    text += `Damage: 1 + spell level (${Math.max(1, Number(state.familiar.spellLevel || 1))})${critApplied ? ` + Crit(${baseDamage})` : ""} = ${totalDamage} ${familiarDamageType()}`;
+    text += `Damage: 1${critApplied ? ` + Crit(${baseDamage})` : ""} = ${totalDamage} ${familiarDamageType()}`;
     openResult("Owl Attack", `${text}\n\n${familiarInfoText()}`);
     pushHistory(`Owl Attack: ${text.replace(/\n/g, " | ")}`);
     return;
@@ -3829,19 +3833,10 @@ function castFindFamiliar(spell){
     <div class="result-box">Pay 10 gp in material components?</div>
     <div class="modal-actions">
       <button class="action-btn blue" id="findFamiliarPayBtn">Yes</button>
-      <button class="action-btn green" id="findFamiliarUpcastBtn">Upcast</button>
       <button class="action-btn gold" id="findFamiliarNoPayBtn">No</button>
     </div>
   `);
   document.getElementById("findFamiliarPayBtn").onclick = () => resolveFindFamiliarCast(spell, true);
-  document.getElementById("findFamiliarUpcastBtn").onclick = () => {
-    const slotLevel = highestAvailableSlot();
-    if (!slotLevel){
-      openResult("Find Familiar", "No spell slots are available to upcast Find Familiar.");
-      return;
-    }
-    resolveFindFamiliarCast(spell, true, slotLevel);
-  };
   document.getElementById("findFamiliarNoPayBtn").onclick = () => openFindFamiliarCastAnyway(spell, "Cast Find Familiar without paying 10 gp?");
 }
 function openFindFamiliarCastAnyway(spell, message, forcedSlotLevel = 0){
@@ -3860,22 +3855,19 @@ function openFindFamiliarCastAnyway(spell, message, forcedSlotLevel = 0){
 }
 function resolveFindFamiliarCast(spell, payCost, forcedSlotLevel = 0){
   if (payCost && !canAffordGoldCost(10)){
-    openFindFamiliarCastAnyway(spell, `${forcedSlotLevel ? `Insufficient funds for the 10 gp material cost. Upcast with L${forcedSlotLevel} anyway?` : "Insufficient funds for the 10 gp material cost. Cast anyway?"}`, forcedSlotLevel);
+    openFindFamiliarCastAnyway(spell, "Insufficient funds for the 10 gp material cost. Cast anyway?", forcedSlotLevel);
     return;
   }
-  const castLevel = forcedSlotLevel || Math.max(1, spellCastLevel(spell) || 1);
-  const usesSpellSlot = forcedSlotLevel > 0 || getUpcastLevel(spell.name) > 0;
-  if (usesSpellSlot && Number(spell.level || 0) > 0 && !spendSlotForSpell(castLevel, spell)) return saveState();
   if (payCost){
     deductGoldCost(10);
   }
   state.familiar.active = true;
-  state.familiar.spellLevel = castLevel;
+  state.familiar.spellLevel = 1;
   state.quickCombatButtons[0] = "owl";
   closeModal();
-  const text = `${payCost ? "Paid 10 gp and " : ""}summoned Owl familiar at spell level ${castLevel}${usesSpellSlot ? " using a spell slot" : " as a ritual"}.\nQuick Button 1 now tracks Owl.\nAC ${familiarAc()} / HP ${familiarHp()} / Damage ${1 + castLevel} ${familiarDamageType()}`;
+  const text = `${payCost ? "Paid 10 gp and " : ""}summoned Owl familiar.\nQuick Button 1 now tracks Owl.\nAC ${familiarAc()} / HP ${familiarHp()} / Damage 1 ${familiarDamageType()}`;
   openResult("Find Familiar", text);
-  pushHistory(`Find Familiar L${castLevel}: ${text.replace(/\n/g, " | ")}`);
+  pushHistory(`Find Familiar: ${text.replace(/\n/g, " | ")}`);
   saveState();
 }
 function toggleOwlFamiliar(){
