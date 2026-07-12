@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grocery Item Review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f1e7;
+      --panel: rgba(255, 251, 245, 0.95);
+      --panel-strong: #fffdf8;
+      --ink: #1f1b16;
+      --muted: #6c6257;
+      --line: rgba(76, 54, 31, 0.12);
+      --accent: #4e7b4a;
+      --accent-soft: rgba(78, 123, 74, 0.12);
+      --accent-strong: #2f5f32;
+      --shadow: 0 18px 40px rgba(53, 37, 18, 0.12);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.7), transparent 30%),
+        linear-gradient(180deg, #efe3d0 0%, var(--bg) 28%, #f4eee4 100%);
+    }
+
+    .page {
+      width: min(1500px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 18px 0 24px;
+    }
+
+    .hero,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    h1, h2 {
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .hero p,
+    .subtle,
+    .stat-label {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .button,
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: var(--panel-strong);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+    }
+
+    .button {
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(76, 54, 31, 0.26);
+    }
+
+    .button-primary {
+      background: var(--accent);
+      color: #f9fbf7;
+      border-color: transparent;
+    }
+
+    .button-soft {
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      border-color: rgba(78, 123, 74, 0.24);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.52);
+      border: 1px solid rgba(76, 54, 31, 0.08);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.95fr);
+      gap: 18px;
+      margin-top: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(76, 54, 31, 0.08);
+      vertical-align: top;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f7f0e4;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    tr.selected {
+      background: rgba(78, 123, 74, 0.09);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .pick-cell {
+      width: 90px;
+      white-space: nowrap;
+    }
+
+    .tick {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    .tick input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .count-pill {
+      display: inline-flex;
+      min-width: 36px;
+      justify-content: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(78, 123, 74, 0.14);
+      color: var(--accent-strong);
+      font-weight: 700;
+    }
+
+    .actual {
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .subtle-note {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      margin-top: 4px;
+    }
+
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      font: inherit;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(76, 54, 31, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    textarea {
+      min-height: 340px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+
+    .field-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .summary-item {
+      border: 1px solid rgba(76, 54, 31, 0.1);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.52);
+      padding: 12px 14px;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .mono {
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 1080px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100vw - 16px, 100%);
+        padding-top: 12px;
+      }
+
+      .hero,
+      .panel {
+        padding: 14px;
+        border-radius: 18px;
+      }
+
+      .toolbar {
+        gap: 8px;
+      }
+
+      .button,
+      .chip {
+        padding: 9px 12px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div>
+        <h1>Receipt Review for Other Items</h1>
+        <p>Tick the items you want to bring into the grocery planner, edit the short name or category if needed, then copy the export at the right. Counts are based on the seven recent receipt PDFs you sent through.</p>
+      </div>
+      <div class="toolbar">
+        <button id="selectAllBtn" class="button button-primary" type="button">Select all</button>
+        <button id="clearAllBtn" class="button" type="button">Clear all</button>
+        <button id="resetDraftBtn" class="button" type="button">Reset draft</button>
+        <button id="copyJsonBtn" class="button button-soft" type="button">Copy JSON export</button>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div id="candidateCount" class="stat-value">0</div>
+          <div class="stat-label">Proposed additions</div>
+        </div>
+        <div class="stat">
+          <div id="selectedCount" class="stat-value">0</div>
+          <div class="stat-label">Currently selected</div>
+        </div>
+        <div class="stat">
+          <div id="topCount" class="stat-value">0</div>
+          <div class="stat-label">Highest repeat count</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>Proposed Items</h2>
+        <p class="subtle">Ordered by how often each item appeared. Brand and pack details are preserved in the receipt name, but the editable short name is trimmed down to match the style of your existing list.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pick</th>
+                <th>Count</th>
+                <th>Receipt item</th>
+                <th>Short name</th>
+                <th>Category</th>
+              </tr>
+            </thead>
+            <tbody id="candidateBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h2>Export</h2>
+        <p class="subtle">This export includes only ticked rows. Categories match the values in the editor, so you can tweak them before copying.</p>
+        <div class="field-stack">
+          <textarea id="exportArea" class="mono" spellcheck="false"></textarea>
+          <div>
+            <div class="chip">Categories available: Produce, Dairy, Meat, Bread, Other, Gluten Free Snacks</div>
+          </div>
+        </div>
+        <div class="summary-list" id="selectedSummary"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const CATEGORY_OPTIONS = ["Produce", "Dairy", "Meat", "Bread", "Other", "Gluten Free Snacks"];
+    const STORAGE_KEY = "grocery-other-item-review-v1";
+    const DEFAULT_CANDIDATES = [
+      { actualName: "Table Of Plenty Share Topped Mini Rice Cakes Yoghurt", shortName: "Mini Rice Cakes", category: "Gluten Free Snacks", count: 4, selected: true, note: "Appeared across four receipts and fits the gluten free snack split well." },
+      { actualName: "Ben's Original Coconut Chilli & Lemongrass Microwave Rice", shortName: "Coconut Chilli Rice", category: "Other", count: 4, selected: true, note: "Frequent instant pantry meal." },
+      { actualName: "Cucina Matese Pasta Mafalde Corte", shortName: "Mafalde Pasta", category: "Other", count: 3, selected: true, note: "Repeated pantry staple not already on the list." },
+      { actualName: "Gravox Traditional Liquid Gravy / Gravy Mix", shortName: "Gravy", category: "Other", count: 3, selected: true, note: "Grouped gravy variants together to avoid near-duplicates." },
+      { actualName: "Arnott's Vita-weat Multigrain Crackers", shortName: "Vita-Weat Crackers", category: "Other", count: 2, selected: true, note: "Distinct enough from the current cracker entries." },
+      { actualName: "Golden Circle Whole Baby Beetroot", shortName: "Baby Beetroot", category: "Other", count: 2, selected: true, note: "Useful pantry item that shows up in recipes too." },
+      { actualName: "Coles Tuna Onion & Savoury Sauce", shortName: "Tuna Snack", category: "Other", count: 2, selected: true, note: "Kept short while still recognisable." },
+      { actualName: "Heinz Spaghetti Tomato & Cheese Pasta", shortName: "Tinned Spaghetti", category: "Other", count: 2, selected: true, note: "Separated from the broader Kids Pasta entry." },
+      { actualName: "Arnott's Multipack Bluey Honey Oat Biscuits", shortName: "Honey Oat Biscuits", category: "Other", count: 2, selected: false, note: "You already have Blueys, so this may be redundant." },
+      { actualName: "Nibblish Gently Baked Mango", shortName: "Mango Snacks", category: "Other", count: 2, selected: false, note: "You already have Dried Mango, so this may overlap." },
+      { actualName: "Coca-Cola Vanilla Multipack", shortName: "Vanilla Coke", category: "Other", count: 2, selected: false, note: "Kept separate from Coke if you want the flavour split." },
+      { actualName: "Coles Sour Cream", shortName: "Sour Cream", category: "Dairy", count: 1, selected: true, note: "" },
+      { actualName: "Wellness Road Black Chia Seeds", shortName: "Chia Seeds", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Deb Instant Mashed Potato", shortName: "Instant Mash", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Gravox Mushroom & Garlic Sauce", shortName: "Mushroom Sauce", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Coles Frozen Carrot Corn & Peas", shortName: "Frozen Veg", category: "Produce", count: 1, selected: true, note: "" },
+      { actualName: "Arnott's Shapes Original Pizza Multipack", shortName: "Pizza Shapes", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Coles Squeezy Pizza Sauce", shortName: "Pizza Sauce", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Green's Gluten Free Buttermilk Pancake Shake", shortName: "GF Pancake Mix", category: "Gluten Free Snacks", count: 1, selected: true, note: "Gluten free mix split into the new category." },
+      { actualName: "Mr Chen's Gluten Free Pork & Chive Dumplings", shortName: "GF Dumplings", category: "Gluten Free Snacks", count: 1, selected: true, note: "Gluten free instant meal split into the new category." },
+      { actualName: "Hong Kong Dim Sim Kitchen Pork & Chive Dumplings", shortName: "Dumplings", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Keens Curried Sausage Recipe Base", shortName: "Curried Sausage Mix", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Cobs Sweet & Salty Popcorn Multipack", shortName: "Popcorn", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Coles Cornflour", shortName: "Cornflour", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Coles I'm Free From Plain Flour Gluten Free", shortName: "GF Plain Flour", category: "Other", count: 1, selected: true, note: "Gluten free, but more pantry baking than snack." },
+      { actualName: "Coles Italian Tomato Paste", shortName: "Tomato Paste", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Happy Snack Company Chickpeas Lightly Salted", shortName: "Roasted Chickpeas", category: "Gluten Free Snacks", count: 1, selected: true, note: "Snack item pushed into the new gluten free bucket." },
+      { actualName: "Happy Snack Company Fava Beans Lightly Salted", shortName: "Roasted Fava Beans", category: "Gluten Free Snacks", count: 1, selected: true, note: "Snack item pushed into the new gluten free bucket." },
+      { actualName: "Leggo's Creamy Sundried Tomato & Garlic Pasta Bake Sauce", shortName: "Sundried Pasta Sauce", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "San Remo Gluten Free Penne Pasta", shortName: "GF Penne Pasta", category: "Other", count: 1, selected: true, note: "Kept in Other unless you want all gluten free pantry lines grouped together." },
+      { actualName: "Saxa Black Peppercorn Grinder", shortName: "Pepper", category: "Other", count: 1, selected: true, note: "" },
+      { actualName: "Smith's Crinkle Cut Original Chips", shortName: "Original Chips", category: "Other", count: 1, selected: false, note: "" },
+      { actualName: "Golden Circle Tetra Drink Apple Blackcurrant", shortName: "Apple Blackcurrant Drink", category: "Other", count: 1, selected: false, note: "" },
+      { actualName: "Golden Circle Tetra Drink Golden Pash", shortName: "Golden Pash Drink", category: "Other", count: 1, selected: false, note: "" },
+      { actualName: "Golden Circle Tetra Drink Summer Berries", shortName: "Summer Berries Drink", category: "Other", count: 1, selected: false, note: "" },
+      { actualName: "Kirks Pasito", shortName: "Pasito", category: "Other", count: 1, selected: false, note: "" },
+      { actualName: "Solo", shortName: "Solo", category: "Other", count: 1, selected: false, note: "" }
+    ];
+
+    let candidates = loadDraft();
+
+    function slugify(value) {
+      return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    }
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function loadDraft() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (Array.isArray(saved) && saved.length) {
+          return saved;
+        }
+      } catch (error) {
+        console.warn("Unable to load saved review draft", error);
+      }
+      return clone(DEFAULT_CANDIDATES).map((item, index) => ({
+        id: slugify(item.actualName) + "-" + index,
+        ...item
+      }));
+    }
+
+    function saveDraft() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(candidates));
+    }
+
+    function buildExportRows() {
+      return candidates
+        .filter((item) => item.selected)
+        .map((item) => ({
+          actualName: item.actualName.trim(),
+          shortName: item.shortName.trim(),
+          category: item.category,
+          count: item.count
+        }));
+    }
+
+    function updateStats() {
+      document.getElementById("candidateCount").textContent = String(candidates.length);
+      document.getElementById("selectedCount").textContent = String(candidates.filter((item) => item.selected).length);
+      document.getElementById("topCount").textContent = String(Math.max(...candidates.map((item) => item.count), 0));
+    }
+
+    function renderSummary(selected) {
+      const summary = document.getElementById("selectedSummary");
+      if (!selected.length) {
+        summary.innerHTML = "<div class=\"summary-item\"><strong>No items selected.</strong><div class=\"subtle\">Tick the rows you want to export.</div></div>";
+        return;
+      }
+      const countsByCategory = selected.reduce((acc, item) => {
+        acc[item.category] = (acc[item.category] || 0) + 1;
+        return acc;
+      }, {});
+      summary.innerHTML = Object.entries(countsByCategory)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([category, count]) => (
+          "<div class=\"summary-item\"><strong>" + escapeHtml(category) + "</strong><div class=\"subtle\">" + count + " selected item" + (count === 1 ? "" : "s") + "</div></div>"
+        ))
+        .join("");
+    }
+
+    function updateExport() {
+      const selected = buildExportRows();
+      document.getElementById("exportArea").value = JSON.stringify(selected, null, 2);
+      renderSummary(selected);
+      updateStats();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function render() {
+      const body = document.getElementById("candidateBody");
+      body.innerHTML = candidates
+        .slice()
+        .sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count;
+          }
+          return a.shortName.localeCompare(b.shortName);
+        })
+        .map((item) => (
+          "<tr class=\"" + (item.selected ? "selected" : "") + "\">" +
+            "<td class=\"pick-cell\"><label class=\"tick\"><input type=\"checkbox\" data-action=\"toggle\" data-id=\"" + escapeHtml(item.id) + "\"" + (item.selected ? " checked" : "") + "><span>Keep</span></label></td>" +
+            "<td><span class=\"count-pill\">" + item.count + "</span></td>" +
+            "<td><div class=\"actual\">" + escapeHtml(item.actualName) + "</div>" + (item.note ? "<div class=\"subtle-note\">" + escapeHtml(item.note) + "</div>" : "") + "</td>" +
+            "<td><input type=\"text\" data-action=\"shortName\" data-id=\"" + escapeHtml(item.id) + "\" value=\"" + escapeHtml(item.shortName) + "\"></td>" +
+            "<td><select data-action=\"category\" data-id=\"" + escapeHtml(item.id) + "\">" +
+              CATEGORY_OPTIONS.map((category) => "<option value=\"" + escapeHtml(category) + "\"" + (category === item.category ? " selected" : "") + ">" + escapeHtml(category) + "</option>").join("") +
+            "</select></td>" +
+          "</tr>"
+        ))
+        .join("");
+
+      body.querySelectorAll("[data-action]").forEach((node) => {
+        node.addEventListener("input", handleFieldChange);
+        node.addEventListener("change", handleFieldChange);
+      });
+
+      updateExport();
+    }
+
+    function handleFieldChange(event) {
+      const { action, id } = event.target.dataset;
+      const item = candidates.find((entry) => entry.id === id);
+      if (!item) {
+        return;
+      }
+      if (action === "toggle") {
+        item.selected = event.target.checked;
+      } else if (action === "shortName") {
+        item.shortName = event.target.value;
+      } else if (action === "category") {
+        item.category = event.target.value;
+      }
+      saveDraft();
+      updateExport();
+      if (action === "toggle") {
+        render();
+      }
+    }
+
+    async function copyExport() {
+      const text = document.getElementById("exportArea").value;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById("copyJsonBtn").textContent = "Copied";
+        window.setTimeout(() => {
+          document.getElementById("copyJsonBtn").textContent = "Copy JSON export";
+        }, 1400);
+      } catch (error) {
+        window.alert("Clipboard copy failed. The JSON export is still available in the textbox.");
+      }
+    }
+
+    document.getElementById("selectAllBtn").addEventListener("click", () => {
+      candidates.forEach((item) => {
+        item.selected = true;
+      });
+      saveDraft();
+      render();
+    });
+
+    document.getElementById("clearAllBtn").addEventListener("click", () => {
+      candidates.forEach((item) => {
+        item.selected = false;
+      });
+      saveDraft();
+      render();
+    });
+
+    document.getElementById("resetDraftBtn").addEventListener("click", () => {
+      if (!window.confirm("Reset this review page back to the original receipt suggestions?")) {
+        return;
+      }
+      localStorage.removeItem(STORAGE_KEY);
+      candidates = loadDraft();
+      render();
+    });
+
+    document.getElementById("copyJsonBtn").addEventListener("click", copyExport);
+
+    render();
+  </script>
+</body>
+</html>
