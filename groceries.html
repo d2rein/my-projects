@@ -56,9 +56,10 @@
     }
 
     .shell {
-      max-width: 860px;
+      max-width: 1500px;
+      width: 100%;
       margin: 0 auto;
-      padding: 12px 14px 0;
+      padding: 10px 10px 0;
     }
 
     .utility {
@@ -72,26 +73,26 @@
 
     .utility-grid {
       display: grid;
-      grid-template-columns: repeat(8, minmax(0, 1fr));
+      grid-template-columns: repeat(10, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 8px;
     }
 
     .sync-status {
       color: var(--muted);
-      font-size: 0.98rem;
+      font-size: 0.78rem;
       padding: 0 4px;
     }
 
     .pill {
-      padding: 10px 6px;
+      padding: 9px 4px;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.84);
       border: 1px solid var(--line);
       color: var(--ink);
       font-weight: 700;
       min-width: 0;
-      font-size: 0.82rem;
+      font-size: 0.74rem;
       letter-spacing: 0.01em;
       white-space: nowrap;
       text-align: center;
@@ -116,7 +117,7 @@
       border: 1px solid rgba(255, 255, 255, 0.5);
       box-shadow: var(--shadow);
       border-radius: var(--radius);
-      padding: 16px;
+      padding: 10px;
     }
 
     .panel + .panel {
@@ -128,17 +129,17 @@
       justify-content: space-between;
       gap: 12px;
       align-items: flex-end;
-      margin: 2px 4px 12px;
+      margin: 0 2px 8px;
     }
 
     .section-head h2 {
       margin: 0;
-      font-size: 1.38rem;
+      font-size: 1.04rem;
     }
 
     .hint {
       color: var(--muted);
-      font-size: 1rem;
+      font-size: 0.8rem;
       text-align: right;
     }
 
@@ -146,7 +147,7 @@
       display: none;
       gap: 10px;
       flex-wrap: wrap;
-      margin: 0 0 12px;
+      margin: 0 0 8px;
     }
 
     body.editing .toolbar {
@@ -155,11 +156,11 @@
 
     .toolbar button,
     .button {
-      padding: 12px 15px;
-      border-radius: 14px;
+      padding: 8px 10px;
+      border-radius: 12px;
       font-weight: 700;
       border: 1px solid transparent;
-      font-size: 0.98rem;
+      font-size: 0.82rem;
     }
 
     .button-primary {
@@ -183,18 +184,18 @@
     .shopping-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      gap: 6px;
     }
 
     .meal-list {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 10px;
+      gap: 6px;
     }
 
     .meal-card {
       position: relative;
-      min-height: 154px;
+      min-height: 96px;
       padding: 0;
       overflow: hidden;
       border-radius: 22px;
@@ -244,10 +245,10 @@
     .meal-badge,
     .edit-badge {
       position: absolute;
-      top: 10px;
-      padding: 5px 10px;
+      top: 6px;
+      padding: 3px 8px;
       border-radius: 999px;
-      font-size: 0.76rem;
+      font-size: 0.64rem;
       font-weight: 700;
     }
 
@@ -278,12 +279,12 @@
 
     .meal-copy {
       position: absolute;
-      inset: auto 12px 12px 12px;
+      inset: auto 8px 8px 8px;
     }
 
     .meal-name {
       margin: 0;
-      font-size: 1.24rem;
+      font-size: 0.92rem;
       line-height: 1.05;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -291,20 +292,14 @@
       overflow: hidden;
     }
 
-    .meal-meta {
-      margin-top: 6px;
-      font-size: 0.96rem;
-      color: rgba(255, 245, 232, 0.9);
-    }
-
     .item-card,
     .shopping-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      min-height: 68px;
-      padding: 13px 14px;
-      border-radius: 18px;
+      gap: 8px;
+      min-height: 38px;
+      padding: 7px 9px;
+      border-radius: 14px;
       background: var(--card-strong);
       border: 1px solid var(--line);
       box-shadow: 0 8px 24px rgba(73, 48, 19, 0.08);
@@ -318,25 +313,10 @@
       border-color: rgba(45, 122, 68, 0.28);
     }
 
-    .check {
-      width: 24px;
-      height: 24px;
-      border-radius: 8px;
-      border: 2px solid rgba(83, 61, 39, 0.22);
-      background: #fff;
-      flex: none;
-      display: grid;
-      place-items: center;
-      font-size: 0.9rem;
-      transform: scale(1.15);
-      font-weight: 900;
-    }
-
-    .selected .check,
-    .done .check {
-      background: var(--green);
-      border-color: var(--green);
-      color: #fff;
+    .check,
+    .meal-badge,
+    .meal-meta {
+      display: none !important;
     }
 
     .card-main {
@@ -345,7 +325,7 @@
     }
 
     .card-title {
-      font-size: 1.12rem;
+      font-size: 0.86rem;
       font-weight: 700;
       line-height: 1.15;
       overflow: hidden;
@@ -354,8 +334,12 @@
 
     .card-sub {
       color: var(--muted);
-      font-size: 0.94rem;
-      margin-top: 4px;
+      font-size: 0.72rem;
+      margin-top: 1px;
+    }
+
+    body:not(.editing) .meal-list .card-sub {
+      display: none;
     }
 
     .done .card-title {
@@ -370,8 +354,8 @@
     }
 
     .chip {
-      padding: 8px 11px;
-      font-size: 0.98rem;
+      padding: 5px 9px;
+      font-size: 0.74rem;
       border-radius: 999px;
       background: var(--accent-3);
       color: var(--accent);
@@ -380,7 +364,19 @@
     }
 
     .category-block + .category-block {
-      margin-top: 18px;
+      margin-top: 10px;
+    }
+
+    #otherCards,
+    #shoppingList {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    #otherCards .category-block,
+    #shoppingList .category-block {
+      margin-top: 0;
     }
 
     .empty {
@@ -397,11 +393,11 @@
       left: 50%;
       bottom: 0;
       transform: translateX(-50%);
-      width: min(860px, calc(100vw - 18px));
+      width: min(1500px, calc(100vw - 8px));
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+      padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
       background: rgba(255, 251, 244, 0.92);
       backdrop-filter: blur(18px);
       border: 1px solid rgba(255, 255, 255, 0.62);
@@ -412,12 +408,12 @@
     }
 
     .nav-button {
-      padding: 20px 14px;
+      padding: 18px 10px;
       border-radius: 18px;
       background: transparent;
       color: var(--muted);
       font-weight: 700;
-      font-size: 1.18rem;
+      font-size: 1.08rem;
     }
 
     .nav-button.active {
@@ -536,12 +532,31 @@
 
     @media (min-width: 720px) {
       .meal-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .meal-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .item-grid,
       .shopping-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #otherCards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: start;
+      }
+
+      #shoppingList {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+      }
+
+      body.single-column #otherCards,
+      body.single-column #shoppingList {
+        grid-template-columns: 1fr;
       }
 
       .sheet {
@@ -565,6 +580,13 @@
         grid-template-columns: 1fr;
       }
     }
+
+    body.single-column .item-grid,
+    body.single-column .shopping-grid,
+    body.single-column .meal-grid,
+    body.single-column .meal-list {
+      grid-template-columns: 1fr;
+    }
   </style>
 </head>
 <body>
@@ -573,6 +595,7 @@
       <div class="utility-grid">
         <button id="editToggle" class="pill" type="button">Edit</button>
         <button id="mealViewBtn" class="pill" type="button">Cards</button>
+        <button id="columnToggleBtn" class="pill" type="button">2 Col</button>
         <button id="fontDownBtn" class="pill" type="button">Text -</button>
         <button id="fontUpBtn" class="pill" type="button">Text +</button>
         <button id="refreshCloudBtn" class="pill" type="button">Refresh</button>
@@ -697,6 +720,7 @@
     const META_KEY = "weekly-grocery-meta-v1";
     const FONT_KEY = "weekly-grocery-font-v1";
     const VIEW_KEY = "weekly-grocery-meal-view-v1";
+    const COLUMN_KEY = "weekly-grocery-column-mode-v1";
     const categories = STARTER_DATA.categories;
     const TAB_ORDER = ["meals", "items", "list"];
     const mealImageAliases = {
@@ -736,6 +760,7 @@
     });
     let fontScale = Math.min(1.5, Math.max(0.9, Number(localStorage.getItem(FONT_KEY) || "1.12")));
     let mealView = localStorage.getItem(VIEW_KEY) || "cards";
+    let columnMode = localStorage.getItem(COLUMN_KEY) || "2";
     let activeTab = "meals";
     let editing = false;
     let editingMealId = null;
@@ -952,6 +977,23 @@
       renderMeals();
     }
 
+    function updateColumnToggleButton() {
+      const button = document.getElementById("columnToggleBtn");
+      button.textContent = columnMode === "1" ? "1 Col" : "2 Col";
+      document.body.classList.toggle("single-column", columnMode === "1");
+    }
+
+    function toggleColumnMode() {
+      columnMode = columnMode === "1" ? "2" : "1";
+      localStorage.setItem(COLUMN_KEY, columnMode);
+      updateColumnToggleButton();
+      render();
+    }
+
+    function groupGridClass(baseClass) {
+      return columnMode === "1" ? baseClass + " single-column" : baseClass;
+    }
+
     function categoryOptions(selectedCategory) {
       return categories.map((category) => (
         "<option value=\"" + escapeHtml(category) + "\"" + (category === selectedCategory ? " selected" : "") + ">" + escapeHtml(category) + "</option>"
@@ -1053,7 +1095,7 @@
             "<span class=\"check\">" + (recipe.selectedQty ? "✓" : "") + "</span>" +
             "<div class=\"card-main\">" +
               "<div class=\"card-title\">" + escapeHtml(recipe.name) + "</div>" +
-              "<div class=\"card-sub\">" + (editing ? "Tap to edit" : countIngredients(recipe) + " ingredients") + "</div>" +
+              "<div class=\"card-sub\">" + (editing ? "Tap to edit" : "") + "</div>" +
             "</div>" +
           "</button>"
         )).join("");
@@ -1486,6 +1528,7 @@
 
     document.getElementById("editToggle").addEventListener("click", () => setEditing(!editing));
     document.getElementById("mealViewBtn").addEventListener("click", toggleMealView);
+    document.getElementById("columnToggleBtn").addEventListener("click", toggleColumnMode);
     document.getElementById("fontDownBtn").addEventListener("click", () => bumpFontScale(-0.08));
     document.getElementById("fontUpBtn").addEventListener("click", () => bumpFontScale(0.08));
     document.getElementById("addMealBtn").addEventListener("click", addMeal);
@@ -1513,6 +1556,7 @@
 
     applyFontScale();
     updateMealViewButton();
+    updateColumnToggleButton();
     render();
     queueMealImages();
     enableTabSwipe();
