@@ -374,6 +374,18 @@
       gap: 8px;
     }
 
+    .category-columns {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .category-lane {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
     #otherCards .category-block,
     #shoppingList .category-block {
       margin-top: 0;
@@ -532,7 +544,7 @@
 
     @media (min-width: 720px) {
       .meal-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
       .meal-list {
@@ -544,13 +556,8 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      #otherCards {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        align-items: start;
-      }
-
-      #shoppingList {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      .category-columns {
+        grid-template-columns: 1fr 1fr 1.3fr;
         align-items: start;
       }
 
@@ -570,12 +577,6 @@
     }
 
     @media (max-width: 560px) {
-      .meal-grid,
-      .item-grid,
-      .shopping-grid {
-        grid-template-columns: 1fr;
-      }
-
       .line {
         grid-template-columns: 1fr;
       }
@@ -585,6 +586,10 @@
     body.single-column .shopping-grid,
     body.single-column .meal-grid,
     body.single-column .meal-list {
+      grid-template-columns: 1fr;
+    }
+
+    body.single-column .category-columns {
       grid-template-columns: 1fr;
     }
   </style>
@@ -724,6 +729,28 @@
     const COLUMN_KEY = "weekly-grocery-column-mode-v1";
     const categories = STARTER_DATA.categories;
     const TAB_ORDER = ["meals", "items", "list"];
+    const CATEGORY_LANES = [
+      ["Meat", "Dairy", "Bread"],
+      ["Produce"],
+      ["Other", "Gluten Free Snacks"]
+    ];
+    const REMOVED_OTHER_ITEMS = new Set([
+      "bbq chicken",
+      "frozen pie",
+      "olive loaf",
+      "sourdough",
+      "bagels",
+      "chobani flip",
+      "dairy farmers yoghurt",
+      "milton bottle clearner",
+      "milton bottle cleaner",
+      "chocolate",
+      "formula",
+      "iced tea",
+      "viennetta",
+      "dog chews",
+      "dog treats"
+    ]);
     const mealImageAliases = {
       "chicken morne": "chicken mornay",
       "bimbap": "bibimbap",
@@ -787,11 +814,28 @@
       }
     }
 
+    function migrateState(inputState) {
+      const nextState = clone(inputState || STARTER_DATA);
+      nextState.recipes = Array.isArray(nextState.recipes) ? nextState.recipes : clone(STARTER_DATA.recipes);
+      nextState.otherItems = (Array.isArray(nextState.otherItems) ? nextState.otherItems : clone(STARTER_DATA.otherItems))
+        .map((item) => {
+          const nextItem = { ...item };
+          if ((nextItem.name || "").trim().toLowerCase() === "wet dog food") {
+            nextItem.name = "Dog Food";
+            nextItem.id = slugify(nextItem.name);
+          }
+          return nextItem;
+        })
+        .filter((item) => !REMOVED_OTHER_ITEMS.has((item.name || "").trim().toLowerCase()));
+      return nextState;
+    }
+
     function loadState() {
-      return loadJson(STORE_KEY, clone(STARTER_DATA));
+      return migrateState(loadJson(STORE_KEY, clone(STARTER_DATA)));
     }
 
     function saveState() {
+      state = migrateState(state);
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
       markLocalChange();
     }
@@ -829,6 +873,27 @@
 
     function searchText() {
       return "";
+    }
+
+    function categoryBlockHtml(title, count, bodyHtml) {
+      return (
+        "<div class=\"category-block\">" +
+          "<div class=\"section-head\"><h2>" + escapeHtml(title) + "</h2><div class=\"hint\">" + count + "</div></div>" +
+          bodyHtml +
+        "</div>"
+      );
+    }
+
+    function renderCategoryColumns(renderer) {
+      return (
+        "<div class=\"category-columns\">" +
+          CATEGORY_LANES.map((lane) => (
+            "<div class=\"category-lane\">" +
+              lane.map((category) => renderer(category)).filter(Boolean).join("") +
+            "</div>"
+          )).join("") +
+        "</div>"
+      );
     }
 
     function openModal(title, body) {
@@ -1218,6 +1283,140 @@
           "</div>"
         );
       }).join("");
+
+      wrap.innerHTML = blocks || "<div class=\"empty\">Pick meals or other checklist items to build your shopping list.</div>";
+      wrap.querySelectorAll("[data-done]").forEach((node) => {
+        node.addEventListener("click", () => {
+          const key = node.dataset.done;
+          done[key] = !done[key];
+          saveDone();
+          renderShopping();
+        });
+      });
+    }
+
+    function loadState() {
+      return migrateState(loadJson(STORE_KEY, clone(STARTER_DATA)));
+    }
+
+    function saveState() {
+      state = migrateState(state);
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      markLocalChange();
+    }
+
+    async function refreshFromCloud(isAutomatic = false) {
+      if (syncBusy) {
+        return;
+      }
+      syncBusy = true;
+      setSyncStatus(isAutomatic ? "Checking cloud copy..." : "Refreshing from cloud...");
+      try {
+        const response = await fetch("/api/grocery-sync");
+        if (response.status === 404) {
+          setSyncStatus(isAutomatic ? "No shared list yet. Save from one device to start syncing." : "No shared list exists yet.");
+          return;
+        }
+        const payload = await response.json();
+        if (!response.ok) {
+          setSyncStatus(payload.error || "Cloud refresh failed.");
+          return;
+        }
+        if (!payload.payload || !payload.payload.state || !payload.payload.done) {
+          setSyncStatus("Cloud copy was missing data.");
+          return;
+        }
+        state = migrateState(payload.payload.state);
+        done = payload.payload.done;
+        sharedMeta.lastKnownRemoteUpdatedAt = payload.updatedAt || null;
+        saveSharedMeta();
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        localStorage.setItem(DONE_KEY, JSON.stringify(done));
+        localMeta.lastLocalChangeAt = payload.payload.localUpdatedAt || payload.updatedAt || new Date().toISOString();
+        saveLocalMeta();
+        render();
+        setSyncStatus("Cloud copy loaded. Last updated " + new Date(payload.updatedAt).toLocaleString() + ".");
+      } catch (error) {
+        setSyncStatus("Cloud refresh failed. Try again when you have signal.");
+      } finally {
+        syncBusy = false;
+      }
+    }
+
+    function renderOther() {
+      const query = searchText();
+      const wrap = document.getElementById("otherCards");
+      const groups = Object.fromEntries(categories.map((category) => [
+        category,
+        state.otherItems.filter((item) => item.category === category && (!query || item.name.toLowerCase().includes(query)))
+      ]));
+
+      if (!Object.values(groups).some((items) => items.length)) {
+        wrap.innerHTML = "<div class=\"empty\">No checklist items match this search.</div>";
+        return;
+      }
+
+      wrap.innerHTML = renderCategoryColumns((category) => {
+        const items = groups[category] || [];
+        if (!items.length) {
+          return "";
+        }
+        return categoryBlockHtml(
+          category,
+          items.length,
+          "<div class=\"item-grid\">" +
+            items.map((item) => (
+              "<button class=\"item-card" + (item.selected ? " selected" : "") + "\" type=\"button\" data-item=\"" + escapeHtml(item.id) + "\">" +
+                "<span class=\"check\">" + (item.selected ? "âœ“" : "") + "</span>" +
+                "<div class=\"card-main\"><div class=\"card-title\">" + escapeHtml(item.name) + "</div></div>" +
+              "</button>"
+            )).join("") +
+          "</div>"
+        );
+      });
+
+      wrap.querySelectorAll("[data-item]").forEach((node) => {
+        node.addEventListener("click", () => {
+          const id = node.dataset.item;
+          if (editing) {
+            editOther(id);
+          } else {
+            toggleOther(id);
+          }
+        });
+      });
+    }
+
+    function renderShopping() {
+      const { meals, list } = buildShoppingList();
+      const selectedMeals = document.getElementById("selectedMeals");
+      const wrap = document.getElementById("shoppingList");
+
+      selectedMeals.innerHTML = meals.length
+        ? meals.map((meal) => "<span class=\"chip\">" + escapeHtml(meal.name) + (meal.selectedQty > 1 ? " Ã— " + meal.selectedQty : "") + "</span>").join("")
+        : "<div class=\"empty\">No meals selected yet.</div>";
+
+      const blocks = renderCategoryColumns((category) => {
+        const entries = Array.from(list[category].entries());
+        if (!entries.length) {
+          return "";
+        }
+        return categoryBlockHtml(
+          category,
+          entries.length,
+          "<div class=\"shopping-grid\">" +
+            entries.map(([name, qty]) => {
+              const key = category + "|" + name;
+              return (
+                "<button class=\"shopping-card" + (done[key] ? " done" : "") + "\" type=\"button\" data-done=\"" + escapeHtml(key) + "\">" +
+                  "<span class=\"check\">" + (done[key] ? "âœ“" : "") + "</span>" +
+                  "<div class=\"card-main\"><div class=\"card-title\">" + escapeHtml(name) + (qty > 1 ? " Ã— " + qty : "") + "</div></div>" +
+                "</button>"
+              );
+            }).join("") +
+          "</div>"
+        );
+      });
 
       wrap.innerHTML = blocks || "<div class=\"empty\">Pick meals or other checklist items to build your shopping list.</div>";
       wrap.querySelectorAll("[data-done]").forEach((node) => {
