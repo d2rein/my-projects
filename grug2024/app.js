@@ -447,6 +447,9 @@ function createBlankProfile(id = `profile-${Date.now()}`){
       hexbladeCurseUsed:0,
       hexbladeCurseActive:false,
       warPriestUsed:0,
+      shieldOfFaithActive:false,
+      spiritualWeaponActive:false,
+      spiritualWeaponSlotLevel:0,
       rageUsed:0,
       fogCloudUsed:0,
       sneakAttackReady:false,
@@ -554,6 +557,9 @@ function buildSampleProfiles(){
       hexbladeCurseUsed:0,
       hexbladeCurseActive:false,
       warPriestUsed:0,
+      shieldOfFaithActive:false,
+      spiritualWeaponActive:false,
+      spiritualWeaponSlotLevel:0,
       rageUsed:0,
       fogCloudUsed:0,
       sneakAttackReady:false,
@@ -656,6 +662,9 @@ function ensureProfileShape(profile){
   blank.hpRolls = Array.isArray(blank.hpRolls) ? blank.hpRolls : [];
   blank.hpMaxOverride = blank.hpMaxOverride == null ? null : Number(blank.hpMaxOverride);
   blank.resources.cunningStrikeEffects = Array.isArray(blank.resources.cunningStrikeEffects) ? unique(blank.resources.cunningStrikeEffects) : [];
+  blank.resources.shieldOfFaithActive = Boolean(blank.resources.shieldOfFaithActive);
+  blank.resources.spiritualWeaponActive = Boolean(blank.resources.spiritualWeaponActive);
+  blank.resources.spiritualWeaponSlotLevel = clamp(Number(blank.resources.spiritualWeaponSlotLevel || 0), 0, 9);
   blank.resources.fogCloudUsed = clamp(Number(blank.resources.fogCloudUsed || 0), 0, 3);
   blank.resources.sneakAttackDismissed = Boolean(blank.resources.sneakAttackDismissed);
   blank.resources.sharpshooterActive = Boolean(blank.resources.sharpshooterActive);
@@ -942,6 +951,23 @@ function weaponById(id){
 
 function hasRingOfObscuring(profile = activeProfile()){
   return profile.equipment.ringId === "ring-of-obscuring";
+}
+
+function clearTrackedConcentrationSpells(profile = activeProfile()){
+  profile.resources.shieldOfFaithActive = false;
+  profile.resources.spiritualWeaponActive = false;
+  profile.resources.spiritualWeaponSlotLevel = 0;
+}
+
+function setTrackedConcentrationSpell(profile, name){
+  clearTrackedConcentrationSpells(profile);
+  profile.concentrationActive = name;
+  if (name === "Shield of Faith"){
+    profile.resources.shieldOfFaithActive = true;
+  }
+  if (name === "Spiritual Weapon"){
+    profile.resources.spiritualWeaponActive = true;
+  }
 }
 
 function profileAc(profile = activeProfile()){
@@ -1739,6 +1765,24 @@ function buildAbilityButtons(profile = activeProfile()){
       max:wisUses,
       action:useWarPriest
     });
+    buttons.push({
+      id:"shield-of-faith-ba",
+      label:profile.resources.shieldOfFaithActive ? "BA - Shield of Faith On" : "BA - Shield of Faith",
+      note:profile.resources.shieldOfFaithActive ? "AC +2" : "Concentration",
+      infoText:"Bonus Action. Cast Shield of Faith using a spell slot to gain +2 AC while Concentration lasts. Long press to switch it off.",
+      showPips:false,
+      action:useShieldOfFaithBonusAction,
+      longPressAction:clearShieldOfFaithBonusAction
+    });
+    buttons.push({
+      id:"spiritual-weapon-ba",
+      label:profile.resources.spiritualWeaponActive ? "BA - Spiritual Weapon On" : "BA - Spiritual Weapon",
+      note:profile.resources.spiritualWeaponActive ? `L${Math.max(2, profile.resources.spiritualWeaponSlotLevel || 2)}` : "Attack",
+      infoText:"Bonus Action. Cast Spiritual Weapon using a spell slot, make its attack and damage roll, and keep it active for later Bonus Action attacks without spending more spell slots. Long press to switch it off.",
+      showPips:false,
+      action:useSpiritualWeaponBonusAction,
+      longPressAction:clearSpiritualWeaponBonusAction
+    });
   }
   if (hasRingOfObscuring(profile)){
     buttons.push({
@@ -1995,7 +2039,9 @@ function renderCombatPage(){
   const sneakButton = byId.get("sneak-attack");
   const steadyAimButton = byId.get("steady-aim");
   const cunningActionButton = byId.get("cunning-action");
-  const standardButtons = buttons.filter(item => !["sneak-attack", "steady-aim", "cunning-action"].includes(item.id));
+  const shieldOfFaithButton = byId.get("shield-of-faith-ba");
+  const spiritualWeaponButton = byId.get("spiritual-weapon-ba");
+  const standardButtons = buttons.filter(item => !["sneak-attack", "steady-aim", "cunning-action", "shield-of-faith-ba", "spiritual-weapon-ba"].includes(item.id));
   const rogue = classCounts(profile).rogue || 0;
   const cunningEffects = cunningStrikeEffectCatalog(profile);
   const selectedEffects = new Set((profile.resources.cunningStrikeEffects || []).filter(Boolean));
@@ -2038,8 +2084,53 @@ function renderCombatPage(){
           </div>
         ` : ""}
       </div>
+      ${(shieldOfFaithButton || spiritualWeaponButton) ? `
+        <div class="grid-2" style="margin-top:6px;">
+          ${shieldOfFaithButton ? `
+            <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+              <button class="icon-btn" data-ability-info="${shieldOfFaithButton.id}">i</button>
+              <button class="combat-action blue ${profile.resources.shieldOfFaithActive ? "ability-active" : ""}" data-ability-btn="${shieldOfFaithButton.id}">
+                <b>${escapeHtml(shieldOfFaithButton.label)}</b>
+                <span>${escapeHtml(shieldOfFaithButton.note)}</span>
+              </button>
+            </div>
+          ` : ""}
+          ${spiritualWeaponButton ? `
+            <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+              <button class="icon-btn" data-ability-info="${spiritualWeaponButton.id}">i</button>
+              <button class="combat-action blue ${profile.resources.spiritualWeaponActive ? "ability-active" : ""}" data-ability-btn="${spiritualWeaponButton.id}">
+                <b>${escapeHtml(spiritualWeaponButton.label)}</b>
+                <span>${escapeHtml(spiritualWeaponButton.note)}</span>
+              </button>
+            </div>
+          ` : ""}
+        </div>
+      ` : ""}
     </div>
-  ` : "";
+  ` : ((shieldOfFaithButton || spiritualWeaponButton) ? `
+    <div class="card" style="padding:6px;margin-top:6px;">
+      <div class="grid-2">
+        ${shieldOfFaithButton ? `
+          <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+            <button class="icon-btn" data-ability-info="${shieldOfFaithButton.id}">i</button>
+            <button class="combat-action blue ${profile.resources.shieldOfFaithActive ? "ability-active" : ""}" data-ability-btn="${shieldOfFaithButton.id}">
+              <b>${escapeHtml(shieldOfFaithButton.label)}</b>
+              <span>${escapeHtml(shieldOfFaithButton.note)}</span>
+            </button>
+          </div>
+        ` : ""}
+        ${spiritualWeaponButton ? `
+          <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+            <button class="icon-btn" data-ability-info="${spiritualWeaponButton.id}">i</button>
+            <button class="combat-action blue ${profile.resources.spiritualWeaponActive ? "ability-active" : ""}" data-ability-btn="${spiritualWeaponButton.id}">
+              <b>${escapeHtml(spiritualWeaponButton.label)}</b>
+              <span>${escapeHtml(spiritualWeaponButton.note)}</span>
+            </button>
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  ` : "");
   const tacticButtonsMarkup = rogue ? `
     <div class="card" style="padding:6px;margin-top:6px;">
       <div class="grid-2">
@@ -2430,7 +2521,39 @@ function bindGlobalButtons(){
   });
   document.querySelectorAll("[data-ability-btn]").forEach(button => {
     const item = buildAbilityButtons().find(entry => entry.id === button.dataset.abilityBtn);
-    if (item) button.onclick = item.action;
+    if (!item) return;
+    if (!item.longPressAction){
+      button.onclick = item.action;
+      return;
+    }
+    let holdTimer = null;
+    let longPressTriggered = false;
+    const clearHold = () => {
+      if (holdTimer){
+        clearTimeout(holdTimer);
+        holdTimer = null;
+      }
+    };
+    button.onpointerdown = () => {
+      longPressTriggered = false;
+      clearHold();
+      holdTimer = setTimeout(() => {
+        longPressTriggered = true;
+        item.longPressAction();
+      }, 600);
+    };
+    button.onpointerup = clearHold;
+    button.onpointerleave = clearHold;
+    button.onpointercancel = clearHold;
+    button.oncontextmenu = event => event.preventDefault();
+    button.onclick = event => {
+      if (longPressTriggered){
+        event.preventDefault();
+        longPressTriggered = false;
+        return;
+      }
+      item.action();
+    };
   });
   document.querySelectorAll("[data-ability-info]").forEach(button => {
     button.onclick = () => {
@@ -2959,7 +3082,13 @@ function openProficiencyEditor(kind){
 
 function toggleConcentration(name = ""){
   const profile = activeProfile();
-  profile.concentrationActive = profile.concentrationActive ? "" : (name || "Concentration");
+  if (profile.concentrationActive){
+    profile.concentrationActive = "";
+    clearTrackedConcentrationSpells(profile);
+  }else{
+    clearTrackedConcentrationSpells(profile);
+    profile.concentrationActive = name || "Concentration";
+  }
   saveState();
 }
 
@@ -2975,6 +3104,7 @@ function runConcentrationCheck(){
   if (failed && profile.concentrationActive){
     text += `\nConcentration broken: ${profile.concentrationActive}`;
     profile.concentrationActive = "";
+    clearTrackedConcentrationSpells(profile);
   }
   openResult("Concentration Check", text);
   pushHistory(`Concentration: ${text.replace(/\n/g, " | ")}`);
@@ -3437,14 +3567,97 @@ function castSpell(name){
     text += `\nDamage: ${String(damageMatch[1]).toUpperCase()} -> ${damage.rolls.join(" + ")} = ${damage.total} ${damageMatch[2]}`;
   }
   if (Boolean(spell.concentration) || /concentration/i.test(String(spell.duration || ""))){
+    clearTrackedConcentrationSpells(profile);
     profile.concentrationActive = spell.name;
     text += `\nConcentration started: ${spell.name}`;
     if (String(spell.name || "").toLowerCase() === "shield of faith"){
       text += "\nAC +2 while concentration is active";
+      profile.resources.shieldOfFaithActive = true;
+    }
+    if (String(spell.name || "").toLowerCase() === "spiritual weapon"){
+      profile.resources.spiritualWeaponActive = true;
+      profile.resources.spiritualWeaponSlotLevel = 2;
     }
   }
   openResult(spell.name, text);
   pushHistory(text.replace(/\n/g, " | "));
+  saveState();
+}
+
+function spiritualWeaponDamageDice(slotLevel){
+  return `${1 + Math.max(0, Math.floor((Math.max(2, slotLevel) - 2) / 2))}d8`;
+}
+
+function rollSpiritualWeaponAttack(profile = activeProfile()){
+  const mode = profile.attackModes["Spiritual Weapon"] || { crit:false, adv:"-" };
+  const attack = rollD20(mode.adv);
+  const attackBonus = spellAttackMod(profile);
+  const toHit = attack.chosen + attackBonus;
+  const dice = spiritualWeaponDamageDice(profile.resources.spiritualWeaponSlotLevel || 2);
+  const damage = rollDice(dice);
+  const crit = mode.crit || attack.chosen >= 20;
+  const damageBonus = abilityMod(finalAbilityScores(profile)[spellAbility(profile)]);
+  const totalDamage = damage.total + damageBonus + (crit ? damage.max : 0);
+  const text = [
+    "Spiritual Weapon",
+    `Attack: ${formatDiceFormula("1d20", attackBonus)} -> ${formatChosenD20Roll(attack, mode.adv)}${fmtMod(attackBonus)} = ${toHit}`,
+    `Damage: ${formatFormulaFromParts(dice, [formatSignedTerm(damageBonus), crit ? `+crit(${damage.max})` : ""])} -> ${damage.total}${fmtMod(damageBonus)}${crit ? `+${damage.max}` : ""} = ${totalDamage} Force`
+  ].join("\n");
+  openResult("Spiritual Weapon", text);
+  pushHistory(text.replace(/\n/g, " | "));
+}
+
+function useShieldOfFaithBonusAction(){
+  const profile = activeProfile();
+  if (profile.resources.shieldOfFaithActive){
+    openResult("Shield of Faith", "Shield of Faith is already active. Long press the button to switch it off.");
+    return;
+  }
+  const spent = spendSpellSlotForLevel(1);
+  if (!spent){
+    openResult("Shield of Faith", "No spell slots available.");
+    return;
+  }
+  setTrackedConcentrationSpell(profile, "Shield of Faith");
+  const text = `Shield of Faith\nSlot used: L${spent.level}${spent.type === "pact" ? " pact" : ""}\nConcentration started: Shield of Faith\nAC +2 while concentration is active`;
+  openResult("Shield of Faith", text);
+  pushHistory(text.replace(/\n/g, " | "));
+  saveState();
+}
+
+function clearShieldOfFaithBonusAction(){
+  const profile = activeProfile();
+  if (!profile.resources.shieldOfFaithActive) return;
+  clearTrackedConcentrationSpells(profile);
+  if (profile.concentrationActive === "Shield of Faith") profile.concentrationActive = "";
+  pushHistory("Shield of Faith cleared.");
+  saveState();
+}
+
+function useSpiritualWeaponBonusAction(){
+  const profile = activeProfile();
+  if (!profile.resources.spiritualWeaponActive){
+    const spent = spendSpellSlotForLevel(2);
+    if (!spent){
+      openResult("Spiritual Weapon", "No spell slots available.");
+      return;
+    }
+    setTrackedConcentrationSpell(profile, "Spiritual Weapon");
+    profile.resources.spiritualWeaponSlotLevel = spent.level;
+    rollSpiritualWeaponAttack(profile);
+    saveState();
+    return;
+  }
+  rollSpiritualWeaponAttack(profile);
+  saveState();
+}
+
+function clearSpiritualWeaponBonusAction(){
+  const profile = activeProfile();
+  if (!profile.resources.spiritualWeaponActive) return;
+  clearTrackedConcentrationSpells(profile);
+  if (profile.concentrationActive === "Spiritual Weapon") profile.concentrationActive = "";
+  pushHistory("Spiritual Weapon dismissed.");
   saveState();
 }
 
@@ -3628,6 +3841,7 @@ function shortRest(){
   profile.resources.sneakAttackDismissed = false;
   profile.resources.firstRoundTargetActive = false;
   profile.concentrationActive = "";
+  clearTrackedConcentrationSpells(profile);
   profile.pactSlotsCur = summary.pact.slots || 0;
   pushHistory("Short rest: pact slots and short-rest resources refreshed.");
   saveState();
@@ -3656,6 +3870,7 @@ function longRest(){
   profile.resources.sneakAttackDismissed = false;
   profile.resources.firstRoundTargetActive = false;
   profile.concentrationActive = "";
+  clearTrackedConcentrationSpells(profile);
   const fogRegain = rollDice("1d3").total;
   profile.resources.fogCloudUsed = Math.max(0, profile.resources.fogCloudUsed - fogRegain);
   Object.entries(profileHitDice(profile)).forEach(([die, max]) => {
