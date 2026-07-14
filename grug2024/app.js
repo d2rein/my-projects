@@ -441,7 +441,10 @@ function createBlankProfile(id = `profile-${Date.now()}`){
       warPriestUsed:0,
       rageUsed:0,
       sneakAttackReady:false,
-      steadyAimActive:false
+      steadyAimActive:false,
+      cunningStrikeEffects:[],
+      sharpshooterActive:false,
+      firstRoundTargetActive:false
     }
   };
 }
@@ -543,7 +546,10 @@ function buildSampleProfiles(){
       warPriestUsed:0,
       rageUsed:0,
       sneakAttackReady:false,
-      steadyAimActive:false
+      steadyAimActive:false,
+      cunningStrikeEffects:[],
+      sharpshooterActive:false,
+      firstRoundTargetActive:false
     }
   });
 
@@ -630,6 +636,9 @@ function ensureProfileShape(profile){
   blank.statRolls = Array.isArray(blank.statRolls) ? blank.statRolls : [];
   blank.hpRolls = Array.isArray(blank.hpRolls) ? blank.hpRolls : [];
   blank.hpMaxOverride = blank.hpMaxOverride == null ? null : Number(blank.hpMaxOverride);
+  blank.resources.cunningStrikeEffects = Array.isArray(blank.resources.cunningStrikeEffects) ? unique(blank.resources.cunningStrikeEffects) : [];
+  blank.resources.sharpshooterActive = Boolean(blank.resources.sharpshooterActive);
+  blank.resources.firstRoundTargetActive = Boolean(blank.resources.firstRoundTargetActive);
   return blank;
 }
 
@@ -1703,20 +1712,28 @@ function buildAbilityButtons(profile = activeProfile()){
   }
   if ((counts.rogue || 0) >= 3){
     buttons.push({
+      id:"sneak-attack",
+      label:profile.resources.sneakAttackReady ? "Sneak Attack On" : "Sneak Attack",
+      note:sneakAttackDice(profile),
+      infoText:sneakAttackInfoText(profile),
+      showPips:false,
+      action:toggleSneakAttack
+    });
+    buttons.push({
       id:"steady-aim",
-      label:profile.resources.steadyAimActive ? "Steady Aim On" : "Steady Aim",
-      note:"Toggle ADV",
-      infoText:"Steady Aim grants advantage on your next attack in exchange for giving up movement this turn.",
+      label:profile.resources.steadyAimActive ? "BA - Steady Aim On" : "BA - Steady Aim",
+      note:"ADV",
+      infoText:"As a Bonus Action, you give yourself Advantage on your next attack roll on your current turn. You can use this feature only if you haven't moved during this turn, and after you use it, your Speed is 0 until the end of the current turn.",
       showPips:false,
       action:toggleSteadyAim
     });
     buttons.push({
-      id:"sneak-attack",
-      label:profile.resources.sneakAttackReady ? "Sneak Attack On" : "Sneak Attack",
-      note:sneakAttackDice(profile),
-      infoText:"Prime Sneak Attack so the next eligible weapon hit adds your current sneak attack dice.",
+      id:"cunning-action",
+      label:"BA - Cunning Action",
+      note:"Dash / Disengage / Hide",
+      infoText:"On your turn, you can take one of the following actions as a Bonus Action: Dash, Disengage, or Hide.",
       showPips:false,
-      action:toggleSneakAttack
+      action:showCunningAction
     });
   }
   if ((counts.paladin || 0) >= 2){
@@ -1765,6 +1782,111 @@ function sneakAttackDice(profile = activeProfile()){
   return `${Math.ceil(rogue / 2)}d6`;
 }
 
+function sneakAttackDiceCount(profile = activeProfile()){
+  const rogue = classCounts(profile).rogue || 0;
+  return rogue ? Math.ceil(rogue / 2) : 0;
+}
+
+function rogueCunningStrikeLimit(profile = activeProfile()){
+  const rogue = classCounts(profile).rogue || 0;
+  return rogue >= 11 ? 2 : 1;
+}
+
+function cunningStrikeSaveDc(profile = activeProfile()){
+  return 8 + abilityMod(finalAbilityScores(profile).DEX) + profBonus(profile);
+}
+
+function cunningStrikeEffectCatalog(profile = activeProfile()){
+  const rogue = classCounts(profile).rogue || 0;
+  const effects = [];
+  if (rogue >= 5){
+    effects.push(
+      { id:"poison", label:"Poison", cost:1, save:"CON", text:"Target makes a Constitution saving throw or becomes Poisoned for 1 minute, repeating the save at the end of each turn. Requires a Poisoner's Kit on your person." },
+      { id:"trip", label:"Trip", cost:1, save:"DEX", text:"If the target is Large or smaller, it makes a Dexterity saving throw or falls Prone." },
+      { id:"withdraw", label:"Withdraw", cost:1, save:"", text:"Immediately after the attack, you move up to half your speed without provoking Opportunity Attacks." }
+    );
+  }
+  if (rogue >= 14){
+    effects.push(
+      { id:"daze", label:"Daze", cost:2, save:"CON", text:"Target makes a Constitution saving throw or on its next turn it can do only one of: move, take an action, or take a Bonus Action." },
+      { id:"knock-out", label:"Knockout", cost:6, save:"CON", text:"Target makes a Constitution saving throw or becomes Unconscious for 1 minute or until it takes damage, repeating the save at the end of each turn." },
+      { id:"obscure", label:"Obscure", cost:3, save:"DEX", text:"Target makes a Dexterity saving throw or is Blinded until the end of its next turn." }
+    );
+  }
+  return effects;
+}
+
+function selectedCunningStrikeEffects(profile = activeProfile()){
+  const catalog = cunningStrikeEffectCatalog(profile);
+  const allowed = new Set(catalog.map(effect => effect.id));
+  const selected = (profile.resources.cunningStrikeEffects || []).filter(id => allowed.has(id));
+  const limited = selected.slice(0, rogueCunningStrikeLimit(profile));
+  if (limited.length !== (profile.resources.cunningStrikeEffects || []).length){
+    profile.resources.cunningStrikeEffects = limited;
+  }
+  return limited.map(id => catalog.find(effect => effect.id === id)).filter(Boolean);
+}
+
+function sneakAttackInfoText(profile = activeProfile()){
+  const rogue = classCounts(profile).rogue || 0;
+  if (!rogue) return "Sneak Attack is unavailable without Rogue levels.";
+  const lines = [
+    "Once per turn you can deal an extra 1d6 damage to one creature you hit with an attack roll if you have Advantage on the roll and the attack uses a Finesse or a Ranged weapon. The extra damage's type is the same as the weapon's type.",
+    "",
+    "You don't need Advantage on the attack roll if at least one of your allies is within 5 feet of the target, the ally doesn't have the Incapacitated condition and you don't have Disadvantage on the attack roll."
+  ];
+  if (rogue >= 5){
+    lines.push(
+      "",
+      "Level 5: Cunning Strike",
+      "When you deal Sneak Attack damage, you can add one of the following Cunning Strike effects.",
+      "Poison (Cost: 1d6). You add a toxin to your strike, forcing the target to make a Constitution saving throw. On a failed save, the target has the Poisoned condition for 1 minute. At the end of each of its turns, the poisoned target repeats the save, ending the effect on a success.",
+      "",
+      "To use this effect, you must have a Poisoner's Kit on your person.",
+      "",
+      "Trip (Cost: 1d6). If the target is Large or smaller, it must succeed on a Dexterity saving throw or have the Prone condition.",
+      "",
+      "Withdraw (Cost: 1d6). Immediately after the attack, you move up to half your speed without provoking Opportunity Attacks."
+    );
+  }
+  if (rogue >= 11){
+    lines.push(
+      "",
+      "Level 11: Improved Cunning Strike",
+      "You can use up to two Cunning Strike effects when you deal Sneak Attack damage, paying the die cost for each effect."
+    );
+  }
+  if (rogue >= 14){
+    lines.push(
+      "",
+      "Level 14: Devious Strikes",
+      "Daze (Cost: 2d6). The target must succeed on a Constitution saving throw, or on its next turn, it can do only one of the following: move or take an action or a Bonus Action.",
+      "",
+      "Knock Out (Cost: 6d6). The target must succeed on a Constitution saving throw, or it has the Unconscious condition for 1 minute or until it takes any damage. The Unconscious target repeats the save at the end of its turns, ending the effect on itself on a success.",
+      "",
+      "Obscure (Cost: 3d6). The target must succeed on a Dexterity saving throw, or it has the Blinded condition until the end of its next turn."
+    );
+  }
+  return lines.join("\n");
+}
+
+function toggleCunningStrikeEffect(id){
+  const profile = activeProfile();
+  const selected = new Set(profile.resources.cunningStrikeEffects || []);
+  if (selected.has(id)){
+    selected.delete(id);
+  }else{
+    const next = Array.from(selected);
+    if (next.length >= rogueCunningStrikeLimit(profile)){
+      openResult("Cunning Strike", `You can select up to ${rogueCunningStrikeLimit(profile)} effect${rogueCunningStrikeLimit(profile) === 1 ? "" : "s"} at your current Rogue level.`);
+      return;
+    }
+    selected.add(id);
+  }
+  profile.resources.cunningStrikeEffects = Array.from(selected);
+  saveState();
+}
+
 function renderCombatPage(){
   const profile = activeProfile();
   document.getElementById("combatTop").innerHTML = `
@@ -1779,17 +1901,92 @@ function renderCombatPage(){
   document.getElementById("concentrationActiveBtn").textContent = "Concentration";
   document.getElementById("concentrationActiveBtn").className = `action-btn ${profile.concentrationActive ? "yellow" : "blue"}`;
   const buttons = buildAbilityButtons(profile);
-  document.getElementById("abilityButtons").innerHTML = buttons.length
-    ? buttons.map(item => `
-      <div class="row-grid ability-row">
-        <button class="icon-btn" data-ability-info="${item.id}">i</button>
-        <button class="combat-action blue ${item.id === "steady-aim" && profile.resources.steadyAimActive ? "ability-active" : item.id === "sneak-attack" && profile.resources.sneakAttackReady ? "ability-active" : ""}" data-ability-btn="${item.id}">
-          <b>${escapeHtml(item.label)}</b>
-          <span>${escapeHtml(item.note)}</span>
-        </button>
-        <div class="ability-pips-shell">${renderAbilityPips(item.used || 0, item.max || 0, item.showPips !== false)}</div>
+  const byId = new Map(buttons.map(item => [item.id, item]));
+  const sneakButton = byId.get("sneak-attack");
+  const steadyAimButton = byId.get("steady-aim");
+  const cunningActionButton = byId.get("cunning-action");
+  const standardButtons = buttons.filter(item => !["sneak-attack", "steady-aim", "cunning-action"].includes(item.id));
+  const rogue = classCounts(profile).rogue || 0;
+  const cunningEffects = cunningStrikeEffectCatalog(profile);
+  const selectedEffects = new Set((profile.resources.cunningStrikeEffects || []).filter(Boolean));
+  const sneakMarkup = sneakButton ? `
+    <div class="row-grid ability-row">
+      <button class="icon-btn" data-ability-info="${sneakButton.id}">i</button>
+      <button class="combat-action blue ${profile.resources.sneakAttackReady ? "ability-active" : ""}" data-ability-btn="${sneakButton.id}">
+        <b>${escapeHtml(sneakButton.label)}</b>
+        <span>${escapeHtml(sneakButton.note)}</span>
+      </button>
+      <div class="ability-pips-shell" style="display:grid;gap:4px;">
+        ${cunningEffects.length ? `
+          <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;">
+            ${cunningEffects.slice(0, 3).map(effect => `<button class="small-btn ${selectedEffects.has(effect.id) ? "action-btn yellow" : ""}" data-cunning-effect="${effect.id}" style="padding:4px 6px;">${escapeHtml(effect.label)}</button>`).join("")}
+          </div>
+          ${rogue >= 14 ? `<div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;">${cunningEffects.slice(3).map(effect => `<button class="small-btn ${selectedEffects.has(effect.id) ? "action-btn yellow" : ""}" data-cunning-effect="${effect.id}" style="padding:4px 6px;">${escapeHtml(effect.label)}</button>`).join("")}</div>` : ""}
+        ` : renderAbilityPips(0, 0, false)}
       </div>
-    `).join("")
+    </div>
+  ` : "";
+  const bonusActionsMarkup = steadyAimButton || cunningActionButton ? `
+    <div class="card" style="padding:6px;margin-top:6px;">
+      <div class="card-title" style="margin-bottom:6px;"><span>Bonus Actions</span></div>
+      <div class="grid-2">
+        ${steadyAimButton ? `
+          <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+            <button class="icon-btn" data-ability-info="${steadyAimButton.id}">i</button>
+            <button class="combat-action blue ${profile.resources.steadyAimActive ? "ability-active" : ""}" data-ability-btn="${steadyAimButton.id}">
+              <b>${escapeHtml(steadyAimButton.label)}</b>
+              <span>${escapeHtml(steadyAimButton.note)}</span>
+            </button>
+          </div>
+        ` : ""}
+        ${cunningActionButton ? `
+          <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+            <button class="icon-btn" data-ability-info="${cunningActionButton.id}">i</button>
+            <button class="combat-action blue" data-ability-btn="${cunningActionButton.id}">
+              <b>${escapeHtml(cunningActionButton.label)}</b>
+              <span>${escapeHtml(cunningActionButton.note)}</span>
+            </button>
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  ` : "";
+  const tacticButtonsMarkup = rogue ? `
+    <div class="card" style="padding:6px;margin-top:6px;">
+      <div class="grid-2">
+        <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+          <button class="icon-btn" data-custom-info="sharpshooter">i</button>
+          <button class="combat-action blue ${profile.resources.sharpshooterActive ? "ability-active" : ""}" data-custom-toggle="sharpshooter">
+            <b>Sharpshooter</b>
+            <span>${profile.resources.sharpshooterActive ? "-5 hit / +10 dmg" : "Ranged power shot"}</span>
+          </button>
+        </div>
+        <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
+          <button class="icon-btn" data-custom-info="first-round-target">i</button>
+          <button class="combat-action blue ${profile.resources.firstRoundTargetActive ? "ability-active" : ""}" data-custom-toggle="first-round-target">
+            <b>First Round Target</b>
+            <span>${profile.resources.firstRoundTargetActive ? "On" : "Off"}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  ` : "";
+  document.getElementById("abilityButtons").innerHTML = (sneakMarkup || standardButtons.length || bonusActionsMarkup || tacticButtonsMarkup)
+    ? [
+      sneakMarkup,
+      ...standardButtons.map(item => `
+        <div class="row-grid ability-row">
+          <button class="icon-btn" data-ability-info="${item.id}">i</button>
+          <button class="combat-action blue" data-ability-btn="${item.id}">
+            <b>${escapeHtml(item.label)}</b>
+            <span>${escapeHtml(item.note)}</span>
+          </button>
+          <div class="ability-pips-shell">${renderAbilityPips(item.used || 0, item.max || 0, item.showPips !== false)}</div>
+        </div>
+      `).join(""),
+      bonusActionsMarkup,
+      tacticButtonsMarkup
+    ].join("")
     : `<div class="empty">No active buttons detected for this build yet.</div>`;
   renderWeaponRows();
   renderSpellRows();
@@ -2133,6 +2330,25 @@ function bindGlobalButtons(){
     button.onclick = () => {
       const item = buildAbilityButtons().find(entry => entry.id === button.dataset.abilityInfo);
       if (item) openResult(item.label, item.infoText || item.note || "No details available.");
+    };
+  });
+  document.querySelectorAll("[data-cunning-effect]").forEach(button => {
+    button.onclick = () => toggleCunningStrikeEffect(button.dataset.cunningEffect);
+  });
+  document.querySelectorAll("[data-custom-toggle]").forEach(button => {
+    button.onclick = () => {
+      if (button.dataset.customToggle === "sharpshooter") toggleSharpshooter();
+      if (button.dataset.customToggle === "first-round-target") toggleFirstRoundTarget();
+    };
+  });
+  document.querySelectorAll("[data-custom-info]").forEach(button => {
+    button.onclick = () => {
+      if (button.dataset.customInfo === "sharpshooter"){
+        openResult("Sharpshooter", "When active on this sheet, ranged weapon attacks take a -5 penalty to hit and gain +10 damage.");
+      }
+      if (button.dataset.customInfo === "first-round-target"){
+        openResult("First Round Target", "During the first round of each combat, you have Advantage on attack rolls against any creature that hasn't taken a turn. If your Sneak Attack hits any target during that round, the target takes extra damage of the weapon's type equal to your Rogue level.");
+      }
     };
   });
   document.querySelectorAll("[data-weapon-roll]").forEach(button => button.onclick = () => rollWeapon(button.dataset.weaponRoll));
@@ -2973,36 +3189,66 @@ function formatDiceFormula(spec, bonus = 0){
   return `${base}${bonus > 0 ? `+${bonus}` : bonus}`;
 }
 
+function combinedAdvantageMode(baseMode, bonusAdvantage = false){
+  if (!bonusAdvantage) return baseMode;
+  if (baseMode === "dis") return "-";
+  return "adv";
+}
+
 function rollWeapon(weaponId){
   const profile = activeProfile();
   const weapon = weaponById(weaponId);
   const mode = profile.attackModes[weaponId] || { crit:false, adv:"-" };
   const data = weaponAttackData(profile, weapon);
-  const attack = rollD20(profile.resources.steadyAimActive ? "adv" : mode.adv);
-  const toHit = attack.chosen + data.attackBonus;
+  const rogue = classCounts(profile).rogue || 0;
+  const assassinFirstRound = profile.resources.firstRoundTargetActive && rogue >= 3 && hasSubclass(profile, "rogue:assassin");
+  const hasBonusAdvantage = profile.resources.steadyAimActive || assassinFirstRound;
+  const attackMode = combinedAdvantageMode(mode.adv, hasBonusAdvantage);
+  const attack = rollD20(attackMode);
+  const sharpshooterActive = profile.resources.sharpshooterActive && weapon.type === "ranged";
+  const attackBonus = data.attackBonus + (sharpshooterActive ? -5 : 0);
+  const toHit = attack.chosen + attackBonus;
   const damage = rollDice(weapon.damage);
   const critFloor = profile.resources.hexbladeCurseActive ? 19 : 20;
   const crit = mode.crit || attack.chosen >= critFloor;
-  let bonusDamage = data.damageBonus + (profile.resources.hexbladeCurseActive ? profBonus(profile) : 0);
+  let bonusDamage = data.damageBonus + (profile.resources.hexbladeCurseActive ? profBonus(profile) : 0) + (sharpshooterActive ? 10 : 0);
   let extra = "";
   let total = damage.total + bonusDamage + (crit ? damage.max : 0);
-  if (profile.resources.sneakAttackReady && (classCounts(profile).rogue || 0) > 0 && (weapon.type === "ranged" || weapon.finesse)){
-    const sneak = rollDice(sneakAttackDice(profile));
+  if (profile.resources.sneakAttackReady && rogue > 0 && (weapon.type === "ranged" || weapon.finesse)){
+    const selectedEffects = selectedCunningStrikeEffects(profile);
+    const costTotal = selectedEffects.reduce((sum, effect) => sum + effect.cost, 0);
+    const remainingDice = Math.max(0, sneakAttackDiceCount(profile) - costTotal);
+    const sneak = remainingDice > 0 ? rollDice(`${remainingDice}d6`) : { rolls:[], total:0, max:0 };
     const sneakTotal = sneak.total + (crit ? sneak.max : 0);
+    let effectLines = [];
+    if (selectedEffects.length){
+      const dc = cunningStrikeSaveDc(profile);
+      effectLines = selectedEffects.map(effect => effect.save
+        ? `${effect.label} (Cost ${effect.cost}d6): DC ${dc} ${effect.save} save`
+        : `${effect.label} (Cost ${effect.cost}d6): no save`);
+    }
+    let firstRoundText = "";
+    if (assassinFirstRound){
+      total += rogue;
+      firstRoundText = `\nAssassinate: +${rogue} first-round damage`;
+    }
     total += sneakTotal;
-    extra = `\nSneak Attack: ${sneak.rolls.join(" + ")}${crit ? ` + crit(${sneak.max})` : ""} = ${sneakTotal}`;
+    const sneakFormula = `${remainingDice}D6`;
+    const sneakRollText = remainingDice > 0 ? `${sneak.rolls.join(" + ")}${crit ? ` + crit(${sneak.max})` : ""} = ${sneakTotal}` : `0 = ${sneakTotal}`;
+    extra = `\nSneak Attack: ${sneakFormula} -> ${sneakRollText}${effectLines.length ? `\n${effectLines.join("\n")}` : ""}${firstRoundText}`;
     profile.resources.sneakAttackReady = false;
   }
-  const attackFormula = formatDiceFormula("1d20", data.attackBonus);
+  const attackFormula = formatDiceFormula("1d20", attackBonus);
   const damageFormula = formatDiceFormula(weapon.damage, bonusDamage);
   const text = [
       `${weapon.name}`,
-      `Attack: ${attackFormula} -> ${attack.chosen}${data.attackBonus ? `${fmtMod(data.attackBonus)}` : ""} = ${toHit}`,
+      `Attack: ${attackFormula} -> ${attack.chosen}${attackBonus ? `${fmtMod(attackBonus)}` : ""} = ${toHit}${attackMode === "adv" && !attack.second ? "" : attack.second ? ` (${attack.first}, ${attack.second})` : ""}`,
       `Damage: ${damageFormula} -> ${damage.total}${bonusDamage ? `${fmtMod(bonusDamage)}` : ""}${crit ? ` + crit(${damage.max})` : ""} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
     ].join("\n");
   openResult(weapon.name, text);
   pushHistory(text.replace(/\n/g, " | "));
   profile.resources.steadyAimActive = false;
+  profile.resources.firstRoundTargetActive = false;
   saveState();
 }
 
@@ -3165,10 +3411,28 @@ function toggleSteadyAim(){
   saveState();
 }
 
+function showCunningAction(){
+  openResult("BA - Cunning Action", "On your turn, you can take one of the following actions as a Bonus Action: Dash, Disengage, or Hide.");
+}
+
 function toggleSneakAttack(){
   const profile = activeProfile();
   profile.resources.sneakAttackReady = !profile.resources.sneakAttackReady;
   pushHistory(profile.resources.sneakAttackReady ? "Sneak Attack primed." : "Sneak Attack cleared.");
+  saveState();
+}
+
+function toggleSharpshooter(){
+  const profile = activeProfile();
+  profile.resources.sharpshooterActive = !profile.resources.sharpshooterActive;
+  pushHistory(profile.resources.sharpshooterActive ? "Sharpshooter enabled." : "Sharpshooter cleared.");
+  saveState();
+}
+
+function toggleFirstRoundTarget(){
+  const profile = activeProfile();
+  profile.resources.firstRoundTargetActive = !profile.resources.firstRoundTargetActive;
+  pushHistory(profile.resources.firstRoundTargetActive ? "First Round Target marked." : "First Round Target cleared.");
   saveState();
 }
 
@@ -3205,6 +3469,7 @@ function shortRest(){
   profile.resources.bladesongActive = false;
   profile.resources.steadyAimActive = false;
   profile.resources.sneakAttackReady = false;
+  profile.resources.firstRoundTargetActive = false;
   profile.concentrationActive = "";
   profile.pactSlotsCur = summary.pact.slots || 0;
   pushHistory("Short rest: pact slots and short-rest resources refreshed.");
@@ -3231,6 +3496,7 @@ function longRest(){
   profile.resources.rageUsed = 0;
   profile.resources.steadyAimActive = false;
   profile.resources.sneakAttackReady = false;
+  profile.resources.firstRoundTargetActive = false;
   profile.concentrationActive = "";
   Object.entries(profileHitDice(profile)).forEach(([die, max]) => {
     profile.hitDiceCur[die] = Math.min(max, (profile.hitDiceCur[die] || 0) + Math.max(1, Math.floor(max / 2)));
