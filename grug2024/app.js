@@ -1980,7 +1980,6 @@ function renderCombatPage(){
   ` : "";
   const bonusActionsMarkup = steadyAimButton || cunningActionButton ? `
     <div class="card" style="padding:6px;margin-top:6px;">
-      <div class="card-title" style="margin-bottom:6px;"><span>Bonus Actions</span></div>
       <div class="grid-2">
         ${steadyAimButton ? `
           <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
