@@ -1420,6 +1420,43 @@ function spellEditorCounts(profile = activeProfile()){
   };
 }
 
+function isAutomaticBonusSpell(profile, name, filter = "known"){
+  return automaticExtraSpellNames(profile, filter).includes(name);
+}
+
+function isClericSpellName(name){
+  const spell = getSpellByName(name);
+  return Boolean(spell) && String(spell.classes || "").toLowerCase().includes("cleric");
+}
+
+function clericCantripLimit(profile = activeProfile()){
+  const clericLevel = classCounts(profile).cleric || 0;
+  if (clericLevel >= 10) return 5;
+  if (clericLevel >= 4) return 4;
+  if (clericLevel >= 1) return 3;
+  return 0;
+}
+
+function clericPreparedLimit(profile = activeProfile()){
+  const clericLevel = classCounts(profile).cleric || 0;
+  if (!clericLevel) return 0;
+  return Math.max(1, clericLevel + abilityMod(finalAbilityScores(profile).WIS));
+}
+
+function clericSpellbookSummary(profile = activeProfile()){
+  const manualKnown = (profile.knownSpells || []).filter(name => !isAutomaticBonusSpell(profile, name, "known"));
+  const manualPrepared = (profile.preparedSpells || []).filter(name => !isAutomaticBonusSpell(profile, name, "prepared"));
+  const clericCantripsKnown = manualKnown.filter(name => {
+    const spell = getSpellByName(name);
+    return isClericSpellName(name) && Number(spell?.level || 0) === 0;
+  }).length;
+  const clericPrepared = manualPrepared.filter(name => {
+    const spell = getSpellByName(name);
+    return isClericSpellName(name) && Number(spell?.level || 0) > 0;
+  }).length;
+  return { clericCantripsKnown, clericPrepared };
+}
+
 function selectedFeaturesNeedChoice(profile = activeProfile()){
   const features = [];
   const species = entryBySlug("lineages", profile.speciesSlug);
@@ -2275,10 +2312,10 @@ function renderSpellsPage(){
   document.getElementById("spellbookLimitsPanel").classList.toggle("collapsed", profile.spellbookLimitsCollapsed);
   document.getElementById("spellbookLimitsToggleText").textContent = profile.spellbookLimitsCollapsed ? "+" : "-";
   const counts = spellEditorCounts(profile);
+  const clericSummary = clericSpellbookSummary(profile);
   document.getElementById("spellCounts").innerHTML = `
-    <div class="count-box">Known <b>${allKnown.length}</b></div>
-    <div class="count-box ${counts.prepared > preparedSpellLimit(profile) ? "warn" : ""}">Prepared <b>${prepared.length}/${preparedSpellLimit(profile)}</b></div>
-    <div class="count-box ${counts.spellbook > spellbookAllowance(profile) ? "warn" : ""}">Spellbook <b>${(profile.knownSpells || []).filter(name => Number(getSpellByName(name)?.level || 0) > 0).length}/${spellbookAllowance(profile) || "-"}</b></div>
+    <div class="count-box ${clericSummary.clericCantripsKnown > clericCantripLimit(profile) ? "warn" : ""}">Cantrips Cleric <b>${clericSummary.clericCantripsKnown}/${clericCantripLimit(profile)}</b></div>
+    <div class="count-box ${clericSummary.clericPrepared > clericPreparedLimit(profile) ? "warn" : ""}">Prepared Cleric <b>${clericSummary.clericPrepared}/${clericPreparedLimit(profile)}</b></div>
     <div class="count-box">Spell DC <b>${spellDc(profile)}</b></div>
   `;
   document.getElementById("bonusSpellSummary").innerHTML = `Bonus spells <b>${extraSpellNames(profile, "known").length} known / ${extraSpellNames(profile, "prepared").length} prepared</b>`;
