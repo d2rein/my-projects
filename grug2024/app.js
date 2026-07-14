@@ -158,6 +158,79 @@ const SUBCLASS_OVERRIDES_2024 = {
     { slug:"rogue:thief", name:"Thief", source:"Player's Handbook (2024)" }
   ]
 };
+const SUBCLASS_DETAILS_2024 = {
+  "rogue:arcane-trickster":{
+    source:"Player's Handbook (2024)",
+    mechanics:[
+      { section:"Level 3: Spellcasting", text:"You gain Arcane Trickster spellcasting. You know Mage Hand and two other Wizard cantrips, learn another Wizard cantrip at Rogue 10, and prepare Wizard spells from the Arcane Trickster table. Intelligence is your spellcasting ability, and you can use an Arcane Focus as your spellcasting focus." },
+      { section:"Level 3: Mage Hand Legerdemain", text:"You can cast Mage Hand as a Bonus Action, make the spectral hand Invisible, control it as a Bonus Action, and make Dexterity (Sleight of Hand) checks through it." },
+      { section:"Level 9: Magical Ambush", text:"If you have the Invisible condition when you cast a spell on a creature, it has Disadvantage on saving throws against that spell on the same turn." },
+      { section:"Level 13: Versatile Trickster", text:"When you use the Trip option of your Cunning Strike on a creature, you can also use that option on another creature within 5 feet of your spectral Mage Hand." },
+      { section:"Level 17: Spell Thief", text:"Immediately after a creature casts a spell that targets you or includes you in its area, you can use your Reaction to force an Intelligence save against your spell save DC. On a failure, the spell has no effect on you, and if it is level 1+ and of a level you can cast, you prepare it for 8 hours while the caster cannot cast it. Once you steal a spell this way, you must finish a Long Rest before doing so again." }
+    ]
+  },
+  "rogue:assassin":{
+    source:"Player's Handbook (2024)",
+    mechanics:[
+      { section:"Level 3: Assassinate", text:"You have Advantage on Initiative rolls. During the first round of each combat, you have Advantage on attack rolls against creatures that have not taken a turn yet. If your Sneak Attack hits during that round, the target takes extra damage of the weapon's type equal to your Rogue level." },
+      { section:"Level 3: Assassin's Tools", text:"You gain a Disguise Kit and a Poisoner's Kit, and you have proficiency with them." },
+      { section:"Level 9: Infiltration Expertise", text:"You can unerringly mimic another person's speech, handwriting, or both after studying them for at least 1 hour. Your Speed also is not reduced to 0 by using Steady Aim." },
+      { section:"Level 13: Envenom Weapons", text:"When you use the Poison option of your Cunning Strike, the target also takes 2d6 Poison damage whenever it fails the saving throw. This damage ignores Resistance to Poison damage." },
+      { section:"Level 17: Death Strike", text:"When you hit with your Sneak Attack on the first round of a combat, the target must make a Constitution saving throw against DC 8 + your Dexterity modifier + your Proficiency Bonus. On a failure, the attack's damage is doubled against the target." }
+    ]
+  },
+  "rogue:phantom":{
+    source:"Ravenloft - The Horrors Within (2024)",
+    mechanics:[
+      { section:"Level 3: Wails from the Grave", text:"Immediately after you deal Sneak Attack damage on your turn, you can target a second creature within 30 feet of the first and deal Necrotic damage equal to half your Sneak Attack dice, rounded up. You can use this a number of times equal to your Dexterity modifier, minimum once, and regain all uses on a Long Rest." },
+      { section:"Level 3: Whispers of the Dead", text:"Whenever you finish a Short or Long Rest, choose one skill or tool proficiency you lack and gain it until you use this feature again to choose a different proficiency." },
+      { section:"Level 9: Tokens of the Departed", text:"You gain soul trinkets with special uses: Death's Knell lets you trigger Wails from the Grave without spending a use, Life Essence gives Advantage on Death Saves and Constitution saves while you have a trinket, and Spirit Query lets you destroy a trinket to cast Augury or question the spirit tied to the trinket. You start with a maximum of two trinkets, increasing to three at Rogue 13 and four at Rogue 17." },
+      { section:"Level 9: Voice of Death", text:"You can cast Speak with Dead once without a spell slot, regaining that use on a Short or Long Rest. You can target one of your soul trinkets instead of a corpse." },
+      { section:"Level 13: Ghost Walk", text:"As a Bonus Action, you gain a spectral form for 10 minutes that grants a Fly Speed of 10 feet with hover, Disadvantage on attack rolls against you, and movement through creatures and objects as Difficult Terrain. If you end your turn inside a creature or object, you take 1d10 Force damage. You regain this after a Long Rest, or by destroying a soul trinket." },
+      { section:"Level 17: Death's Friend", text:"When you use Wails from the Grave, you can deal its Necrotic damage to both the first and second creature. When you roll Initiative and have no soul trinkets, you gain one." }
+    ]
+  },
+  "rogue:scion-of-the-three":{
+    source:"Forgotten Realms - Heroes of Faerun (2024)",
+    mechanics:[
+      { section:"Level 3: Bloodthirst", text:"When an enemy within 30 feet takes damage and becomes Bloodied without dying, you can use your Reaction to teleport to an unoccupied space within 5 feet of it and make one melee attack. Uses equal your Intelligence modifier, minimum once, and refresh on a Long Rest." },
+      { section:"Level 3: Dread Allegiance", text:"Choose Bane, Bhaal, or Myrkul when you finish a Long Rest. You gain a matching damage Resistance and cantrip: Bane gives Psychic resistance and Minor Illusion, Bhaal gives Poison resistance and Blade Ward, and Myrkul gives Necrotic resistance and Chill Touch. Intelligence is your spellcasting ability for the cantrip." },
+      { section:"Level 9: Strike Fear", text:"You gain the Terrify Cunning Strike option, cost 1d6. The target makes a Wisdom save or becomes Frightened for 1 minute, and while Frightened this way you have Advantage on attack rolls against it. It repeats the save at the end of each turn." },
+      { section:"Level 13: Aura of Malevolence", text:"When you use Bloodthirst and teleport, creatures of your choice within 10 feet of either the space you left or the destination space take damage equal to your Intelligence modifier. The damage type matches your Dread Allegiance resistance and ignores Resistance." },
+      { section:"Level 17: Dread Incarnate", text:"You regain one expended use of Bloodthirst on a Short Rest, and when you roll Sneak Attack damage you can treat any die roll of 1 or 2 as a 3." }
+    ]
+  },
+  "rogue:soulknife":{
+    source:"Player's Handbook (2024)",
+    mechanics:[
+      { section:"Level 3: Psionic Power", text:"You gain Psionic Energy Dice that fuel subclass features. You regain one expended die on a Short Rest and all expended dice on a Long Rest. Psi-Bolstered Knack lets you add a die to a failed proficient skill or tool check, expending it only if that turns the failure into success. Psychic Whispers lets you establish telepathy with creatures you can see for a number of hours equal to a rolled Psionic Energy Die." },
+      { section:"Level 3: Psychic Blades", text:"Whenever you take the Attack action or make an Opportunity Attack, you can manifest a Psychic Blade in a free hand. It is a Simple Melee weapon that deals 1d6 Psychic damage plus the ability modifier used for the attack, has Finesse and Thrown (60/120), and Vex mastery that does not count against your mastery limit. After attacking with it on your turn, you can make a Bonus Action attack with a second blade for 1d4 Psychic damage if your other hand is free." },
+      { section:"Level 9: Soul Blades", text:"Homing Strikes lets you expend a Psionic Energy Die to add it to a missed Psychic Blade attack roll, expending it only if the attack then hits. Psychic Teleportation lets you expend a die, throw a blade, and teleport up to 10 times the die roll in feet to an unoccupied space you can see." },
+      { section:"Level 13: Psychic Veil", text:"As a Magic action, you gain the Invisible condition for 1 hour or until you dismiss it, deal damage, or force a save. You regain the use after a Long Rest, or by expending a Psionic Energy Die." },
+      { section:"Level 17: Rend Mind", text:"When your Psychic Blades deal Sneak Attack damage to a creature, you can force a Wisdom save against DC 8 + Dexterity modifier + Proficiency Bonus. On a failure, the target is Stunned for 1 minute, repeating the save at the end of each turn. You regain the use after a Long Rest, or by expending three Psionic Energy Dice." }
+    ]
+  },
+  "rogue:thief":{
+    source:"Player's Handbook (2024)",
+    mechanics:[
+      { section:"Level 3: Fast Hands", text:"As a Bonus Action, you can make a Dexterity (Sleight of Hand) check to pick a lock, disarm a trap with Thieves' Tools, or pick a pocket. You can also take the Utilize action or the Magic action to use a magic item that requires that action." },
+      { section:"Level 3: Second Story Work", text:"You gain a Climb Speed equal to your Speed, and you can determine your jump distance using Dexterity instead of Strength." },
+      { section:"Level 9: Supreme Sneak", text:"You gain the Stealth Attack Cunning Strike option, cost 1d6. If you have the Hide action's Invisible condition, this attack does not end that condition if you end the turn behind Three-Quarters Cover or Total Cover." },
+      { section:"Level 13: Use Magic Device", text:"You can attune to up to four magic items at once. Whenever you use a magic item property that expends charges, roll 1d6; on a 6, no charges are spent. You can also use any Spell Scroll with Intelligence as your spellcasting ability. Cantrip and level 1 scrolls work automatically; higher-level scrolls require an Intelligence (Arcana) check against DC 10 + spell level or the scroll disintegrates." },
+      { section:"Level 17: Thief's Reflexes", text:"You take two turns during the first round of any combat: one at your normal Initiative and a second at Initiative minus 10." }
+    ]
+  },
+  "cleric:war":{
+    source:"Player's Handbook (2024)",
+    mechanics:[
+      { section:"Level 3: Guided Strike", text:"When you or a creature within 30 feet misses with an attack roll, you can expend one use of Channel Divinity to give that roll a +10 bonus, potentially causing it to hit. If you use this to help another creature, it costs your Reaction." },
+      { section:"Level 3: War Domain Spells", text:"You always have these spells prepared by Cleric level: 3 - Guiding Bolt, Magic Weapon, Shield of Faith, Spiritual Weapon. 5 - Crusader's Mantle, Spirit Guardians. 7 - Fire Shield, Freedom of Movement. 9 - Hold Monster, Steel Wind Strike." },
+      { section:"Level 3: War Priest", text:"As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. Uses equal your Wisdom modifier, minimum once, and refresh on a Short or Long Rest." },
+      { section:"Level 6: War God's Blessing", text:"You can expend a use of Channel Divinity to cast Shield of Faith or Spiritual Weapon without expending a spell slot. When cast this way, the spell does not require Concentration, lasts for 1 minute, and ends early if you cast that spell again, gain the Incapacitated condition, or die." },
+      { section:"Level 17: Avatar of Battle", text:"You gain Resistance to Bludgeoning, Piercing, and Slashing damage." }
+    ]
+  }
+};
 const CLASS_FEATURE_OVERRIDES_2024 = {
   cleric:{
     1:"Spellcasting, Divine Order",
@@ -260,13 +333,13 @@ function subclassOverrideItems(classSlug){
     name:item.name,
     meta:item.source,
     search:`${item.name} ${item.source}`.toLowerCase(),
-    entry:{
+    entry:Object.assign({
       slug:item.slug,
       name:item.name,
       source:item.source,
-      raw_text:`${item.name} is available on this 2024 Grug sheet. Detailed subclass text for this option has not been copied into the local dataset yet.`,
+      raw_text:`${item.name} is available on this 2024 Grug sheet.`,
       mechanics:[]
-    }
+    }, SUBCLASS_DETAILS_2024[item.slug] || {})
   }));
 }
 
@@ -747,9 +820,22 @@ function profileLanguages(profile = activeProfile()){
 }
 
 function extraSpellNames(profile = activeProfile(), filter = "known"){
-  return unique((profile.extraSpells || [])
+  const manual = (profile.extraSpells || [])
     .filter(item => filter === "prepared" ? item.prepared : item.known)
-    .map(item => item.name));
+    .map(item => item.name);
+  return unique([...manual, ...automaticExtraSpellNames(profile, filter)]);
+}
+
+function automaticExtraSpellNames(profile = activeProfile(), filter = "known"){
+  const names = [];
+  const clericLevel = classCounts(profile).cleric || 0;
+  if (hasSubclass(profile, "cleric:war") && clericLevel >= 3){
+    names.push("Guiding Bolt", "Magic Weapon", "Shield of Faith", "Spiritual Weapon");
+    if (clericLevel >= 5) names.push("Crusader's Mantle", "Spirit Guardians");
+    if (clericLevel >= 7) names.push("Fire Shield", "Freedom of Movement");
+    if (clericLevel >= 9) names.push("Hold Monster", "Steel Wind Strike");
+  }
+  return names;
 }
 
 function profileSkillProficiencies(profile = activeProfile()){
@@ -764,6 +850,9 @@ function profileToolProficiencies(profile = activeProfile()){
   const backgroundData = parseBackgroundChoiceData(profile);
   const tools = [...backgroundData.fixedTools, ...(profile.backgroundSelections.tools || [])];
   if ((classCounts(profile).rogue || 0) > 0) tools.push("Thieves' Tools");
+  if ((classCounts(profile).rogue || 0) >= 3 && hasSubclass(profile, "rogue:assassin")){
+    tools.push("Disguise Kit", "Poisoner's Kit");
+  }
   return unique(tools);
 }
 
@@ -1106,7 +1195,7 @@ function openEntryInfo(entry){
     openResult("No Selection", "Nothing selected yet.");
     return;
   }
-  const mechanics = (entry.mechanics || []).slice(0, 16).map(item => `[${item.section}] ${item.text}`).join("\n\n");
+  const mechanics = (entry.mechanics || []).map(item => `[${item.section}] ${item.text}`).join("\n\n");
   openResult(entry.name, `${entry.source ? `Source: ${entry.source}\n\n` : ""}${mechanics || entry.raw_text || "No details available."}`);
 }
 
@@ -1524,6 +1613,7 @@ function renderSlots(containerId){
 function buildAbilityButtons(profile = activeProfile()){
   const buttons = [];
   const counts = classCounts(profile);
+  const warDomain = (counts.cleric || 0) >= 3 && hasSubclass(profile, "cleric:war");
   if ((counts.wizard || 0) >= 2 && hasSubclass(profile, "wizard:bladesinging")){
     buttons.push({
       id:"bladesong",
@@ -1548,29 +1638,46 @@ function buildAbilityButtons(profile = activeProfile()){
   }
   if ((counts.cleric || 0) >= 2 || (counts.paladin || 0) >= 3){
     const uses = channelDivinityUsesMax(profile);
+    const channelDivinityInfo = [
+      "Channel Divinity: Divine Spark",
+      "",
+      "As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll 1d8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage equal to that total. On a successful save, the creature takes half as much damage.",
+      "",
+      "You roll an additional d8 when you reach Cleric levels 7 (2d8), 13 (3d8), and 18 (4d8).",
+      "",
+      "Channel Divinity: Turn Undead",
+      "",
+      "As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute.",
+      "",
+      "For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
+    ];
+    if (warDomain){
+      channelDivinityInfo.push(
+        "",
+        "War Domain: Guided Strike",
+        "",
+        "When you or a creature within 30 feet of you misses with an attack roll, you can expend one use of your Channel Divinity and give that roll a +10 bonus, potentially causing it to hit. If used on another creature's attack roll, this costs your Reaction."
+      );
+      if ((counts.cleric || 0) >= 6){
+        channelDivinityInfo.push(
+          "",
+          "War Domain: War God's Blessing",
+          "",
+          "You can expend a use of Channel Divinity to cast Shield of Faith or Spiritual Weapon without expending a spell slot. When cast this way, the spell does not require Concentration, lasts for 1 minute, and ends early if you cast that spell again, gain the Incapacitated condition, or die."
+        );
+      }
+    }
     buttons.push({
       id:"channel-divinity",
       label:"Channel Divinity",
       note:`${Math.max(0, uses - profile.resources.channelDivinityUsed)}/${uses}`,
-      infoText:[
-        "Channel Divinity: Divine Spark",
-        "",
-        "As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll 1d8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage equal to that total. On a successful save, the creature takes half as much damage.",
-        "",
-        "You roll an additional d8 when you reach Cleric levels 7 (2d8), 13 (3d8), and 18 (4d8).",
-        "",
-        "Channel Divinity: Turn Undead",
-        "",
-        "As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute.",
-        "",
-        "For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
-      ].join("\n"),
+      infoText:channelDivinityInfo.join("\n"),
       used:profile.resources.channelDivinityUsed,
       max:uses,
       action:useChannelDivinity
     });
   }
-  if ((counts.cleric || 0) >= 3 && hasSubclass(profile, "cleric:war")){
+  if (warDomain){
     const wisUses = Math.max(1, abilityMod(finalAbilityScores(profile).WIS));
     buttons.push({
       id:"war-priest",
@@ -1791,7 +1898,7 @@ function renderSpellsPage(){
     <div class="count-box ${counts.spellbook > spellbookAllowance(profile) ? "warn" : ""}">Spellbook <b>${(profile.knownSpells || []).filter(name => Number(getSpellByName(name)?.level || 0) > 0).length}/${spellbookAllowance(profile) || "-"}</b></div>
     <div class="count-box">Spell DC <b>${spellDc(profile)}</b></div>
   `;
-  document.getElementById("bonusSpellSummary").innerHTML = `Extra spells <b>${extraSpellNames(profile, "known").length} known / ${extraSpellNames(profile, "prepared").length} prepared</b>`;
+  document.getElementById("bonusSpellSummary").innerHTML = `Bonus spells <b>${extraSpellNames(profile, "known").length} known / ${extraSpellNames(profile, "prepared").length} prepared</b>`;
   document.getElementById("spellbookSubtabs").innerHTML = `
     <button class="book-subtab ${profile.spellbookView !== "edit" ? "active" : ""}" data-spellbook-view="book">Spellbook</button>
     <button class="book-subtab ${profile.spellbookView === "edit" ? "active" : ""}" data-spellbook-view="edit">Edit Spells</button>
@@ -2959,9 +3066,13 @@ function castSpell(name){
 }
 
 function rollInitiative(){
-  const roll = Math.floor(Math.random() * 20) + 1;
-  const total = roll + profileInitiative(activeProfile());
-  openResult("Initiative", `d20 ${roll}\nModifier ${fmtMod(profileInitiative(activeProfile()))}\nTotal ${total}`);
+  const profile = activeProfile();
+  const assassinAdvantage = (classCounts(profile).rogue || 0) >= 3 && hasSubclass(profile, "rogue:assassin");
+  const roll = rollD20(assassinAdvantage ? "adv" : "-");
+  const total = roll.chosen + profileInitiative(profile);
+  let text = `${assassinAdvantage ? `d20 ${roll.first}, ${roll.second}` : `d20 ${roll.chosen}`}\nModifier ${fmtMod(profileInitiative(profile))}\nTotal ${total}`;
+  if (assassinAdvantage) text += "\nAssassinate: Advantage on Initiative";
+  openResult("Initiative", text);
   pushHistory(`Initiative ${total}`);
 }
 
