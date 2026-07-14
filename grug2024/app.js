@@ -1822,10 +1822,10 @@ function channelDivinityUsesMax(profile = activeProfile()){
   return paladin >= 3 ? 1 : 0;
 }
 
-function renderAbilityPips(abilityId, used, max, showPips = true){
+function renderAbilityPips(abilityId, available, max, showPips = true){
   if (!showPips) return `<div class="ability-empty"></div>`;
   if (!max) return `<div class="tag ability-note">-</div>`;
-  return `<div class="ability-pips">${Array.from({ length:max }, (_, index) => `<span class="pip green ${index >= used ? "on" : ""}" data-ability-pip="${escapeAttr(abilityId)}" data-ability-pip-index="${index}"></span>`).join("")}</div>`;
+  return `<div class="ability-pips">${Array.from({ length:max }, (_, index) => `<span class="pip green ${index < available ? "on" : ""}" data-ability-pip="${escapeAttr(abilityId)}" data-ability-pip-index="${index}"></span>`).join("")}</div>`;
 }
 
 function abilityPipUsage(profile, abilityId){
@@ -1853,8 +1853,10 @@ function toggleAbilityPip(abilityId, pipIndex){
   const profile = activeProfile();
   const usage = abilityPipUsage(profile, abilityId);
   if (!usage || !usage.max) return;
-  const current = clamp(Number(usage.used || 0), 0, usage.max);
-  profile.resources[usage.key] = pipIndex < current ? pipIndex : Math.min(usage.max, pipIndex + 1);
+  const currentUsed = clamp(Number(usage.used || 0), 0, usage.max);
+  const currentAvailable = usage.max - currentUsed;
+  const nextAvailable = pipIndex < currentAvailable ? pipIndex : Math.min(usage.max, pipIndex + 1);
+  profile.resources[usage.key] = usage.max - nextAvailable;
   if (abilityId === "hexblade-curse" && profile.resources.hexbladeCurseUsed >= 1){
     profile.resources.hexbladeCurseActive = false;
   }
@@ -2068,7 +2070,7 @@ function renderCombatPage(){
             <b>${escapeHtml(item.label)}</b>
             <span>${escapeHtml(item.note)}</span>
           </button>
-          <div class="ability-pips-shell">${renderAbilityPips(item.id, item.used || 0, item.max || 0, item.showPips !== false)}</div>
+          <div class="ability-pips-shell">${renderAbilityPips(item.id, Math.max(0, (item.max || 0) - (item.used || 0)), item.max || 0, item.showPips !== false)}</div>
         </div>
       `).join(""),
       bonusActionsMarkup,
