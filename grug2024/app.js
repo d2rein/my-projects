@@ -3493,8 +3493,7 @@ function useFogCloud(){
     return;
   }
   profile.resources.fogCloudUsed += 1;
-  profile.concentrationActive = "Fog Cloud";
-  openResult("Fog Cloud", "Action. Expend 1 charge to cast Fog Cloud.\nConcentration started: Fog Cloud");
+  openResult("Fog Cloud", "Action. Expend 1 charge to cast Fog Cloud.");
   pushHistory("Fog Cloud cast from Ring of Obscuring.");
   saveState();
 }
