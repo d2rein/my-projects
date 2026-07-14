@@ -382,7 +382,8 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     asiMode:"",
     asiChoices:[],
     featSlug:"",
-    expertiseChoices:[]
+    expertiseChoices:[],
+    divineOrderChoice:""
   }));
   return {
     id,
@@ -485,26 +486,26 @@ function buildSampleProfiles(){
     selectedSaves:[],
     selectedFeats:[],
     progression:[
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:["Nature","Survival"] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"CON", amount:2 }], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"DEX", amount:2 }], featSlug:"", expertiseChoices:["Perception","Sleight of Hand"] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"CHA", amount:2 }], featSlug:"", expertiseChoices:[] },
-      { classSlug:"cleric", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"cleric", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] },
-      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] }
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:["Nature","Survival"], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"CON", amount:2 }], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"DEX", amount:2 }], featSlug:"", expertiseChoices:["Perception","Sleight of Hand"], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"asi", asiChoices:[{ ability:"CHA", amount:2 }], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"cleric", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"thaumaturge" },
+      { classSlug:"cleric", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" },
+      { classSlug:"rogue", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" }
     ],
     hpRolls:[
       { level:2, classSlug:"cleric", hitDie:8, roll:4, chosen:4 },
@@ -634,9 +635,9 @@ function ensureProfileShape(profile){
   while (blank.equipment.weaponIds.length < 3) blank.equipment.weaponIds.push("none");
   blank.progression = Array.isArray(profile.progression) ? profile.progression.slice(0, 20) : blank.progression;
   while (blank.progression.length < 20){
-    blank.progression.push({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] });
+    blank.progression.push({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" });
   }
-  blank.progression = blank.progression.map(row => Object.assign({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[] }, row));
+  blank.progression = blank.progression.map(row => Object.assign({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" }, row));
   blank.knownSpells = unique(blank.knownSpells || blank.preparedSpells || []);
   blank.preparedSpells = unique(blank.preparedSpells || []);
   blank.selectedSkills = unique(blank.selectedSkills || []);
@@ -885,6 +886,33 @@ function automaticExtraSpellNames(profile = activeProfile(), filter = "known"){
   return names;
 }
 
+function firstClassProgressionRow(profile = activeProfile(), classSlug){
+  return progressionUpTo(profile).find(row => row.classSlug === classSlug) || null;
+}
+
+function clericManualCantripNames(profile = activeProfile()){
+  return (profile.knownSpells || []).filter(name => {
+    if (isAutomaticBonusSpell(profile, name, "known")) return false;
+    if ((profile.extraSpells || []).some(item => item.name === name && item.known)) return false;
+    const spell = getSpellByName(name);
+    return isClericSpellName(name) && Number(spell?.level || 0) === 0;
+  });
+}
+
+function divineOrderChoice(profile = activeProfile()){
+  const row = firstClassProgressionRow(profile, "cleric");
+  if (row?.divineOrderChoice) return row.divineOrderChoice;
+  const clericLevel = classCounts(profile).cleric || 0;
+  if (!clericLevel) return "";
+  const baseLimit = clericLevel >= 10 ? 5 : clericLevel >= 4 ? 4 : 3;
+  if (clericManualCantripNames(profile).length > baseLimit) return "thaumaturge";
+  return "";
+}
+
+function hasThaumaturgeDivineOrder(profile = activeProfile()){
+  return divineOrderChoice(profile) === "thaumaturge";
+}
+
 function profileSkillProficiencies(profile = activeProfile()){
   const skills = [];
   const backgroundData = parseBackgroundChoiceData(profile);
@@ -1112,7 +1140,11 @@ function skillMod(skillName, profile = activeProfile()){
   const scores = finalAbilityScores(profile);
   const proficient = profileSkillProficiencies(profile).includes(skillName);
   const expertise = profileExpertiseSkills(profile).includes(skillName);
-  return abilityMod(scores[skill.abil]) + (proficient ? profBonus(profile) : 0) + (expertise ? profBonus(profile) : 0);
+  let total = abilityMod(scores[skill.abil]) + (proficient ? profBonus(profile) : 0) + (expertise ? profBonus(profile) : 0);
+  if (hasThaumaturgeDivineOrder(profile) && (skillName === "Arcana" || skillName === "Religion")){
+    total += Math.max(1, abilityMod(scores.WIS));
+  }
+  return total;
 }
 
 function saveMod(ability, profile = activeProfile()){
@@ -1138,6 +1170,11 @@ function findClassFeatureText(profile = activeProfile(), levelIndex = 0){
   if (!row.classSlug) return "";
   const classLevel = progressionUpTo(profile, levelIndex + 1).filter(item => item.classSlug === row.classSlug).length;
   const override = CLASS_FEATURE_OVERRIDES_2024[row.classSlug]?.[classLevel];
+  if (row.classSlug === "cleric" && classLevel === 1){
+    return row.divineOrderChoice
+      ? `Divine Order: ${row.divineOrderChoice === "protector" ? "Protector" : "Thaumaturge"}`
+      : (divineOrderChoice(profile) === "thaumaturge" ? "Divine Order: Thaumaturge" : "Select Divine Order");
+  }
   if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6)){
     return row.expertiseChoices?.length === 2
       ? `Expertise: ${row.expertiseChoices.join(", ")}`
@@ -1431,10 +1468,12 @@ function isClericSpellName(name){
 
 function clericCantripLimit(profile = activeProfile()){
   const clericLevel = classCounts(profile).cleric || 0;
-  if (clericLevel >= 10) return 5;
-  if (clericLevel >= 4) return 4;
-  if (clericLevel >= 1) return 3;
-  return 0;
+  let limit = 0;
+  if (clericLevel >= 10) limit = 5;
+  else if (clericLevel >= 4) limit = 4;
+  else if (clericLevel >= 1) limit = 3;
+  if (limit && hasThaumaturgeDivineOrder(profile)) limit += 1;
+  return limit;
 }
 
 function clericPreparedLimit(profile = activeProfile()){
@@ -1443,18 +1482,20 @@ function clericPreparedLimit(profile = activeProfile()){
   return Math.max(1, clericLevel + abilityMod(finalAbilityScores(profile).WIS));
 }
 
-function clericSpellbookSummary(profile = activeProfile()){
-  const manualKnown = (profile.knownSpells || []).filter(name => !isAutomaticBonusSpell(profile, name, "known"));
-  const manualPrepared = (profile.preparedSpells || []).filter(name => !isAutomaticBonusSpell(profile, name, "prepared"));
-  const clericCantripsKnown = manualKnown.filter(name => {
-    const spell = getSpellByName(name);
-    return isClericSpellName(name) && Number(spell?.level || 0) === 0;
-  }).length;
-  const clericPrepared = manualPrepared.filter(name => {
+function clericPreparedNames(profile = activeProfile()){
+  return (profile.preparedSpells || []).filter(name => {
+    if (isAutomaticBonusSpell(profile, name, "prepared")) return false;
+    if ((profile.extraSpells || []).some(item => item.name === name && item.prepared)) return false;
     const spell = getSpellByName(name);
     return isClericSpellName(name) && Number(spell?.level || 0) > 0;
-  }).length;
-  return { clericCantripsKnown, clericPrepared };
+  });
+}
+
+function clericSpellbookSummary(profile = activeProfile()){
+  return {
+    clericCantripsKnown:clericManualCantripNames(profile).length,
+    clericPrepared:clericPreparedNames(profile).length
+  };
 }
 
 function selectedFeaturesNeedChoice(profile = activeProfile()){
@@ -1475,6 +1516,9 @@ function selectedFeaturesNeedChoice(profile = activeProfile()){
   }
   progressionUpTo(profile).forEach((row, index) => {
     const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
+    if (row.classSlug === "cleric" && classLevel === 1 && !divineOrderChoice(profile)){
+      features.push(`Level ${index + 1}: choose a Divine Order.`);
+    }
     if (row.classSlug && classLevel === (CLASS_RULES[row.classSlug]?.subclassLevel || 99) && !row.subclassSlug){
       features.push(`Level ${index + 1}: choose a ${classLabel(row.classSlug)} subclass.`);
     }
@@ -1492,6 +1536,7 @@ function isFeatureChoicePending(profile, index){
   const row = profile.progression[index];
   if (!row?.classSlug) return false;
   const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
+  if (row.classSlug === "cleric" && classLevel === 1 && !divineOrderChoice(profile)) return true;
   if (classLevel === (CLASS_RULES[row.classSlug]?.subclassLevel || 99) && !row.subclassSlug) return true;
   if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6) && (row.expertiseChoices || []).length !== 2) return true;
   if ((CLASS_RULES[row.classSlug]?.asi || []).includes(classLevel) && !row.asiMode) return true;
@@ -2858,6 +2903,10 @@ function openFeatureChooser(index){
     return;
   }
   const classLevel = progressionUpTo(profile, index + 1).filter(item => item.classSlug === row.classSlug).length;
+  if (row.classSlug === "cleric" && classLevel === 1){
+    openDivineOrderChooser(index);
+    return;
+  }
   if (row.classSlug === "rogue" && (classLevel === 1 || classLevel === 6)){
     openExpertiseChooser(index);
     return;
@@ -2880,6 +2929,48 @@ function openFeatureChooser(index){
   }
   const text = findClassFeatureText(profile, index) || "No interactive choice for this level yet.";
   openResult(`Level ${index + 1}`, text);
+}
+
+function openDivineOrderChooser(index){
+  const profile = activeProfile();
+  const row = profile.progression[index];
+  const selected = row.divineOrderChoice || divineOrderChoice(profile);
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Divine Order</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="detail-box">Choose your Cleric's Divine Order.</div>
+    <div class="list-grid" style="margin-top:8px;">
+      <label class="list-item">
+        <input type="radio" name="divineOrderChoice" value="protector" ${selected === "protector" ? "checked" : ""}>
+        <div class="list-item-main">
+          <div class="list-title">Protector</div>
+          <div class="list-meta">Gain proficiency with Martial weapons and training with Heavy armor.</div>
+        </div>
+      </label>
+      <label class="list-item">
+        <input type="radio" name="divineOrderChoice" value="thaumaturge" ${selected === "thaumaturge" ? "checked" : ""}>
+        <div class="list-item-main">
+          <div class="list-title">Thaumaturge</div>
+          <div class="list-meta">Know one extra Cleric cantrip and add your Wisdom modifier, minimum +1, to Arcana and Religion checks.</div>
+        </div>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn blue" id="saveDivineOrderBtn">Save</button>
+    </div>
+  `);
+  document.getElementById("saveDivineOrderBtn").onclick = () => {
+    const pick = document.querySelector("input[name='divineOrderChoice']:checked")?.value || "";
+    if (!pick){
+      openResult("Divine Order", "Choose Protector or Thaumaturge.");
+      return;
+    }
+    row.divineOrderChoice = pick;
+    closeModal();
+    saveState();
+  };
 }
 
 function openExpertiseChooser(index){
