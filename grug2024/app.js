@@ -1822,10 +1822,46 @@ function channelDivinityUsesMax(profile = activeProfile()){
   return paladin >= 3 ? 1 : 0;
 }
 
-function renderAbilityPips(used, max, showPips = true){
+function renderAbilityPips(abilityId, used, max, showPips = true){
   if (!showPips) return `<div class="ability-empty"></div>`;
   if (!max) return `<div class="tag ability-note">-</div>`;
-  return `<div class="ability-pips">${Array.from({ length:max }, (_, index) => `<span class="pip green ${index >= used ? "on" : ""}"></span>`).join("")}</div>`;
+  return `<div class="ability-pips">${Array.from({ length:max }, (_, index) => `<span class="pip green ${index >= used ? "on" : ""}" data-ability-pip="${escapeAttr(abilityId)}" data-ability-pip-index="${index}"></span>`).join("")}</div>`;
+}
+
+function abilityPipUsage(profile, abilityId){
+  switch (abilityId){
+    case "bladesong":
+      return { used:profile.resources.bladesongUsed, max:profBonus(profile), key:"bladesongUsed" };
+    case "breath":
+      return { used:profile.resources.breathWeaponUsed, max:1, key:"breathWeaponUsed" };
+    case "channel-divinity":
+      return { used:profile.resources.channelDivinityUsed, max:channelDivinityUsesMax(profile), key:"channelDivinityUsed" };
+    case "war-priest":
+      return { used:profile.resources.warPriestUsed, max:Math.max(1, abilityMod(finalAbilityScores(profile).WIS)), key:"warPriestUsed" };
+    case "fog-cloud":
+      return { used:profile.resources.fogCloudUsed, max:3, key:"fogCloudUsed" };
+    case "hexblade-curse":
+      return { used:profile.resources.hexbladeCurseUsed, max:1, key:"hexbladeCurseUsed" };
+    case "rage":
+      return { used:profile.resources.rageUsed, max:1, key:"rageUsed" };
+    default:
+      return null;
+  }
+}
+
+function toggleAbilityPip(abilityId, pipIndex){
+  const profile = activeProfile();
+  const usage = abilityPipUsage(profile, abilityId);
+  if (!usage || !usage.max) return;
+  const current = clamp(Number(usage.used || 0), 0, usage.max);
+  profile.resources[usage.key] = pipIndex < current ? pipIndex : Math.min(usage.max, pipIndex + 1);
+  if (abilityId === "hexblade-curse" && profile.resources.hexbladeCurseUsed >= 1){
+    profile.resources.hexbladeCurseActive = false;
+  }
+  if (abilityId === "bladesong" && profile.resources.bladesongUsed >= profBonus(profile)){
+    profile.resources.bladesongActive = false;
+  }
+  saveState();
 }
 
 function sneakAttackDice(profile = activeProfile()){
@@ -1974,7 +2010,7 @@ function renderCombatPage(){
             ${cunningEffects.slice(0, 3).map(effect => `<button class="small-btn ${selectedEffects.has(effect.id) ? "action-btn yellow" : ""}" data-cunning-effect="${effect.id}" style="padding:4px 6px;">${escapeHtml(effect.label)}</button>`).join("")}
           </div>
           ${rogue >= 14 ? `<div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;">${cunningEffects.slice(3).map(effect => `<button class="small-btn ${selectedEffects.has(effect.id) ? "action-btn yellow" : ""}" data-cunning-effect="${effect.id}" style="padding:4px 6px;">${escapeHtml(effect.label)}</button>`).join("")}</div>` : ""}
-        ` : renderAbilityPips(0, 0, false)}
+        ` : renderAbilityPips("sneak-attack", 0, 0, false)}
       </div>
     </div>
   ` : "";
@@ -2032,7 +2068,7 @@ function renderCombatPage(){
             <b>${escapeHtml(item.label)}</b>
             <span>${escapeHtml(item.note)}</span>
           </button>
-          <div class="ability-pips-shell">${renderAbilityPips(item.used || 0, item.max || 0, item.showPips !== false)}</div>
+          <div class="ability-pips-shell">${renderAbilityPips(item.id, item.used || 0, item.max || 0, item.showPips !== false)}</div>
         </div>
       `).join(""),
       bonusActionsMarkup,
@@ -2386,6 +2422,9 @@ function bindGlobalButtons(){
   };
   document.querySelectorAll("[data-slot-level]").forEach(pip => {
     pip.onclick = () => toggleSlot(Number(pip.dataset.slotLevel), Number(pip.dataset.slotIndex));
+  });
+  document.querySelectorAll("[data-ability-pip]").forEach(pip => {
+    pip.onclick = () => toggleAbilityPip(pip.dataset.abilityPip, Number(pip.dataset.abilityPipIndex));
   });
   document.querySelectorAll("[data-ability-btn]").forEach(button => {
     const item = buildAbilityButtons().find(entry => entry.id === button.dataset.abilityBtn);
