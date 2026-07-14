@@ -129,13 +129,21 @@ const SHIELDS = [
   { id:"none", name:"No Shield", ac:0 },
   { id:"shield", name:"Shield", ac:2 }
 ];
+const CLOAKS = [
+  { id:"none", name:"No Cloak" },
+  { id:"cloak-of-displacement", name:"Cloak of Displacement" }
+];
+const RINGS = [
+  { id:"none", name:"No Ring" },
+  { id:"ring-of-obscuring", name:"Ring of Obscuring" }
+];
 const WEAPONS = [
   { id:"none", name:"None", damage:"", ability:"" },
   { id:"hand-crossbow", name:"Hand Crossbow", damage:"1d6", damageType:"piercing", type:"ranged", ability:"DEX", range:"30/120", tags:["loading","light"] },
   { id:"battleaxe-plus-1", name:"+1 Battleaxe", damage:"1d8", damageType:"slashing", type:"melee", ability:"STR", attackBonus:1, damageBonus:1, versatile:"1d10", tags:["versatile"] },
   { id:"rapier-plus-1", name:"+1 Rapier", damage:"1d8", damageType:"piercing", type:"melee", ability:"DEX", finesse:true, attackBonus:1, damageBonus:1 },
-  { id:"longbow-plus-1", name:"+1 Longbow", damage:"1d8", damageType:"piercing", type:"ranged", ability:"DEX", attackBonus:1, damageBonus:1, range:"150/600" },
-  { id:"shortbow", name:"Shortbow", damage:"1d6", damageType:"piercing", type:"ranged", ability:"DEX", range:"80/320" }
+  { id:"longbow", name:"Longbow", damage:"1d8", damageType:"piercing", type:"ranged", ability:"DEX", range:"150/600" },
+  { id:"shortbow-plus-1", name:"+1 Shortbow", damage:"1d6", damageType:"piercing", type:"ranged", ability:"DEX", attackBonus:1, damageBonus:1, range:"80/320" }
 ];
 const SAMPLE_SPELLS = {
   jefferson:["Guidance","Toll the Dead","Bless","Shield of Faith"]
@@ -409,7 +417,7 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     activePage:"stats",
     attackModes:{},
     history:[],
-    equipment:{ armorId:"none", shieldId:"none", weaponIds:["none","none","none"] },
+    equipment:{ armorId:"none", shieldId:"none", cloakId:"none", ringId:"none", weaponIds:["none","none","none"] },
     knownSpells:[],
     preparedSpells:[],
     extraSpells:[],
@@ -440,7 +448,9 @@ function createBlankProfile(id = `profile-${Date.now()}`){
       hexbladeCurseActive:false,
       warPriestUsed:0,
       rageUsed:0,
+      fogCloudUsed:0,
       sneakAttackReady:false,
+      sneakAttackDismissed:false,
       steadyAimActive:false,
       cunningStrikeEffects:[],
       sharpshooterActive:false,
@@ -516,11 +526,11 @@ function buildSampleProfiles(){
     hitDiceCur:{ d8:10 },
     activePage:"stats",
     attackModes:{
-      "longbow-plus-1":{ crit:false, adv:"-" },
+      "longbow":{ crit:false, adv:"-" },
       "Word of Radiance":{ crit:false, adv:"adv" }
     },
     history:[],
-    equipment:{ armorId:"studded-leather", shieldId:"none", weaponIds:["rapier-plus-1","longbow-plus-1","shortbow"] },
+    equipment:{ armorId:"studded-leather", shieldId:"none", cloakId:"cloak-of-displacement", ringId:"ring-of-obscuring", weaponIds:["rapier-plus-1","longbow","shortbow-plus-1"] },
     knownSpells:["Guidance","Shield of Faith","Find Traps","Word of Radiance"],
     preparedSpells:["Guidance","Shield of Faith","Find Traps","Word of Radiance"],
     extraSpells:[],
@@ -545,7 +555,9 @@ function buildSampleProfiles(){
       hexbladeCurseActive:false,
       warPriestUsed:0,
       rageUsed:0,
+      fogCloudUsed:0,
       sneakAttackReady:false,
+      sneakAttackDismissed:false,
       steadyAimActive:false,
       cunningStrikeEffects:[],
       sharpshooterActive:false,
@@ -601,11 +613,18 @@ function ensureProfileShape(profile){
   blank.rollAssignments = Object.assign({}, blank.rollAssignments || {});
   blank.resources = Object.assign({}, blank.resources, profile.resources || {});
   blank.equipment = Object.assign({}, blank.equipment, profile.equipment || {});
+  const legacyWeaponMap = {
+    "longbow-plus-1":"longbow",
+    "shortbow":"shortbow-plus-1"
+  };
   blank.backgroundSelections = Object.assign({}, blank.backgroundSelections, profile.backgroundSelections || {});
   blank.backgroundSelections.skills = unique(blank.backgroundSelections.skills || []);
   blank.backgroundSelections.tools = unique(blank.backgroundSelections.tools || []);
   blank.backgroundSelections.languages = unique(blank.backgroundSelections.languages || []);
   blank.equipment.weaponIds = Array.isArray(blank.equipment.weaponIds) ? blank.equipment.weaponIds.slice(0, 3) : ["none","none","none"];
+  blank.equipment.cloakId = blank.equipment.cloakId || "none";
+  blank.equipment.ringId = blank.equipment.ringId || "none";
+  blank.equipment.weaponIds = blank.equipment.weaponIds.map(id => legacyWeaponMap[id] || id);
   while (blank.equipment.weaponIds.length < 3) blank.equipment.weaponIds.push("none");
   blank.progression = Array.isArray(profile.progression) ? profile.progression.slice(0, 20) : blank.progression;
   while (blank.progression.length < 20){
@@ -637,8 +656,18 @@ function ensureProfileShape(profile){
   blank.hpRolls = Array.isArray(blank.hpRolls) ? blank.hpRolls : [];
   blank.hpMaxOverride = blank.hpMaxOverride == null ? null : Number(blank.hpMaxOverride);
   blank.resources.cunningStrikeEffects = Array.isArray(blank.resources.cunningStrikeEffects) ? unique(blank.resources.cunningStrikeEffects) : [];
+  blank.resources.fogCloudUsed = clamp(Number(blank.resources.fogCloudUsed || 0), 0, 3);
+  blank.resources.sneakAttackDismissed = Boolean(blank.resources.sneakAttackDismissed);
   blank.resources.sharpshooterActive = Boolean(blank.resources.sharpshooterActive);
   blank.resources.firstRoundTargetActive = Boolean(blank.resources.firstRoundTargetActive);
+  if (blank.attackModes && typeof blank.attackModes === "object"){
+    Object.entries(legacyWeaponMap).forEach(([oldId, newId]) => {
+      if (blank.attackModes[oldId] && !blank.attackModes[newId]){
+        blank.attackModes[newId] = blank.attackModes[oldId];
+      }
+      delete blank.attackModes[oldId];
+    });
+  }
   return blank;
 }
 
@@ -899,8 +928,20 @@ function shieldById(id){
   return SHIELDS.find(item => item.id === id) || SHIELDS[0];
 }
 
+function cloakById(id){
+  return CLOAKS.find(item => item.id === id) || CLOAKS[0];
+}
+
+function ringById(id){
+  return RINGS.find(item => item.id === id) || RINGS[0];
+}
+
 function weaponById(id){
   return WEAPONS.find(item => item.id === id) || WEAPONS[0];
+}
+
+function hasRingOfObscuring(profile = activeProfile()){
+  return profile.equipment.ringId === "ring-of-obscuring";
 }
 
 function profileAc(profile = activeProfile()){
@@ -1699,6 +1740,17 @@ function buildAbilityButtons(profile = activeProfile()){
       action:useWarPriest
     });
   }
+  if (hasRingOfObscuring(profile)){
+    buttons.push({
+      id:"fog-cloud",
+      label:"Fog Cloud",
+      note:"Action",
+      infoText:"Action. Expend 1 charge to cast Fog Cloud. The ring has 3 charges and regains 1d3 expended charges when you finish a Long Rest.",
+      used:profile.resources.fogCloudUsed,
+      max:3,
+      action:useFogCloud
+    });
+  }
   if ((counts.warlock || 0) >= 1 && hasSubclass(profile, "warlock:hexblade")){
     buttons.push({
       id:"hexblade-curse",
@@ -2064,13 +2116,19 @@ function renderEquipmentPage(){
   const profile = activeProfile();
   bindSelect("armorSelect", ARMORS, profile.equipment.armorId);
   bindSelect("shieldSelect", SHIELDS, profile.equipment.shieldId);
+  bindSelect("cloakSelect", CLOAKS, profile.equipment.cloakId);
+  bindSelect("ringSelect", RINGS, profile.equipment.ringId);
   bindSelect("weapon1Select", WEAPONS, profile.equipment.weaponIds[0]);
   bindSelect("weapon2Select", WEAPONS, profile.equipment.weaponIds[1]);
   bindSelect("weapon3Select", WEAPONS, profile.equipment.weaponIds[2]);
   const armor = armorById(profile.equipment.armorId);
   const shield = shieldById(profile.equipment.shieldId);
+  const cloak = cloakById(profile.equipment.cloakId);
+  const ring = ringById(profile.equipment.ringId);
   document.getElementById("equipmentSummary").innerHTML = [
     `${armor.name}${shield.ac ? ` + ${shield.name}` : ""}`,
+    ...(cloak.id !== "none" ? [cloak.name] : []),
+    ...(ring.id !== "none" ? [ring.name] : []),
     ...profileWeapons(profile).map(weapon => weapon.name)
   ].map(text => `<div class="detail-item">${escapeHtml(text)}</div>`).join("");
 }
@@ -2289,6 +2347,14 @@ function bindGlobalButtons(){
   };
   document.getElementById("shieldSelect").onchange = event => {
     activeProfile().equipment.shieldId = event.target.value;
+    saveState();
+  };
+  document.getElementById("cloakSelect").onchange = event => {
+    activeProfile().equipment.cloakId = event.target.value;
+    saveState();
+  };
+  document.getElementById("ringSelect").onchange = event => {
+    activeProfile().equipment.ringId = event.target.value;
     saveState();
   };
   ["weapon1Select","weapon2Select","weapon3Select"].forEach((id, index) => {
@@ -3160,6 +3226,7 @@ function toggleAttackMode(key, kind){
     profile.attackModes[key].crit = !profile.attackModes[key].crit;
   }else{
     profile.attackModes[key].adv = profile.attackModes[key].adv === "-" ? "adv" : profile.attackModes[key].adv === "adv" ? "dis" : "-";
+    if (profile.attackModes[key].adv === "adv") activateSneakAttackFromAdvantageSource(profile);
   }
   saveState();
 }
@@ -3189,6 +3256,28 @@ function formatDiceFormula(spec, bonus = 0){
   return `${base}${bonus > 0 ? `+${bonus}` : bonus}`;
 }
 
+function formatFormulaFromParts(base, parts){
+  return [String(base || "").toUpperCase(), ...parts.filter(Boolean)].join("");
+}
+
+function formatSignedTerm(value){
+  if (!value) return "";
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function formatChosenD20Roll(roll, mode){
+  if (mode === "adv" || mode === "dis"){
+    return `(${roll.first},${roll.second})`;
+  }
+  return String(roll.chosen);
+}
+
+function activateSneakAttackFromAdvantageSource(profile = activeProfile()){
+  if ((classCounts(profile).rogue || 0) < 3) return;
+  profile.resources.sneakAttackReady = true;
+  profile.resources.sneakAttackDismissed = false;
+}
+
 function combinedAdvantageMode(baseMode, bonusAdvantage = false){
   if (!bonusAdvantage) return baseMode;
   if (baseMode === "dis") return "-";
@@ -3206,12 +3295,16 @@ function rollWeapon(weaponId){
   const attackMode = combinedAdvantageMode(mode.adv, hasBonusAdvantage);
   const attack = rollD20(attackMode);
   const sharpshooterActive = profile.resources.sharpshooterActive && weapon.type === "ranged";
-  const attackBonus = data.attackBonus + (sharpshooterActive ? -5 : 0);
+  const baseAttackBonus = data.attackBonus;
+  const attackPenalty = sharpshooterActive ? -5 : 0;
+  const attackBonus = baseAttackBonus + attackPenalty;
   const toHit = attack.chosen + attackBonus;
   const damage = rollDice(weapon.damage);
   const critFloor = profile.resources.hexbladeCurseActive ? 19 : 20;
   const crit = mode.crit || attack.chosen >= critFloor;
-  let bonusDamage = data.damageBonus + (profile.resources.hexbladeCurseActive ? profBonus(profile) : 0) + (sharpshooterActive ? 10 : 0);
+  const baseDamageBonus = data.damageBonus + (profile.resources.hexbladeCurseActive ? profBonus(profile) : 0);
+  const sharpshooterDamageBonus = sharpshooterActive ? 10 : 0;
+  const bonusDamage = baseDamageBonus + sharpshooterDamageBonus;
   let extra = "";
   let total = damage.total + bonusDamage + (crit ? damage.max : 0);
   if (profile.resources.sneakAttackReady && rogue > 0 && (weapon.type === "ranged" || weapon.finesse)){
@@ -3237,13 +3330,17 @@ function rollWeapon(weaponId){
     const sneakRollText = remainingDice > 0 ? `${sneak.rolls.join(" + ")}${crit ? ` + crit(${sneak.max})` : ""} = ${sneakTotal}` : `0 = ${sneakTotal}`;
     extra = `\nSneak Attack: ${sneakFormula} -> ${sneakRollText}${effectLines.length ? `\n${effectLines.join("\n")}` : ""}${firstRoundText}`;
     profile.resources.sneakAttackReady = false;
+    profile.resources.sneakAttackDismissed = false;
+    profile.resources.cunningStrikeEffects = [];
   }
-  const attackFormula = formatDiceFormula("1d20", attackBonus);
-  const damageFormula = formatDiceFormula(weapon.damage, bonusDamage);
+  const attackFormula = formatFormulaFromParts("1d20", [formatSignedTerm(baseAttackBonus), formatSignedTerm(attackPenalty)]);
+  const damageFormula = formatFormulaFromParts(weapon.damage, [formatSignedTerm(baseDamageBonus), formatSignedTerm(sharpshooterDamageBonus), crit ? `+crit(${damage.max})` : ""]);
+  const attackRollText = `${formatChosenD20Roll(attack, attackMode)}${attackBonus ? `${fmtMod(attackBonus)}` : ""}`;
+  const damageBreakdown = `${damage.total}${bonusDamage ? `${fmtMod(bonusDamage)}` : ""}${crit ? `+${damage.max}` : ""}`;
   const text = [
       `${weapon.name}`,
-      `Attack: ${attackFormula} -> ${attack.chosen}${attackBonus ? `${fmtMod(attackBonus)}` : ""} = ${toHit}${attackMode === "adv" && !attack.second ? "" : attack.second ? ` (${attack.first}, ${attack.second})` : ""}`,
-      `Damage: ${damageFormula} -> ${damage.total}${bonusDamage ? `${fmtMod(bonusDamage)}` : ""}${crit ? ` + crit(${damage.max})` : ""} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
+      `Attack: ${attackFormula} -> ${attackRollText} = ${toHit}`,
+      `Damage: ${damageFormula} -> ${damageBreakdown} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
     ].join("\n");
   openResult(weapon.name, text);
   pushHistory(text.replace(/\n/g, " | "));
@@ -3385,6 +3482,23 @@ function useWarPriest(){
   saveState();
 }
 
+function useFogCloud(){
+  const profile = activeProfile();
+  if (!hasRingOfObscuring(profile)){
+    openResult("Fog Cloud", "Equip the Ring of Obscuring to use this ability.");
+    return;
+  }
+  if (profile.resources.fogCloudUsed >= 3){
+    openResult("Fog Cloud", "No charges remaining until a long rest.");
+    return;
+  }
+  profile.resources.fogCloudUsed += 1;
+  profile.concentrationActive = "Fog Cloud";
+  openResult("Fog Cloud", "Action. Expend 1 charge to cast Fog Cloud.\nConcentration started: Fog Cloud");
+  pushHistory("Fog Cloud cast from Ring of Obscuring.");
+  saveState();
+}
+
 function toggleHexbladeCurse(){
   const profile = activeProfile();
   if (profile.resources.hexbladeCurseActive){
@@ -3407,6 +3521,7 @@ function toggleHexbladeCurse(){
 function toggleSteadyAim(){
   const profile = activeProfile();
   profile.resources.steadyAimActive = !profile.resources.steadyAimActive;
+  if (profile.resources.steadyAimActive) activateSneakAttackFromAdvantageSource(profile);
   pushHistory(profile.resources.steadyAimActive ? "Steady Aim active for next attack." : "Steady Aim cleared.");
   saveState();
 }
@@ -3418,6 +3533,7 @@ function showCunningAction(){
 function toggleSneakAttack(){
   const profile = activeProfile();
   profile.resources.sneakAttackReady = !profile.resources.sneakAttackReady;
+  profile.resources.sneakAttackDismissed = !profile.resources.sneakAttackReady;
   pushHistory(profile.resources.sneakAttackReady ? "Sneak Attack primed." : "Sneak Attack cleared.");
   saveState();
 }
@@ -3432,6 +3548,7 @@ function toggleSharpshooter(){
 function toggleFirstRoundTarget(){
   const profile = activeProfile();
   profile.resources.firstRoundTargetActive = !profile.resources.firstRoundTargetActive;
+  if (profile.resources.firstRoundTargetActive) activateSneakAttackFromAdvantageSource(profile);
   pushHistory(profile.resources.firstRoundTargetActive ? "First Round Target marked." : "First Round Target cleared.");
   saveState();
 }
@@ -3469,6 +3586,7 @@ function shortRest(){
   profile.resources.bladesongActive = false;
   profile.resources.steadyAimActive = false;
   profile.resources.sneakAttackReady = false;
+  profile.resources.sneakAttackDismissed = false;
   profile.resources.firstRoundTargetActive = false;
   profile.concentrationActive = "";
   profile.pactSlotsCur = summary.pact.slots || 0;
@@ -3496,12 +3614,15 @@ function longRest(){
   profile.resources.rageUsed = 0;
   profile.resources.steadyAimActive = false;
   profile.resources.sneakAttackReady = false;
+  profile.resources.sneakAttackDismissed = false;
   profile.resources.firstRoundTargetActive = false;
   profile.concentrationActive = "";
+  const fogRegain = rollDice("1d3").total;
+  profile.resources.fogCloudUsed = Math.max(0, profile.resources.fogCloudUsed - fogRegain);
   Object.entries(profileHitDice(profile)).forEach(([die, max]) => {
     profile.hitDiceCur[die] = Math.min(max, (profile.hitDiceCur[die] || 0) + Math.max(1, Math.floor(max / 2)));
   });
-  pushHistory("Long rest: HP, slots, and long-rest resources refreshed.");
+  pushHistory(`Long rest: HP, slots, and long-rest resources refreshed.${hasRingOfObscuring(profile) ? ` Fog Cloud regained ${fogRegain} charge${fogRegain === 1 ? "" : "s"}.` : ""}`);
   saveState();
 }
 
