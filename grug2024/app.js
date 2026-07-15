@@ -893,7 +893,7 @@ function firstClassProgressionRow(profile = activeProfile(), classSlug){
 function clericManualCantripNames(profile = activeProfile()){
   return (profile.knownSpells || []).filter(name => {
     if (isAutomaticBonusSpell(profile, name, "known")) return false;
-    if ((profile.extraSpells || []).some(item => item.name === name && item.known)) return false;
+    if ((profile.extraSpells || []).some(item => item.name === name)) return false;
     const spell = getSpellByName(name);
     return isClericSpellName(name) && Number(spell?.level || 0) === 0;
   });
@@ -1127,11 +1127,11 @@ function hasSubclass(profile, slug){
 }
 
 function currentSpellList(profile = activeProfile()){
-  return unique([
+  return sortedSpells(unique([
     ...(profile.preparedSpells || []),
     ...(profile.knownSpells || []),
     ...extraSpellNames(profile, "known")
-  ]).map(getSpellByName).filter(Boolean);
+  ]).map(getSpellByName).filter(Boolean));
 }
 
 function skillMod(skillName, profile = activeProfile()){
@@ -1301,6 +1301,99 @@ function openResult(title, text){
     </div>
     <div class="detail-box">${escapeHtml(text)}</div>
   `);
+}
+
+function spellSort(a, b){
+  return Number(a?.level || 0) - Number(b?.level || 0) || String(a?.name || "").localeCompare(String(b?.name || ""));
+}
+
+function sortedSpells(list){
+  return list.slice().sort(spellSort);
+}
+
+function compactSpellField(value = ""){
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function compactSpellCastingTime(value = ""){
+  return compactSpellField(value).replace(/^1\s+/i, "");
+}
+
+function compactSpellRange(value = ""){
+  return compactSpellField(value).replace(/(\d+)\s*ft\b/gi, "$1ft");
+}
+
+function compactSpellComponents(value = ""){
+  return compactSpellField(value).replace(/\s*,\s*/g, ",");
+}
+
+function spellRowMeta(spell){
+  return [
+    `L${spell.level}`,
+    compactSpellCastingTime(spell.casting_time || "-"),
+    compactSpellRange(spell.range || "-"),
+    compactSpellComponents(spell.components || "-"),
+    compactSpellField(spell.school || "-")
+  ].join(" / ");
+}
+
+function spellDescriptionHtml(text = ""){
+  return escapeHtml(String(text || "")).replace(/\n/g, "<br>");
+}
+
+function spellCardHtml(spell){
+  return `
+    <div class="spell-card-modal">
+      <div class="spell-card-shell">
+        <div class="spell-card-name">${escapeHtml(spell.name)}</div>
+        <div class="spell-card-grid">
+          <div class="spell-card-cell">
+            <span>Range</span>
+            <b>${escapeHtml(compactSpellRange(spell.range || "-"))}</b>
+          </div>
+          <div class="spell-card-cell">
+            <span>Comp</span>
+            <b>${escapeHtml(compactSpellComponents(spell.components || "-"))}</b>
+          </div>
+          <div class="spell-card-cell">
+            <span>Dur</span>
+            <b>${escapeHtml(compactSpellField(spell.duration || "-"))}</b>
+          </div>
+          <div class="spell-card-cell">
+            <span>Cast</span>
+            <b>${escapeHtml(compactSpellCastingTime(spell.casting_time || "-"))}</b>
+          </div>
+        </div>
+        <div class="spell-card-text">${spellDescriptionHtml(spell.description || "No description available.")}</div>
+        <div class="spell-card-foot">
+          <span>${escapeHtml(compactSpellField(spell.school || "-"))}</span>
+          <span>${escapeHtml(compactSpellField(spell.classes || "-"))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openSpellCard(name){
+  const spell = getSpellByName(name);
+  if (!spell){
+    openResult("Spell", "Spell data not found.");
+    return;
+  }
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">${escapeHtml(spell.name)}</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    ${spellCardHtml(spell)}
+    <div class="modal-actions">
+      <button class="action-btn blue" id="castSpellFromCardBtn">Cast</button>
+    </div>
+  `);
+  document.getElementById("castSpellFromCardBtn").onclick = () => {
+    closeModal();
+    castSpellByName(spell.name);
+  };
 }
 
 function openEntryInfo(entry){
@@ -1485,7 +1578,7 @@ function clericPreparedLimit(profile = activeProfile()){
 function clericPreparedNames(profile = activeProfile()){
   return (profile.preparedSpells || []).filter(name => {
     if (isAutomaticBonusSpell(profile, name, "prepared")) return false;
-    if ((profile.extraSpells || []).some(item => item.name === name && item.prepared)) return false;
+    if ((profile.extraSpells || []).some(item => item.name === name)) return false;
     const spell = getSpellByName(name);
     return isClericSpellName(name) && Number(spell?.level || 0) > 0;
   });
@@ -2311,7 +2404,7 @@ function renderSpellRows(){
         <button class="icon-btn" data-spell-info="${escapeHtml(spell.name)}">i</button>
         <button class="combat-action blue" data-spell-cast="${escapeHtml(spell.name)}">
           <b>${escapeHtml(spell.name)}</b>
-          <span>L${spell.level} / ${escapeHtml(spell.school || "-")}</span>
+          <span>${escapeHtml(spellRowMeta(spell))}</span>
         </button>
         <div class="tag">${escapeHtml(hit)}</div>
         <button class="mode-btn ${mode.crit ? "active" : "inactive"}" data-spell-crit="${escapeHtml(spell.name)}">${inferSpellMode(spell) === "attack" ? "Crit" : "-"}</button>
@@ -2350,8 +2443,8 @@ function bindSelect(id, items, selectedId){
 
 function renderSpellsPage(){
   const profile = activeProfile();
-  const allKnown = unique([...(profile.knownSpells || []), ...extraSpellNames(profile, "known")]).map(getSpellByName).filter(Boolean).sort((a, b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
-  const prepared = unique([...(profile.preparedSpells || []), ...extraSpellNames(profile, "prepared")]).map(getSpellByName).filter(Boolean).sort((a, b) => Number(a.level) - Number(b.level) || a.name.localeCompare(b.name));
+  const allKnown = sortedSpells(unique([...(profile.knownSpells || []), ...extraSpellNames(profile, "known")]).map(getSpellByName).filter(Boolean));
+  const prepared = sortedSpells(unique([...(profile.preparedSpells || []), ...extraSpellNames(profile, "prepared")]).map(getSpellByName).filter(Boolean));
   renderSlots("spellbookSlotGrid");
   document.getElementById("spellbookSlotHeadText").textContent = document.getElementById("slotHeadText").textContent;
   document.getElementById("spellbookLimitsPanel").classList.toggle("collapsed", profile.spellbookLimitsCollapsed);
@@ -2384,7 +2477,7 @@ function renderSpellsPage(){
             <button class="icon-btn" data-spell-info="${escapeAttr(spell.name)}">i</button>
             <div>
               <div class="book-row-name">${escapeHtml(spell.name)}</div>
-              <div class="book-row-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+              <div class="book-row-meta">${escapeHtml(spellRowMeta(spell))}</div>
             </div>
             <button class="book-tag" data-toggle-known="${escapeAttr(spell.name)}">${(profile.knownSpells || []).includes(spell.name) ? "Known" : "Extra"}</button>
             <button class="book-tag" data-toggle-prepared="${escapeAttr(spell.name)}">${(profile.preparedSpells || []).includes(spell.name) || (profile.extraSpells || []).some(item => item.name === spell.name && item.prepared) ? "Prepared" : "Prep"}</button>
@@ -2667,10 +2760,7 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-weapon-crit]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.weaponCrit, "crit"));
   document.querySelectorAll("[data-weapon-adv]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.weaponAdv, "adv"));
   document.querySelectorAll("[data-spell-info]").forEach(button => {
-    button.onclick = () => {
-      const spell = getSpellByName(button.dataset.spellInfo);
-      if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
-    };
+    button.onclick = () => openSpellCard(button.dataset.spellInfo);
   });
   document.querySelectorAll("[data-spell-cast]").forEach(button => button.onclick = () => castSpell(button.dataset.spellCast));
   document.querySelectorAll("[data-spell-crit]").forEach(button => button.onclick = () => toggleAttackMode(button.dataset.spellCrit, "crit"));
@@ -3311,10 +3401,7 @@ function openBonusSpellEditor(){
       <button class="action-btn blue" id="saveBonusSpellsBtn">Save</button>
     </div>
   `);
-  document.querySelectorAll("[data-bonus-info]").forEach(button => button.onclick = () => {
-    const spell = getSpellByName(button.dataset.bonusInfo);
-    if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
-  });
+  document.querySelectorAll("[data-bonus-info]").forEach(button => button.onclick = () => openSpellCard(button.dataset.bonusInfo));
   document.getElementById("saveBonusSpellsBtn").onclick = () => {
     const byName = {};
     document.querySelectorAll("[data-bonus-known]").forEach(box => {
@@ -4120,10 +4207,7 @@ function renderSpellEditorView(options = {}){
     renderSpellEditorView();
   };
   host.querySelectorAll("[data-editor-info]").forEach(button => {
-    button.onclick = () => {
-      const spell = getSpellByName(button.dataset.editorInfo);
-      if (spell) openResult(spell.name, `${spell.description}\n\nRange: ${spell.range}\nCasting: ${spell.casting_time}\nDuration: ${spell.duration}`);
-    };
+    button.onclick = () => openSpellCard(button.dataset.editorInfo);
   });
   host.querySelectorAll("[data-editor-known]").forEach(box => {
     box.onchange = () => {

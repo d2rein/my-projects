@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=430, initial-scale=1, viewport-fit=cover">
 <title>Jefferson Grug 2024</title>
-<link rel="manifest" href="./manifest.webmanifest?v=20260714grug2024h">
+<link rel="manifest" href="./manifest.webmanifest?v=20260715grug2024a">
 <meta name="theme-color" content="#09111a">
 <style>
   :root{
@@ -276,6 +276,60 @@
     font-size:11px;
     line-height:1.45;
     white-space:pre-wrap;
+  }
+  .spell-card-modal{display:grid;gap:10px}
+  .spell-card-shell{
+    background:#f0ece6;
+    color:#101010;
+    border:1px solid #2d2d2d;
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .spell-card-name{
+    padding:6px 10px;
+    text-align:center;
+    font-size:18px;
+    font-weight:800;
+    border-bottom:1px solid #2d2d2d;
+    font-family:Georgia,"Times New Roman",serif;
+  }
+  .spell-card-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    border-bottom:1px solid #2d2d2d;
+  }
+  .spell-card-cell{
+    padding:5px 6px;
+    text-align:center;
+    border-right:1px solid #2d2d2d;
+  }
+  .spell-card-cell:last-child{border-right:0}
+  .spell-card-cell span{
+    display:block;
+    font-size:9px;
+    text-transform:uppercase;
+    font-weight:800;
+    letter-spacing:.04em;
+  }
+  .spell-card-cell b{
+    display:block;
+    margin-top:2px;
+    font-size:13px;
+  }
+  .spell-card-text{
+    padding:9px 10px;
+    min-height:92px;
+    font-size:13px;
+    line-height:1.35;
+    border-bottom:1px solid #2d2d2d;
+  }
+  .spell-card-foot{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    padding:4px 8px;
+    font-size:12px;
+    font-style:italic;
   }
   .pill-row{display:flex;gap:6px;flex-wrap:wrap}
   .tag{
@@ -1163,7 +1217,7 @@
 
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
-<script src="./spell-data.js?v=20260714grug2024h"></script>
-<script src="./app.js?v=20260714grug2024h"></script>
+<script src="./spell-data.js?v=20260715grug2024a"></script>
+<script src="./app.js?v=20260715grug2024a"></script>
 </body>
 </html>
