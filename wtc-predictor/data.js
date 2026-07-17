@@ -1,6 +1,6 @@
 window.WTC_DATA = {
-  snapshotDate: "2026-05-20",
-  snapshotLabel: "20 May 2026",
+  snapshotDate: "2026-07-07",
+  snapshotLabel: "7 July 2026",
   updateCadence: "Weekly, plus the day after a scheduled series finish when dates are known.",
   sources: [
     {
@@ -28,7 +28,15 @@ window.WTC_DATA = {
     { id: "WI", name: "West Indies", short: "WI" }
   ],
   deductions: {
-    ENG: -2
+    AUS: 0,
+    BAN: 0,
+    ENG: -14,
+    IND: 0,
+    NZ: 0,
+    PAK: -8,
+    SA: 0,
+    SL: 0,
+    WI: -2
   },
   series: [
     {
@@ -136,21 +144,22 @@ window.WTC_DATA = {
       home: "ENG",
       away: "NZ",
       matches: 3,
-      status: "upcoming",
-      stageLabel: "Upcoming",
-      windowLabel: "Starts 4 Jun 2026",
-      actual: { homeWins: 0, awayWins: 0, draws: 0 },
-      notes: "England's next Test series."
+      status: "completed",
+      stageLabel: "Completed",
+      windowLabel: "4-26 Jun 2026",
+      actual: { homeWins: 1, awayWins: 2, draws: 0 },
+      notes: "New Zealand won the series 2-1."
     },
     {
       id: 11,
       home: "WI",
       away: "SL",
       matches: 2,
-      status: "upcoming",
-      stageLabel: "Upcoming",
-      windowLabel: "Later in 2026",
-      actual: { homeWins: 0, awayWins: 0, draws: 0 }
+      status: "completed",
+      stageLabel: "Completed",
+      windowLabel: "11-29 Jun 2026",
+      actual: { homeWins: 1, awayWins: 1, draws: 0 },
+      notes: "Series drawn 1-1."
     },
     {
       id: 12,
