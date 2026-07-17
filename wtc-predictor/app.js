@@ -1,6 +1,9 @@
 (function () {
   const STORAGE_KEY = "wtc-predictor-category-picks-v1";
   const SIMULATION_COUNT = 12000;
+  const LIVE_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  const LIVE_REFRESH_ON_RETURN_MS = 60 * 60 * 1000;
+
   const data = window.WTC_DATA;
   const model = window.WTC_MODEL;
   const teamMap = new Map(data.teams.map((team) => [team.id, team]));
@@ -10,12 +13,13 @@
   let savedSelections = loadSavedSelections();
   let liveSyncState = {
     mode: "fallback",
-    detail: `Using seeded ICC snapshot from ${data.snapshotLabel}.`
+    detail: `Using seeded snapshot from ${data.snapshotLabel}.`
   };
+  let lastLiveSyncIso = null;
+  let liveRefreshTimer = null;
   let simulationTimer = null;
   let simulationSummary = null;
-
-  const currentTable = computeCurrentTable();
+  let currentTable = computeCurrentTable();
 
   renderHeaderMeta();
   renderCurrentTable();
@@ -23,6 +27,7 @@
   renderSeriesTable();
   wireGlobalActions();
   syncLiveStatus();
+  scheduleLiveRefresh();
   scheduleSimulation();
 
   function buildDefaultSelections() {
@@ -39,6 +44,7 @@
       if (!raw) {
         return structuredClone(defaultSelections);
       }
+
       const parsed = JSON.parse(raw);
       const merged = structuredClone(defaultSelections);
       for (const [seriesId, value] of Object.entries(parsed)) {
@@ -58,10 +64,15 @@
   }
 
   function sanitizeSelection(series, value) {
-    if (!series || getRemainingMatches(series) <= 0) {
+    if (!series) {
       return "completed";
     }
-    return model.CATEGORY_OPTIONS.some((option) => option.key === value) ? value : "even";
+    if (value === "completed") {
+      return "completed";
+    }
+    return model.CATEGORY_OPTIONS.some((option) => option.key === value)
+      ? value
+      : (getRemainingMatches(series) > 0 ? "even" : "completed");
   }
 
   function getRemainingMatches(series) {
@@ -72,10 +83,9 @@
     return sanitizeSelection(series, savedSelections[series.id] || defaultSelections[series.id]);
   }
 
-  function getMostLikelyProjectedSeries(series) {
+  function getFrozenPredictedSeries(series) {
     const selection = getSeriesSelection(series);
-    const remaining = getRemainingMatches(series);
-    if (remaining <= 0) {
+    if (selection === "completed") {
       return {
         categoryKey: "completed",
         categoryLabel: "Completed",
@@ -86,10 +96,37 @@
       };
     }
 
-    const scoreline = model.getMostLikelyScoreline(remaining, selection);
+    const scoreline = model.getMostLikelyScoreline(series.matches, selection);
     const option = model.getCategoryOption(selection);
     return {
       categoryKey: selection,
+      categoryLabel: option.label,
+      shortLabel: option.short,
+      homeWins: scoreline.homeWins,
+      draws: scoreline.draws,
+      awayWins: scoreline.awayWins
+    };
+  }
+
+  function getMostLikelyProjectedSeries(series) {
+    const selection = getSeriesSelection(series);
+    const remaining = getRemainingMatches(series);
+    if (remaining <= 0) {
+      return {
+        categoryKey: selection === "completed" ? "completed" : selection,
+        categoryLabel: selection === "completed" ? "Completed" : model.getCategoryOption(selection).label,
+        shortLabel: "FIN",
+        homeWins: series.actual.homeWins,
+        draws: series.actual.draws,
+        awayWins: series.actual.awayWins
+      };
+    }
+
+    const effectiveSelection = selection === "completed" ? "even" : selection;
+    const scoreline = model.getMostLikelyScoreline(remaining, effectiveSelection);
+    const option = model.getCategoryOption(effectiveSelection);
+    return {
+      categoryKey: effectiveSelection,
       categoryLabel: option.label,
       shortLabel: option.short,
       homeWins: series.actual.homeWins + scoreline.homeWins,
@@ -142,6 +179,7 @@
         pct
       };
     });
+
     rows.sort(sortTableRows);
     rows.forEach((row, index) => {
       row.rank = index + 1;
@@ -167,15 +205,22 @@
     document.getElementById("update-cadence").textContent = data.updateCadence;
     document.getElementById("source-list").innerHTML = data.sources
       .map((source) => `<a href="${source.url}" target="_blank" rel="noopener">${source.label}</a>`)
-      .join("");
+      .join(" · ");
     renderSyncState();
   }
 
   function renderSyncState() {
     const syncPill = document.getElementById("sync-pill");
     syncPill.className = `sync-pill ${liveSyncState.mode}`;
-    syncPill.textContent = liveSyncState.mode === "live" ? "Live source checked" : "Seeded snapshot";
-    document.getElementById("sync-detail").textContent = liveSyncState.detail;
+    syncPill.textContent = liveSyncState.mode === "live" ? "Wikipedia live" : "Seeded snapshot";
+    document.getElementById("sync-detail").textContent = buildSyncDetail();
+  }
+
+  function buildSyncDetail() {
+    if (!lastLiveSyncIso) {
+      return liveSyncState.detail;
+    }
+    return `${liveSyncState.detail} Last checked ${formatTimestamp(lastLiveSyncIso)}.`;
   }
 
   function renderCurrentTable() {
@@ -262,11 +307,11 @@
     tbody.innerHTML = "";
 
     for (const series of data.series) {
+      const frozenPrediction = getFrozenPredictedSeries(series);
       const projected = getMostLikelyProjectedSeries(series);
       const remaining = getRemainingMatches(series);
       const home = teamMap.get(series.home);
       const away = teamMap.get(series.away);
-      const scoreline = remaining > 0 ? model.getMostLikelyScoreline(remaining, projected.categoryKey) : null;
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -275,10 +320,8 @@
         <td>${series.matches}</td>
         <td>${formatRecord(series.actual.homeWins, series.actual.draws, series.actual.awayWins)}</td>
         <td>${remaining}</td>
-        <td>
-          ${remaining > 0 ? buildCategorySelect(series.id, projected.categoryKey) : '<span class="small-note">Locked</span>'}
-        </td>
-        <td>${remaining > 0 ? formatRecord(scoreline.homeWins, scoreline.draws, scoreline.awayWins) : '-'}</td>
+        <td>${remaining > 0 ? buildCategorySelect(series.id, getSeriesSelection(series)) : buildCompletedCategory(series)}</td>
+        <td>${formatRecord(frozenPrediction.homeWins, frozenPrediction.draws, frozenPrediction.awayWins)}</td>
         <td>${formatRecord(projected.homeWins, projected.draws, projected.awayWins)}</td>
       `;
       tbody.appendChild(tr);
@@ -294,6 +337,15 @@
       <option value="${option.key}" ${option.key === selectedKey ? "selected" : ""}>${option.label}</option>
     `).join("");
     return `<select class="category-select" data-series-id="${seriesId}">${options}</select>`;
+  }
+
+  function buildCompletedCategory(series) {
+    const selection = getSeriesSelection(series);
+    if (selection === "completed") {
+      return '<span class="small-note">No pick saved</span>';
+    }
+    const option = model.getCategoryOption(selection);
+    return `<span class="small-note">${option.label}</span>`;
   }
 
   function handleCategoryChange(event) {
@@ -321,6 +373,7 @@
 
     for (let simIndex = 0; simIndex < SIMULATION_COUNT; simIndex += 1) {
       const totals = buildBlankTeamTotals();
+
       for (const series of data.series) {
         applyRecord(totals[series.home], series.actual.homeWins, series.actual.awayWins, series.actual.draws);
         applyRecord(totals[series.away], series.actual.awayWins, series.actual.homeWins, series.actual.draws);
@@ -331,7 +384,7 @@
         }
 
         const categoryKey = getSeriesSelection(series);
-        const simResult = model.simulateSeries(remaining, categoryKey);
+        const simResult = model.simulateSeries(remaining, categoryKey === "completed" ? "even" : categoryKey);
         applyRecord(totals[series.home], simResult.homeWins, simResult.awayWins, simResult.draws);
         applyRecord(totals[series.away], simResult.awayWins, simResult.homeWins, simResult.draws);
       }
@@ -427,28 +480,64 @@
       renderSeriesTable();
       scheduleSimulation();
     });
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+    window.addEventListener("focus", handleFocusRefresh);
   }
 
   async function syncLiveStatus() {
     try {
-      const response = await fetch("/api/wtc-live", { headers: { "Accept": "application/json" } });
+      const response = await fetch("/api/wtc-live", { headers: { Accept: "application/json" } });
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
       }
+
       const payload = await response.json();
       if (payload && payload.ok) {
+        if (payload.liveDataAvailable && payload.liveData) {
+          applyLiveData(payload.liveData);
+        }
         liveSyncState = {
           mode: payload.liveDataAvailable ? "live" : "fallback",
           detail: payload.message || liveSyncState.detail
         };
+        lastLiveSyncIso = payload.checkedAt || new Date().toISOString();
         renderSyncState();
       }
     } catch (error) {
       liveSyncState = {
         mode: "fallback",
-        detail: `Using seeded ICC snapshot from ${data.snapshotLabel}. Live check unavailable right now.`
+        detail: `Using seeded snapshot from ${data.snapshotLabel}. Live check unavailable right now.`
       };
+      lastLiveSyncIso = new Date().toISOString();
       renderSyncState();
+    }
+  }
+
+  function scheduleLiveRefresh() {
+    if (liveRefreshTimer) {
+      window.clearInterval(liveRefreshTimer);
+    }
+    liveRefreshTimer = window.setInterval(syncLiveStatus, LIVE_REFRESH_INTERVAL_MS);
+  }
+
+  function handleVisibilityRefresh() {
+    if (!document.hidden) {
+      maybeRefreshLiveData();
+    }
+  }
+
+  function handleFocusRefresh() {
+    maybeRefreshLiveData();
+  }
+
+  function maybeRefreshLiveData() {
+    if (!lastLiveSyncIso) {
+      syncLiveStatus();
+      return;
+    }
+    const elapsed = Date.now() - Date.parse(lastLiveSyncIso);
+    if (elapsed >= LIVE_REFRESH_ON_RETURN_MS) {
+      syncLiveStatus();
     }
   }
 
@@ -465,5 +554,67 @@
     td.className = className;
     td.innerHTML = content;
     return td;
+  }
+
+  function applyLiveData(liveData) {
+    if (!liveData) {
+      return;
+    }
+
+    if (liveData.snapshotLabel) {
+      data.snapshotLabel = liveData.snapshotLabel;
+    }
+    if (liveData.snapshotDate) {
+      data.snapshotDate = liveData.snapshotDate;
+    }
+    if (liveData.sourceUrl && !data.sources.some((source) => source.url === liveData.sourceUrl)) {
+      data.sources = data.sources.concat([{
+        label: "Wikipedia WTC live table",
+        url: liveData.sourceUrl
+      }]);
+    }
+    if (liveData.deductions) {
+      data.deductions = { ...liveData.deductions };
+    }
+
+    if (liveData.seriesActuals) {
+      for (const series of data.series) {
+        const liveSeries = liveData.seriesActuals[String(series.id)];
+        if (!liveSeries) {
+          continue;
+        }
+        series.actual = {
+          homeWins: liveSeries.homeWins,
+          awayWins: liveSeries.awayWins,
+          draws: liveSeries.draws
+        };
+        series.status = liveSeries.status;
+        series.stageLabel = liveSeries.stageLabel;
+      }
+    }
+
+    currentTable = Array.isArray(liveData.standings) && liveData.standings.length
+      ? liveData.standings
+      : computeCurrentTable();
+
+    renderHeaderMeta();
+    renderCurrentTable();
+    renderMatrix();
+    renderSeriesTable();
+    scheduleSimulation();
+  }
+
+  function formatTimestamp(isoString) {
+    const parsed = new Date(isoString);
+    if (Number.isNaN(parsed.getTime())) {
+      return isoString;
+    }
+    return parsed.toLocaleString("en-AU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
   }
 })();

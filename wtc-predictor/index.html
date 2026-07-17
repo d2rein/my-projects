@@ -268,6 +268,11 @@
       color: #8a6920;
     }
 
+    .status-pill.ongoing {
+      background: rgba(150, 101, 23, 0.16);
+      color: #8b6115;
+    }
+
     .category-select {
       width: 160px;
       padding: 5px 7px;
@@ -365,7 +370,7 @@
       <div class="status-bar">
         <div>
           <strong>Official ladder</strong>
-          <span class="small-note">Current standings from the seeded ICC snapshot.</span>
+          <span class="small-note">Current standings from the live WTC source when available, otherwise the seeded fallback.</span>
         </div>
         <div class="small-note" id="sync-detail">Using seeded ICC snapshot.</div>
       </div>
@@ -430,7 +435,7 @@
       <div class="actions">
         <div>
           <h2>Series Categories</h2>
-          <div class="small-note">Pick the category, then the simulation reruns automatically. The "Likely added" column shows the most likely scoreline from that category for the remaining Tests only.</div>
+          <div class="small-note">Pick the category, then the simulation reruns automatically. `Predicted` stays as your original category call, while `Projected` updates from live actuals plus the current remaining-series projection.</div>
         </div>
         <button id="reset-picks" type="button">Reset Picks</button>
       </div>
@@ -444,8 +449,8 @@
               <th>Actual</th>
               <th>Left</th>
               <th>Category</th>
-              <th>Likely Added</th>
-              <th>Likely Final</th>
+              <th>Predicted</th>
+              <th>Projected</th>
             </tr>
           </thead>
           <tbody id="series-body"></tbody>
