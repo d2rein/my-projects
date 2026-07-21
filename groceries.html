@@ -831,7 +831,7 @@
     function migrateState(inputState) {
       const nextState = clone(inputState || STARTER_DATA);
       nextState.recipes = Array.isArray(nextState.recipes) ? nextState.recipes : clone(STARTER_DATA.recipes);
-      nextState.otherItems = (Array.isArray(nextState.otherItems) ? nextState.otherItems : clone(STARTER_DATA.otherItems))
+      const migratedOtherItems = (Array.isArray(nextState.otherItems) ? nextState.otherItems : clone(STARTER_DATA.otherItems))
         .map((item) => {
           const nextItem = { ...item };
           if ((nextItem.name || "").trim().toLowerCase() === "wet dog food") {
@@ -841,6 +841,9 @@
           return nextItem;
         })
         .filter((item) => !REMOVED_OTHER_ITEMS.has((item.name || "").trim().toLowerCase()));
+      const existingIds = new Set(migratedOtherItems.map((item) => item.id));
+      const missingStarterItems = clone(STARTER_DATA.otherItems).filter((item) => !existingIds.has(item.id));
+      nextState.otherItems = migratedOtherItems.concat(missingStarterItems);
       return nextState;
     }
 
