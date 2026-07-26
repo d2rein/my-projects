@@ -329,6 +329,11 @@
       border-color: rgba(45, 122, 68, 0.28);
     }
 
+    .shopping-card.cart-added {
+      background: #fff0ad;
+      border-color: rgba(181, 134, 18, 0.46);
+    }
+
     .check,
     .meal-badge,
     .meal-meta {
@@ -645,7 +650,7 @@
       <section id="tab-list" class="tab">
         <div class="panel">
           <div class="section-head"><div class="hint"></div></div>
-          <div class="toolbar"><a class="button button-primary" href="/coles-catalog">Coles catalogue</a></div>
+          <div class="toolbar"><a class="button button-primary" href="/coles-catalog">Coles catalogue</a><button id="addColesCartBtn" class="button button-primary" type="button">Add mapped items to Coles cart</button></div>
           <div>
             <strong>Selected meals</strong>
             <div id="selectedMeals" class="chip-row"></div>
@@ -807,6 +812,7 @@
     let activeTab = "meals";
     let editing = false;
     let editingMealId = null;
+    let colesExtensionResponded = false;
     let editingOtherId = null;
     let syncBusy = false;
 
@@ -1270,6 +1276,99 @@
       return { meals, list };
     }
 
+    function cartAddedItems() {
+      if (!state.colesCartAdded || typeof state.colesCartAdded !== "object") {
+        state.colesCartAdded = {};
+      }
+      return state.colesCartAdded;
+    }
+
+    function buildColesCartItems() {
+      const { list } = buildShoppingList();
+      const catalog = state.colesCatalog?.items || {};
+      const items = [];
+      const unmapped = [];
+
+      categories.forEach((category) => {
+        Array.from(list[category].entries()).forEach(([name]) => {
+          const shoppingKey = category + "|" + name;
+          const catalogKey = category + "::" + name.trim().toLowerCase().replace(/\s+/g, " ");
+          const products = (catalog[catalogKey]?.products || []).filter((product) => {
+            try {
+              return new URL(product.url).hostname.endsWith("coles.com.au");
+            } catch (error) {
+              return false;
+            }
+          });
+          if (!products.length) {
+            unmapped.push(name);
+            return;
+          }
+          products.forEach((product) => items.push({
+            name,
+            category,
+            shoppingKey,
+            url: product.url,
+            quantity: Math.max(1, Number(product.quantity) || 1)
+          }));
+        });
+      });
+
+      return { items, unmapped };
+    }
+
+    function startColesCart() {
+      const { items, unmapped } = buildColesCartItems();
+      if (!items.length) {
+        setSyncStatus("There are no selected shopping-list items with a Coles URL yet.");
+        return;
+      }
+
+      colesExtensionResponded = false;
+      window.postMessage({ source: "drein-groceries", type: "coles-cart-request", items }, window.location.origin);
+      setSyncStatus("Opening Coles for " + items.length + " mapped product" + (items.length === 1 ? "" : "s") + "." + (unmapped.length ? " " + unmapped.length + " selected item" + (unmapped.length === 1 ? " is" : "s are") + " not mapped yet." : ""));
+      window.setTimeout(() => {
+        if (!colesExtensionResponded) {
+          setSyncStatus("If Coles did not open, install and enable the Coles Cart Helper extension, then try again.");
+        }
+      }, 1800);
+    }
+
+    function handleColesCartProgress(message) {
+      colesExtensionResponded = true;
+      if (message.type === "coles-cart-error") {
+        setSyncStatus(message.error || "The Coles Cart Helper could not start.");
+        return;
+      }
+      if (message.type === "coles-cart-ready") {
+        setSyncStatus("Coles opened. Log in if needed; the extension will continue after login.");
+        return;
+      }
+      if (message.type !== "coles-cart-complete") {
+        return;
+      }
+
+      const results = message.results || [];
+      const grouped = new Map();
+      results.forEach((result) => {
+        const entries = grouped.get(result.shoppingKey) || [];
+        entries.push(result);
+        grouped.set(result.shoppingKey, entries);
+      });
+      const cartAdded = cartAddedItems();
+      let added = 0;
+      grouped.forEach((entries, shoppingKey) => {
+        if (entries.length && entries.every((entry) => entry.ok)) {
+          cartAdded[shoppingKey] = true;
+          added += 1;
+        }
+      });
+      saveState();
+      renderShopping();
+      const failed = results.filter((result) => !result.ok).length;
+      setSyncStatus(added + " shopping-list item" + (added === 1 ? "" : "s") + " added to Coles and highlighted yellow." + (failed ? " " + failed + " product" + (failed === 1 ? " did" : "s did") + " not add; leave those unhighlighted and add a replacement manually." : ""));
+    }
+
     function renderShopping() {
       const { meals, list } = buildShoppingList();
       const selectedMeals = document.getElementById("selectedMeals");
@@ -1306,7 +1405,13 @@
       wrap.querySelectorAll("[data-done]").forEach((node) => {
         node.addEventListener("click", () => {
           const key = node.dataset.done;
-          done[key] = !done[key];
+          if (cartAddedItems()[key]) {
+            delete cartAddedItems()[key];
+            done[key] = true;
+            saveState();
+          } else {
+            done[key] = !done[key];
+          }
           saveDone();
           renderShopping();
         });
@@ -1426,7 +1531,7 @@
             entries.map(([name, qty]) => {
               const key = category + "|" + name;
               return (
-                "<button class=\"shopping-card" + (done[key] ? " done" : "") + "\" type=\"button\" data-done=\"" + escapeHtml(key) + "\">" +
+                "<button class=\"shopping-card" + (done[key] ? " done" : (cartAddedItems()[key] ? " cart-added" : "")) + "\" type=\"button\" data-done=\"" + escapeHtml(key) + "\">" +
                   "<span class=\"check\">" + (done[key] ? "âœ“" : "") + "</span>" +
                   "<div class=\"card-main\"><div class=\"card-title\">" + escapeHtml(name) + (qty > 1 ? " Ã— " + qty : "") + "</div></div>" +
                 "</button>"
@@ -1440,7 +1545,13 @@
       wrap.querySelectorAll("[data-done]").forEach((node) => {
         node.addEventListener("click", () => {
           const key = node.dataset.done;
-          done[key] = !done[key];
+          if (cartAddedItems()[key]) {
+            delete cartAddedItems()[key];
+            done[key] = true;
+            saveState();
+          } else {
+            done[key] = !done[key];
+          }
           saveDone();
           renderShopping();
         });
@@ -1753,6 +1864,7 @@
     document.getElementById("addItemBtn").addEventListener("click", addOther);
     document.getElementById("resetBtn").addEventListener("click", resetCurrentWeek);
     document.getElementById("saveCloudBtn").addEventListener("click", saveToCloud);
+    document.getElementById("addColesCartBtn").addEventListener("click", startColesCart);
     document.querySelectorAll(".nav-button").forEach((node) => node.addEventListener("click", () => setTab(node.dataset.tab)));
     document.getElementById("modal").addEventListener("click", (event) => {
       if (event.target.dataset.close) {
@@ -1769,6 +1881,11 @@
     window.deleteMeal = deleteMeal;
     window.updateOther = updateOther;
     window.deleteOther = deleteOther;
+    window.addEventListener("message", (event) => {
+      if (event.source === window && event.origin === window.location.origin && event.data?.source === "coles-cart-helper") {
+        handleColesCartProgress(event.data);
+      }
+    });
 
     applyFontScale();
     updateMealViewButton();

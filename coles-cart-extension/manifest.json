@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Drein Grocery Coles Cart Helper",
+  "version": "0.1.0",
+  "description": "Adds mapped items from drein.net groceries to a Coles trolley. It never checks out.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://drein.net/*", "https://www.coles.com.au/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://drein.net/groceries*"],
+      "js": ["grocery-bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.coles.com.au/*"],
+      "js": ["coles-runner.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
