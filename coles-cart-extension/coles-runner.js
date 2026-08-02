@@ -46,6 +46,7 @@ function secondaryButton(label, click) {
 
 function showLoginPanel() {
   const node = panel();
+  delete node.dataset.guidedQueue;
   node.replaceChildren();
   const title = document.createElement("strong");
   title.textContent = "Guided Coles shop";
@@ -59,6 +60,7 @@ function showLoginPanel() {
 
 function showGuidedItem(message) {
   const node = panel();
+  node.dataset.guidedQueue = "true";
   node.replaceChildren();
   const heading = document.createElement("strong");
   heading.textContent = `${message.currentIndex + 1} of ${message.total}: ${message.item.name}`;
@@ -77,6 +79,14 @@ function showGuidedItem(message) {
     chrome.runtime.sendMessage({ type: "coles-guided-skip", ...priceFromPage() });
   }));
 }
+
+document.addEventListener("keydown", (event) => {
+  if (event.code !== "Space" || event.repeat || !document.getElementById("drein-coles-cart-panel")?.dataset.guidedQueue) return;
+  const target = event.target;
+  if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']")) return;
+  event.preventDefault();
+  document.querySelector("#drein-coles-cart-panel button")?.click();
+}, true);
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "coles-awaiting-login") showLoginPanel();

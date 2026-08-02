@@ -55,6 +55,7 @@
       </div>
       <div class="spacer"></div>
       <a class="button" href="/groceries">Grocery list</a>
+      <button id="exportButton" class="button" type="button">Export mappings</button>
       <button id="saveButton" class="button save" type="button">Save catalogue</button>
     </div>
     <p id="status" class="status">Loading shared grocery list...</p>
@@ -63,11 +64,23 @@
       <span id="count" class="count"></span>
     </div>
     <div id="catalogue"></div>
-    <p class="note">For example, map <strong>Milk</strong> to full-cream and skim milk on separate rows. New planner items will appear here automatically after you refresh this page.</p>
+    <p class="note">For example, map <strong>Milk</strong> to full-cream and skim milk on separate rows. Export mappings regularly as a CSV backup of your product URLs and usual quantities. New planner items appear automatically after refreshing this page.</p>
   </main>
   <script>
     const LOCAL_KEY = "weekly-grocery-coles-catalog-v1";
     const DEFAULT_CATEGORIES = ["Meat", "Produce", "Bread", "Dairy", "Other", "Gluten Free Snacks"];
+    const CATALOGUE_ADDITIONS = [
+      ["Dairy", "Sour Cream"], ["Produce", "Frozen Veg"],
+      ["Other", "Coconut Chilli Rice"], ["Other", "Tuna Can"], ["Other", "Gravy Pouch"],
+      ["Other", "Tinned Spaghetti"], ["Other", "Instant Mash"], ["Other", "Pizza Shapes"],
+      ["Other", "Pizza Sauce"], ["Other", "Frozen Dumplings"], ["Other", "Tomato Paste"],
+      ["Gluten Free Snacks", "GF Pancake Mix"], ["Gluten Free Snacks", "GF Dumplings"],
+      ["Gluten Free Snacks", "Popcorn"], ["Gluten Free Snacks", "Roasted Chickpeas"],
+      ["Gluten Free Snacks", "Roasted Fava Beans"], ["Gluten Free Snacks", "GF Bread"],
+      ["Gluten Free Snacks", "GF Buns"], ["Gluten Free Snacks", "GF Nut Bars"],
+      ["Gluten Free Snacks", "GF Muesli"], ["Gluten Free Snacks", "GF Melting Moments"],
+      ["Gluten Free Snacks", "GF Corn Chips"]
+    ];
     let state = null;
     let done = {};
     let lastKnownUpdatedAt = null;
@@ -80,6 +93,19 @@
 
     function setStatus(message) { $("status").textContent = message; }
     function categories() { return Array.isArray(state?.categories) && state.categories.length ? state.categories : DEFAULT_CATEGORIES; }
+    function migratePlannerState(input) {
+      const next = clone(input || {});
+      next.categories = [...new Set([...(Array.isArray(next.categories) ? next.categories : []), ...DEFAULT_CATEGORIES])];
+      next.otherItems = Array.isArray(next.otherItems) ? next.otherItems : [];
+      const existing = new Set(next.otherItems.map((item) => itemKey(item.category, item.name)));
+      CATALOGUE_ADDITIONS.forEach(([category, name]) => {
+        const key = itemKey(category, name);
+        if (existing.has(key)) return;
+        next.otherItems.push({ id: "catalogue-" + key.replace(/[^a-z0-9]+/g, "-"), name, category, selected: false });
+        existing.add(key);
+      });
+      return next;
+    }
     function ensureCatalog() {
       if (!state.colesCatalog || typeof state.colesCatalog !== "object") state.colesCatalog = { version: 1, items: {} };
       if (!state.colesCatalog.items || typeof state.colesCatalog.items !== "object") state.colesCatalog.items = {};
@@ -107,6 +133,27 @@
       if (clean.length) ensureCatalog()[key] = { products: clean };
       else delete ensureCatalog()[key];
       saveLocal();
+    }
+    function csvCell(value) {
+      return '"' + String(value == null ? "" : value).replaceAll('"', '""') + '"';
+    }
+    function exportMappings() {
+      if (!state) return;
+      const rows = [["Category", "Grocery item", "Typical quantity", "Coles URL", "Product label"]];
+      categories().forEach((category) => {
+        candidates()[category].forEach((item) => {
+          productsFor(item.key).filter((product) => product.url).forEach((product) => {
+            rows.push([category, item.name, Math.max(1, Number(product.quantity) || 1), product.url, product.label || ""]);
+          });
+        });
+      });
+      const blob = new Blob([rows.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "coles-catalogue-mappings-" + new Date().toISOString().slice(0, 10) + ".csv";
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setStatus(rows.length > 1 ? (rows.length - 1) + " mapped product rows exported." : "There are no mapped product rows to export yet.");
     }
     function render() {
       if (!state) return;
@@ -169,7 +216,7 @@
         if (!response.ok) throw new Error("No shared grocery list found yet.");
         const payload = await response.json();
         if (!payload.payload?.state || !payload.payload?.done) throw new Error("The shared grocery list is incomplete.");
-        state = payload.payload.state;
+        state = migratePlannerState(payload.payload.state);
         done = payload.payload.done;
         lastKnownUpdatedAt = payload.updatedAt || null;
         cloudReady = true;
@@ -178,7 +225,7 @@
       } catch (error) {
         const cached = localStorage.getItem(LOCAL_KEY);
         if (cached) {
-          try { const saved = JSON.parse(cached); state = saved.state; done = saved.done || {}; lastKnownUpdatedAt = saved.lastKnownUpdatedAt || null; } catch (_) { /* Show the original error below. */ }
+          try { const saved = JSON.parse(cached); state = migratePlannerState(saved.state); done = saved.done || {}; lastKnownUpdatedAt = saved.lastKnownUpdatedAt || null; } catch (_) { /* Show the original error below. */ }
         }
         setStatus(state ? "Using the saved device copy. Connect and reload before saving to share changes." : error.message);
       }
@@ -201,6 +248,7 @@
     }
     $("search").addEventListener("input", render);
     $("saveButton").addEventListener("click", saveCloud);
+    $("exportButton").addEventListener("click", exportMappings);
     loadCloud();
   </script>
 </body>
