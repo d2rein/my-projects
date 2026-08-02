@@ -10,6 +10,6 @@ window.addEventListener("message", (event) => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== "coles-cart-ready" && message?.type !== "coles-cart-complete") return;
+  if (!["coles-cart-ready", "coles-cart-progress", "coles-cart-complete"].includes(message?.type)) return;
   window.postMessage({ source: "coles-cart-helper", ...message }, window.location.origin);
 });

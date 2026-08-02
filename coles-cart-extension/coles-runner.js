@@ -1,76 +1,86 @@
-const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-function buttonByText(pattern) {
-  return Array.from(document.querySelectorAll("button")).find((button) => !button.disabled && pattern.test(button.textContent.trim()));
-}
-
-async function waitFor(getValue, timeout = 12000) {
-  const started = Date.now();
-  while (Date.now() - started < timeout) {
-    const value = getValue();
-    if (value) return value;
-    await sleep(250);
+function priceFromPage() {
+  const meta = document.querySelector('meta[property="product:price:amount"], meta[itemprop="price"]');
+  const structured = document.querySelector('[itemprop="price"]');
+  const candidates = [
+    meta?.content,
+    structured?.getAttribute("content"),
+    ...Array.from(document.querySelectorAll('[data-testid*="price" i], [class*="price" i]'))
+      .slice(0, 12)
+      .map((node) => node.textContent)
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    const match = String(candidate).replace(/,/g, "").match(/\$(\d+(?:\.\d{1,2})?)/);
+    if (match) return { price: Number(match[1]), priceText: "$" + Number(match[1]).toFixed(2) };
   }
-  return null;
+  return { price: null, priceText: "" };
 }
 
-function findAddButton() {
-  return buttonByText(/^add to trolley$/i) || buttonByText(/^add$/i);
+function panel() {
+  let node = document.getElementById("drein-coles-cart-panel");
+  if (node) return node;
+  node = document.createElement("aside");
+  node.id = "drein-coles-cart-panel";
+  Object.assign(node.style, {
+    position: "fixed", right: "16px", bottom: "16px", zIndex: "2147483647", width: "300px",
+    padding: "14px", border: "2px solid #315b39", borderRadius: "12px", background: "#fffdf5",
+    color: "#1f2a20", boxShadow: "0 12px 34px rgba(0,0,0,.25)", fontFamily: "Arial,sans-serif", display: "grid", gap: "8px"
+  });
+  document.documentElement.append(node);
+  return node;
 }
 
-function findIncreaseButton() {
-  return document.querySelector('[aria-label*="increase quantity" i], [aria-label*="add one" i], [data-testid*="increment" i]') ||
-    Array.from(document.querySelectorAll("button")).find((button) => !button.disabled && button.textContent.trim() === "+");
+function primaryButton(label, click) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  Object.assign(button.style, { border: 0, borderRadius: "8px", padding: "10px", background: "#f4c842", color: "#332600", fontWeight: "700", cursor: "pointer" });
+  button.addEventListener("click", click);
+  return button;
 }
 
-async function addCurrentProduct(item) {
-  const unavailable = /currently unavailable|out of stock/i.test(document.body.innerText);
-  if (unavailable) return { ok: false, error: "This product is unavailable." };
-
-  const addButton = await waitFor(findAddButton);
-  if (!addButton) return { ok: false, error: "Could not find Coles' Add to trolley button." };
-  addButton.click();
-  await sleep(800);
-
-  for (let count = 1; count < item.quantity; count += 1) {
-    const increaseButton = await waitFor(findIncreaseButton, 5000);
-    if (!increaseButton) return { ok: false, error: "Added one, but could not increase the trolley quantity to " + item.quantity + "." };
-    increaseButton.click();
-    await sleep(500);
-  }
-  return { ok: true };
+function secondaryButton(label, click) {
+  const button = primaryButton(label, click);
+  Object.assign(button.style, { background: "#ece8dc", color: "#354034" });
+  return button;
 }
 
 function showLoginPanel() {
-  if (document.getElementById("drein-coles-cart-panel")) return;
-  const panel = document.createElement("div");
-  panel.id = "drein-coles-cart-panel";
-  panel.innerHTML = "<strong>Grocery list ready</strong><span>Log in to Coles if needed, then continue adding your mapped items.</span><button type=\"button\">Continue to trolley</button>";
-  Object.assign(panel.style, { position:"fixed", right:"16px", bottom:"16px", zIndex:"2147483647", width:"280px", padding:"14px", border:"2px solid #315b39", borderRadius:"12px", background:"#fffdf5", color:"#1f2a20", boxShadow:"0 12px 34px rgba(0,0,0,.25)", fontFamily:"Arial,sans-serif", display:"grid", gap:"8px" });
-  const button = panel.querySelector("button");
-  Object.assign(button.style, { border:0, borderRadius:"8px", padding:"10px", background:"#f4c842", color:"#332600", fontWeight:"700", cursor:"pointer" });
-  button.addEventListener("click", () => {
-    panel.remove();
-    chrome.runtime.sendMessage({ type: "coles-start" });
-  });
-  document.documentElement.append(panel);
+  const node = panel();
+  node.replaceChildren();
+  const title = document.createElement("strong");
+  title.textContent = "Guided Coles shop";
+  const message = document.createElement("span");
+  message.textContent = "Log in if needed. You will add each product yourself, then choose the next item.";
+  node.append(title, message, primaryButton("Start guided shopping", () => {
+    node.remove();
+    chrome.runtime.sendMessage({ type: "coles-start-guided" });
+  }));
 }
 
-function pageShowsLogin() {
-  return /log in\s*\/\s*sign up/i.test(document.body.innerText);
+function showGuidedItem(message) {
+  const node = panel();
+  node.replaceChildren();
+  const heading = document.createElement("strong");
+  heading.textContent = `${message.currentIndex + 1} of ${message.total}: ${message.item.name}`;
+  const quantity = document.createElement("span");
+  quantity.textContent = `Add ${message.item.quantity} to your trolley, handling any Coles offers or substitutions yourself.`;
+  const price = priceFromPage();
+  const priceNote = document.createElement("small");
+  priceNote.textContent = price.priceText ? `Observed shelf price: ${price.priceText}` : "Price could not be read automatically on this page.";
+  node.append(heading, quantity, priceNote);
+  node.append(primaryButton("Added - next item", () => {
+    node.remove();
+    chrome.runtime.sendMessage({ type: "coles-guided-next", ...priceFromPage() });
+  }));
+  node.append(secondaryButton("Skip this item", () => {
+    node.remove();
+    chrome.runtime.sendMessage({ type: "coles-guided-skip", ...priceFromPage() });
+  }));
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === "coles-awaiting-login") {
-    if (pageShowsLogin()) showLoginPanel();
-    else chrome.runtime.sendMessage({ type: "coles-start" });
-    return;
-  }
-  if (message?.type === "coles-add-current") {
-    addCurrentProduct(message.item)
-      .then((result) => chrome.runtime.sendMessage({ type: "coles-product-result", url: message.item.url, ...result }))
-      .catch((error) => chrome.runtime.sendMessage({ type: "coles-product-result", url: message.item.url, ok:false, error:error.message }));
-  }
+  if (message?.type === "coles-awaiting-login") showLoginPanel();
+  if (message?.type === "coles-guided-current") showGuidedItem(message);
 });
 
 chrome.runtime.sendMessage({ type: "coles-page-ready" });

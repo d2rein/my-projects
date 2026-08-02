@@ -363,6 +363,13 @@
       margin-top: 1px;
     }
 
+    .cart-price {
+      margin-top: 3px;
+      color: #6d5420;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
     body:not(.editing) .meal-list .card-sub {
       display: none;
     }
@@ -654,7 +661,7 @@
       <section id="tab-list" class="tab">
         <div class="panel">
           <div class="section-head"><div class="hint"></div></div>
-          <div class="toolbar shopping-actions"><a class="button button-primary" href="/coles-catalog">Coles catalogue</a><button id="addColesCartBtn" class="button button-primary" type="button">Add mapped items to Coles cart</button></div>
+          <div class="toolbar shopping-actions"><a class="button button-primary" href="/coles-catalog">Coles catalogue</a><button id="addColesCartBtn" class="button button-primary" type="button">Shop mapped items at Coles</button></div>
           <div>
             <strong>Selected meals</strong>
             <div id="selectedMeals" class="chip-row"></div>
@@ -855,6 +862,8 @@
       const existingIds = new Set(migratedOtherItems.map((item) => item.id));
       const missingStarterItems = clone(STARTER_DATA.otherItems).filter((item) => !existingIds.has(item.id));
       nextState.otherItems = migratedOtherItems.concat(missingStarterItems);
+      nextState.colesCartAdded = nextState.colesCartAdded && typeof nextState.colesCartAdded === "object" ? nextState.colesCartAdded : {};
+      nextState.colesPriceHistory = nextState.colesPriceHistory && typeof nextState.colesPriceHistory === "object" ? nextState.colesPriceHistory : {};
       return nextState;
     }
 
@@ -1287,6 +1296,48 @@
       return state.colesCartAdded;
     }
 
+    function colesPriceHistory() {
+      if (!state.colesPriceHistory || typeof state.colesPriceHistory !== "object") {
+        state.colesPriceHistory = {};
+      }
+      return state.colesPriceHistory;
+    }
+
+    function recordColesPrice(result) {
+      if (!Number.isFinite(result?.price) || !result.url || !result.shoppingKey) return;
+      const key = result.shoppingKey + "|" + result.url;
+      const history = colesPriceHistory()[key] || [];
+      history.push({
+        price: result.price,
+        priceText: result.priceText || "$" + result.price.toFixed(2),
+        quantity: Math.max(1, Number(result.quantity) || 1),
+        observedAt: result.observedAt || new Date().toISOString()
+      });
+      colesPriceHistory()[key] = history.slice(-40);
+    }
+
+    function lastColesEstimate(shoppingKey) {
+      const entries = Object.entries(colesPriceHistory())
+        .filter(([key]) => key.startsWith(shoppingKey + "|"))
+        .map(([, history]) => history[history.length - 1])
+        .filter((entry) => Number.isFinite(entry?.price));
+      if (!entries.length) return "";
+      const total = entries.reduce((sum, entry) => sum + entry.price * entry.quantity, 0);
+      return "Last Coles estimate: $" + total.toFixed(2);
+    }
+
+    function addColesPriceEstimates(wrap) {
+      wrap.querySelectorAll("[data-done]").forEach((node) => {
+        const estimate = lastColesEstimate(node.dataset.done);
+        const main = node.querySelector(".card-main");
+        if (!estimate || !main || main.querySelector(".cart-price")) return;
+        const price = document.createElement("div");
+        price.className = "cart-price";
+        price.textContent = estimate;
+        main.append(price);
+      });
+    }
+
     function buildColesCartItems() {
       const { list } = buildShoppingList();
       const catalog = state.colesCatalog?.items || {};
@@ -1294,7 +1345,7 @@
       const unmapped = [];
 
       categories.forEach((category) => {
-        Array.from(list[category].entries()).forEach(([name]) => {
+        Array.from(list[category].entries()).forEach(([name, shoppingQuantity]) => {
           const shoppingKey = category + "|" + name;
           const catalogKey = category + "::" + name.trim().toLowerCase().replace(/\s+/g, " ");
           const products = (catalog[catalogKey]?.products || []).filter((product) => {
@@ -1313,7 +1364,7 @@
             category,
             shoppingKey,
             url: product.url,
-            quantity: Math.max(1, Number(product.quantity) || 1)
+            quantity: Math.max(1, Number(product.quantity) || 1) * Math.max(1, Number(shoppingQuantity) || 1)
           }));
         });
       });
@@ -1330,7 +1381,7 @@
 
       colesExtensionResponded = false;
       window.postMessage({ source: "drein-groceries", type: "coles-cart-request", items }, window.location.origin);
-      setSyncStatus("Opening Coles for " + items.length + " mapped product" + (items.length === 1 ? "" : "s") + "." + (unmapped.length ? " " + unmapped.length + " selected item" + (unmapped.length === 1 ? " is" : "s are") + " not mapped yet." : ""));
+      setSyncStatus("Opening a guided Coles shop for " + items.length + " mapped product" + (items.length === 1 ? "" : "s") + ". You add each item yourself; the extension only opens the next page." + (unmapped.length ? " " + unmapped.length + " selected item" + (unmapped.length === 1 ? " is" : "s are") + " not mapped yet." : ""));
       window.setTimeout(() => {
         if (!colesExtensionResponded) {
           setSyncStatus("If Coles did not open, install and enable the Coles Cart Helper extension, then try again.");
@@ -1345,7 +1396,16 @@
         return;
       }
       if (message.type === "coles-cart-ready") {
-        setSyncStatus("Coles opened. Log in if needed; the extension will continue after login.");
+        setSyncStatus("Coles opened. Log in if needed, then start guided shopping. You will add each item and choose Next yourself.");
+        return;
+      }
+      if (message.type === "coles-cart-progress") {
+        const result = message.result || {};
+        recordColesPrice(result);
+        if (message.shoppingKeyComplete) cartAddedItems()[result.shoppingKey] = true;
+        saveState();
+        renderShopping();
+        setSyncStatus((message.currentIndex || 0) + " of " + (message.total || 0) + " Coles products " + (result.ok ? "recorded" : "skipped") + ". Shelf prices are saved locally as they are seen.");
         return;
       }
       if (message.type !== "coles-cart-complete") {
@@ -1406,6 +1466,7 @@
       }).join("");
 
       wrap.innerHTML = blocks || "<div class=\"empty\">Pick meals or other checklist items to build your shopping list.</div>";
+      addColesPriceEstimates(wrap);
       wrap.querySelectorAll("[data-done]").forEach((node) => {
         node.addEventListener("click", () => {
           const key = node.dataset.done;
@@ -1546,6 +1607,7 @@
       });
 
       wrap.innerHTML = blocks || "<div class=\"empty\">Pick meals or other checklist items to build your shopping list.</div>";
+      addColesPriceEstimates(wrap);
       wrap.querySelectorAll("[data-done]").forEach((node) => {
         node.addEventListener("click", () => {
           const key = node.dataset.done;
