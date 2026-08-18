@@ -1453,12 +1453,14 @@ function getEffectiveStatus(entry, mode) {
   if (["owned", "can-evolve", "trade"].includes(stored)) return stored;
   if (stored === "missing-lock") return "missing";
   if (isCurrentlyUnreleased(entry)) return "unreleased";
+  if (stored === "unreleased") return "missing";
 
   if (STANDARD_COLLECTION_MODES.includes(mode) && mode !== "pokemon") {
-    return stored || "missing";
+    return (stored && stored !== "unreleased" ? stored : "missing");
   }
 
-  return stored || entry.importedBaseStatus || "missing";
+  const baseStatus = stored || entry.importedBaseStatus || "missing";
+  return baseStatus === "unreleased" ? "missing" : baseStatus;
 }
 
 function cycleStatus(entryId) {
@@ -1633,6 +1635,9 @@ function toggleUnreleased(entryId) {
     state.unreleasedOverrides = {};
   }
   state.unreleasedOverrides[entryId] = !current;
+  if (current && state.statuses?.[state.activeMode]?.[entryId] === "unreleased") {
+    setEntryStatus(state.activeMode, entryId, "missing", { autoDerived: false });
+  }
   saveState();
   render();
 }
