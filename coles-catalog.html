@@ -28,7 +28,7 @@
     .tag { padding:3px 8px; border-radius:999px; background:#eee6d9; color:var(--muted); font:700 .74rem/1 Arial,sans-serif; white-space:nowrap; }
     .sheet { min-width:700px; border:1px solid var(--line); background:#fffdf8; }
     .sheet-head, .sheet-row { display:grid; grid-template-columns:minmax(180px, 1fr) 84px minmax(320px, 2.1fr) 62px; }
-    .sheet-head { position:sticky; top:72px; z-index:1; background:#f2eadc; color:var(--muted); font:700 .73rem/1 Arial,sans-serif; text-transform:uppercase; letter-spacing:.04em; }
+    .sheet-head { background:#f2eadc; color:var(--muted); font:700 .73rem/1 Arial,sans-serif; text-transform:uppercase; letter-spacing:.04em; }
     .sheet-head span, .sheet-row > * { min-width:0; border-right:1px solid var(--line); }
     .sheet-head span { padding:7px 8px; }
     .sheet-row { min-height:34px; border-top:1px solid var(--line); }
@@ -43,7 +43,7 @@
     .row-actions .remove { color:var(--red); }
     .empty { margin:32px 0; padding:24px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; background:rgba(255,253,248,.6); }
     .note { margin:22px 0 0; color:var(--muted); font-size:.9rem; line-height:1.45; }
-    @media (max-width:600px) { .shell { padding:14px 10px 42px; } .top { align-items:flex-start; } .spacer { display:none; } .sheet-head { top:68px; } }
+    @media (max-width:600px) { .shell { padding:14px 10px 42px; } .top { align-items:flex-start; } .spacer { display:none; } }
   </style>
 </head>
 <body>
@@ -132,6 +132,11 @@
       const clean = products.map((product) => ({ url: String(product.url || "").trim(), quantity: Math.max(1, Number(product.quantity) || 1), label: String(product.label || "").trim() }));
       if (clean.length) ensureCatalog()[key] = { products: clean };
       else delete ensureCatalog()[key];
+      if (clean.some((product) => product.url)) {
+        (state.otherItems || []).forEach((item) => {
+          if (itemKey(item.category, item.name) === key) delete item.isNew;
+        });
+      }
       saveLocal();
     }
     function csvCell(value) {

@@ -170,6 +170,27 @@
       display: flex;
     }
 
+    .add-toolbar {
+      display: flex;
+    }
+
+    .item-card {
+      position: relative;
+    }
+
+    .new-badge {
+      position: absolute;
+      top: 5px;
+      right: 6px;
+      z-index: 2;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: #f3c84a;
+      color: #4f3810;
+      font: 800 0.56rem/1 Arial, sans-serif;
+      letter-spacing: 0.04em;
+    }
+
     .shopping-actions {
       display: flex;
     }
@@ -645,7 +666,7 @@
       <section id="tab-meals" class="tab active">
         <div class="panel">
           <div class="section-head"><div class="hint" id="mealHint"></div></div>
-          <div class="toolbar"><button id="addMealBtn" class="button button-primary" type="button">Add meal</button></div>
+          <div class="toolbar add-toolbar"><button id="addMealBtn" class="button button-primary" type="button">Add meal</button></div>
           <div id="mealCards" class="meal-grid"></div>
         </div>
       </section>
@@ -653,7 +674,7 @@
       <section id="tab-items" class="tab">
         <div class="panel">
           <div class="section-head"><div class="hint"></div></div>
-          <div class="toolbar"><button id="addItemBtn" class="button button-primary" type="button">Add checklist item</button></div>
+          <div class="toolbar add-toolbar"><button id="addItemBtn" class="button button-primary" type="button">Add item</button></div>
           <div id="otherCards"></div>
         </div>
       </section>
@@ -1195,6 +1216,7 @@
         wrap.className = "meal-list";
         wrap.innerHTML = recipes.map((recipe) => (
           "<button class=\"item-card" + (recipe.selectedQty ? " selected" : "") + "\" type=\"button\" data-meal=\"" + escapeHtml(recipe.id) + "\">" +
+            (recipe.isNew ? "<span class=\"new-badge\">NEW</span>" : "") +
             "<span class=\"check\">" + (recipe.selectedQty ? "✓" : "") + "</span>" +
             "<div class=\"card-main\">" +
               "<div class=\"card-title\">" + escapeHtml(recipe.name) + "</div>" +
@@ -1206,6 +1228,7 @@
         wrap.className = "meal-grid";
         wrap.innerHTML = recipes.map((recipe) => (
           "<button class=\"meal-card" + (recipe.selectedQty ? " selected" : "") + "\" type=\"button\" data-meal=\"" + escapeHtml(recipe.id) + "\" style=\"--meal-image:url('" + mealImage(recipe) + "')\">" +
+            (recipe.isNew ? "<span class=\"new-badge\">NEW</span>" : "") +
             "<span class=\"edit-badge\">Edit</span>" +
             "<span class=\"meal-badge\">✓</span>" +
             "<div class=\"meal-copy\">" +
@@ -1246,6 +1269,7 @@
           "<div class=\"item-grid\">" +
             group.items.map((item) => (
               "<button class=\"item-card" + (item.selected ? " selected" : "") + "\" type=\"button\" data-item=\"" + escapeHtml(item.id) + "\">" +
+                (item.isNew ? "<span class=\"new-badge\">NEW</span>" : "") +
                 "<span class=\"check\">" + (item.selected ? "✓" : "") + "</span>" +
                 "<div class=\"card-main\"><div class=\"card-title\">" + escapeHtml(item.name) + "</div></div>" +
               "</button>"
@@ -1624,10 +1648,22 @@
       });
     }
 
+    function decorateNewItems() {
+      document.querySelectorAll("[data-meal], [data-item]").forEach((node) => {
+        const record = node.dataset.meal
+          ? state.recipes.find((recipe) => recipe.id === node.dataset.meal)
+          : state.otherItems.find((item) => item.id === node.dataset.item);
+        if (record?.isNew && !node.querySelector(".new-badge")) {
+          node.insertAdjacentHTML("afterbegin", "<span class=\"new-badge\">NEW</span>");
+        }
+      });
+    }
+
     function render() {
       renderMeals();
       renderOther();
       renderShopping();
+      decorateNewItems();
     }
 
     function toggleMeal(mealId) {
@@ -1690,6 +1726,11 @@
       const recipe = currentMeal();
       if (!recipe) {
         return;
+      }
+      if (recipe.isNew) {
+        delete recipe.isNew;
+        saveState();
+        renderMeals();
       }
 
       const blocks = categories.map((category) => {
@@ -1798,22 +1839,33 @@
     }
 
     function addMeal() {
-      let index = 1;
-      let name = "New meal";
-      while (state.recipes.some((recipe) => recipe.name === name)) {
-        index += 1;
-        name = "New meal " + index;
-      }
-      const recipe = {
-        id: slugify(name + "-" + Date.now()),
-        name,
-        selectedQty: 0,
-        ingredients: Object.fromEntries(categories.map((category) => [category, []]))
+      openModal("Add meal", [
+        "<div class=\"field\"><label>Meal name</label><input id=\"newMealName\" type=\"text\" placeholder=\"e.g. Chicken tacos\"></div>",
+        "<div class=\"sheet-actions\"><button id=\"createMealBtn\" class=\"button button-primary\" type=\"button\">Add meal</button></div>"
+      ].join(""));
+      const input = document.getElementById("newMealName");
+      const create = () => {
+        const name = input.value.trim();
+        if (!name) { input.focus(); return; }
+        if (state.recipes.some((recipe) => recipe.name.trim().toLowerCase() === name.toLowerCase())) {
+          input.setCustomValidity("That meal already exists.");
+          input.reportValidity();
+          return;
+        }
+        state.recipes.push({
+          id: slugify(name + "-" + Date.now()),
+          name,
+          selectedQty: 0,
+          isNew: true,
+          ingredients: Object.fromEntries(categories.map((category) => [category, []]))
+        });
+        saveState();
+        closeModal();
+        render();
       };
-      state.recipes.push(recipe);
-      saveState();
-      render();
-      editMeal(recipe.id);
+      document.getElementById("createMealBtn").addEventListener("click", create);
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter") create(); });
+      input.focus();
     }
 
     function editOther(itemId) {
@@ -1850,16 +1902,35 @@
     }
 
     function addOther() {
-      const item = {
-        id: slugify("new-item-" + Date.now()),
-        name: "New item",
-        category: "Other",
-        selected: true
+      openModal("Add checklist item", [
+        "<div class=\"field\"><label>Item name</label><input id=\"newOtherName\" type=\"text\" placeholder=\"e.g. Fruit bars\"></div>",
+        "<div class=\"field\"><label>Category</label><select id=\"newOtherCategory\">" + categoryOptions("Other") + "</select></div>",
+        "<div class=\"sheet-actions\"><button id=\"createOtherBtn\" class=\"button button-primary\" type=\"button\">Add item</button></div>"
+      ].join(""));
+      const input = document.getElementById("newOtherName");
+      const category = document.getElementById("newOtherCategory");
+      const create = () => {
+        const name = input.value.trim();
+        if (!name) { input.focus(); return; }
+        if (state.otherItems.some((item) => item.name.trim().toLowerCase() === name.toLowerCase() && item.category === category.value)) {
+          input.setCustomValidity("That checklist item already exists in this category.");
+          input.reportValidity();
+          return;
+        }
+        state.otherItems.push({
+          id: slugify(name + "-" + Date.now()),
+          name,
+          category: category.value,
+          selected: true,
+          isNew: true
+        });
+        saveState();
+        closeModal();
+        render();
       };
-      state.otherItems.push(item);
-      saveState();
-      render();
-      editOther(item.id);
+      document.getElementById("createOtherBtn").addEventListener("click", create);
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter") create(); });
+      input.focus();
     }
 
     function resetData() {
