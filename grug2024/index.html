@@ -678,6 +678,20 @@
     color:#c6dbef;
     line-height:1.3;
   }
+  .editor-row.bonus-spell{
+    background:#14181d;
+    border-color:#3b444d;
+  }
+  .editor-row.bonus-spell .editor-row-title,
+  .editor-row.bonus-spell .editor-row-meta,
+  .editor-row.bonus-spell .class-pick{
+    color:#89939d;
+  }
+  .editor-row.bonus-spell input:disabled{
+    cursor:not-allowed;
+    filter:grayscale(1);
+    opacity:.7;
+  }
   .combat-top{
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr)) 110px;
@@ -1218,6 +1232,6 @@
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js?v=20260715grug2024a"></script>
-<script src="./app.js?v=20260910scout"></script>
+<script src="./app.js?v=20260910clericspells"></script>
 </body>
 </html>

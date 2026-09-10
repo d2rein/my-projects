@@ -92,6 +92,7 @@ const FULL_CASTER_SLOTS = {
   19:[4,3,3,3,3,2,1,1,1],
   20:[4,3,3,3,3,2,2,1,1]
 };
+const CLERIC_PREPARED_SPELLS = [0,4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22];
 const WARLOCK_PACT_SLOTS = {
   1:{ slots:1, level:1 },
   2:{ slots:2, level:1 },
@@ -1567,11 +1568,14 @@ function spellMatchesClassFilter(spell, classSlug){
 function spellEditorCounts(profile = activeProfile()){
   const draft = ensureSpellEditorDraft(profile);
   const knownList = Array.from(draft.known).map(getSpellByName).filter(Boolean);
-  const preparedList = Array.from(draft.prepared).map(getSpellByName).filter(Boolean);
+  const preparedList = Array.from(draft.prepared)
+    .filter(name => !extraSpellNames(profile, "prepared").includes(name))
+    .map(getSpellByName)
+    .filter(Boolean);
   return {
     known:knownList.length,
     prepared:preparedList.length,
-    spellbook:knownList.filter(spell => Number(spell.level || 0) > 0).length
+    spellbook:knownList.filter(spell => Number(spell.level || 0) > 0 && !extraSpellNames(profile, "known").includes(spell.name)).length
   };
 }
 
@@ -1597,7 +1601,7 @@ function clericCantripLimit(profile = activeProfile()){
 function clericPreparedLimit(profile = activeProfile()){
   const clericLevel = classCounts(profile).cleric || 0;
   if (!clericLevel) return 0;
-  return Math.max(1, clericLevel + abilityMod(finalAbilityScores(profile).WIS));
+  return CLERIC_PREPARED_SPELLS[clamp(clericLevel, 0, 20)];
 }
 
 function clericPreparedNames(profile = activeProfile()){
@@ -1668,6 +1672,7 @@ function spellbookAllowance(profile = activeProfile()){
 
 function preparedSpellLimit(profile = activeProfile()){
   const counts = classCounts(profile);
+  if (counts.cleric) return clericPreparedLimit(profile);
   const castingClass = spellAbility(profile);
   const ability = finalAbilityScores(profile)[castingClass] || 10;
   const fullCasterLevels = Object.entries(counts).reduce((sum, [classSlug, count]) => {
@@ -3456,8 +3461,8 @@ function openBonusSpellEditor(){
 
 function createSpellEditorDraft(profile = activeProfile()){
   return {
-    known:new Set(profile.knownSpells || []),
-    prepared:new Set(profile.preparedSpells || [])
+    known:new Set([...(profile.knownSpells || []), ...extraSpellNames(profile, "known")]),
+    prepared:new Set([...(profile.preparedSpells || []), ...extraSpellNames(profile, "prepared")])
   };
 }
 
@@ -4183,25 +4188,30 @@ function renderSpellEditorView(options = {}){
         </label>
       </div>
       <div class="editor-grid" id="spellEditorGrid">
-        ${spells.map(spell => `
-          <div class="check-item editor-row">
+        ${spells.map(spell => {
+          const bonusKnown = extraSpellNames(profile, "known").includes(spell.name);
+          const bonusPrepared = extraSpellNames(profile, "prepared").includes(spell.name);
+          const bonusSpell = bonusKnown || bonusPrepared;
+          return `
+          <div class="check-item editor-row ${bonusSpell ? "bonus-spell" : ""}">
             <button class="icon-btn" data-editor-info="${escapeAttr(spell.name)}">i</button>
             <div class="editor-row-main">
               <div class="editor-row-title">${escapeHtml(spell.name)}</div>
-              <div class="editor-row-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}</div>
+              <div class="editor-row-meta">L${spell.level} / ${escapeHtml(spell.school || "-")} / ${escapeHtml(spell.classes || "-")}${bonusSpell ? " / Bonus spell" : ""}</div>
             </div>
             <div class="class-picks">
               <label class="class-pick">
                 <span>K</span>
-                <input type="checkbox" data-editor-known="${escapeAttr(spell.name)}" ${draft.known.has(spell.name) ? "checked" : ""}>
+                <input type="checkbox" data-editor-known="${escapeAttr(spell.name)}" ${draft.known.has(spell.name) || bonusKnown ? "checked" : ""} ${bonusKnown ? "disabled" : ""}>
               </label>
               <label class="class-pick">
                 <span>P</span>
-                <input type="checkbox" data-editor-prepared="${escapeAttr(spell.name)}" ${draft.prepared.has(spell.name) ? "checked" : ""}>
+                <input type="checkbox" data-editor-prepared="${escapeAttr(spell.name)}" ${draft.prepared.has(spell.name) || bonusPrepared ? "checked" : ""} ${bonusPrepared ? "disabled" : ""}>
               </label>
             </div>
           </div>
-        `).join("") || `<div class="empty">No spells found.</div>`}
+        `;
+        }).join("") || `<div class="empty">No spells found.</div>`}
       </div>
       <div class="modal-actions">
         <button class="action-btn blue" id="saveSpellSelectionBtn">Save Spells</button>
@@ -4251,8 +4261,10 @@ function renderSpellEditorView(options = {}){
     };
   });
   document.getElementById("saveSpellSelectionBtn").onclick = () => {
-    profile.knownSpells = Array.from(draft.known);
-    profile.preparedSpells = Array.from(draft.prepared);
+    const bonusKnown = new Set(extraSpellNames(profile, "known"));
+    const bonusPrepared = new Set(extraSpellNames(profile, "prepared"));
+    profile.knownSpells = Array.from(draft.known).filter(name => !bonusKnown.has(name));
+    profile.preparedSpells = Array.from(draft.prepared).filter(name => !bonusPrepared.has(name));
     profile.preparedSpells.forEach(name => {
       if (!profile.knownSpells.includes(name)) profile.knownSpells.push(name);
     });
