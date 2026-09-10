@@ -1,4 +1,4 @@
-const CACHE_NAME = "jefferson-grug-2024-v14";
+const CACHE_NAME = "jefferson-grug-2024-v15";
 const ASSETS = [
   "./",
   "./spells.html",

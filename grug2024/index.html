@@ -198,6 +198,8 @@
   }
   .sync-strip .sync-ok{color:#8fe0b0}
   .sync-strip .sync-warn{color:#ffd57b}
+  .sync-actions{display:flex;gap:5px;flex:0 0 auto}
+  .sync-actions .small-btn{padding:5px 6px;font-size:10px}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .stack{display:grid;gap:6px}
@@ -1138,7 +1140,11 @@
       <div class="chip-grid" id="statsTopChips"></div>
       <div class="sync-strip">
         <span id="statsSyncText">Saved on this device</span>
-        <button class="small-btn" id="statsSyncBtn" type="button">Cloud Sync</button>
+        <div class="sync-actions">
+          <button class="small-btn" id="statsCloudSaveBtn" type="button">Cloud Save</button>
+          <button class="small-btn" id="statsCloudSyncBtn" type="button">Cloud Sync</button>
+          <button class="small-btn" id="statsCloudHistoryBtn" type="button">History</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -1322,6 +1328,6 @@
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js?v=20260715grug2024a"></script>
-<script src="./app.js?v=20260910cloudsync"></script>
+<script src="./app.js?v=20260910manualcloud"></script>
 </body>
 </html>

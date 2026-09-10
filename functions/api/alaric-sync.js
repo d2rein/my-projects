@@ -39,12 +39,17 @@ export async function onRequestGet(context) {
   if (!info) return json({ error:"Missing character code." }, { status:400 });
   const record = await readRecord(store, info.key);
   if (!record) return json({ error:"Character code not found." }, { status:404 });
-  return json({
+  const response = {
     payload:record.payload,
     updatedAt:record.updatedAt,
     revision:Number(record.revision || 1),
     code:record.code || info.code
-  });
+  };
+  const url = new URL(context.request.url);
+  if (url.searchParams.get("history") === "1") {
+    response.history = Array.isArray(record.history) ? record.history : [];
+  }
+  return json(response);
 }
 
 export async function onRequestPost(context) {
@@ -94,12 +99,21 @@ export async function onRequestPut(context) {
       updatedAt:existing?.updatedAt || null
     }, { status:409 });
   }
+  const history = Array.isArray(existing?.history) ? existing.history.slice() : [];
+  if (existing?.payload) {
+    history.unshift({
+      payload:existing.payload,
+      updatedAt:existing.updatedAt,
+      revision:currentRevision
+    });
+  }
   const record = {
     code:info.code,
     pinHash,
     payload:body.payload,
     revision:currentRevision + 1,
-    updatedAt:new Date().toISOString()
+    updatedAt:new Date().toISOString(),
+    history:history.slice(0, 20)
   };
   await store.put(info.key, JSON.stringify(record));
   return json({ ok:true, updatedAt:record.updatedAt, revision:record.revision, code:info.code });

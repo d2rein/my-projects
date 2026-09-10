@@ -345,10 +345,8 @@ const CLASS_FEATURE_OVERRIDES_2024 = {
 let db = { lineages:[], backgrounds:[], feats:[], classes:[], subclasses:[] };
 let dbMaps = { lineages:new Map(), backgrounds:new Map(), feats:new Map(), classes:new Map(), subclasses:new Map() };
 let state = null;
-let saveTimer = null;
 let pullInFlight = false;
 let pushInFlight = false;
-let pushQueued = false;
 let spellEditorDraft = null;
 
 function clone(value){
@@ -770,7 +768,6 @@ function saveState(options = {}){
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (!options.skipRender) render();
-  if (!options.fromSync) scheduleAutoSync();
 }
 
 function pushHistory(text){
@@ -1795,19 +1792,21 @@ function updateTopIdentity(){
   document.getElementById("charSubtitle").textContent = `L${currentLevel(profile)} / ${entrySummary("lineages", profile.speciesSlug) || "No species"} / ${classSummary || "No classes yet"}`;
   document.getElementById("charPortrait").src = profile.portrait || "./alaric-headshot.png";
   const syncButton = document.getElementById("syncStatusBtn");
-  const statsSyncButton = document.getElementById("statsSyncBtn");
+  const statsCloudSaveButton = document.getElementById("statsCloudSaveBtn");
+  const statsCloudSyncButton = document.getElementById("statsCloudSyncBtn");
   const statsSyncText = document.getElementById("statsSyncText");
   const syncConflict = state.syncConflictByProfile[profile.id];
   const syncDirty = state.syncDirtyByProfile[profile.id];
   const lastSync = state.lastSyncByProfile[profile.id];
   if (syncButton) syncButton.textContent = profile.autoSync ? "Cloud Sync" : "Cloud Setup";
-  if (statsSyncButton) statsSyncButton.textContent = profile.autoSync ? "Sync" : "Cloud Sync";
+  if (statsCloudSaveButton) statsCloudSaveButton.textContent = "Cloud Save";
+  if (statsCloudSyncButton) statsCloudSyncButton.textContent = "Cloud Sync";
   if (statsSyncText){
     statsSyncText.className = syncConflict || syncDirty ? "sync-warn" : (profile.autoSync ? "sync-ok" : "");
     statsSyncText.textContent = syncConflict
       ? "Cloud conflict — choose which copy to keep"
       : syncDirty
-        ? "Local changes waiting to sync"
+        ? "Local changes not yet saved to cloud"
         : profile.autoSync
           ? `Live copy synced${lastSync ? ` ${formatSyncTime(lastSync)}` : ""}`
           : "Saved on this device only";
@@ -2841,7 +2840,9 @@ function bindGlobalButtons(){
   document.getElementById("exportSaveBtn").onclick = exportSave;
   document.getElementById("importSaveBtn").onclick = openImportModal;
   document.getElementById("syncStatusBtn").onclick = manualSyncNow;
-  document.getElementById("statsSyncBtn").onclick = openCloudSyncModal;
+  document.getElementById("statsCloudSaveBtn").onclick = cloudSaveNow;
+  document.getElementById("statsCloudSyncBtn").onclick = cloudSyncNow;
+  document.getElementById("statsCloudHistoryBtn").onclick = openCloudHistoryModal;
   document.getElementById("initRollBtn").onclick = rollInitiative;
   document.getElementById("shortRestBtn").onclick = shortRest;
   document.getElementById("longRestBtn").onclick = longRest;
@@ -4477,8 +4478,9 @@ function renderSpellEditorView(options = {}){
   }
 }
 
-async function cloudSyncRequest(method, code, body = null){
-  const response = await fetch(`/api/alaric-sync?code=${encodeURIComponent(code)}`, {
+async function cloudSyncRequest(method, code, body = null, query = {}){
+  const params = new URLSearchParams({ code, ...query });
+  const response = await fetch(`/api/alaric-sync?${params.toString()}`, {
     method,
     headers: body ? { "Content-Type":"application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined
@@ -4559,22 +4561,10 @@ function applyCloudResult(result, options = {}){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function scheduleAutoSync(){
-  if (saveTimer) clearTimeout(saveTimer);
-  const profile = activeProfile();
-  if (!profile?.autoSync || !profile.syncCode || !state.syncDirtyByProfile[profile.id] || state.syncConflictByProfile[profile.id]) return;
-  saveTimer = setTimeout(() => {
-    pushActiveProfile().then(() => render()).catch(() => { render(); });
-  }, 900);
-}
-
 async function pushActiveProfile(options = {}){
   const profile = activeProfile();
   if (!profile.autoSync || !profile.syncCode) return;
-  if (pushInFlight){
-    pushQueued = true;
-    return;
-  }
+  if (pushInFlight) throw new Error("A cloud save is already in progress.");
   const pin = syncPinFor(profile);
   if (!/^\d{4}$/.test(pin)) throw new Error("Cloud Sync needs its 4-digit PIN on this device.");
   pushInFlight = true;
@@ -4591,7 +4581,6 @@ async function pushActiveProfile(options = {}){
     state.syncConflictByProfile[profile.id] = "";
     state.syncDirtyByProfile[profile.id] = cloudProfileSnapshot(activeProfile()) !== snapshot;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    if (state.syncDirtyByProfile[profile.id]) pushQueued = true;
     return result;
   }catch(error){
     if (error?.status === 409){
@@ -4602,10 +4591,6 @@ async function pushActiveProfile(options = {}){
     throw error;
   }finally{
     pushInFlight = false;
-    if (pushQueued){
-      pushQueued = false;
-      scheduleAutoSync();
-    }
   }
 }
 
@@ -4634,7 +4619,7 @@ function openCloudSyncModal(){
   const status = conflict
     ? `Conflict: ${conflict}`
     : connected
-      ? `${dirty ? "Local changes are waiting to upload." : "This device matches the live copy."}${lastSync ? `\nLast synced: ${new Date(lastSync).toLocaleString()}` : ""}`
+      ? `${dirty ? "This device has changes that have not been Cloud Saved." : "This device matches the last cloud version it loaded or saved."}${lastSync ? `\nLast cloud transfer: ${new Date(lastSync).toLocaleString()}` : ""}`
       : "This device is local-only. On the device with the correct character, start the live copy. On every other device, choose Use Live Copy.";
   openModal(`
     <div class="modal-head">
@@ -4650,9 +4635,7 @@ function openCloudSyncModal(){
     </div>
     <div class="modal-actions">
       ${connected
-        ? `<button class="action-btn blue" id="syncNowBtn">Sync Now</button>
-           <button class="action-btn gold" id="useLiveCopyBtn">Use Live Copy</button>
-           <button class="action-btn red" id="replaceLiveCopyBtn">Replace Live</button>
+        ? `<button class="action-btn blue" id="cloudHistoryBtn">Version History</button>
            <button class="action-btn" id="disconnectCloudBtn">Disconnect</button>`
         : `<button class="action-btn green" id="startLiveCopyBtn">Start With This Device</button>
            <button class="action-btn blue" id="useLiveCopyBtn">Use Existing Live Copy</button>`}
@@ -4698,29 +4681,8 @@ function openCloudSyncModal(){
     }catch(error){ showFailure(error); }
   };
 
-  const syncNowButton = document.getElementById("syncNowBtn");
-  if (syncNowButton) syncNowButton.onclick = async () => {
-    try{
-      const pin = enteredPin();
-      if (pin) profile.syncPin = requirePin();
-      if (state.syncDirtyByProfile[profile.id]) await pushActiveProfile();
-      else await pullActiveProfile();
-      closeModal();
-      render();
-    }catch(error){ showFailure(error); }
-  };
-
-  const replaceButton = document.getElementById("replaceLiveCopyBtn");
-  if (replaceButton) replaceButton.onclick = async () => {
-    try{
-      const pin = enteredPin();
-      if (pin) profile.syncPin = requirePin();
-      state.syncDirtyByProfile[profile.id] = true;
-      await pushActiveProfile({ force:true });
-      closeModal();
-      render();
-    }catch(error){ showFailure(error); }
-  };
+  const historyButton = document.getElementById("cloudHistoryBtn");
+  if (historyButton) historyButton.onclick = openCloudHistoryModal;
 
   const disconnectButton = document.getElementById("disconnectCloudBtn");
   if (disconnectButton) disconnectButton.onclick = () => {
@@ -4756,6 +4718,79 @@ function openCloudSyncModal(){
   };
 }
 
+async function cloudSaveNow(){
+  const profile = activeProfile();
+  if (!profile.autoSync || !profile.syncCode){
+    openCloudSyncModal();
+    return;
+  }
+  try{
+    const result = await pushActiveProfile({ force:true });
+    render();
+    openResult("Cloud Save", `This device is now the live version (version ${result.revision || "saved"}).\n\nThe previous live version was retained in Version History.`);
+  }catch(error){
+    openResult("Cloud Save Failed", error?.message || "The live version could not be saved.");
+  }
+}
+
+async function cloudSyncNow(){
+  const profile = activeProfile();
+  if (!profile.autoSync || !profile.syncCode){
+    openCloudSyncModal();
+    return;
+  }
+  try{
+    const result = await pullActiveProfile({ force:true, backup:true });
+    render();
+    openResult("Cloud Sync", `Loaded the latest live version${result?.revision ? ` (version ${result.revision})` : ""}.`);
+  }catch(error){
+    openResult("Cloud Sync Failed", error?.message || "The live version could not be loaded.");
+  }
+}
+
+async function openCloudHistoryModal(){
+  const profile = activeProfile();
+  if (!profile.autoSync || !profile.syncCode){
+    openCloudSyncModal();
+    return;
+  }
+  try{
+    const result = await cloudSyncRequest("GET", profile.syncCode, null, { history:"1" });
+    const versions = Array.isArray(result.history) ? result.history : [];
+    openModal(`
+      <div class="modal-head">
+        <div class="modal-title">Cloud Version History</div>
+        <button class="small-btn" data-close>Close</button>
+      </div>
+      <div class="detail-box">Current live version: ${escapeHtml(String(result.revision || 1))}\n${escapeHtml(new Date(result.updatedAt).toLocaleString())}\n\nLoading an older version changes only this device. Press Cloud Save afterward if you want to make it live again.</div>
+      <div class="list-grid" style="margin-top:8px;">
+        ${versions.length ? versions.map((version, index) => `
+          <button class="list-item" data-cloud-version="${index}" type="button">
+            <span class="info-dot">${escapeHtml(String(version.revision || "–"))}</span>
+            <span class="list-item-main">
+              <span class="list-title">Version ${escapeHtml(String(version.revision || "Previous"))}</span>
+              <span class="list-meta">${escapeHtml(new Date(version.updatedAt).toLocaleString())}</span>
+            </span>
+          </button>
+        `).join("") : `<div class="empty">No previous cloud versions yet.</div>`}
+      </div>
+    `);
+    document.querySelectorAll("[data-cloud-version]").forEach(button => {
+      button.onclick = () => {
+        const version = versions[Number(button.dataset.cloudVersion)];
+        if (!version?.payload) return;
+        applyCloudResult(version, { code:profile.syncCode, pin:profile.syncPin, backup:true });
+        state.syncDirtyByProfile.jefferson = true;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
+        openResult("Version Loaded", `Version ${version.revision || "selected"} is now loaded on this device.\n\nPress Cloud Save to make it the live version.`);
+      };
+    });
+  }catch(error){
+    openResult("Version History", error?.message || "Version history could not be loaded.");
+  }
+}
+
 function manualSyncNow(){
   openCloudSyncModal();
 }
@@ -4768,13 +4803,6 @@ window.addEventListener("storage", event => {
   }catch{}
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible" || !state) return;
-  const profile = activeProfile();
-  if (!profile?.autoSync || state.syncDirtyByProfile[profile.id]) return;
-  pullActiveProfile().then(() => render()).catch(() => {});
-});
-
 document.getElementById("modalBack").onclick = event => {
   if (event.target.id === "modalBack") closeModal();
 };
@@ -4782,13 +4810,6 @@ document.getElementById("modalBack").onclick = event => {
 async function init(){
   await loadDb();
   state = loadState();
-  const profile = activeProfile();
-  if (profile.autoSync && profile.syncCode){
-    try{
-      if (state.syncDirtyByProfile[profile.id]) await pushActiveProfile();
-      else await pullActiveProfile();
-    }catch{}
-  }
   render();
 }
 
