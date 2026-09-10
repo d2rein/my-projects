@@ -223,6 +223,8 @@
         .completed-game .pip {
           cursor: default;
         }
+        .projected-final td { font-style: italic; color: #666; }
+        .finals-note { margin: 5px 0 12px; color: #666; font-size: 12px; }
         
         /* === Round Entry Table (responsive, max-widths) === */
         .round-entry { width: auto; max-width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
@@ -335,6 +337,7 @@
         <div id="games" class="tab-content active">
             <div class="card">
                 <h2>All Games (with Predictions)</h2>
+                <div class="finals-note">Projected finals fixtures are italicised. Each round becomes confirmed when its qualifying results are complete.</div>
                 <div id="games-table">Loading...</div>
             </div>
         </div>
@@ -492,7 +495,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
-    <script type="module" src="./app.js?v=20260427b"></script>
+    <script type="module" src="./app.js?v=20260910-finals"></script>
     
 </body>
 </html>

@@ -111,6 +111,9 @@ export class ELOCalculator {
     const rdMatch = s.match(/Rd\s*(\d+)/i);
     if (rdMatch) return parseInt(rdMatch[1], 10);
 
+    const finalsWeek = s.match(/Finals\s*Wk\s*(\d+)/i);
+    if (finalsWeek) return 27 + parseInt(finalsWeek[1], 10);
+
     const finalsMap = {
       "Prelim": 28,
       "Preliminary": 28,

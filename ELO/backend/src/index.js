@@ -1,5 +1,6 @@
 import { ELOCalculator } from '../../shared/elo-calculator.js';
 import { createReplayEngine } from '../../shared/replay-engine.js';
+import { buildFinalsBracket, FINALS_ROUNDS, isRegularSeasonRound } from '../../shared/finals-bracket.js';
 
 export default {
   async fetch(request, env) {
@@ -36,6 +37,8 @@ export default {
         response = await handleUpdateTips(request, env);
       } else if (path === '/api/matches/bulk-update' && request.method === 'POST') {
         response = await handleUpdateScores(db, request);
+      } else if (path === '/api/finals/sync' && request.method === 'POST') {
+        response = await handleSyncFinals(db, request);
       } else if (path === '/api/predictions' && request.method === 'GET') {
         response = await handleGetPredictions(db);
       } else if (path === '/api/parameters' && request.method === 'GET') {
@@ -253,18 +256,139 @@ async function handleUpdateScores(db, request) {
   for (const u of updates) {
     if (!u.game_id) continue;
 
+    const homeScore = u.home_score != null && u.home_score !== ""
+      ? Number(u.home_score)
+      : null;
+    const awayScore = u.away_score != null && u.away_score !== ""
+      ? Number(u.away_score)
+      : null;
+
     await stmt
       .bind(
-        u.home_score !== "" ? Number(u.home_score) : null,
-        u.away_score !== "" ? Number(u.away_score) : null,
-        u.home_score !== "" ? Number(u.home_score) : null,
-        u.away_score !== "" ? Number(u.away_score) : null,
+        homeScore,
+        awayScore,
+        homeScore,
+        awayScore,
         Number(u.game_id)
       )
       .run();
   }
 
-  return jsonResponse({ success: true, updated: updates.length });
+  const finals = await ensureNextFinalsRound(db);
+  return jsonResponse({ success: true, updated: updates.length, finals });
+}
+
+async function handleSyncFinals(db, request) {
+  const body = await request.json().catch(() => ({}));
+  return jsonResponse(await ensureNextFinalsRound(db, body?.year));
+}
+
+async function ensureNextFinalsRound(db, requestedYear = null) {
+  const { results: allMatches } = await db.prepare(`
+    SELECT m.id, m.year, m.round, m.match_index, m.game_num,
+      m.home_score, m.away_score, m.completed,
+      ht.name AS home_team, at.name AS away_team
+    FROM matches m
+    JOIN teams ht ON ht.id = m.home_team_id
+    JOIN teams at ON at.id = m.away_team_id
+    ORDER BY m.year ASC, m.match_index ASC
+  `).all();
+  const matches = allMatches || [];
+  const regularYears = matches
+    .filter(match => isRegularSeasonRound(match.round))
+    .map(match => Number(match.year));
+  if (!regularYears.length) return { inserted: 0, reason: "No regular season fixtures" };
+
+  const latestYear = Math.max(...regularYears);
+  const year = requestedYear == null ? latestYear : Number(requestedYear);
+  if (year !== latestYear) {
+    return { inserted: 0, year, reason: "Only the latest season is auto-managed" };
+  }
+
+  const regular = matches.filter(match =>
+    Number(match.year) === year && isRegularSeasonRound(match.round)
+  );
+  if (!regular.length || regular.some(match => match.home_score == null || match.away_score == null)) {
+    return { inserted: 0, year, reason: "Regular season is not complete" };
+  }
+
+  const { results: teamRows } = await db.prepare(`SELECT id, name FROM teams`).all();
+  const params = await getParameters(db);
+  const replayParams = {
+    k: params.kFactor,
+    homeAdvantage: params.homeAdvantage,
+    initialRating: params.initialRating,
+    travelPer1000km: params.travelPer1000km,
+    restPerRound: params.restPerRound,
+    streakPts: params.streakPts,
+    earlyBoost: params.earlyBoost,
+    reversionWeight: params.reversionWeight,
+  };
+  const engine = createReplayEngine(replayParams, teamRows || []);
+  const replay = engine.replayMatches(matches, { applyByes: true });
+  const seasonTeams = new Set(regular.flatMap(match => [match.home_team, match.away_team]));
+  const seeds = engine.rankLadder(replay.ladder)
+    .filter(row => seasonTeams.has(row.team))
+    .slice(0, 8)
+    .map(row => row.team);
+  if (seeds.length < 8) return { inserted: 0, year, reason: "Fewer than eight season teams" };
+
+  const seasonMatches = matches.filter(match => Number(match.year) === year);
+  const bracket = buildFinalsBracket({
+    year,
+    seeds,
+    confirmedMatches: seasonMatches,
+    pickWinner: match => {
+      const preview = engine.eloCalc.previewMatch(replay.state, match);
+      return preview.expected >= 0.5 ? match.home_team : match.away_team;
+    },
+  });
+
+  let targetRound = null;
+  for (let index = 0; index < FINALS_ROUNDS.length; index += 1) {
+    const round = FINALS_ROUNDS[index];
+    const saved = seasonMatches.filter(match =>
+      String(match.round).toLowerCase() === round.label.toLowerCase()
+    );
+    if (saved.length >= round.games) continue;
+    if (index === 0) targetRound = round;
+    else {
+      const previous = FINALS_ROUNDS[index - 1];
+      const previousMatches = seasonMatches.filter(match =>
+        String(match.round).toLowerCase() === previous.label.toLowerCase()
+      );
+      if (
+        previousMatches.length === previous.games &&
+        previousMatches.every(match => match.home_score != null && match.away_score != null)
+      ) targetRound = round;
+    }
+    break;
+  }
+  if (!targetRound) return { inserted: 0, year, reason: "Next finals round is not ready" };
+
+  const fixtures = bracket.filter(match =>
+    match.round === targetRound.label && !match.confirmed
+  );
+  const teamIds = new Map((teamRows || []).map(team => [team.name, team.id]));
+  const maxIndex = Math.max(0, ...seasonMatches.map(match => Number(match.match_index) || 0));
+  const statements = fixtures.map((match, index) => db.prepare(`
+    INSERT OR IGNORE INTO matches
+      (match_key, year, round, round_seq, match_index, game_num,
+       home_team_id, away_team_id, completed)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `).bind(
+    `auto-finals-${year}-${targetRound.key}-${match.game_num}`,
+    year,
+    targetRound.label,
+    targetRound.roundNumber,
+    maxIndex + index + 1,
+    match.game_num,
+    teamIds.get(match.home_team),
+    teamIds.get(match.away_team),
+  ));
+  const results = statements.length ? await db.batch(statements) : [];
+  const inserted = results.reduce((sum, result) => sum + Number(result.meta?.changes || 0), 0);
+  return { inserted, year, round: targetRound.label };
 }
 
 async function handleGetPredictions(db) {

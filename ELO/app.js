@@ -1,4 +1,5 @@
 import { createReplayEngine } from "./shared/replay-engine.js";
+import { buildFinalsBracket, FINALS_ROUNDS, isRegularSeasonRound } from "./shared/finals-bracket.js";
 
 const API_URL = "https://nrl-elo-api.d2-rein.workers.dev";
 let matchesCache = null;
@@ -110,6 +111,23 @@ function getLatestSeasonYear(matches) {
   return Math.max(...matches.map(m => Number(m.year)));
 }
 
+async function syncFinalsFixtures(year = null) {
+  try {
+    const res = await fetchWithFallback(`${API_URL}/api/finals/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(year == null ? {} : { year: Number(year) })
+    });
+    if (!res.ok) return null;
+    const result = await res.json();
+    if (result.inserted > 0) matchesCache = null;
+    return result;
+  } catch (error) {
+    console.warn("Finals fixture sync unavailable:", error);
+    return null;
+  }
+}
+
 async function populateRankingsSelectors() {
   const matches = await getMatches();
 
@@ -215,6 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await loadModelParams();
       await loadTeams();
+      await syncFinalsFixtures();
       loadAllGames();
     } catch (e) {
       console.error("Initial preview load failed:", e);
@@ -419,6 +438,7 @@ async function loadPredictions() {
 
 async function prepareNextRoundForEntry() {
   try {
+    await syncFinalsFixtures();
     const matches = await getMatches();
 
     matches.sort((a, b) => {
@@ -547,11 +567,21 @@ function changeRound(delta) {
   const input = document.getElementById("round-name");
   let current = input.value.trim();
 
-  const match = current.match(/Rd\s*(\d+)/i);
-  let num = match ? parseInt(match[1], 10) : 1;
+  const finalsIndex = FINALS_ROUNDS.findIndex(r => r.label.toLowerCase() === current.toLowerCase());
+  if (finalsIndex >= 0) {
+    if (finalsIndex === 0 && delta < 0) {
+      input.value = "Rd 27";
+      return;
+    }
+    const next = Math.max(0, Math.min(FINALS_ROUNDS.length - 1, finalsIndex + delta));
+    input.value = FINALS_ROUNDS[next].label;
+    return;
+  }
 
-  num = Math.max(1, num + delta); // never go below 1
-  input.value = `Rd ${num}`;
+  const match = current.match(/Rd\s*(\d+)/i);
+  const num = match ? parseInt(match[1], 10) : 1;
+  if (delta > 0 && num >= 27) input.value = FINALS_ROUNDS[0].label;
+  else input.value = `Rd ${Math.max(1, num + delta)}`;
 }
 
 
@@ -582,6 +612,7 @@ async function saveRoundResults() {
       '<div class="message success">Scores saved successfully.</div>';
 
     matchesCache = null;
+    await syncFinalsFixtures(Number(document.getElementById("round-year").value));
     // Refresh the All Games table so you see the changes immediately
     await loadAllGames();
 
@@ -610,6 +641,9 @@ function extractRoundNumber(roundStr) {
     // Regular season: "Rd 1" -> 1, "Rd 27" -> 27
     const rdMatch = s.match(/Rd\s*(\d+)/i);
     if (rdMatch) return parseInt(rdMatch[1], 10);
+
+    const finalsWeek = s.match(/Finals\s*Wk\s*(\d+)/i);
+    if (finalsWeek) return 27 + parseInt(finalsWeek[1], 10);
 
     // Finals ordering (correct chronological order)
     const finalsMap = {
@@ -1129,7 +1163,7 @@ function renderRankPip(ladderPick, eloPick, actualWinner, completed) {
 
 async function loadAllGames() {
     try {
-        const matches = await getMatches();
+        let matches = await getMatches();
 
         if (!Array.isArray(teams) || teams.length === 0) {
           await loadTeams();
@@ -1148,6 +1182,51 @@ async function loadAllGames() {
         });
 
         const engine = createReplayEngine(MODEL_PARAMS, teams);
+        const currentReplay = engine.replayMatches(matches, { applyByes: true });
+        const latestYear = getLatestSeasonYear(matches);
+        const regularSeasonMatches = matches.filter(m =>
+          Number(m.year) === latestYear && isRegularSeasonRound(m.round)
+        );
+        const startedRegularRounds = new Set(
+          regularSeasonMatches
+            .filter(m => m.home_score != null && m.away_score != null)
+            .map(m => m.round)
+        );
+        const lastStartedIndex = Math.max(
+          0,
+          ...regularSeasonMatches
+            .filter(m => startedRegularRounds.has(m.round))
+            .map(m => Number(m.match_index) || 0)
+        );
+        const ladderMatches = lastStartedIndex > 0
+          ? matches.filter(m => Number(m.year) < latestYear || Number(m.match_index) <= lastStartedIndex)
+          : matches.filter(m => Number(m.year) < latestYear);
+        const currentLadderReplay = engine.replayMatches(ladderMatches, { applyByes: true });
+        const seasonTeams = new Set(
+          regularSeasonMatches.flatMap(m => [m.home_team, m.away_team]).filter(Boolean)
+        );
+        const seeds = engine.rankLadder(currentLadderReplay.ladder)
+          .filter(row => seasonTeams.has(row.team))
+          .slice(0, 8)
+          .map(row => row.team);
+        const regularMaxIndex = Math.max(0, ...regularSeasonMatches.map(m => Number(m.match_index) || 0));
+        const bracket = buildFinalsBracket({
+          year: latestYear,
+          seeds,
+          confirmedMatches: matches.filter(m => Number(m.year) === latestYear),
+          pickWinner: (match) => {
+            const preview = engine.eloCalc.previewMatch(currentReplay.state, match);
+            return preview.expected >= 0.5 ? match.home_team : match.away_team;
+          }
+        });
+
+        bracket.forEach((match, index) => {
+          if (match.projected) match.match_index = regularMaxIndex + index + 1;
+        });
+        matches = [...matches, ...bracket.filter(match => match.projected)].sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year;
+          return a.match_index - b.match_index;
+        });
         const replay = engine.replayMatches(matches, { applyByes: true });
 
         // Starting ELO
@@ -1230,17 +1309,17 @@ async function loadAllGames() {
             };
 
             rows += `
-            <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''}"
+            <tr class="${roundClass} ${isCompleted ? 'completed-game' : ''} ${m.projected ? 'projected-final' : ''}"
                 data-home-team="${home}"
                 data-away-team="${away}"
                 data-elo-pick="${eloPick}">
               <td class="col-narrow">${m.year}</td>
-              <td class="col-narrow">${m.round}</td>
+              <td class="col-narrow" title="${m.round}">${m.finals_label || m.round}</td>
               <td class="col-team ${highlightTeamClass(home)}">${displayTeamName(home)}</td>
               <td class="col-team ${highlightTeamClass(away)}">${displayTeamName(away)}</td>
               <td class="col-narrow">${homeWinPct}</td>
-              <td class="col-narrow">${m.home_score}</td>
-              <td class="col-narrow">${m.away_score}</td>
+              <td class="col-narrow">${m.home_score ?? ""}</td>
+              <td class="col-narrow">${m.away_score ?? ""}</td>
               <td class="col-narrow">${marginPred}</td>
               <td class="col-narrow">${Math.round(eloHomeBefore)}</td>
               <td class="col-narrow">${Math.round(eloAwayBefore)}</td>
@@ -1815,7 +1894,7 @@ document.addEventListener("click", async (e) => {
   if (!pip) return;
 
   // Prevent clicks on completed games
-  if (pip.closest(".completed-game")) return;
+  if (pip.closest(".completed-game") || pip.closest(".projected-final")) return;
 
   const id = Number(pip.dataset.id);
   const type = pip.dataset.type;

@@ -88,6 +88,9 @@ export function createReplayEngine(modelParams, teams) {
   function isFinalsRound(round) {
     const s = String(round || "").toLowerCase();
     return [
+      "finals wk",
+      "elim",
+      "elimination",
       "prelim",
       "preliminary",
       "qual",
@@ -119,10 +122,7 @@ export function createReplayEngine(modelParams, teams) {
   }
 
   function isLockedRound(round) {
-    // EXACT frontend behaviour:
-    // lock when NOT "Rd" and NOT "qual*"
-    const r = String(round || "");
-    return !r.startsWith("Rd") && !r.toLowerCase().startsWith("qual");
+    return isFinalsRound(round);
   }
 
   // ----------------------------
@@ -386,9 +386,9 @@ export function createReplayEngine(modelParams, teams) {
       "#   Once per 'Rd N' round, AFTER the first match in that round is processed:",
       "#   Any team not appearing as home/away in that round's fixture gets +2 compPoints",
       "#",
-      "# Finals locking (exact frontend behaviour):",
-      "#   If round does NOT start with 'Rd' AND does NOT start with 'qual' (case-insensitive),",
-      "#   ladderLocked becomes true and ladder stops updating for subsequent matches.",
+      "# Finals locking:",
+      "#   At the first recognised finals round, ladderLocked becomes true and",
+      "#   ladder standings stop updating for all subsequent finals matches.",
       "#",
       "# Season boundary ladder reset (separate from Elo reversion):",
       "#   BEFORE processing the first match of a new year:",
