@@ -1571,7 +1571,7 @@ function spellEditorCounts(profile = activeProfile()){
   const preparedList = Array.from(draft.prepared)
     .filter(name => !extraSpellNames(profile, "prepared").includes(name))
     .map(getSpellByName)
-    .filter(Boolean);
+    .filter(spell => Boolean(spell) && Number(spell.level || 0) > 0);
   return {
     known:knownList.length,
     prepared:preparedList.length,
@@ -4136,9 +4136,10 @@ function renderSpellEditorView(options = {}){
   const previousScroll = oldGrid ? oldGrid.scrollTop : 0;
   const draft = ensureSpellEditorDraft(profile);
   const counts = spellEditorCounts(profile);
+  const spellbookLimit = spellbookAllowance(profile);
   const warnings = [];
   if (counts.prepared > preparedSpellLimit(profile)) warnings.push(`Prepared spells exceed the current limit (${counts.prepared}/${preparedSpellLimit(profile)}).`);
-  if (counts.spellbook > spellbookAllowance(profile)) warnings.push(`Known leveled spells exceed the current spellbook limit (${counts.spellbook}/${spellbookAllowance(profile)}).`);
+  if (spellbookLimit > 0 && counts.spellbook > spellbookLimit) warnings.push(`Known leveled spells exceed the current spellbook limit (${counts.spellbook}/${spellbookLimit}).`);
   const filters = profile.spellFilters;
   const query = filters.search.trim().toLowerCase();
   const minLevel = Math.min(filters.minLevel, filters.maxLevel);
@@ -4157,7 +4158,7 @@ function renderSpellEditorView(options = {}){
       <div class="counts">
         <div class="count-box">Known <b>${counts.known}</b></div>
         <div class="count-box ${counts.prepared > preparedSpellLimit(profile) ? "warn" : ""}">Prepared <b>${counts.prepared}/${preparedSpellLimit(profile)}</b></div>
-        <div class="count-box ${counts.spellbook > spellbookAllowance(profile) ? "warn" : ""}">Spellbook <b>${counts.spellbook}/${spellbookAllowance(profile) || "-"}</b></div>
+        <div class="count-box ${spellbookLimit > 0 && counts.spellbook > spellbookLimit ? "warn" : ""}">Spellbook <b>${spellbookLimit > 0 ? `${counts.spellbook}/${spellbookLimit}` : "-"}</b></div>
         <div class="count-box">Matches <b>${spells.length}</b></div>
       </div>
       <div class="editor-note">Selections stay checked while you search and filter. They only change when you uncheck them or save.</div>
