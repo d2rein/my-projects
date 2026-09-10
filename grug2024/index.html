@@ -486,6 +486,66 @@
     align-items:center;
     margin-bottom:6px;
   }
+  .mastery-title{justify-content:flex-start}
+  .mastery-summary-btn{
+    width:100%;
+    min-height:58px;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px;
+    align-items:stretch;
+    padding:6px;
+    background:#101922;
+    border-color:var(--line2);
+  }
+  .mastery-summary-slot{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:2px;
+    padding:6px 8px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    text-align:left;
+  }
+  .mastery-summary-slot b{font-size:12px}
+  .mastery-summary-slot span{font-size:10px;color:var(--muted)}
+  .mastery-filter-row{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .mastery-filter-row .active{
+    background:#1f5e88;
+    border-color:#4f96c0;
+  }
+  .mastery-picker-list{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px;
+    max-height:55vh;
+    overflow:auto;
+  }
+  .mastery-picker-item{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    align-items:center;
+    gap:7px;
+    padding:7px;
+    background:#0c1219;
+    border:1px solid var(--line);
+    border-radius:9px;
+  }
+  .mastery-picker-item:has(input:checked){
+    background:#153a2d;
+    border-color:#419f72;
+  }
+  .mastery-picker-item b,.mastery-picker-item span{display:block}
+  .mastery-picker-item b{font-size:11px}
+  .mastery-picker-item span{font-size:10px;color:var(--muted);margin-top:2px}
   .hitdice-label{
     font-size:12px;
     font-weight:900;
@@ -1077,8 +1137,8 @@
     <div class="card">
       <div class="card-title"><span>Skills</span></div>
       <div class="control-row">
+        <button class="mode-btn" id="skillRollTypeBtn" type="button">CHECK</button>
         <button class="mode-btn" id="skillAdvModeBtn"></button>
-        <div></div>
         <button class="small-btn" id="editSkillsBtn">Edit</button>
       </div>
       <div class="skills-grid" id="skillsGrid"></div>
@@ -1091,6 +1151,14 @@
     <div class="card">
       <div class="card-title"><span>Hit Dice</span></div>
       <div class="stack" id="hitDiceRows"></div>
+    </div>
+    <div class="card">
+      <div class="card-title mastery-title">
+        <span>Weapon Mastery</span>
+        <button class="icon-btn" id="weaponMasteryInfoBtn" type="button">i</button>
+      </div>
+      <button class="mastery-summary-btn" id="weaponMasterySelectBtn" type="button"></button>
+      <div class="empty" style="margin-top:6px;">Choose two weapons. You can change them at any time.</div>
     </div>
     <div class="card">
       <div class="card-title"><span>Derived</span></div>
@@ -1232,6 +1300,6 @@
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js?v=20260715grug2024a"></script>
-<script src="./app.js?v=20260910spellcounts"></script>
+<script src="./app.js?v=20260910mastery"></script>
 </body>
 </html>

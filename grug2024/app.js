@@ -146,6 +146,56 @@ const WEAPONS = [
   { id:"longbow", name:"Longbow", damage:"1d8", damageType:"piercing", type:"ranged", ability:"DEX", range:"150/600" },
   { id:"shortbow-plus-1", name:"+1 Shortbow", damage:"1d6", damageType:"piercing", type:"ranged", ability:"DEX", attackBonus:1, damageBonus:1, range:"80/320" }
 ];
+const WEAPON_MASTERY_OPTIONS = [
+  { id:"club", name:"Club", category:"Simple", type:"melee", mastery:"Slow" },
+  { id:"dagger", name:"Dagger", category:"Simple", type:"melee", mastery:"Nick" },
+  { id:"greatclub", name:"Greatclub", category:"Simple", type:"melee", mastery:"Push" },
+  { id:"handaxe", name:"Handaxe", category:"Simple", type:"melee", mastery:"Vex" },
+  { id:"javelin", name:"Javelin", category:"Simple", type:"melee", mastery:"Slow" },
+  { id:"light-hammer", name:"Light Hammer", category:"Simple", type:"melee", mastery:"Nick" },
+  { id:"mace", name:"Mace", category:"Simple", type:"melee", mastery:"Sap" },
+  { id:"quarterstaff", name:"Quarterstaff", category:"Simple", type:"melee", mastery:"Topple" },
+  { id:"sickle", name:"Sickle", category:"Simple", type:"melee", mastery:"Nick" },
+  { id:"spear", name:"Spear", category:"Simple", type:"melee", mastery:"Sap" },
+  { id:"dart", name:"Dart", category:"Simple", type:"ranged", mastery:"Vex" },
+  { id:"light-crossbow", name:"Light Crossbow", category:"Simple", type:"ranged", mastery:"Slow" },
+  { id:"shortbow", name:"Shortbow", category:"Simple", type:"ranged", mastery:"Vex" },
+  { id:"sling", name:"Sling", category:"Simple", type:"ranged", mastery:"Slow" },
+  { id:"battleaxe", name:"Battleaxe", category:"Martial", type:"melee", mastery:"Topple" },
+  { id:"flail", name:"Flail", category:"Martial", type:"melee", mastery:"Sap" },
+  { id:"glaive", name:"Glaive", category:"Martial", type:"melee", mastery:"Graze" },
+  { id:"greataxe", name:"Greataxe", category:"Martial", type:"melee", mastery:"Cleave" },
+  { id:"greatsword", name:"Greatsword", category:"Martial", type:"melee", mastery:"Graze" },
+  { id:"halberd", name:"Halberd", category:"Martial", type:"melee", mastery:"Cleave" },
+  { id:"lance", name:"Lance", category:"Martial", type:"melee", mastery:"Topple" },
+  { id:"longsword", name:"Longsword", category:"Martial", type:"melee", mastery:"Sap" },
+  { id:"maul", name:"Maul", category:"Martial", type:"melee", mastery:"Topple" },
+  { id:"morningstar", name:"Morningstar", category:"Martial", type:"melee", mastery:"Sap" },
+  { id:"pike", name:"Pike", category:"Martial", type:"melee", mastery:"Push" },
+  { id:"rapier", name:"Rapier", category:"Martial", type:"melee", mastery:"Vex" },
+  { id:"scimitar", name:"Scimitar", category:"Martial", type:"melee", mastery:"Nick" },
+  { id:"shortsword", name:"Shortsword", category:"Martial", type:"melee", mastery:"Vex" },
+  { id:"trident", name:"Trident", category:"Martial", type:"melee", mastery:"Topple" },
+  { id:"warhammer", name:"Warhammer", category:"Martial", type:"melee", mastery:"Push" },
+  { id:"war-pick", name:"War Pick", category:"Martial", type:"melee", mastery:"Sap" },
+  { id:"whip", name:"Whip", category:"Martial", type:"melee", mastery:"Slow" },
+  { id:"blowgun", name:"Blowgun", category:"Martial", type:"ranged", mastery:"Vex" },
+  { id:"hand-crossbow", name:"Hand Crossbow", category:"Martial", type:"ranged", mastery:"Vex" },
+  { id:"heavy-crossbow", name:"Heavy Crossbow", category:"Martial", type:"ranged", mastery:"Push" },
+  { id:"longbow", name:"Longbow", category:"Martial", type:"ranged", mastery:"Slow" },
+  { id:"musket", name:"Musket", category:"Martial", type:"ranged", mastery:"Slow" },
+  { id:"pistol", name:"Pistol", category:"Martial", type:"ranged", mastery:"Vex" }
+];
+const WEAPON_MASTERY_DETAILS = {
+  Cleave:"After you hit with a melee attack, you can make one attack with the weapon against a second creature within 5 feet of the first and within your reach. On a hit, deal the weapon's damage without a positive ability modifier. Once per turn.",
+  Graze:"If your attack misses, deal damage equal to the ability modifier used for the attack. The damage has the weapon's type and can be increased only by increasing that modifier.",
+  Nick:"You can make the Light property's extra attack as part of the Attack action instead of as a Bonus Action. Once per turn.",
+  Push:"On a hit, you can push a Large or smaller creature up to 10 feet straight away from you.",
+  Sap:"On a hit, the target has Disadvantage on its next attack roll before the start of your next turn.",
+  Slow:"On a damaging hit, you can reduce the target's Speed by 10 feet until the start of your next turn. Multiple Slow hits don't increase the reduction.",
+  Topple:"On a hit, you can force a Constitution saving throw against DC 8 + the attack's ability modifier + your Proficiency Bonus. On a failure, the target is Prone.",
+  Vex:"On a damaging hit, you have Advantage on your next attack roll against that creature before the end of your next turn."
+};
 const SAMPLE_SPELLS = {
   jefferson:["Guidance","Toll the Dead","Bless","Shield of Faith"]
 };
@@ -427,6 +477,7 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     slotCur:{},
     pactSlotsCur:0,
     hitDiceCur:{},
+    weaponMasteries:[],
     activePage:"stats",
     attackModes:{},
     history:[],
@@ -540,6 +591,7 @@ function buildSampleProfiles(){
     slotCur:{ 1:3, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 },
     pactSlotsCur:0,
     hitDiceCur:{ d8:10 },
+    weaponMasteries:[],
     activePage:"stats",
     attackModes:{
       "longbow":{ crit:false, adv:"-" },
@@ -652,6 +704,8 @@ function ensureProfileShape(profile){
   blank.progression = blank.progression.map(row => Object.assign({ classSlug:"", subclassSlug:"", asiMode:"", asiChoices:[], featSlug:"", expertiseChoices:[], divineOrderChoice:"" }, row));
   blank.knownSpells = unique(blank.knownSpells || blank.preparedSpells || []);
   blank.preparedSpells = unique(blank.preparedSpells || []);
+  const validMasteries = new Set(WEAPON_MASTERY_OPTIONS.map(weapon => weapon.id));
+  blank.weaponMasteries = unique(blank.weaponMasteries || []).filter(id => validMasteries.has(id)).slice(0, 2);
   blank.selectedSkills = unique(blank.selectedSkills || []);
   blank.selectedSaves = unique(blank.selectedSaves || []);
   blank.extraSpells = Array.isArray(blank.extraSpells) ? blank.extraSpells.map(item => ({
@@ -993,6 +1047,41 @@ function ringById(id){
 
 function weaponById(id){
   return WEAPONS.find(item => item.id === id) || WEAPONS[0];
+}
+
+function weaponMasteryById(id){
+  return WEAPON_MASTERY_OPTIONS.find(item => item.id === id) || null;
+}
+
+function baseWeaponId(weapon){
+  return String(weapon?.id || "").replace(/-plus-\d+$/, "");
+}
+
+function selectedWeaponMastery(profile, weapon){
+  const id = baseWeaponId(weapon);
+  if (!(profile.weaponMasteries || []).includes(id)) return null;
+  return weaponMasteryById(id);
+}
+
+function weaponMasteryReminder(profile, weapon, attackData){
+  const selected = selectedWeaponMastery(profile, weapon);
+  if (!selected) return "";
+  const abilityModifier = abilityMod(finalAbilityScores(profile)[attackData.abilityKey]);
+  const reminders = {
+    Cleave:"Cleave - attack second creature",
+    Graze:`Graze - MOD (${fmtMod(abilityModifier)}) damage on miss`,
+    Nick:"Nick - no BA for extra attack",
+    Push:"Push - Push 10'",
+    Sap:"Sap - DIS next attack",
+    Slow:"Slow - -10' until next turn",
+    Topple:`Topple - DC ${8 + abilityModifier + profBonus(profile)} knock prone`,
+    Vex:"Vex - ADV next attack"
+  };
+  return reminders[selected.mastery] || selected.mastery;
+}
+
+function weaponMasteryInfoText(){
+  return Object.entries(WEAPON_MASTERY_DETAILS).map(([name, description]) => `${name}\n${description}`).join("\n\n");
 }
 
 function hasRingOfObscuring(profile = activeProfile()){
@@ -1861,6 +1950,13 @@ function renderStatsPage(){
     const pips = Array.from({ length:max }, (_, index) => `<span class="pip ${index < current ? "on green" : ""}" data-hit-die="${die}" data-hit-index="${index}"></span>`).join("");
     return `<div class="hitdice-row"><div class="hitdice-label">${die}</div><div class="pips-box">${pips}</div></div>`;
   }).join("") || `<div class="empty">No hit dice yet.</div>`;
+  const masterySelections = (profile.weaponMasteries || []).map(weaponMasteryById).filter(Boolean);
+  document.getElementById("weaponMasterySelectBtn").innerHTML = Array.from({ length:2 }, (_, index) => {
+    const weapon = masterySelections[index];
+    return weapon
+      ? `<span class="mastery-summary-slot"><b>${escapeHtml(weapon.name)}</b><span>${escapeHtml(weapon.mastery)}</span></span>`
+      : `<span class="mastery-summary-slot"><b>Select weapon</b><span>Mastery ${index + 1}</span></span>`;
+  }).join("");
   document.getElementById("derivedDetails").innerHTML = [
     { label:"Size", value:profileSize(profile) },
     { label:"Speed", value:`${profileSpeed(profile)} ft` },
@@ -2676,6 +2772,8 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-hit-die]").forEach(button => {
     button.onclick = () => spendHitDie(button.dataset.hitDie, Number(button.dataset.hitIndex));
   });
+  document.getElementById("weaponMasterySelectBtn").onclick = openWeaponMasteryPicker;
+  document.getElementById("weaponMasteryInfoBtn").onclick = () => openResult("Weapon Mastery", weaponMasteryInfoText());
   document.getElementById("notesInput").onchange = event => {
     activeProfile().notes = event.target.value;
     saveState({ skipRender:true });
@@ -3309,6 +3407,60 @@ function openCoinsEditor(){
   };
 }
 
+function openWeaponMasteryPicker(){
+  const profile = activeProfile();
+  const selected = new Set(profile.weaponMasteries || []);
+  let filter = "melee";
+
+  const renderPicker = () => {
+    const weapons = WEAPON_MASTERY_OPTIONS.filter(weapon => weapon.type === filter);
+    openModal(`
+      <div class="modal-head">
+        <div class="modal-title">Choose Weapon Masteries</div>
+        <button class="small-btn" data-close>Close</button>
+      </div>
+      <div class="mastery-filter-row">
+        <button class="small-btn ${filter === "melee" ? "active" : ""}" data-mastery-filter="melee">Melee</button>
+        <button class="small-btn ${filter === "ranged" ? "active" : ""}" data-mastery-filter="ranged">Range</button>
+      </div>
+      <div class="detail-box" style="margin-bottom:8px;">Choose exactly two weapons. You can return and change them at any time.</div>
+      <div class="mastery-picker-list">
+        ${weapons.map(weapon => `
+          <label class="mastery-picker-item">
+            <input type="checkbox" data-mastery-weapon="${weapon.id}" ${selected.has(weapon.id) ? "checked" : ""} ${selected.size >= 2 && !selected.has(weapon.id) ? "disabled" : ""}>
+            <span><b>${escapeHtml(weapon.name)} / ${escapeHtml(weapon.mastery)}</b><span>${escapeHtml(weapon.category)} ${filter === "melee" ? "Melee" : "Ranged"}</span></span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="empty" style="margin-top:8px;">${selected.size}/2 selected</div>
+      <div class="modal-actions">
+        <button class="action-btn blue" id="saveWeaponMasteriesBtn" ${selected.size === 2 ? "" : "disabled"}>Save Masteries</button>
+      </div>
+    `);
+    document.querySelectorAll("[data-mastery-filter]").forEach(button => {
+      button.onclick = () => {
+        filter = button.dataset.masteryFilter;
+        renderPicker();
+      };
+    });
+    document.querySelectorAll("[data-mastery-weapon]").forEach(input => {
+      input.onchange = () => {
+        if (input.checked) selected.add(input.dataset.masteryWeapon);
+        else selected.delete(input.dataset.masteryWeapon);
+        renderPicker();
+      };
+    });
+    document.getElementById("saveWeaponMasteriesBtn").onclick = () => {
+      if (selected.size !== 2) return;
+      profile.weaponMasteries = Array.from(selected);
+      closeModal();
+      saveState();
+    };
+  };
+
+  renderPicker();
+}
+
 function openProficiencyEditor(kind){
   const profile = activeProfile();
   const key = kind === "save" ? "selectedSaves" : "selectedSkills";
@@ -3756,10 +3908,12 @@ function rollWeapon(weaponId){
   const damageFormula = formatFormulaFromParts(weapon.damage, [formatSignedTerm(baseDamageBonus), formatSignedTerm(sharpshooterDamageBonus), crit ? `+crit(${damage.max})` : ""]);
   const attackRollText = `${formatChosenD20Roll(attack, attackMode)}${attackBonus ? `${fmtMod(attackBonus)}` : ""}`;
   const damageBreakdown = `${damage.total}${bonusDamage ? `${fmtMod(bonusDamage)}` : ""}${crit ? `+${damage.max}` : ""}`;
+  const masteryReminder = weaponMasteryReminder(profile, weapon, data);
   const text = [
       `${weapon.name}`,
       `Attack: ${attackFormula} -> ${attackRollText} = ${toHit}`,
-      `Damage: ${damageFormula} -> ${damageBreakdown} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`
+      `Damage: ${damageFormula} -> ${damageBreakdown} = ${damage.total + bonusDamage + (crit ? damage.max : 0)} ${weapon.damageType || weapon.type || ""}${extra}\nTotal Damage: ${total}`,
+      ...(masteryReminder ? [masteryReminder] : [])
     ].join("\n");
   openResult(weapon.name, text);
   pushHistory(text.replace(/\n/g, " | "));
