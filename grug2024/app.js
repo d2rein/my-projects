@@ -161,6 +161,7 @@ const SUBCLASS_OVERRIDES_2024 = {
     { slug:"rogue:arcane-trickster", name:"Arcane Trickster", source:"Player's Handbook (2024)" },
     { slug:"rogue:assassin", name:"Assassin", source:"Player's Handbook (2024)" },
     { slug:"rogue:phantom", name:"Phantom", source:"Player's Handbook (2024)" },
+    { slug:"rogue:scout", name:"Scout", source:"Xanathar's Guide to Everything (2014)" },
     { slug:"rogue:scion-of-the-three", name:"Scion of the Three", source:"Player's Handbook (2024)" },
     { slug:"rogue:soulknife", name:"Soulknife", source:"Player's Handbook (2024)" },
     { slug:"rogue:thief", name:"Thief", source:"Player's Handbook (2024)" }
@@ -196,6 +197,16 @@ const SUBCLASS_DETAILS_2024 = {
       { section:"Level 9: Voice of Death", text:"You can cast Speak with Dead once without a spell slot, regaining that use on a Short or Long Rest. You can target one of your soul trinkets instead of a corpse." },
       { section:"Level 13: Ghost Walk", text:"As a Bonus Action, you gain a spectral form for 10 minutes that grants a Fly Speed of 10 feet with hover, Disadvantage on attack rolls against you, and movement through creatures and objects as Difficult Terrain. If you end your turn inside a creature or object, you take 1d10 Force damage. You regain this after a Long Rest, or by destroying a soul trinket." },
       { section:"Level 17: Death's Friend", text:"When you use Wails from the Grave, you can deal its Necrotic damage to both the first and second creature. When you roll Initiative and have no soul trinkets, you gain one." }
+    ]
+  },
+  "rogue:scout":{
+    source:"Xanathar's Guide to Everything (2014)",
+    mechanics:[
+      { section:"Level 3: Skirmisher", text:"When an enemy ends its turn within 5 feet of you, you can use your Reaction to move up to half your Speed. This movement doesn't provoke Opportunity Attacks." },
+      { section:"Level 3: Survivalist", text:"You gain proficiency in Nature and Survival if you don't already have them, and your Proficiency Bonus is doubled for checks that use either proficiency." },
+      { section:"Level 9: Superior Mobility", text:"Your walking Speed increases by 10 feet. If you have a climbing or swimming Speed, that Speed also increases by 10 feet." },
+      { section:"Level 13: Ambush Master", text:"You have Advantage on Initiative rolls. The first creature you hit during the first round of combat is easier to strike; attack rolls against it have Advantage until the start of your next turn." },
+      { section:"Level 17: Sudden Strike", text:"When you take the Attack action, you can make one additional attack as a Bonus Action. That attack can benefit from Sneak Attack even if you already used Sneak Attack this turn, but you can't use Sneak Attack against the same target more than once in a turn." }
     ]
   },
   "rogue:scion-of-the-three":{
@@ -918,6 +929,9 @@ function profileSkillProficiencies(profile = activeProfile()){
   const backgroundData = parseBackgroundChoiceData(profile);
   skills.push(...backgroundData.fixedSkills, ...(profile.backgroundSelections.skills || []));
   skills.push(...(profile.selectedSkills || []));
+  if ((classCounts(profile).rogue || 0) >= 3 && hasSubclass(profile, "rogue:scout")){
+    skills.push("Nature", "Survival");
+  }
   return unique(skills);
 }
 
@@ -944,9 +958,11 @@ function profileSize(profile = activeProfile()){
 }
 
 function profileSpeed(profile = activeProfile()){
+  const scoutMobility = (classCounts(profile).rogue || 0) >= 9 && hasSubclass(profile, "rogue:scout") ? 10 : 0;
   if (profile.speedOverride != null && profile.speedOverride !== ""){
     let speed = Number(profile.speedOverride) || 0;
     if (profile.resources.bladesongActive) speed += 10;
+    speed += scoutMobility;
     return speed;
   }
   const species = entryBySlug("lineages", profile.speciesSlug);
@@ -954,6 +970,7 @@ function profileSpeed(profile = activeProfile()){
   const match = text.match(/walking speed is (\d+)/i) || text.match(/base walking speed is (\d+)/i);
   let speed = match ? Number(match[1]) : 30;
   if (profile.resources.bladesongActive) speed += 10;
+  speed += scoutMobility;
   return speed;
 }
 
@@ -1126,6 +1143,10 @@ function hasSubclass(profile, slug){
   return progressionUpTo(profile).some(row => row.subclassSlug === slug);
 }
 
+function hasFeat(profile, slug){
+  return (profile.selectedFeats || []).includes(slug) || progressionUpTo(profile).some(row => row.asiMode === "feat" && row.featSlug === slug);
+}
+
 function currentSpellList(profile = activeProfile()){
   return sortedSpells(unique([
     ...(profile.preparedSpells || []),
@@ -1203,7 +1224,11 @@ function findClassFeatureText(profile = activeProfile(), levelIndex = 0){
 }
 
 function profileExpertiseSkills(profile = activeProfile()){
-  return unique(progressionUpTo(profile).flatMap(row => row.expertiseChoices || []));
+  const skills = progressionUpTo(profile).flatMap(row => row.expertiseChoices || []);
+  if ((classCounts(profile).rogue || 0) >= 3 && hasSubclass(profile, "rogue:scout")){
+    skills.push("Nature", "Survival");
+  }
+  return unique(skills);
 }
 
 function expertiseEligibleSkills(profile = activeProfile(), levelIndex = 0){
@@ -2306,9 +2331,12 @@ function renderCombatPage(){
       </div>
     </div>
   ` : "");
-  const tacticButtonsMarkup = rogue ? `
+  const hasSharpshooter = hasFeat(profile, "feat:sharpshooter");
+  const hasSkirmisher = rogue >= 3 && hasSubclass(profile, "rogue:scout");
+  const tacticButtonsMarkup = (hasSharpshooter || hasSkirmisher) ? `
     <div class="card" style="padding:6px;margin-top:6px;">
       <div class="grid-2">
+        ${hasSharpshooter ? `
         <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
           <button class="icon-btn" data-custom-info="sharpshooter">i</button>
           <button class="combat-action blue ${profile.resources.sharpshooterActive ? "ability-active" : ""}" data-custom-toggle="sharpshooter">
@@ -2316,13 +2344,16 @@ function renderCombatPage(){
             <span>${profile.resources.sharpshooterActive ? "-5 hit / +10 dmg" : "Ranged power shot"}</span>
           </button>
         </div>
+        ` : ""}
+        ${hasSkirmisher ? `
         <div class="row-grid ability-row" style="grid-template-columns:auto 1fr;">
-          <button class="icon-btn" data-custom-info="first-round-target">i</button>
-          <button class="combat-action blue ${profile.resources.firstRoundTargetActive ? "ability-active" : ""}" data-custom-toggle="first-round-target">
-            <b>First Round Target</b>
-            <span>${profile.resources.firstRoundTargetActive ? "On" : "Off"}</span>
+          <button class="icon-btn" data-custom-info="skirmisher">i</button>
+          <button class="combat-action blue" data-custom-action="skirmisher">
+            <b>Reaction - Skirmisher</b>
+            <span>Move up to ${Math.floor(profileSpeed(profile) / 2)} ft</span>
           </button>
         </div>
+        ` : ""}
       </div>
     </div>
   ` : "";
@@ -2742,7 +2773,11 @@ function bindGlobalButtons(){
   document.querySelectorAll("[data-custom-toggle]").forEach(button => {
     button.onclick = () => {
       if (button.dataset.customToggle === "sharpshooter") toggleSharpshooter();
-      if (button.dataset.customToggle === "first-round-target") toggleFirstRoundTarget();
+    };
+  });
+  document.querySelectorAll("[data-custom-action]").forEach(button => {
+    button.onclick = () => {
+      if (button.dataset.customAction === "skirmisher") showSkirmisher();
     };
   });
   document.querySelectorAll("[data-custom-info]").forEach(button => {
@@ -2750,8 +2785,8 @@ function bindGlobalButtons(){
       if (button.dataset.customInfo === "sharpshooter"){
         openResult("Sharpshooter", "When active on this sheet, ranged weapon attacks take a -5 penalty to hit and gain +10 damage.");
       }
-      if (button.dataset.customInfo === "first-round-target"){
-        openResult("First Round Target", "During the first round of each combat, you have Advantage on attack rolls against any creature that hasn't taken a turn. If your Sneak Attack hits any target during that round, the target takes extra damage of the weapon's type equal to your Rogue level.");
+      if (button.dataset.customInfo === "skirmisher"){
+        showSkirmisher();
       }
     };
   });
@@ -3675,11 +3710,10 @@ function rollWeapon(weaponId){
   const mode = profile.attackModes[weaponId] || { crit:false, adv:"-" };
   const data = weaponAttackData(profile, weapon);
   const rogue = classCounts(profile).rogue || 0;
-  const assassinFirstRound = profile.resources.firstRoundTargetActive && rogue >= 3 && hasSubclass(profile, "rogue:assassin");
-  const hasBonusAdvantage = profile.resources.steadyAimActive || assassinFirstRound;
+  const hasBonusAdvantage = profile.resources.steadyAimActive;
   const attackMode = combinedAdvantageMode(mode.adv, hasBonusAdvantage);
   const attack = rollD20(attackMode);
-  const sharpshooterActive = profile.resources.sharpshooterActive && weapon.type === "ranged";
+  const sharpshooterActive = hasFeat(profile, "feat:sharpshooter") && profile.resources.sharpshooterActive && weapon.type === "ranged";
   const baseAttackBonus = data.attackBonus;
   const attackPenalty = sharpshooterActive ? -5 : 0;
   const attackBonus = baseAttackBonus + attackPenalty;
@@ -3705,15 +3739,10 @@ function rollWeapon(weaponId){
         ? `${effect.label} (Cost ${effect.cost}d6): DC ${dc} ${effect.save} save`
         : `${effect.label} (Cost ${effect.cost}d6): no save`);
     }
-    let firstRoundText = "";
-    if (assassinFirstRound){
-      total += rogue;
-      firstRoundText = `\nAssassinate: +${rogue} first-round damage`;
-    }
     total += sneakTotal;
     const sneakFormula = `${remainingDice}D6`;
     const sneakRollText = remainingDice > 0 ? `${sneak.rolls.join(" + ")}${crit ? ` + crit(${sneak.max})` : ""} = ${sneakTotal}` : `0 = ${sneakTotal}`;
-    extra = `\nSneak Attack: ${sneakFormula} -> ${sneakRollText}${effectLines.length ? `\n${effectLines.join("\n")}` : ""}${firstRoundText}`;
+    extra = `\nSneak Attack: ${sneakFormula} -> ${sneakRollText}${effectLines.length ? `\n${effectLines.join("\n")}` : ""}`;
     profile.resources.sneakAttackReady = false;
     profile.resources.sneakAttackDismissed = false;
     profile.resources.cunningStrikeEffects = [];
@@ -3879,10 +3908,13 @@ function clearSpiritualWeaponBonusAction(){
 function rollInitiative(){
   const profile = activeProfile();
   const assassinAdvantage = (classCounts(profile).rogue || 0) >= 3 && hasSubclass(profile, "rogue:assassin");
-  const roll = rollD20(assassinAdvantage ? "adv" : "-");
+  const scoutAdvantage = (classCounts(profile).rogue || 0) >= 13 && hasSubclass(profile, "rogue:scout");
+  const hasAdvantage = assassinAdvantage || scoutAdvantage;
+  const roll = rollD20(hasAdvantage ? "adv" : "-");
   const total = roll.chosen + profileInitiative(profile);
-  let text = `${assassinAdvantage ? `d20 ${roll.first}, ${roll.second}` : `d20 ${roll.chosen}`}\nModifier ${fmtMod(profileInitiative(profile))}\nTotal ${total}`;
+  let text = `${hasAdvantage ? `d20 ${roll.first}, ${roll.second}` : `d20 ${roll.chosen}`}\nModifier ${fmtMod(profileInitiative(profile))}\nTotal ${total}`;
   if (assassinAdvantage) text += "\nAssassinate: Advantage on Initiative";
+  if (scoutAdvantage) text += "\nAmbush Master: Advantage on Initiative";
   openResult("Initiative", text);
   pushHistory(`Initiative ${total}`);
 }
@@ -4012,12 +4044,9 @@ function toggleSharpshooter(){
   saveState();
 }
 
-function toggleFirstRoundTarget(){
-  const profile = activeProfile();
-  profile.resources.firstRoundTargetActive = !profile.resources.firstRoundTargetActive;
-  if (profile.resources.firstRoundTargetActive) activateSneakAttackFromAdvantageSource(profile);
-  pushHistory(profile.resources.firstRoundTargetActive ? "First Round Target marked." : "First Round Target cleared.");
-  saveState();
+function showSkirmisher(){
+  const distance = Math.floor(profileSpeed(activeProfile()) / 2);
+  openResult("Reaction - Skirmisher", `When an enemy ends its turn within 5 feet of you, you can use your Reaction to move up to half your Speed (${distance} feet). This movement doesn't provoke Opportunity Attacks.`);
 }
 
 function rollDivineSmite(){
