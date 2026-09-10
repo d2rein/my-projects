@@ -26,6 +26,8 @@
   *{box-sizing:border-box}
   body{
     margin:0;
+    min-height:100vh;
+    min-height:100dvh;
     color:var(--text);
     font-family:Arial,Helvetica,sans-serif;
     background:
@@ -1024,6 +1026,15 @@
     .tabs{grid-template-columns:repeat(3,1fr)}
     .combat-top{grid-template-columns:repeat(2,1fr)}
     .progression-head,.progression-row{grid-template-columns:30px 1fr 42px 42px 1fr}
+  }
+  @media (max-width:600px){
+    .app{
+      min-height:100dvh;
+      padding-bottom:calc(112px + env(safe-area-inset-bottom, 0px));
+    }
+    .tabs{
+      padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
+    }
   }
 </style>
 </head>
