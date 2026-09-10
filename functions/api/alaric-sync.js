@@ -6,8 +6,7 @@ function json(data, init = {}) {
 }
 
 function getStore(env) {
-  if (!env || !env.PODCAST_KV) return null;
-  return env.PODCAST_KV;
+  return env?.POGO_TRACKER_KV || env?.PODCAST_KV || null;
 }
 
 function normalizeCode(value) {
