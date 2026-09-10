@@ -132,7 +132,6 @@
   }
   .grug-page #createNewBtn,
   .grug-page #duplicateProfileBtn,
-  .grug-page #syncStatusBtn,
   .grug-page .profile-row{
     display:none !important;
   }
@@ -180,6 +179,25 @@
     gap:6px;
     margin-top:8px;
   }
+  .sync-strip{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:8px;
+    padding:6px 7px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#0b131c;
+  }
+  .sync-strip span{
+    min-width:0;
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.25;
+  }
+  .sync-strip .sync-ok{color:#8fe0b0}
+  .sync-strip .sync-warn{color:#ffd57b}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .stack{display:grid;gap:6px}
@@ -1118,6 +1136,10 @@
         </div>
       </div>
       <div class="chip-grid" id="statsTopChips"></div>
+      <div class="sync-strip">
+        <span id="statsSyncText">Saved on this device</span>
+        <button class="small-btn" id="statsSyncBtn" type="button">Cloud Sync</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">
@@ -1300,6 +1322,6 @@
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js?v=20260715grug2024a"></script>
-<script src="./app.js?v=20260910mastery"></script>
+<script src="./app.js?v=20260910cloudsync"></script>
 </body>
 </html>

@@ -1,7 +1,9 @@
 const STORAGE_KEY = "dnd_grug_2024_character_v1";
+const CLOUD_BACKUP_KEY = `${STORAGE_KEY}_pre_cloud_backup`;
 const APP_ID = "dnd-grug-2024";
 const HISTORY_LIMIT = 100;
-const AUTO_SYNC_PIN = "4242";
+const DEFAULT_SYNC_CODE = "jefferson-grug-2024-live";
+const LEGACY_SYNC_PIN = "4242";
 const AVAILABLE_CLASSES = ["rogue", "cleric"];
 const TABS = [
   { id:"stats", label:"Stats" },
@@ -345,6 +347,8 @@ let dbMaps = { lineages:new Map(), backgrounds:new Map(), feats:new Map(), class
 let state = null;
 let saveTimer = null;
 let pullInFlight = false;
+let pushInFlight = false;
+let pushQueued = false;
 let spellEditorDraft = null;
 
 function clone(value){
@@ -502,6 +506,7 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     concentrationActive:"",
     notes:"",
     syncCode:"",
+    syncPin:"",
     autoSync:false,
     resources:{
       bladesongActive:false,
@@ -645,7 +650,10 @@ function createDefaultState(){
     activePage:"builder",
     currentProfileId:"jefferson",
     profiles:buildSampleProfiles(),
-    lastSyncByProfile:{}
+    lastSyncByProfile:{},
+    syncRevisionByProfile:{},
+    syncDirtyByProfile:{},
+    syncConflictByProfile:{}
   };
 }
 
@@ -659,6 +667,10 @@ function normalizeGrugState(rawState){
     || buildSampleProfiles().jefferson;
   next.profiles = { jefferson:ensureProfileShape(Object.assign({}, fallback, { id:"jefferson", name:fallback?.name || "Jefferson Grug" })) };
   next.currentProfileId = "jefferson";
+  next.lastSyncByProfile = Object.assign({}, rawState?.lastSyncByProfile || {});
+  next.syncRevisionByProfile = Object.assign({}, rawState?.syncRevisionByProfile || {});
+  next.syncDirtyByProfile = Object.assign({}, rawState?.syncDirtyByProfile || {});
+  next.syncConflictByProfile = Object.assign({}, rawState?.syncConflictByProfile || {});
   if (!TABS.some(tab => tab.id === next.activePage)){
     next.activePage = "stats";
   }
@@ -752,9 +764,13 @@ function activeProfile(){
 }
 
 function saveState(options = {}){
+  const profile = activeProfile();
+  if (!options.fromSync && profile?.autoSync && profile.syncCode){
+    state.syncDirtyByProfile[profile.id] = true;
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (!options.skipRender) render();
-  scheduleAutoSync();
+  if (!options.fromSync) scheduleAutoSync();
 }
 
 function pushHistory(text){
@@ -1778,7 +1794,24 @@ function updateTopIdentity(){
   document.getElementById("charName").textContent = profile.name || "New Character";
   document.getElementById("charSubtitle").textContent = `L${currentLevel(profile)} / ${entrySummary("lineages", profile.speciesSlug) || "No species"} / ${classSummary || "No classes yet"}`;
   document.getElementById("charPortrait").src = profile.portrait || "./alaric-headshot.png";
-  document.getElementById("syncStatusBtn").textContent = profile.autoSync ? "Sync On" : "Local";
+  const syncButton = document.getElementById("syncStatusBtn");
+  const statsSyncButton = document.getElementById("statsSyncBtn");
+  const statsSyncText = document.getElementById("statsSyncText");
+  const syncConflict = state.syncConflictByProfile[profile.id];
+  const syncDirty = state.syncDirtyByProfile[profile.id];
+  const lastSync = state.lastSyncByProfile[profile.id];
+  if (syncButton) syncButton.textContent = profile.autoSync ? "Cloud Sync" : "Cloud Setup";
+  if (statsSyncButton) statsSyncButton.textContent = profile.autoSync ? "Sync" : "Cloud Sync";
+  if (statsSyncText){
+    statsSyncText.className = syncConflict || syncDirty ? "sync-warn" : (profile.autoSync ? "sync-ok" : "");
+    statsSyncText.textContent = syncConflict
+      ? "Cloud conflict — choose which copy to keep"
+      : syncDirty
+        ? "Local changes waiting to sync"
+        : profile.autoSync
+          ? `Live copy synced${lastSync ? ` ${formatSyncTime(lastSync)}` : ""}`
+          : "Saved on this device only";
+  }
   document.getElementById("topChips").innerHTML = `
     <div class="chip green"><span>HP</span><b>${profile.currentHp}/${computeHpMax(profile)}</b></div>
     <div class="chip blue"><span>AC</span><b>${profileAc(profile)}</b></div>
@@ -2808,6 +2841,7 @@ function bindGlobalButtons(){
   document.getElementById("exportSaveBtn").onclick = exportSave;
   document.getElementById("importSaveBtn").onclick = openImportModal;
   document.getElementById("syncStatusBtn").onclick = manualSyncNow;
+  document.getElementById("statsSyncBtn").onclick = openCloudSyncModal;
   document.getElementById("initRollBtn").onclick = rollInitiative;
   document.getElementById("shortRestBtn").onclick = shortRest;
   document.getElementById("longRestBtn").onclick = longRest;
@@ -4453,12 +4487,19 @@ async function cloudSyncRequest(method, code, body = null){
   let json = null;
   try{ json = text ? JSON.parse(text) : null; }catch{}
   if (!response.ok){
-    throw new Error((json && json.error) || text || `Sync failed (${response.status})`);
+    const error = new Error((json && json.error) || text || `Sync failed (${response.status})`);
+    error.status = response.status;
+    error.details = json;
+    throw error;
   }
   return json;
 }
 
 function exportProfilePayload(profile){
+  const cloudProfile = clone(profile);
+  delete cloudProfile.syncPin;
+  delete cloudProfile.syncCode;
+  delete cloudProfile.autoSync;
   return {
     app:APP_ID,
     version:2,
@@ -4467,57 +4508,256 @@ function exportProfilePayload(profile){
       version:2,
       activePage:"stats",
       currentProfileId:"jefferson",
-      profiles:{ jefferson:Object.assign({}, profile, { id:"jefferson", name:profile.name || "Jefferson Grug" }) },
+      profiles:{ jefferson:Object.assign({}, cloudProfile, { id:"jefferson", name:profile.name || "Jefferson Grug" }) },
       lastSyncByProfile:{}
     }
   };
 }
 
-function scheduleAutoSync(){
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    pushActiveProfile().catch(() => {});
-  }, 900);
+function formatSyncTime(value){
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
 }
 
-async function pushActiveProfile(){
-  const profile = activeProfile();
-  if (!profile.autoSync || !profile.syncCode) return;
-  const payload = exportProfilePayload(profile);
-  const result = await cloudSyncRequest("PUT", profile.syncCode, { payload, pin:AUTO_SYNC_PIN });
-  state.lastSyncByProfile[profile.id] = result.updatedAt || new Date().toISOString();
+function cloudProfileSnapshot(profile){
+  return JSON.stringify(exportProfilePayload(profile).data.profiles.jefferson);
+}
+
+function saveCloudRecoveryBackup(){
+  localStorage.setItem(CLOUD_BACKUP_KEY, JSON.stringify({ savedAt:new Date().toISOString(), state:clone(state) }));
+}
+
+function syncPinFor(profile){
+  return String(profile.syncPin || (profile.autoSync && profile.syncCode ? LEGACY_SYNC_PIN : "")).trim();
+}
+
+function cloudProfileFromResult(result){
+  if (result?.payload?.app && result.payload.app !== APP_ID){
+    throw new Error("That cloud save belongs to a different character app.");
+  }
+  const remote = result?.payload?.data?.profiles?.jefferson;
+  if (!remote) throw new Error("The cloud save does not contain Jefferson's profile.");
+  return remote;
+}
+
+function applyCloudResult(result, options = {}){
+  const current = activeProfile();
+  const remote = cloudProfileFromResult(result);
+  if (options.backup) saveCloudRecoveryBackup();
+  const next = ensureProfileShape(remote);
+  next.syncCode = options.code || current.syncCode || DEFAULT_SYNC_CODE;
+  next.syncPin = options.pin || current.syncPin || "";
+  next.autoSync = true;
+  state.profiles.jefferson = next;
+  state.currentProfileId = "jefferson";
+  state.lastSyncByProfile.jefferson = result.updatedAt || new Date().toISOString();
+  state.syncRevisionByProfile.jefferson = Number(result.revision || 1);
+  state.syncDirtyByProfile.jefferson = false;
+  state.syncConflictByProfile.jefferson = "";
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-async function pullActiveProfile(){
+function scheduleAutoSync(){
+  if (saveTimer) clearTimeout(saveTimer);
+  const profile = activeProfile();
+  if (!profile?.autoSync || !profile.syncCode || !state.syncDirtyByProfile[profile.id] || state.syncConflictByProfile[profile.id]) return;
+  saveTimer = setTimeout(() => {
+    pushActiveProfile().then(() => render()).catch(() => { render(); });
+  }, 900);
+}
+
+async function pushActiveProfile(options = {}){
+  const profile = activeProfile();
+  if (!profile.autoSync || !profile.syncCode) return;
+  if (pushInFlight){
+    pushQueued = true;
+    return;
+  }
+  const pin = syncPinFor(profile);
+  if (!/^\d{4}$/.test(pin)) throw new Error("Cloud Sync needs its 4-digit PIN on this device.");
+  pushInFlight = true;
+  const snapshot = cloudProfileSnapshot(profile);
+  const payload = exportProfilePayload(profile);
+  const body = { payload, pin };
+  const revision = Number(state.syncRevisionByProfile[profile.id] || 0);
+  if (options.createOnly) body.createOnly = true;
+  if (!options.force && revision) body.expectedRevision = revision;
+  try{
+    const result = await cloudSyncRequest("PUT", profile.syncCode, body);
+    state.lastSyncByProfile[profile.id] = result.updatedAt || new Date().toISOString();
+    state.syncRevisionByProfile[profile.id] = Number(result.revision || revision + 1 || 1);
+    state.syncConflictByProfile[profile.id] = "";
+    state.syncDirtyByProfile[profile.id] = cloudProfileSnapshot(activeProfile()) !== snapshot;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (state.syncDirtyByProfile[profile.id]) pushQueued = true;
+    return result;
+  }catch(error){
+    if (error?.status === 409){
+      state.syncConflictByProfile[profile.id] = error.message;
+      state.syncDirtyByProfile[profile.id] = true;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+    throw error;
+  }finally{
+    pushInFlight = false;
+    if (pushQueued){
+      pushQueued = false;
+      scheduleAutoSync();
+    }
+  }
+}
+
+async function pullActiveProfile(options = {}){
   const profile = activeProfile();
   if (!profile.autoSync || !profile.syncCode || pullInFlight) return;
+  if (state.syncDirtyByProfile[profile.id] && !options.force){
+    throw new Error("This device has unsynced changes. Open Cloud Sync to choose which copy to keep.");
+  }
   pullInFlight = true;
   try{
     const result = await cloudSyncRequest("GET", profile.syncCode);
-    const remote = result?.payload?.data?.profiles?.[profile.id];
-    if (remote){
-      state.profiles[profile.id] = ensureProfileShape(remote);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      return;
-    }
-    await pushActiveProfile();
-  }catch{
-    await pushActiveProfile().catch(() => {});
+    applyCloudResult(result, { backup:Boolean(options.backup) });
+    return result;
   }finally{
     pullInFlight = false;
   }
 }
 
-async function manualSyncNow(){
-  try{
-    await pushActiveProfile();
-    await pullActiveProfile();
-    openResult("Sync", "Profile sync completed.");
-    render();
-  }catch(error){
-    openResult("Sync", error?.message || "Sync failed.");
-  }
+function openCloudSyncModal(){
+  const profile = activeProfile();
+  const connected = Boolean(profile.autoSync && profile.syncCode);
+  const conflict = state.syncConflictByProfile[profile.id];
+  const dirty = state.syncDirtyByProfile[profile.id];
+  const lastSync = state.lastSyncByProfile[profile.id];
+  const status = conflict
+    ? `Conflict: ${conflict}`
+    : connected
+      ? `${dirty ? "Local changes are waiting to upload." : "This device matches the live copy."}${lastSync ? `\nLast synced: ${new Date(lastSync).toLocaleString()}` : ""}`
+      : "This device is local-only. On the device with the correct character, start the live copy. On every other device, choose Use Live Copy.";
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Cloud Sync</div>
+      <button class="small-btn" data-close>Close</button>
+    </div>
+    <div class="detail-box">${escapeHtml(status)}</div>
+    <div class="detail-box" style="margin-top:8px;">Live character: ${escapeHtml(profile.syncCode || DEFAULT_SYNC_CODE)}\nA recovery backup is kept on this device before any cloud download.</div>
+    <div class="form-grid">
+      <label>4-digit Sync PIN
+        <input type="password" id="cloudSyncPinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="${profile.syncPin ? "PIN saved on this device" : "Enter 4 digits"}">
+      </label>
+    </div>
+    <div class="modal-actions">
+      ${connected
+        ? `<button class="action-btn blue" id="syncNowBtn">Sync Now</button>
+           <button class="action-btn gold" id="useLiveCopyBtn">Use Live Copy</button>
+           <button class="action-btn red" id="replaceLiveCopyBtn">Replace Live</button>
+           <button class="action-btn" id="disconnectCloudBtn">Disconnect</button>`
+        : `<button class="action-btn green" id="startLiveCopyBtn">Start With This Device</button>
+           <button class="action-btn blue" id="useLiveCopyBtn">Use Existing Live Copy</button>`}
+    </div>
+    ${localStorage.getItem(CLOUD_BACKUP_KEY) ? `<div class="modal-actions"><button class="action-btn" id="restoreCloudBackupBtn">Restore Pre-Cloud Backup</button></div>` : ""}
+  `);
+  const enteredPin = () => String(document.getElementById("cloudSyncPinInput")?.value || profile.syncPin || "").trim();
+  const requirePin = () => {
+    const pin = enteredPin();
+    if (!/^\d{4}$/.test(pin)) throw new Error("Enter the 4-digit Sync PIN.");
+    return pin;
+  };
+  const showFailure = error => openResult("Cloud Sync", error?.message || "Cloud sync failed.");
+
+  const startButton = document.getElementById("startLiveCopyBtn");
+  if (startButton) startButton.onclick = async () => {
+    try{
+      const pin = requirePin();
+      const result = await cloudSyncRequest("PUT", DEFAULT_SYNC_CODE, { payload:exportProfilePayload(profile), pin, createOnly:true });
+      profile.syncCode = DEFAULT_SYNC_CODE;
+      profile.syncPin = pin;
+      profile.autoSync = true;
+      state.lastSyncByProfile[profile.id] = result.updatedAt || new Date().toISOString();
+      state.syncRevisionByProfile[profile.id] = Number(result.revision || 1);
+      state.syncDirtyByProfile[profile.id] = false;
+      state.syncConflictByProfile[profile.id] = "";
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      closeModal();
+      render();
+    }catch(error){ showFailure(error); }
+  };
+
+  const useLiveButton = document.getElementById("useLiveCopyBtn");
+  if (useLiveButton) useLiveButton.onclick = async () => {
+    try{
+      const pin = requirePin();
+      const code = profile.syncCode || DEFAULT_SYNC_CODE;
+      await cloudSyncRequest("POST", code, { pin, action:"verify" });
+      const result = await cloudSyncRequest("GET", code);
+      applyCloudResult(result, { code, pin, backup:true });
+      closeModal();
+      render();
+    }catch(error){ showFailure(error); }
+  };
+
+  const syncNowButton = document.getElementById("syncNowBtn");
+  if (syncNowButton) syncNowButton.onclick = async () => {
+    try{
+      const pin = enteredPin();
+      if (pin) profile.syncPin = requirePin();
+      if (state.syncDirtyByProfile[profile.id]) await pushActiveProfile();
+      else await pullActiveProfile();
+      closeModal();
+      render();
+    }catch(error){ showFailure(error); }
+  };
+
+  const replaceButton = document.getElementById("replaceLiveCopyBtn");
+  if (replaceButton) replaceButton.onclick = async () => {
+    try{
+      const pin = enteredPin();
+      if (pin) profile.syncPin = requirePin();
+      state.syncDirtyByProfile[profile.id] = true;
+      await pushActiveProfile({ force:true });
+      closeModal();
+      render();
+    }catch(error){ showFailure(error); }
+  };
+
+  const disconnectButton = document.getElementById("disconnectCloudBtn");
+  if (disconnectButton) disconnectButton.onclick = () => {
+    profile.autoSync = false;
+    profile.syncCode = "";
+    profile.syncPin = "";
+    delete state.lastSyncByProfile[profile.id];
+    delete state.syncRevisionByProfile[profile.id];
+    delete state.syncDirtyByProfile[profile.id];
+    delete state.syncConflictByProfile[profile.id];
+    closeModal();
+    saveState({ fromSync:true });
+  };
+
+  const restoreButton = document.getElementById("restoreCloudBackupBtn");
+  if (restoreButton) restoreButton.onclick = () => {
+    try{
+      const backup = JSON.parse(localStorage.getItem(CLOUD_BACKUP_KEY) || "null");
+      state = normalizeGrugState(backup?.state);
+      const restored = activeProfile();
+      restored.autoSync = false;
+      restored.syncCode = "";
+      restored.syncPin = "";
+      state.lastSyncByProfile = {};
+      state.syncRevisionByProfile = {};
+      state.syncDirtyByProfile = {};
+      state.syncConflictByProfile = {};
+      closeModal();
+      saveState({ fromSync:true });
+    }catch{
+      openResult("Cloud Sync", "The recovery backup could not be restored.");
+    }
+  };
+}
+
+function manualSyncNow(){
+  openCloudSyncModal();
 }
 
 window.addEventListener("storage", event => {
@@ -4528,6 +4768,13 @@ window.addEventListener("storage", event => {
   }catch{}
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !state) return;
+  const profile = activeProfile();
+  if (!profile?.autoSync || state.syncDirtyByProfile[profile.id]) return;
+  pullActiveProfile().then(() => render()).catch(() => {});
+});
+
 document.getElementById("modalBack").onclick = event => {
   if (event.target.id === "modalBack") closeModal();
 };
@@ -4535,7 +4782,13 @@ document.getElementById("modalBack").onclick = event => {
 async function init(){
   await loadDb();
   state = loadState();
-  await pullActiveProfile();
+  const profile = activeProfile();
+  if (profile.autoSync && profile.syncCode){
+    try{
+      if (state.syncDirtyByProfile[profile.id]) await pushActiveProfile();
+      else await pullActiveProfile();
+    }catch{}
+  }
   render();
 }
 
