@@ -519,6 +519,7 @@
     padding:6px;
     background:#101922;
     border-color:var(--line2);
+    color:#fff;
   }
   .mastery-summary-slot{
     min-width:0;
@@ -533,7 +534,7 @@
     text-align:left;
   }
   .mastery-summary-slot b{font-size:12px}
-  .mastery-summary-slot span{font-size:10px;color:var(--muted)}
+  .mastery-summary-slot span{font-size:10px;color:#fff}
   .mastery-filter-row{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -1161,10 +1162,6 @@
     <div class="card">
       <div class="card-title">
         <span>Core Stats</span>
-        <div class="title-actions">
-          <button class="small-btn" id="levelUpBtn">Level Up</button>
-          <button class="small-btn" id="repopulateBtn">Repopulate</button>
-        </div>
       </div>
       <div class="control-row">
         <button class="mode-btn" id="coreRollTypeBtn"></button>
@@ -1321,9 +1318,7 @@
   <section class="page" data-page="notes">
     <div class="card">
       <div class="card-title"><span>Notes</span></div>
-      <label>Notes
-        <textarea id="notesInput" placeholder="Build notes, assumptions, optional features, attunement details..."></textarea>
-      </label>
+      <textarea id="notesInput" aria-label="Notes" placeholder="Build notes, assumptions, optional features, attunement details..."></textarea>
     </div>
   </section>
 </div>
@@ -1339,6 +1334,6 @@
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js?v=20260715grug2024a"></script>
-<script src="./app.js?v=20260910manualcloud"></script>
+<script src="./app.js?v=20260911ui"></script>
 </body>
 </html>

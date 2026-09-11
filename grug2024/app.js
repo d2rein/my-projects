@@ -2090,7 +2090,7 @@ function buildAbilityButtons(profile = activeProfile()){
     const wisUses = Math.max(1, abilityMod(finalAbilityScores(profile).WIS));
     buttons.push({
       id:"war-priest",
-      label:"War Priest",
+      label:"BA - War Priest",
       note:`${Math.max(0, wisUses - profile.resources.warPriestUsed)}/${wisUses}`,
       infoText:"As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. You can use this Bonus Action a number of times equal to your Wisdom modifier (minimum of once). You regain all expended uses when you finish a Short or Long Rest.",
       showPips:true,
@@ -2783,8 +2783,6 @@ function bindGlobalButtons(){
     saveState();
   };
   document.getElementById("populateBuilderBtn").onclick = populateProfile;
-  document.getElementById("levelUpBtn").onclick = levelUp;
-  document.getElementById("repopulateBtn").onclick = populateProfile;
   document.getElementById("statsEditTopBtn").onclick = openTopEditor;
   document.getElementById("coinsBtn").onclick = openCoinsEditor;
   document.getElementById("coreRollTypeBtn").onclick = () => {
