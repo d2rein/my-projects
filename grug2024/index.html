@@ -434,7 +434,7 @@
   }
   .control-row{
     display:grid;
-    grid-template-columns:minmax(0,1fr) 56px 42px;
+    grid-template-columns:minmax(0,1fr) 56px 72px 42px;
     gap:5px;
     margin-bottom:6px;
     align-items:stretch;
@@ -1166,6 +1166,7 @@
       <div class="control-row">
         <button class="mode-btn" id="coreRollTypeBtn"></button>
         <button class="mode-btn" id="coreAdvModeBtn"></button>
+        <button class="mode-btn inactive" id="coreGuidanceBtn">Guidance</button>
         <button class="small-btn" id="editCoreBtn">Edit</button>
       </div>
       <div class="stats-grid" id="statsGrid"></div>
@@ -1175,6 +1176,7 @@
       <div class="control-row">
         <button class="mode-btn" id="skillRollTypeBtn" type="button">CHECK</button>
         <button class="mode-btn" id="skillAdvModeBtn"></button>
+        <button class="mode-btn inactive" id="skillGuidanceBtn">Guidance</button>
         <button class="small-btn" id="editSkillsBtn">Edit</button>
       </div>
       <div class="skills-grid" id="skillsGrid"></div>
@@ -1334,6 +1336,6 @@
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
 <script src="./spell-data.js?v=20260715grug2024a"></script>
-<script src="./app.js?v=20260911ui"></script>
+<script src="./app.js?v=20260911guidance"></script>
 </body>
 </html>

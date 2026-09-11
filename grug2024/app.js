@@ -500,6 +500,7 @@ function createBlankProfile(id = `profile-${Date.now()}`){
     coreRollType:"check",
     coreAdvMode:"-",
     skillAdvMode:"-",
+    guidanceActive:false,
     concentrationMode:"-",
     concentrationActive:"",
     notes:"",
@@ -738,6 +739,7 @@ function ensureProfileShape(profile){
   blank.statRolls = Array.isArray(blank.statRolls) ? blank.statRolls : [];
   blank.hpRolls = Array.isArray(blank.hpRolls) ? blank.hpRolls : [];
   blank.hpMaxOverride = blank.hpMaxOverride == null ? null : Number(blank.hpMaxOverride);
+  blank.guidanceActive = String(blank.concentrationActive || "").toLowerCase() === "guidance";
   blank.resources.cunningStrikeEffects = Array.isArray(blank.resources.cunningStrikeEffects) ? unique(blank.resources.cunningStrikeEffects) : [];
   blank.resources.shieldOfFaithActive = Boolean(blank.resources.shieldOfFaithActive);
   blank.resources.spiritualWeaponActive = Boolean(blank.resources.spiritualWeaponActive);
@@ -1105,16 +1107,30 @@ function clearTrackedConcentrationSpells(profile = activeProfile()){
   profile.resources.shieldOfFaithActive = false;
   profile.resources.spiritualWeaponActive = false;
   profile.resources.spiritualWeaponSlotLevel = 0;
+  profile.guidanceActive = false;
 }
 
 function setTrackedConcentrationSpell(profile, name){
   clearTrackedConcentrationSpells(profile);
   profile.concentrationActive = name;
+  profile.guidanceActive = String(name || "").toLowerCase() === "guidance";
   if (name === "Shield of Faith"){
     profile.resources.shieldOfFaithActive = true;
   }
   if (name === "Spiritual Weapon"){
     profile.resources.spiritualWeaponActive = true;
+  }
+}
+
+function setGuidanceActive(profile, active){
+  if (active){
+    setTrackedConcentrationSpell(profile, "Guidance");
+    return;
+  }
+  profile.guidanceActive = false;
+  if (String(profile.concentrationActive || "").toLowerCase() === "guidance"){
+    profile.concentrationActive = "";
+    clearTrackedConcentrationSpells(profile);
   }
 }
 
@@ -1520,7 +1536,7 @@ function openSpellCard(name){
   `);
   document.getElementById("castSpellFromCardBtn").onclick = () => {
     closeModal();
-    castSpellByName(spell.name);
+    castSpell(spell.name);
   };
 }
 
@@ -1956,6 +1972,11 @@ function renderStatsPage(){
   document.getElementById("coreRollTypeBtn").textContent = profile.coreRollType === "save" ? "SAVE" : "CHECK";
   document.getElementById("coreAdvModeBtn").textContent = profile.coreAdvMode === "-" ? "-" : profile.coreAdvMode === "adv" ? "ADV" : "DIS";
   document.getElementById("skillAdvModeBtn").textContent = profile.skillAdvMode === "-" ? "-" : profile.skillAdvMode === "adv" ? "ADV" : "DIS";
+  const coreGuidance = document.getElementById("coreGuidanceBtn");
+  const skillGuidance = document.getElementById("skillGuidanceBtn");
+  coreGuidance.disabled = profile.coreRollType === "save";
+  coreGuidance.className = `mode-btn ${profile.guidanceActive && profile.coreRollType === "check" ? "active" : "inactive"}`;
+  skillGuidance.className = `mode-btn ${profile.guidanceActive ? "active" : "inactive"}`;
   document.getElementById("statsGrid").innerHTML = ABILITIES.map(abil => `
     <div class="stat roll-row" data-roll-core="${abil}">
       <div class="stat-head">${abil}</div>
@@ -2786,11 +2807,24 @@ function bindGlobalButtons(){
   document.getElementById("statsEditTopBtn").onclick = openTopEditor;
   document.getElementById("coinsBtn").onclick = openCoinsEditor;
   document.getElementById("coreRollTypeBtn").onclick = () => {
-    activeProfile().coreRollType = activeProfile().coreRollType === "check" ? "save" : "check";
+    const profile = activeProfile();
+    profile.coreRollType = profile.coreRollType === "check" ? "save" : "check";
+    if (profile.coreRollType === "save") setGuidanceActive(profile, false);
     saveState();
   };
   document.getElementById("coreAdvModeBtn").onclick = () => cycleMode("coreAdvMode");
   document.getElementById("skillAdvModeBtn").onclick = () => cycleMode("skillAdvMode");
+  document.getElementById("coreGuidanceBtn").onclick = () => {
+    const profile = activeProfile();
+    if (profile.coreRollType === "save") return;
+    setGuidanceActive(profile, !profile.guidanceActive);
+    saveState();
+  };
+  document.getElementById("skillGuidanceBtn").onclick = () => {
+    const profile = activeProfile();
+    setGuidanceActive(profile, !profile.guidanceActive);
+    saveState();
+  };
   document.getElementById("editCoreBtn").onclick = () => openProficiencyEditor("save");
   document.getElementById("editSkillsBtn").onclick = () => openProficiencyEditor("skill");
   document.querySelectorAll("[data-roll-core]").forEach(button => {
@@ -3383,9 +3417,12 @@ function rollAbilityCheck(ability){
   const profile = activeProfile();
   const mode = profile.coreAdvMode;
   const roll = rollD20(mode);
-  const bonus = profile.coreRollType === "save" ? saveMod(ability, profile) : abilityMod(finalAbilityScores(profile)[ability]);
-  const label = `${ability} ${profile.coreRollType === "save" ? "Save" : "Check"}`;
-  const text = `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)} = ${roll.chosen + bonus}`;
+  const isSave = profile.coreRollType === "save";
+  const bonus = isSave ? saveMod(ability, profile) : abilityMod(finalAbilityScores(profile)[ability]);
+  const guidance = !isSave && profile.guidanceActive ? rollDice("1d4") : null;
+  const total = roll.chosen + bonus + (guidance?.total || 0);
+  const label = `${ability} ${isSave ? "Save" : "Check"}`;
+  const text = `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${roll.chosen} ${fmtMod(bonus)}${guidance ? ` + ${guidance.total} (Guidance 1d4)` : ""} = ${total}`;
   openResult(label, text);
   pushHistory(`${label}: ${text}`);
 }
@@ -3396,7 +3433,9 @@ function rollSkillCheck(skillName){
   const bonus = skillMod(skillName, profile);
   const reliableTalentActive = (classCounts(profile).rogue || 0) >= 7 && profileSkillProficiencies(profile).includes(skillName);
   const effectiveRoll = reliableTalentActive && roll.chosen < 10 ? 10 : roll.chosen;
-  const text = `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${effectiveRoll} ${fmtMod(bonus)} = ${effectiveRoll + bonus}${reliableTalentActive && roll.chosen < 10 ? "\nReliable Talent" : ""}`;
+  const guidance = profile.guidanceActive ? rollDice("1d4") : null;
+  const total = effectiveRoll + bonus + (guidance?.total || 0);
+  const text = `${roll.second ? `${roll.first}, ${roll.second}` : roll.first} -> ${effectiveRoll} ${fmtMod(bonus)}${guidance ? ` + ${guidance.total} (Guidance 1d4)` : ""} = ${total}${reliableTalentActive && roll.chosen < 10 ? "\nReliable Talent" : ""}`;
   openResult(skillName, text);
   pushHistory(`${skillName}: ${text}`);
 }
@@ -3529,8 +3568,7 @@ function toggleConcentration(name = ""){
     profile.concentrationActive = "";
     clearTrackedConcentrationSpells(profile);
   }else{
-    clearTrackedConcentrationSpells(profile);
-    profile.concentrationActive = name || "Concentration";
+    setTrackedConcentrationSpell(profile, name || "Concentration");
   }
   saveState();
 }
@@ -3714,6 +3752,7 @@ function populateProfile(){
   profile.resources.sneakAttackReady = false;
   profile.resources.steadyAimActive = false;
   profile.concentrationActive = "";
+  clearTrackedConcentrationSpells(profile);
   pushHistory(`Populated build to level ${profile.targetLevel}. HP max ${computeHpMax(profile)}.`);
   saveState();
 }
@@ -4003,8 +4042,7 @@ function castSpell(name){
     text += `\nDamage: ${String(damageMatch[1]).toUpperCase()} -> ${damage.rolls.join(" + ")} = ${damage.total} ${damageMatch[2]}`;
   }
   if (Boolean(spell.concentration) || /concentration/i.test(String(spell.duration || ""))){
-    clearTrackedConcentrationSpells(profile);
-    profile.concentrationActive = spell.name;
+    setTrackedConcentrationSpell(profile, spell.name);
     text += `\nConcentration started: ${spell.name}`;
     if (String(spell.name || "").toLowerCase() === "shield of faith"){
       text += "\nAC +2 while concentration is active";
