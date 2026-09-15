@@ -14,7 +14,8 @@ const actualWinner=r=>r.hs==null||r.as==null?null:r.hs===r.as?"Draw":r.hs>r.as?r
 const correct=(r,tip)=>{const w=actualWinner(r);return w==null?null:w==="Draw"?true:w===tip};
 const sourceLabel=r=>r.explicitClose?"explicit close":r.closeSource==="oddsportal_survey_fallback"?"survey fallback":r.liveOdds?"latest recorded":"no market pair";
 const noVig=(home,away)=>home&&away?(1/home)/((1/home)+(1/away)):null;
-const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Sharks":"Sharks","Cronulla Sharks":"Sharks","New Zealand Warriors":"Warriors","Newcastle Knights":"Knights","South Sydney Rabbitohs":"Rabbitohs","Penrith Panthers":"Panthers","North Queensland Cowboys":"Cowboys","NQ Cowboys":"Cowboys","Brisbane Broncos":"Broncos","Canberra Raiders":"Raiders","Canterbury-Bankstown Bulldogs":"Bulldogs","Gold Coast Titans":"Titans","Manly-Warringah Sea Eagles":"Sea Eagles","Melbourne Storm":"Storm","Parramatta Eels":"Eels","St George Illawarra Dragons":"Dragons","St. George Illawarra Dragons":"Dragons","Wests Tigers":"Tigers"}[value]||value;
+const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Sharks":"Sharks","Cronulla Sharks":"Sharks","New Zealand Warriors":"Warriors","Newcastle Knights":"Knights","South Sydney Rabbitohs":"Rabbitohs","Penrith Panthers":"Panthers","North Queensland Cowboys":"Cowboys","NQ Cowboys":"Cowboys","Brisbane Broncos":"Broncos","Canberra Raiders":"Raiders","Canterbury-Bankstown Bulldogs":"Bulldogs","Gold Coast Titans":"Titans","Manly-Warringah Sea Eagles":"Sea Eagles","Melbourne Storm":"Storm","Parramatta Eels":"Eels","St George Illawarra Dragons":"Dragons","St. George Illawarra Dragons":"Dragons","Wests Tigers":"Tigers"}[value]||value);
+const roundKey=value=>String(value||"").replace(/Finals Week/i,"Finals Wk").replace(/\s+/g," ").trim().toLowerCase();
 
 async function loadCache(){
   const res=await fetch(`data/historical-cache.json?v=${CACHE_VERSION}`);
@@ -34,13 +35,13 @@ async function refreshCurrent(){
     if(!response.ok)throw new Error(`API ${response.status}`);
     const live=await response.json();
     state.teamLists=teamListResponse?.ok?await teamListResponse.json():[];
-    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}`,r]));
+    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}|${roundKey(r.round_name)}`,r]));
     state.current=live.filter(r=>Number(r.year)===CURRENT_SEASON).map(m=>{
       const cached=byId.get(Number(m.id))||base.find(r=>r.home===m.home_team&&r.away===m.away_team&&String(r.round).replace("Finals Week","Finals Wk")===String(m.round));
       const pair=Number.isFinite(Number(m.home_odds))&&Number.isFinite(Number(m.away_odds));
       const observed=marketByTeams.get(`${m.home_team}|${m.away_team}`), liveHome=observed?.lastHome??(pair?Number(m.home_odds):null),liveAway=observed?.lastAway??(pair?Number(m.away_odds):null),liveP=noVig(liveHome,liveAway),openP=noVig(observed?.openingHome,observed?.openingAway),candidateP=cached?.candidateP??null;
       const marketFav=liveP==null?null:Math.max(liveP,1-liveP),marketTipHome=liveP==null?null:liveP>.5,modelTipHome=candidateP==null?null:candidateP>=.5;
-      const teamList=listByTeams.get(`${shortTeam(m.home_team)}|${shortTeam(m.away_team)}`)||null;
+      const teamList=listByTeams.get(`${shortTeam(m.home_team)}|${shortTeam(m.away_team)}|${roundKey(m.round)}`)||null;
       return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,teamList,liveOdds:liveHome!=null&&liveAway!=null,liveHome,liveAway,liveBookmaker:observed?.bookmaker||(pair?"unverified API pair":null),liveObservedAt:observed?.lastObservedAt||null,r1:cached?.r1||(candidateP!=null&&candidateP>=.45&&candidateP<=.55&&marketFav>=.60&&marketTipHome!==modelTipHome),r2:cached?.r2||(candidateP!=null&&marketFav>=.65&&marketTipHome!==modelTipHome),r3:cached?.r3||(openP!=null&&liveP!=null&&Math.abs(liveP-openP)>=.10)};
     });
     $("#current-updated").textContent=`Live data checked ${new Date().toLocaleString("en-AU")}`;
