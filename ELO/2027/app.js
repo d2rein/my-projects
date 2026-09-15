@@ -2,7 +2,7 @@ import { createReplayEngine } from "../shared/replay-engine.js";
 import { FINALS_ROUNDS } from "../shared/finals-bracket.js";
 import { MODELS, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js";
 
-const state={cache:null,current:[],teamLists:[],historyPage:0,charts:{},ratings:null,replayDetails:null};
+const state={cache:null,current:[],teamLists:[],charts:{},ratings:null,replayDetails:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pct=v=>v==null?"—":`${(100*v).toFixed(1)}%`;
@@ -53,7 +53,9 @@ async function refreshCurrent(){
   }finally{button.disabled=false;button.textContent="Refresh"}
   state.replayDetails=null;
   renderCurrent();
-  if(Number($("#history-year")?.value)===CURRENT_SEASON)renderHistory();
+  state.historySignature=null;
+  if($("#tab-history")?.classList.contains("active"))renderHistory();
+  prepareCurrentRoundEntry();
 }
 
 function showNotice(message){const el=$("#global-message");el.textContent=message;el.classList.remove("hidden")}
@@ -68,6 +70,31 @@ function getReplayDetails(){
   const replay=createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true});
   state.replayDetails=new Map(replay.rows.map(r=>[Number(r.match.id),{homeElo:r.out.homeEloBefore,awayElo:r.out.awayEloBefore,homeRank:r.homeRankBeforeRound,awayRank:r.awayRankBeforeRound,coreP:r.out.expected}]));
   return state.replayDetails;
+}
+
+function allDisplayMatches(){
+  const liveIds=new Set(state.current.map(r=>Number(r.id)));
+  return [...state.cache.matches.filter(r=>!liveIds.has(Number(r.id))),...state.current].sort((a,b)=>a.year-b.year||a.matchIndex-b.matchIndex);
+}
+
+function currentRoundName(){
+  const rows=[...state.current].sort((a,b)=>a.matchIndex-b.matchIndex);
+  return (rows.find(r=>r.hs==null||r.as==null)||rows.at(-1))?.round||"Rd 1";
+}
+
+function prepareCurrentRoundEntry(){
+  $("#round-year").value=String(CURRENT_SEASON);
+  $("#round-name").value=currentRoundName();
+  loadRoundForEntry();
+}
+
+function scrollToCurrentRound(tableSelector,rows){
+  const current=currentRoundName(),target=rows.find(r=>r.year===CURRENT_SEASON&&roundKey(r.round)===roundKey(current));
+  if(!target)return;
+  requestAnimationFrame(()=>{
+    const table=$(tableSelector),scroller=table?.closest(".games-scroll"),row=table?.querySelector(`tr[data-match-id="${target.id}"]`);
+    if(scroller&&row)scroller.scrollTop=Math.max(0,row.offsetTop-scroller.clientHeight*.35);
+  });
 }
 
 function pip(pick,eloPick,winner,completed,title){let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip warning";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick===winner)cls="pip error";else cls="pip warning";return `<span class="${cls}" title="${esc(title)}"></span>`}
@@ -95,17 +122,20 @@ function renderCurrent(){
   $("#season-scorecards").innerHTML=`<span><b>Candidate:</b> ${candidate.games?`${candidate.correct}/${candidate.games} (${pct(candidate.correct/candidate.games)})`:"—"}</span><span><b>Pre-match lists:</b> ${publishedLists}</span><span><b>Market flags:</b> ${market}</span><span><b>Margin exact:</b> ${exact}/${marginRows.length}</span>`;
   const rows=[...state.current].sort((a,b)=>a.matchIndex-b.matchIndex);
   $("#current-table").innerHTML=renderGamesTable(rows);
+  $$("#current-table tbody tr").forEach((tr,i)=>tr.dataset.matchId=rows[i].id);
+  scrollToCurrentRound("#current-table",rows);
 }
 
 function populateSelectors(){
   const years=[...new Set(state.cache.matches.map(r=>r.year))].sort((a,b)=>b-a);
-  for(const id of ["#ladder-year","#history-year"]){$(id).innerHTML=years.map(y=>`<option>${y}</option>`).join("");$(id).value=String(CURRENT_SEASON)}
+  $("#ladder-year").innerHTML=years.map(y=>`<option>${y}</option>`).join("");$("#ladder-year").value=String(CURRENT_SEASON);
+  $("#season-year").innerHTML=years.map(y=>`<option>${y}</option>`).join("");$("#season-year").value=String(CURRENT_SEASON);
+  $("#history-year").innerHTML='<option value="all">All seasons</option>'+years.map(y=>`<option>${y}</option>`).join("");$("#history-year").value="all";
   $("#joker-year").innerHTML=Object.keys(state.cache.joker).sort((a,b)=>b-a).map(y=>`<option>${y}</option>`).join("");
   const teams=[...new Set(state.cache.matches.flatMap(r=>[r.home,r.away]))].sort();
   $("#history-team").innerHTML='<option value="">All teams</option>'+teams.map(t=>`<option>${esc(t)}</option>`).join("");
-  $("#ratings-teams").innerHTML=teams.map(t=>`<option ${["Brisbane Broncos","Melbourne Storm","Penrith Panthers"].includes(t)?"selected":""}>${esc(t)}</option>`).join("");
-  $("#ratings-from").innerHTML=years.slice().reverse().map(y=>`<option>${y}</option>`).join("");$("#ratings-from").value="1998";
-  updateLadderRounds(); renderHistory(); renderJoker();
+  populateRatingControls(teams,years);
+  updateLadderRounds(); renderMatrix(); renderJoker();
 }
 
 function seasonMatches(year){return Number(year)===CURRENT_SEASON&&state.current.length?state.current:state.cache.matches.filter(r=>r.year===Number(year))}
@@ -123,12 +153,41 @@ function ratingsAt(year,round){
 }
 function renderLadder(){const year=Number($("#ladder-year").value),round=$("#ladder-round").value,rows=computeLadder(year,round),ratings=ratingsAt(year,round);$("#ladder-table").innerHTML=`<thead><tr><th>#</th><th>Team</th><th>Pts</th><th>For</th><th>Against</th><th>Diff</th><th>Elo</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td class="team"><img src="${logo(r.team)}" width="18" height="18" alt="" onerror="this.style.display='none'"> ${esc(r.team)}</td><td><b>${r.points}</b></td><td>${r.for}</td><td>${r.against}</td><td>${r.diff>0?"+":""}${r.diff}</td><td>${Math.round(ratings[r.team]??1500)}</td></tr>`).join("")}</tbody>`}
 
+function seasonEndRatings(year){
+  const source=allDisplayMatches().filter(r=>r.year<=year),matches=source.map(r=>({year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as}));
+  const teams=[...new Set(matches.flatMap(r=>[r.home_team,r.away_team]))].map(name=>({name}));
+  return createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true}).state.ratings;
+}
+
+function renderMatrix(){
+  const year=Number($("#season-year").value),matches=[...seasonMatches(year)].sort((a,b)=>a.matchIndex-b.matchIndex),teams=[...new Set(matches.flatMap(r=>[r.home,r.away]))],rounds=[...new Set(matches.map(r=>r.round))];
+  const cumulative=Object.fromEntries(teams.map(t=>[t,0])),roundPoints=Object.fromEntries(rounds.map(r=>[r,{}]));
+  for(const round of rounds){
+    const games=matches.filter(m=>m.round===round),played=new Set();
+    for(const m of games){
+      played.add(m.home);played.add(m.away);const complete=m.hs!=null&&m.as!=null,p=m.candidateP??getReplayDetails().get(Number(m.id))?.coreP??.5;
+      let hp,ap,ht,at;
+      if(complete){if(m.hs>m.as){hp=2;ap=0;ht="win";at="loss"}else if(m.as>m.hs){hp=0;ap=2;ht="loss";at="win"}else{hp=1;ap=1;ht=at="draw"}}
+      else{hp=2*p;ap=2*(1-p);ht=p>=.5?"pred-win":"pred-loss";at=p<.5?"pred-win":"pred-loss"}
+      cumulative[m.home]+=hp;cumulative[m.away]+=ap;
+      roundPoints[round][m.home]={pts:cumulative[m.home],type:ht,opponent:m.away};roundPoints[round][m.away]={pts:cumulative[m.away],type:at,opponent:m.home};
+    }
+    if(isRegular(round))for(const team of teams)if(!played.has(team)){cumulative[team]+=2;roundPoints[round][team]={pts:cumulative[team],type:"bye",opponent:null}}
+  }
+  const ratings=seasonEndRatings(year),ladder=teams.map(team=>({team,points:cumulative[team],rating:Math.round(ratings[team]??1500)})).sort((a,b)=>b.points-a.points||b.rating-a.rating||a.team.localeCompare(b.team));
+  $("#season-matrix-table").innerHTML=`<thead><tr><th class="matrix-team">Team</th><th class="matrix-rank">Rank</th><th class="matrix-elo">ELO</th>${rounds.map(r=>`<th class="round-col">${esc(r)}</th>`).join("")}</tr></thead><tbody>${ladder.map((row,index)=>`<tr><td class="matrix-team"><img class="team-logo" src="${logo(row.team)}" alt="" onerror="this.style.display='none'">${esc(row.team)}</td><td>${index+1}</td><td>${row.rating}</td>${rounds.map(round=>{const cell=roundPoints[round][row.team];if(!cell)return "<td></td>";const points=Math.abs(cell.pts-Math.round(cell.pts))<.001?cell.pts.toFixed(0):cell.pts.toFixed(2),opponent=cell.opponent?`<img class="matrix-opponent-logo" src="${logo(cell.opponent)}" title="${esc(cell.opponent)}" alt="" onerror="this.style.display='none'">`:"";return `<td class="${cell.type}">${points}${opponent}</td>`}).join("")}</tr>`).join("")}</tbody>`;
+}
+
 function renderHistory(){
-  const year=Number($("#history-year").value),team=$("#history-team").value,q=$("#history-search").value.toLowerCase();let rows=seasonMatches(year).filter(r=>(!team||r.home===team||r.away===team)&&(!q||`${r.round} ${r.venue}`.toLowerCase().includes(q))).sort((a,b)=>a.matchIndex-b.matchIndex);
-  const size=100,pages=Math.max(1,Math.ceil(rows.length/size));state.historyPage=Math.min(state.historyPage,pages-1);const page=rows.slice(state.historyPage*size,(state.historyPage+1)*size);
-  $("#history-cache-note").innerHTML=`${rows.length} matching games · chronological order`;
-  $("#history-table").innerHTML=renderGamesTable(page);
-  $("#history-page").textContent=`Page ${state.historyPage+1} of ${pages}`;$("#history-prev").disabled=state.historyPage===0;$("#history-next").disabled=state.historyPage>=pages-1;
+  const selectedYear=$("#history-year").value,team=$("#history-team").value,q=$("#history-search").value.toLowerCase();
+  const signature=`${selectedYear}|${team}|${q}|${state.current.length}|${state.current.at(-1)?.hs}|${state.current.at(-1)?.as}`;
+  if(state.historySignature===signature){const rows=selectedYear==="all"?allDisplayMatches():seasonMatches(Number(selectedYear));scrollToCurrentRound("#history-table",rows);return}
+  const rows=(selectedYear==="all"?allDisplayMatches():seasonMatches(Number(selectedYear))).filter(r=>(!team||r.home===team||r.away===team)&&(!q||`${r.round} ${r.venue}`.toLowerCase().includes(q))).sort((a,b)=>a.year-b.year||a.matchIndex-b.matchIndex);
+  $("#history-cache-note").innerHTML=`${rows.length} matching games · all results shown in chronological order`;
+  $("#history-table").innerHTML=renderGamesTable(rows);
+  $$("#history-table tbody tr").forEach((tr,i)=>tr.dataset.matchId=rows[i].id);
+  state.historySignature=signature;
+  scrollToCurrentRound("#history-table",rows);
 }
 
 function renderAccuracy(){const which=$("#performance-model").value;$("#accuracy-table").innerHTML=`<thead><tr><th>Season</th><th>Model used</th><th>Expected</th><th>Actual forecast</th><th>Selected replay</th><th>Ladder</th><th>Opening</th><th>Effective close</th><th>Margin exact</th><th>Margin error</th></tr></thead><tbody>${state.cache.performance.map(r=>{const selected=r[which],fmt=m=>m?.games?`${m.correct}/${m.games} (${pct(m.correct/m.games)})`:"—";return `<tr><td><b>${r.year}</b></td><td>${r.year===2026?"2026 production":"Not archived"}</td><td>${r.expected?pct(r.expected):"—"}</td><td>${fmt(r.actualForecast)}</td><td>${fmt(selected)}</td><td>${fmt(r.ladder)}</td><td>${fmt(r.open)}</td><td>${fmt(r.close)}</td><td>${r.margin.games?`${r.margin.exact}/${r.margin.games}`:"—"}</td><td>${r.margin.games?r.margin.error:"—"}</td></tr>`}).join("")}</tbody>`;renderCharts(which)}
@@ -160,11 +219,51 @@ function changeRound(delta){const input=$("#round-name"),value=input.value.trim(
 function loadRoundForEntry(){const year=Number($("#round-year").value),round=$("#round-name").value,source=year===CURRENT_SEASON&&state.current.length?state.current:state.cache.matches,games=source.filter(r=>r.year===year&&roundKey(r.round)===roundKey(round)).sort((a,b)=>a.matchIndex-b.matchIndex);if(!games.length){$("#round-entry-table").innerHTML=`<p>No games found for ${esc(round)} (${year}).</p>`;$("#save-round-btn").disabled=true;return}const details=getReplayDetails();$("#round-entry-table").innerHTML=`<table class="round-entry"><thead><tr><th>Game #</th><th>Home</th><th>Away</th><th>Pred Win %</th><th>Pred Margin</th><th>Home Score</th><th>Away Score</th></tr></thead><tbody>${games.map(r=>{const d=details.get(Number(r.id))||{},p=r.candidateP??d.coreP,margin=r.candidateDr==null?null:Math.abs(.048406*r.candidateDr);return `<tr data-game-id="${r.id}"><td>${r.game??""}</td><td>${esc(r.home)}</td><td>${esc(r.away)}</td><td>${pct(p)}</td><td>${margin==null?"—":margin.toFixed(1)}</td><td><input type="number" class="home-score-input" value="${r.hs??""}" min="0"></td><td><input type="number" class="away-score-input" value="${r.as??""}" min="0"></td></tr>`}).join("")}</tbody></table>`;$("#save-round-btn").disabled=false}
 async function saveRoundResults(){const rows=[...$$("#round-entry-table tbody tr")];if(!rows.length)return;const updates=rows.map(row=>({game_id:Number(row.dataset.gameId),home_score:row.querySelector(".home-score-input").value||null,away_score:row.querySelector(".away-score-input").value||null}));try{const response=await fetch(`${API_URL}/api/matches/bulk-update`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({updates})});if(!response.ok)throw new Error(`API ${response.status}`);$("#add-message").innerHTML='<div class="message success">Scores saved successfully.</div>';await refreshCurrent();loadRoundForEntry()}catch(error){console.error(error);$("#add-message").innerHTML='<div class="message error">Failed to save scores.</div>'}}
 
-function buildRatingSeries(){if(state.ratings)return state.ratings;const matches=state.cache.matches.map(r=>({year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as})),teams=[...new Set(matches.flatMap(r=>[r.home_team,r.away_team]))].map(name=>({name})),engine=createReplayEngine(MODELS.production2026.parameters,teams),replay=engine.replayMatches(matches,{applyByes:false}),series={};for(const r of replay.rows){if(!r.out.updated)continue;const label=`${r.match.year} ${r.match.round}`;for(const team of [r.match.home_team,r.match.away_team]){series[team]??=[];series[team].push({x:r.match.match_index+1000*r.match.year,y:r.out[team===r.match.home_team?"newHomeElo":"newAwayElo"],label,year:r.match.year})}}state.ratings=series;return series}
-function renderRatings(){const selected=[...$("#ratings-teams").selectedOptions].map(o=>o.value).slice(0,8),from=Number($("#ratings-from").value),series=buildRatingSeries(),palette=["#236a4b","#ae3e3e","#285a78","#bd852d","#68447d","#555","#cf6a3d","#1296a5"];destroyChart("ratings");state.charts.ratings=new Chart($("#ratings-chart"),{type:"line",data:{datasets:selected.map((team,i)=>({label:team,data:(series[team]||[]).filter(p=>p.year>=from),parsing:false,borderColor:palette[i],pointRadius:0,borderWidth:2,tension:.12}))},options:{responsive:true,interaction:{mode:"nearest",intersect:false},scales:{x:{type:"linear",ticks:{callback:value=>Math.floor(value/1000)}},y:{title:{display:true,text:"Elo rating"}}},plugins:{tooltip:{callbacks:{title:items=>items[0]?.raw?.label||""}}}}})}
+function populateRatingControls(teams,years){
+  const oldest=Math.min(...years),latest=Math.max(...years),current=new Set(seasonMatches(CURRENT_SEASON).flatMap(r=>[r.home,r.away]));
+  state.selectedRatingTeams=new Set([...current]);
+  $("#elo-start-year").min=oldest;$("#elo-start-year").max=latest;$("#elo-start-year").value=Math.max(oldest,latest-4);
+  $("#elo-end-year").min=oldest;$("#elo-end-year").max=latest;$("#elo-end-year").value=latest;
+  $("#elo-highlight").innerHTML='<option value="">None</option>'+teams.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  const checks=list=>list.map(t=>`<label class="team-check"><input type="checkbox" data-rating-team="${esc(t)}" ${state.selectedRatingTeams.has(t)?"checked":""}><span>${esc(t)}</span></label>`).join("");
+  $("#current-team-checks").innerHTML=checks(teams.filter(t=>current.has(t)));$("#historical-team-checks").innerHTML=checks(teams.filter(t=>!current.has(t)));
+  updateTeamPickerLabel();
+}
 
-function activate(tab){const target=$("#tab-"+tab)?tab:"season";$$('[data-tab]').forEach(b=>b.classList.toggle("active",b.dataset.tab===target));$$('.tab-content').forEach(p=>p.classList.toggle("active",p.id===`tab-${target}`));history.replaceState(null,"",`#${target}`);if(target==="performance")renderAccuracy();if(target==="ratings")renderRatings();if(target==="ladder")renderLadder();if(target==="history")renderHistory()}
-function wire(){$$('[data-tab]').forEach(b=>b.addEventListener("click",()=>activate(b.dataset.tab)));$("#refresh-current").addEventListener("click",refreshCurrent);$("#ladder-year").addEventListener("change",updateLadderRounds);$("#ladder-round").addEventListener("change",renderLadder);for(const id of ["#history-year","#history-team","#history-search"]){$(id).addEventListener("input",()=>{state.historyPage=0;renderHistory()})}$("#history-prev").addEventListener("click",()=>{state.historyPage--;renderHistory()});$("#history-next").addEventListener("click",()=>{state.historyPage++;renderHistory()});$("#performance-model").addEventListener("change",renderAccuracy);$("#joker-year").addEventListener("change",renderJoker);$("#download-diagnostic").addEventListener("click",downloadDiagnostic);$("#ratings-teams").addEventListener("change",renderRatings);$("#ratings-from").addEventListener("change",renderRatings);$("#round-prev").addEventListener("click",()=>changeRound(-1));$("#round-next").addEventListener("click",()=>changeRound(1));$("#load-round-btn").addEventListener("click",loadRoundForEntry);$("#save-round-btn").addEventListener("click",saveRoundResults)}
+function updateTeamPickerLabel(){const n=state.selectedRatingTeams.size;$("#team-picker-toggle").textContent=`Teams (${n}) ▾`}
+
+function setRatingTeams(mode){
+  const boxes=$$("[data-rating-team]"),current=new Set(seasonMatches(CURRENT_SEASON).flatMap(r=>[r.home,r.away]));state.selectedRatingTeams.clear();
+  for(const box of boxes){box.checked=mode==="all"||(mode==="current"&&current.has(box.dataset.ratingTeam));if(box.checked)state.selectedRatingTeams.add(box.dataset.ratingTeam)}
+  updateTeamPickerLabel();renderRatings();
+}
+
+function buildRatingSeries(){
+  if(state.ratings)return state.ratings;
+  const source=allDisplayMatches(),matches=source.map(r=>({id:r.id,year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as})),teamNames=[...new Set(matches.flatMap(r=>[r.home_team,r.away_team]).filter(Boolean))],teams=teamNames.map(name=>({name}));
+  const replay=createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true});
+  state.ratings={teams:teamNames,rows:replay.rows.filter(r=>r.out.updated)};return state.ratings;
+}
+
+const ratingColors={"Melbourne Storm":"#4B0082","Penrith Panthers":"#000000","Sydney Roosters":"#E4002B","Brisbane Broncos":"#6F263D","Cronulla-Sutherland Sharks":"#0085CA","Cronulla Sharks":"#0085CA","Canberra Raiders":"#00A651","Manly-Warringah Sea Eagles":"#800000","Dolphins":"#FF69B4","Canterbury-Bankstown Bulldogs":"#0057B8","New Zealand Warriors":"#0066CC","North Queensland Cowboys":"#003366","South Sydney Rabbitohs":"#006400","Parramatta Eels":"#003DA5","Newcastle Knights":"#002B5C","St George Illawarra Dragons":"#CC0000","Wests Tigers":"#F15A22","Gold Coast Titans":"#00B2A9"};
+
+function renderRatings(){
+  const start=Number($("#elo-start-year").value),end=Number($("#elo-end-year").value),from=Math.min(start,end),to=Math.max(start,end),highlight=$("#elo-highlight").value,{rows}=buildRatingSeries(),view=rows.filter(r=>r.match.year>=from&&r.match.year<=to),selected=[...state.selectedRatingTeams].sort();
+  const labels=view.map(r=>[String(r.match.year),String(r.match.round)]),datasets=selected.map(team=>({label:team,data:view.map(r=>r.stateAfter.ratings[team]??1500),borderColor:highlight&&highlight!==team?"rgba(150,150,150,.22)":ratingColors[team]||"#777",backgroundColor:ratingColors[team]||"#777",borderWidth:highlight===team?3:1.5,pointRadius:0,tension:0,spanGaps:true}));
+  destroyChart("ratings");state.charts.ratings=new Chart($("#ratings-chart"),{type:"line",data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"nearest",intersect:false},scales:{x:{type:"category",title:{display:true,text:"Season / round"},ticks:{autoSkip:true,maxTicksLimit:30,maxRotation:0}},y:{title:{display:true,text:"Elo rating"}}},plugins:{legend:{display:true,position:"top",labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:items=>items[0]?.label?.replace(","," · ")||""}}}}});
+}
+
+function activate(tab){const target=$("#tab-"+tab)?tab:"season";$$('[data-tab]').forEach(b=>b.classList.toggle("active",b.dataset.tab===target));$$('.tab-content').forEach(p=>p.classList.toggle("active",p.id===`tab-${target}`));history.replaceState(null,"",`#${target}`);if(target==="performance")renderAccuracy();if(target==="ratings")renderRatings();if(target==="ladder")renderLadder();if(target==="matrix")renderMatrix();if(target==="history")requestAnimationFrame(renderHistory)}
+function wire(){
+  $$('[data-tab]').forEach(b=>b.addEventListener("click",()=>activate(b.dataset.tab)));$("#refresh-current").addEventListener("click",refreshCurrent);$("#ladder-year").addEventListener("change",updateLadderRounds);$("#ladder-round").addEventListener("change",renderLadder);$("#season-year").addEventListener("change",renderMatrix);
+  for(const id of ["#history-year","#history-team","#history-search"])$(id).addEventListener("input",renderHistory);
+  $("#performance-model").addEventListener("change",renderAccuracy);$("#joker-year").addEventListener("change",renderJoker);$("#download-diagnostic").addEventListener("click",downloadDiagnostic);$("#round-prev").addEventListener("click",()=>changeRound(-1));$("#round-next").addEventListener("click",()=>changeRound(1));$("#load-round-btn").addEventListener("click",loadRoundForEntry);$("#save-round-btn").addEventListener("click",saveRoundResults);
+  $("#elo-update").addEventListener("click",renderRatings);$("#elo-highlight").addEventListener("change",renderRatings);$("#team-picker-toggle").addEventListener("click",event=>{event.stopPropagation();$("#team-picker-menu").classList.toggle("hidden")});$("#team-picker-menu").addEventListener("click",event=>event.stopPropagation());document.addEventListener("click",()=>$("#team-picker-menu").classList.add("hidden"));
+  $("#team-picker-menu").addEventListener("change",event=>{const box=event.target.closest("[data-rating-team]");if(!box)return;if(box.checked)state.selectedRatingTeams.add(box.dataset.ratingTeam);else state.selectedRatingTeams.delete(box.dataset.ratingTeam);updateTeamPickerLabel();renderRatings()});
+  $("#teams-current").addEventListener("click",()=>setRatingTeams("current"));$("#teams-all").addEventListener("click",()=>setRatingTeams("all"));$("#teams-none").addEventListener("click",()=>setRatingTeams("none"));
+  $$(".quick-range").forEach(button=>button.addEventListener("click",()=>{const years=state.cache.matches.map(r=>r.year),oldest=Math.min(...years),latest=Math.max(...years),range=button.dataset.eloRange;$("#elo-end-year").value=latest;$("#elo-start-year").value=range==="all"?oldest:Math.max(oldest,latest-Number(range)+1);renderRatings()}));
+  $("#elo-reset").addEventListener("click",()=>{const years=state.cache.matches.map(r=>r.year),latest=Math.max(...years),oldest=Math.min(...years);$("#elo-start-year").value=Math.max(oldest,latest-4);$("#elo-end-year").value=latest;$("#elo-highlight").value="";setRatingTeams("current")});
+}
 
 async function init(){try{await loadCache();$("#model-chip-label").textContent=ACTIVE_MODEL.label;$("#current-season-label").textContent=CURRENT_SEASON;populateSelectors();renderModel();wire();await refreshCurrent();activate(location.hash.slice(1)||"season")}catch(error){console.error(error);showNotice(`Preview failed to initialise: ${error.message}`)}}
 init();
