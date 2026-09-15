@@ -10,7 +10,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
     if (request.method === "OPTIONS") {
@@ -18,7 +18,7 @@ export default {
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type"
+          "Access-Control-Allow-Headers": "Content-Type, Authorization"
         }
       });
     }
@@ -51,6 +51,10 @@ export default {
         response = await handleRecalculate(db, request);
       }  else if (path === '/api/parity' && request.method === 'GET') {
         response = await handleParity(db);
+      } else if (path === '/api/prospective/team-lists' && request.method === 'GET') {
+        response = await handleGetProspectiveTeamLists(db, url.searchParams);
+      } else if (path === '/api/prospective/team-lists' && request.method === 'POST') {
+        response = await handlePostProspectiveTeamLists(db, request, env);
       } else {
         response = new Response('Not Found', { status: 404 });
       }
@@ -67,6 +71,92 @@ export default {
     }
   },
 };
+
+function bearerToken(request) {
+  const value = request.headers.get('Authorization') || '';
+  return value.startsWith('Bearer ') ? value.slice(7) : '';
+}
+
+function validTeamListSnapshot(value) {
+  return value && typeof value === 'object' &&
+    /^\d+$/.test(String(value.nrl_match_id || '')) &&
+    Number.isInteger(Number(value.season)) &&
+    typeof value.lineup_sha256 === 'string' && /^[A-F0-9]{64}$/i.test(value.lineup_sha256) &&
+    typeof value.source_url === 'string' && value.source_url.startsWith('https://www.nrl.com/') &&
+    Array.isArray(value.home?.players) && value.home.players.length >= 17 && value.home.players.length <= 30 &&
+    Array.isArray(value.away?.players) && value.away.players.length >= 17 && value.away.players.length <= 30;
+}
+
+async function handlePostProspectiveTeamLists(db, request, env) {
+  if (!env.COLLECTOR_TOKEN || bearerToken(request) !== env.COLLECTOR_TOKEN) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+  const declaredLength = Number(request.headers.get('Content-Length') || 0);
+  if (declaredLength > 750000) return jsonResponse({ error: 'Payload too large' }, 413);
+
+  const body = await request.json();
+  const snapshots = body?.snapshots;
+  if (!Array.isArray(snapshots) || snapshots.length < 1 || snapshots.length > 50) {
+    return jsonResponse({ error: 'snapshots must contain 1 to 50 records' }, 400);
+  }
+  if (!snapshots.every(validTeamListSnapshot)) {
+    return jsonResponse({ error: 'Invalid official team-list snapshot' }, 400);
+  }
+
+  let inserted = 0;
+  for (const snapshot of snapshots) {
+    const payload = JSON.stringify(snapshot);
+    if (payload.length > 200000) return jsonResponse({ error: 'Snapshot too large' }, 413);
+    const result = await db.prepare(`
+      INSERT OR IGNORE INTO prospective_team_list_snapshots (
+        nrl_match_id, season, round_number, round_name, kickoff_utc,
+        home_team, away_team, observed_at_utc, source_updated_at_utc,
+        source_url, lineup_sha256, payload_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      String(snapshot.nrl_match_id), Number(snapshot.season),
+      snapshot.round_number == null ? null : Number(snapshot.round_number),
+      String(snapshot.round_name || ''), String(snapshot.kickoff_utc || ''),
+      String(snapshot.home?.nick_name || snapshot.home?.name || ''),
+      String(snapshot.away?.nick_name || snapshot.away?.name || ''),
+      String(snapshot.observed_at_utc || ''), String(snapshot.source_updated_at_utc || ''),
+      snapshot.source_url, snapshot.lineup_sha256.toUpperCase(), payload
+    ).run();
+    inserted += Number(result.meta?.changes || 0);
+  }
+  return jsonResponse({ ok: true, received: snapshots.length, inserted, unchanged: snapshots.length - inserted }, 201);
+}
+
+async function handleGetProspectiveTeamLists(db, searchParams) {
+  const season = Number(searchParams?.get('season') || 0);
+  const matchId = String(searchParams?.get('match_id') || '').trim();
+  const history = searchParams?.get('history') === '1';
+  const limitValue = Number(searchParams?.get('limit') || (history ? 500 : 100));
+  const limit = Number.isFinite(limitValue) ? Math.max(1, Math.min(limitValue, 1000)) : 100;
+  const filters = [];
+  const bindings = [];
+  if (season) { filters.push('s.season = ?'); bindings.push(season); }
+  if (matchId) { filters.push('s.nrl_match_id = ?'); bindings.push(matchId); }
+  if (!history) {
+    filters.push(`NOT EXISTS (
+      SELECT 1 FROM prospective_team_list_snapshots newer
+      WHERE newer.nrl_match_id = s.nrl_match_id AND newer.id > s.id
+    )`);
+  }
+  const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  const { results } = await db.prepare(`
+    SELECT s.id, s.captured_at_utc, s.payload_json
+    FROM prospective_team_list_snapshots s
+    ${where}
+    ORDER BY s.kickoff_utc DESC, s.id DESC
+    LIMIT ?
+  `).bind(...bindings, limit).all();
+  return jsonResponse((results || []).map(row => ({
+    ...JSON.parse(row.payload_json),
+    snapshot_id: row.id,
+    captured_at_utc: row.captured_at_utc,
+  })));
+}
 
 async function handleParity(db) {
 

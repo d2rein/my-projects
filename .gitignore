@@ -43,6 +43,9 @@ memes_v2/review_2026-05-14_messenger_excluded/
 
 # local/runtime noise
 ELO/backend/node_modules/.mf/
+ELO/offline/**/__pycache__/
+ELO/offline/**/team_list_upload_token.txt
+ELO/offline/experiments/EXP-2026-021-prospective-signal-archive/data/
 chatgpt_meme_guide.html
 New Text Document.txt
 "iss-tracker - Copy"/

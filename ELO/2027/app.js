@@ -1,7 +1,7 @@
 import { createReplayEngine } from "../shared/replay-engine.js";
 import { MODELS, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js";
 
-const state={cache:null,current:[],historyPage:0,charts:{},ratings:null};
+const state={cache:null,current:[],teamLists:[],historyPage:0,charts:{},ratings:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pct=v=>v==null?"—":`${(100*v).toFixed(1)}%`;
@@ -14,6 +14,7 @@ const actualWinner=r=>r.hs==null||r.as==null?null:r.hs===r.as?"Draw":r.hs>r.as?r
 const correct=(r,tip)=>{const w=actualWinner(r);return w==null?null:w==="Draw"?true:w===tip};
 const sourceLabel=r=>r.explicitClose?"explicit close":r.closeSource==="oddsportal_survey_fallback"?"survey fallback":r.liveOdds?"latest recorded":"no market pair";
 const noVig=(home,away)=>home&&away?(1/home)/((1/home)+(1/away)):null;
+const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Sharks":"Sharks","Cronulla Sharks":"Sharks","New Zealand Warriors":"Warriors","Newcastle Knights":"Knights","South Sydney Rabbitohs":"Rabbitohs","Penrith Panthers":"Panthers","North Queensland Cowboys":"Cowboys","NQ Cowboys":"Cowboys","Brisbane Broncos":"Broncos","Canberra Raiders":"Raiders","Canterbury-Bankstown Bulldogs":"Bulldogs","Gold Coast Titans":"Titans","Manly-Warringah Sea Eagles":"Sea Eagles","Melbourne Storm":"Storm","Parramatta Eels":"Eels","St George Illawarra Dragons":"Dragons","St. George Illawarra Dragons":"Dragons","Wests Tigers":"Tigers"}[value]||value;
 
 async function loadCache(){
   const res=await fetch(`data/historical-cache.json?v=${CACHE_VERSION}`);
@@ -26,15 +27,21 @@ async function refreshCurrent(){
   const button=$("#refresh-current"); button.disabled=true; button.textContent="Refreshing…";
   const base=state.cache.matches.filter(r=>r.year===CURRENT_SEASON);
   try{
-    const response=await fetch(`${API_URL}/api/matches?limit=20000`);
+    const [response,teamListResponse]=await Promise.all([
+      fetch(`${API_URL}/api/matches?limit=20000`),
+      fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}`).catch(()=>null)
+    ]);
     if(!response.ok)throw new Error(`API ${response.status}`);
-    const live=await response.json(), byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r]));
+    const live=await response.json();
+    state.teamLists=teamListResponse?.ok?await teamListResponse.json():[];
+    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}`,r]));
     state.current=live.filter(r=>Number(r.year)===CURRENT_SEASON).map(m=>{
       const cached=byId.get(Number(m.id))||base.find(r=>r.home===m.home_team&&r.away===m.away_team&&String(r.round).replace("Finals Week","Finals Wk")===String(m.round));
       const pair=Number.isFinite(Number(m.home_odds))&&Number.isFinite(Number(m.away_odds));
       const observed=marketByTeams.get(`${m.home_team}|${m.away_team}`), liveHome=observed?.lastHome??(pair?Number(m.home_odds):null),liveAway=observed?.lastAway??(pair?Number(m.away_odds):null),liveP=noVig(liveHome,liveAway),openP=noVig(observed?.openingHome,observed?.openingAway),candidateP=cached?.candidateP??null;
       const marketFav=liveP==null?null:Math.max(liveP,1-liveP),marketTipHome=liveP==null?null:liveP>.5,modelTipHome=candidateP==null?null:candidateP>=.5;
-      return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,liveOdds:liveHome!=null&&liveAway!=null,liveHome,liveAway,liveBookmaker:observed?.bookmaker||(pair?"unverified API pair":null),liveObservedAt:observed?.lastObservedAt||null,r1:cached?.r1||(candidateP!=null&&candidateP>=.45&&candidateP<=.55&&marketFav>=.60&&marketTipHome!==modelTipHome),r2:cached?.r2||(candidateP!=null&&marketFav>=.65&&marketTipHome!==modelTipHome),r3:cached?.r3||(openP!=null&&liveP!=null&&Math.abs(liveP-openP)>=.10)};
+      const teamList=listByTeams.get(`${shortTeam(m.home_team)}|${shortTeam(m.away_team)}`)||null;
+      return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,teamList,liveOdds:liveHome!=null&&liveAway!=null,liveHome,liveAway,liveBookmaker:observed?.bookmaker||(pair?"unverified API pair":null),liveObservedAt:observed?.lastObservedAt||null,r1:cached?.r1||(candidateP!=null&&candidateP>=.45&&candidateP<=.55&&marketFav>=.60&&marketTipHome!==modelTipHome),r2:cached?.r2||(candidateP!=null&&marketFav>=.65&&marketTipHome!==modelTipHome),r3:cached?.r3||(openP!=null&&liveP!=null&&Math.abs(liveP-openP)>=.10)};
     });
     $("#current-updated").textContent=`Live data checked ${new Date().toLocaleString("en-AU")}`;
   }catch(error){
@@ -51,17 +58,18 @@ function scoreCard(label,value,note){return `<div class="scorecard"><small>${esc
 
 function renderCurrent(){
   const completed=state.current.filter(r=>r.hs!=null&&r.as!=null), candidate=metric(completed,r=>correct(r,modelTip(r)));
-  const gates=state.current.filter(r=>r.rookieGate).length, market=state.current.filter(r=>r.r1||r.r2||r.r3).length;
+  const market=state.current.filter(r=>r.r1||r.r2||r.r3).length, publishedLists=state.current.filter(r=>r.teamList).length;
   const marginRows=completed.filter(r=>r.game===1&&isRegular(r.round)&&r.stableMargin!=null);
   const exact=marginRows.filter(r=>{const signed=(r.candidateP>=.5?1:-1)*Math.abs(r.stableMargin);return signed===r.hs-r.as}).length;
-  $("#season-scorecards").innerHTML=[scoreCard("Candidate tips",candidate.games?`${candidate.correct} / ${candidate.games}`:"—",candidate.games?pct(candidate.correct/candidate.games):"Awaiting evaluated predictions"),scoreCard("Rookie gate",gates,"large lineup adjustments"),scoreCard("Market flags",market,"R1 / R2 / R3 review signals"),scoreCard("Margin bullseyes",`${exact} / ${marginRows.length}`,"first match of each round")].join("");
+  $("#season-scorecards").innerHTML=[scoreCard("Candidate tips",candidate.games?`${candidate.correct} / ${candidate.games}`:"—",candidate.games?pct(candidate.correct/candidate.games):"Awaiting evaluated predictions"),scoreCard("Published lists",publishedLists,"official NRL pre-match squads"),scoreCard("Market flags",market,"R1 / R2 / R3 review signals"),scoreCard("Margin bullseyes",`${exact} / ${marginRows.length}`,"first match of each round")].join("");
   const rows=[...state.current].sort((a,b)=>b.matchIndex-a.matchIndex);
-  $("#current-table").innerHTML=`<thead><tr><th>Round</th><th>Home</th><th>Away</th><th>Model</th><th>Tip</th><th>Margin</th><th>Market pair</th><th>Flags</th><th>Result</th></tr></thead><tbody>${rows.map(r=>{
+  $("#current-table").innerHTML=`<thead><tr><th>Round</th><th>Home</th><th>Away</th><th>Team lists</th><th>Model</th><th>Tip</th><th>Margin</th><th>Market pair</th><th>Flags</th><th>Result</th></tr></thead><tbody>${rows.map(r=>{
     const tip=modelTip(r), win=actualWinner(r), margin=r.stableMargin??r.generalMargin;
     const marketHome=r.liveOdds?r.liveHome:r.closeHome,marketAway=r.liveOdds?r.liveAway:r.closeAway;
     const flags=[r.rookieGate?'<span class="badge rookie">ROOKIE GATE</span>':"",r.r1?'<span class="badge market">R1 COIN FLIP</span>':"",r.r2?'<span class="badge market">R2 VETO</span>':"",r.r3?'<span class="badge shadow">R3 MOVE</span>':""].filter(Boolean).join("")||'<span class="muted">—</span>';
     const result=win==null?"Upcoming":`${r.hs}–${r.as}${correct(r,tip)?" ✓":" ✕"}`;
-    return `<tr><td>${esc(r.round)}</td><td class="team ${win===r.home?'winner':''}">${esc(r.home)}</td><td class="team ${win===r.away?'winner':''}">${esc(r.away)}</td><td class="prob">${pct(r.candidateP)} home</td><td class="team">${esc(tip||"No candidate output")}</td><td>${margin==null?"—":`${esc(tip)} by ${Math.abs(margin)}`}</td><td>${money(marketHome)} / ${money(marketAway)}<br><small class="muted">${esc(r.liveOdds?`${r.liveBookmaker||"latest recorded"}${r.liveObservedAt?` · ${new Date(r.liveObservedAt).toLocaleString("en-AU")}`:""}`:sourceLabel(r))}</small></td><td>${flags}</td><td>${result}</td></tr>`
+    const lists=r.teamList?`<a href="${esc(r.teamList.source_url)}" target="_blank" rel="noopener">${r.teamList.home.players.length} / ${r.teamList.away.players.length} named</a><br><small class="muted">NRL updated ${esc(new Date(r.teamList.source_updated_at_utc||r.teamList.observed_at_utc).toLocaleString("en-AU"))}</small>`:'<span class="muted">Not published</span>';
+    return `<tr><td>${esc(r.round)}</td><td class="team ${win===r.home?'winner':''}">${esc(r.home)}</td><td class="team ${win===r.away?'winner':''}">${esc(r.away)}</td><td>${lists}</td><td class="prob">${pct(r.candidateP)} home</td><td class="team">${esc(tip||"No candidate output")}</td><td>${margin==null?"—":`${esc(tip)} by ${Math.abs(margin)}`}</td><td>${money(marketHome)} / ${money(marketAway)}<br><small class="muted">${esc(r.liveOdds?`${r.liveBookmaker||"latest recorded"}${r.liveObservedAt?` · ${new Date(r.liveObservedAt).toLocaleString("en-AU")}`:""}`:sourceLabel(r))}</small></td><td>${flags}</td><td>${result}</td></tr>`
   }).join("")}</tbody>`;
 }
 
