@@ -3,82 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#12372a">
-  <title>NRL Elo — 2027 preview</title>
-  <link rel="stylesheet" href="styles.css?v=20260915-1">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>NRL ELO Ratings — 2027 preview</title>
+  <link rel="stylesheet" href="styles.css?v=20260916-2">
 </head>
 <body>
-  <header class="site-header">
-    <div class="shell header-inner">
-      <a class="brand" href="#season" aria-label="NRL Elo home">
-        <span class="ball">◆</span><span><b>NRL Elo</b><small>2027 preview</small></span>
-      </a>
-      <div class="model-chip"><i></i><span id="model-chip-label">Loading model…</span></div>
+  <header><div class="container"><h1>🏉 NRL ELO Ratings</h1><div class="preview-line">2027 preview · <span id="model-chip-label">Loading model…</span></div></div></header>
+  <main class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="season">This Season</button><button class="tab" data-tab="ladder">Rankings</button><button class="tab" data-tab="history">Match History</button><button class="tab" data-tab="add">Add Result</button><button class="tab" data-tab="ratings">ELO History</button><button class="tab" data-tab="performance">Performance</button><button class="tab" data-tab="joker">Joker</button><button class="tab" data-tab="model">Model</button>
     </div>
-  </header>
-
-  <nav class="nav" aria-label="Main navigation">
-    <div class="shell nav-scroll">
-      <button data-tab="season" class="active">This season</button>
-      <button data-tab="ladder">Ladder</button>
-      <button data-tab="history">Match history</button>
-      <button data-tab="ratings">Elo history</button>
-      <button data-tab="performance">Performance</button>
-      <button data-tab="joker">Joker</button>
-      <button data-tab="model">Model</button>
-    </div>
-  </nav>
-
-  <main class="shell">
-    <div id="global-message" class="notice hidden"></div>
-
-    <section id="tab-season" class="tab-panel active">
-      <div class="page-heading">
-        <div><p class="eyebrow">CURRENT COMPETITION</p><h1><span id="current-season-label">2026</span> season</h1><p>Live results, model probabilities and the market information available alongside them.</p></div>
-        <div class="refresh-block"><button id="refresh-current" class="button">Refresh current season</button><small id="current-updated">Not loaded</small></div>
-      </div>
-      <div id="season-scorecards" class="scorecards"></div>
-      <div class="section-title"><div><h2>Matches</h2><p id="season-context">Latest round first</p></div><div class="legend"><span><i class="dot rookie"></i>Rookie gate</span><span><i class="dot market"></i>Market rule</span></div></div>
-      <div class="table-card"><div class="table-scroll"><table id="current-table"></table></div></div>
-    </section>
-
-    <section id="tab-ladder" class="tab-panel">
-      <div class="page-heading"><div><p class="eyebrow">SEASON STANDINGS</p><h1>Ladder and ratings</h1><p>Only clubs active in the selected season are included in standings and bye calculations.</p></div><div class="filters"><label>Season<select id="ladder-year"></select></label><label>Through round<select id="ladder-round"></select></label></div></div>
-      <div class="two-column"><div class="table-card"><div class="table-scroll"><table id="ladder-table"></table></div></div><aside class="explain-card"><h3>Two different measures</h3><p><b>Ladder points</b> reset each season. <b>Elo</b> carries team strength through time with season reversion.</p><p class="muted">Historical and inactive clubs remain in the ratings archive but cannot receive current-season bye points.</p></aside></div>
-    </section>
-
-    <section id="tab-history" class="tab-panel">
-      <div class="page-heading"><div><p class="eyebrow">CACHED ARCHIVE</p><h1>Match history</h1><p>Historical rows are prebuilt once; the current season is refreshed independently.</p></div><div class="filters"><label>Season<select id="history-year"></select></label><label>Team<select id="history-team"><option value="">All teams</option></select></label><label>Search<input id="history-search" type="search" placeholder="Round or venue"></label></div></div>
-      <div id="history-cache-note" class="source-strip"></div>
-      <div class="table-card"><div class="table-scroll"><table id="history-table"></table></div><div class="pager"><button id="history-prev">Previous</button><span id="history-page"></span><button id="history-next">Next</button></div></div>
-    </section>
-
-    <section id="tab-ratings" class="tab-panel">
-      <div class="page-heading"><div><p class="eyebrow">RETROSPECTIVE SERIES</p><h1>Elo history</h1><p>A comparable cross-era series rebuilt with one named core method—not a claim about forecasts published at the time.</p></div></div>
-      <div class="chart-card"><div class="chart-tools"><label>Teams<select id="ratings-teams" multiple></select></label><label>From<select id="ratings-from"></select></label></div><canvas id="ratings-chart" height="120"></canvas></div>
-    </section>
-
-    <section id="tab-performance" class="tab-panel">
-      <div class="page-heading"><div><p class="eyebrow">MODEL EVALUATION</p><h1>Performance</h1><p>As-published forecasts are kept separate from retrospective replays and market comparators.</p></div><div class="filters"><label>Replay model<select id="performance-model"><option value="candidate">2027 candidate</option><option value="bstar">B* core</option><option value="production">2026 production</option></select></label></div></div>
-      <div class="table-card"><div class="table-scroll"><table id="accuracy-table"></table></div></div>
-      <div class="chart-grid"><div class="chart-card"><div class="chart-heading"><h2>Probability calibration</h2><p>Current season solid; earlier seasons progressively fade.</p></div><canvas id="calibration-chart" height="190"></canvas></div><div class="chart-card"><div class="chart-heading"><h2>Underlying predicted margin</h2><p>Continuous home margin before tipping buckets.</p></div><canvas id="margin-chart" height="190"></canvas></div></div>
-      <div class="download-card"><div><h2>Diagnostic export</h2><p>The 2026 schema remains available; the candidate export adds rest, lineup, market-rule and new-margin fields.</p></div><label>Model<select id="diagnostic-model"><option value="candidate">2027 candidate</option><option value="production">2026 production</option></select></label><button id="download-diagnostic" class="button">Download CSV</button></div>
-    </section>
-
-    <section id="tab-joker" class="tab-panel">
-      <div class="page-heading"><div><p class="eyebrow">ROUND SELECTION</p><h1>Joker archive</h1><p>Completed seasons are frozen snapshots, not recalculated when the model changes.</p></div><div class="filters"><label>Season<select id="joker-year"></select></label></div></div>
-      <div id="joker-summary" class="source-strip"></div>
-      <div class="table-card"><div class="table-scroll"><table id="joker-table"></table></div></div>
-    </section>
-
-    <section id="tab-model" class="tab-panel">
-      <div class="page-heading"><div><p class="eyebrow">READ-ONLY CONFIGURATION</p><h1>How the model works</h1><p>All parameters live in one versioned code file. This preview has no parameter-changing controls.</p></div></div>
-      <div id="model-content" class="model-layout"></div>
-    </section>
+    <div id="global-message" class="message hidden"></div>
+    <section id="tab-season" class="tab-content active"><div class="card games-card">
+      <div class="compact-heading"><div><h2><span id="current-season-label">2026</span> Season</h2><div id="season-scorecards" class="summary-line"></div></div><div><button id="refresh-current" class="btn compact-btn">Refresh</button><small id="current-updated">Not loaded</small></div></div>
+      <div class="finals-note">Chronological order. Team-list tick: <span class="list-tick prematch">✓</span> captured pre-match; <span class="list-tick postmatch">✓</span> post-match run-out only. Hover over flag squares for their meaning.</div>
+      <div class="games-scroll"><table id="current-table" class="games-table"></table></div>
+    </div></section>
+    <section id="tab-ladder" class="tab-content"><div class="card"><h2>Rankings</h2><div class="controls"><label>Year<select id="ladder-year"></select></label><label>Round<select id="ladder-round"></select></label></div><div class="table-scroll"><table id="ladder-table" class="rankings-table"></table></div></div></section>
+    <section id="tab-history" class="tab-content"><div class="card games-card">
+      <div class="compact-heading"><h2>Match History</h2><div class="controls"><label>Season<select id="history-year"></select></label><label>Team<select id="history-team"><option value="">All teams</option></select></label><label>Search<input id="history-search" type="search" placeholder="Round or venue"></label></div></div>
+      <div id="history-cache-note" class="finals-note"></div><div class="games-scroll"><table id="history-table" class="games-table"></table></div><div class="pager"><button id="history-prev">Previous</button><span id="history-page"></span><button id="history-next">Next</button></div>
+    </div></section>
+    <section id="tab-add" class="tab-content"><div class="card"><h2>Add Match Result</h2><div id="add-message"></div><div class="controls add-controls"><label>Year<input type="number" id="round-year" value="2026"></label><label>Round<span class="round-picker"><button id="round-prev" type="button">⬅</button><input type="text" id="round-name" value="Finals Wk 2"><button id="round-next" type="button">➡</button></span></label><button id="load-round-btn" class="btn compact-btn" type="button">Load Round</button></div><div id="round-entry-table"></div><button id="save-round-btn" class="btn compact-btn" type="button" disabled>Save Scores</button></div></section>
+    <section id="tab-ratings" class="tab-content"><div class="card"><h2>ELO History</h2><div class="controls"><label>Teams<select id="ratings-teams" multiple></select></label><label>From<select id="ratings-from"></select></label></div><div class="elo-history-wrap"><canvas id="ratings-chart"></canvas></div></div></section>
+    <section id="tab-performance" class="tab-content"><div class="card"><div class="compact-heading"><h2>Model Evaluation</h2><div class="controls"><label>Replay model<select id="performance-model"><option value="candidate">2027 candidate</option><option value="bstar">B* core</option><option value="production">2026 production</option></select></label></div></div><div class="table-scroll"><table id="accuracy-table"></table></div><div class="chart-grid"><div><h3>Probability Calibration</h3><canvas id="calibration-chart" height="150"></canvas></div><div><h3>Predicted vs Actual Margin</h3><canvas id="margin-chart" height="150"></canvas></div></div><div class="download-row"><label>Diagnostic<select id="diagnostic-model"><option value="candidate">2027 candidate</option><option value="production">2026 production</option></select></label><button id="download-diagnostic" class="btn compact-btn">Download CSV</button></div></div></section>
+    <section id="tab-joker" class="tab-content"><div class="card"><div class="compact-heading"><div><h2>Joker Table</h2><div id="joker-summary" class="finals-note"></div></div><div class="controls"><label>Season<select id="joker-year"></select></label></div></div><div class="joker-table-wrap"><table id="joker-table" class="joker-table"></table></div></div></section>
+    <section id="tab-model" class="tab-content"><div class="card"><h2>Model Settings</h2><div class="finals-note">Read-only preview. Production parameters cannot be changed here.</div><div id="model-content" class="model-layout"></div></div></section>
   </main>
-
-  <footer><div class="shell"><span>NRL Elo 2027 preview</span><span>Mock site — production model unchanged</span></div></footer>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script type="module" src="app.js?v=20260916-1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script><script type="module" src="app.js?v=20260916-2"></script>
 </body>
 </html>
