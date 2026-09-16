@@ -254,8 +254,18 @@ function renderAccuracy(){
 }
 function renderHistoricalComparison(){
   const comparison=state.historicalComparison;if(!comparison)return;
-  const models=comparison.models,years=[...new Set(comparison.yearly.map(r=>r.year))],cell=row=>row?`<td title="Brier ${row.brier.toFixed(4)} · log loss ${row.logLoss.toFixed(4)}">${row.correct} (${pct(row.accuracy)})</td>`:"<td>—</td>",lookup=new Map(comparison.yearly.map(r=>[`${r.model}|${r.year}`,r]));
-  $("#historical-comparison-table").innerHTML=`<thead><tr><th>Season</th><th>Games</th>${models.map(m=>`<th>${esc(m.label)}</th>`).join("")}</tr></thead><tbody>${years.map(year=>`<tr><td><b>${year}</b></td><td>${lookup.get(`production|${year}`).games}</td>${models.map(m=>cell(lookup.get(`${m.id}|${year}`))).join("")}</tr>`).join("")}${["2009–2026","2022–2026"].map(period=>`<tr><td><b>${period}</b></td><td>${comparison.periods.find(r=>r.period===period).games}</td>${models.map(m=>cell(comparison.periods.find(r=>r.period===period&&r.model===m.id))).join("")}</tr>`).join("")}</tbody>`
+  const models=comparison.models,years=[...new Set(comparison.yearly.map(r=>r.year))],lookup=new Map(comparison.yearly.map(r=>[`${r.model}|${r.year}`,r]));
+  const renderRow=(label,rows)=>{
+    const scores=rows.filter(Boolean).map(r=>r.correct),low=Math.min(...scores),high=Math.max(...scores);
+    const cells=rows.map(row=>{
+      if(!row)return "<td>—</td>";
+      const strength=high===low?.5:(row.correct-low)/(high-low),weak=[245,229,226],neutral=[250,248,241],strong=[216,235,220],from=strength<=.5?weak:neutral,to=strength<=.5?neutral:strong,blend=strength<=.5?strength*2:(strength-.5)*2,color=from.map((channel,index)=>Math.round(channel+(to[index]-channel)*blend)),best=high>low&&row.correct===high;
+      const description=high===low?"All models tied":`${best?"Strongest (including ties)":row.correct===low?"Weakest (including ties)":`${high-row.correct} tips behind strongest`} in this row`;
+      return `<td class="comparison-heat${best?" comparison-best":""}" style="background-color:rgb(${color.join(",")})" title="${description} · Brier ${row.brier.toFixed(4)} · log loss ${row.logLoss.toFixed(4)}">${row.correct} (${pct(row.accuracy)})</td>`
+    }).join("");
+    return `<tr><td><b>${esc(label)}</b></td><td>${rows.find(Boolean)?.games??"—"}</td>${cells}</tr>`
+  };
+  $("#historical-comparison-table").innerHTML=`<caption>Within each row: pale red = weakest, pale green = strongest; tied scores share a colour.</caption><thead><tr><th>Season</th><th>Games</th>${models.map(m=>`<th>${esc(m.label)}</th>`).join("")}</tr></thead><tbody>${years.map(year=>renderRow(year,models.map(m=>lookup.get(`${m.id}|${year}`)))).join("")}${["2009–2026","2022–2026"].map(period=>renderRow(period,models.map(m=>comparison.periods.find(r=>r.period===period&&r.model===m.id)))).join("")}</tbody>`
 }
 function destroyChart(name){state.charts[name]?.destroy();state.charts[name]=null}
 function quantile(values,q){if(!values.length)return null;const sorted=[...values].sort((a,b)=>a-b),position=(sorted.length-1)*q,lower=Math.floor(position),fraction=position-lower;return sorted[lower]+(sorted[Math.min(lower+1,sorted.length-1)]-sorted[lower])*fraction}

@@ -150,3 +150,12 @@
 
 .flag-legend .flag-box { flex: 0 0 auto; }
 .flag-legend em { color: #7a1f1f; font-style: normal; font-weight: 600; }
+
+#historical-comparison-table caption {
+  text-align: left;
+  color: #666;
+  font-size: 11px;
+  padding: 3px 0;
+}
+#historical-comparison-table .comparison-heat { color: #24302a; }
+#historical-comparison-table .comparison-best { font-weight: 600; }
