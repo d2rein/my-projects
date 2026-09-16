@@ -1,8 +1,8 @@
 import { createReplayEngine } from "../shared/replay-engine.js";
-import { FINALS_ROUNDS } from "../shared/finals-bracket.js";
+import { buildFinalsBracket, FINALS_ROUNDS } from "../shared/finals-bracket.js";
 import { MODELS, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js";
 
-const state={cache:null,current:[],teamLists:[],charts:{},ratings:null,replayDetails:null,selectedRatingTeams:new Set(),historySignature:null};
+const state={cache:null,current:[],teamLists:[],currentForecasts:[],charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pct=v=>v==null?"—":`${(100*v).toFixed(1)}%`;
@@ -29,29 +29,35 @@ async function refreshCurrent(){
   const button=$("#refresh-current"); button.disabled=true; button.textContent="Refreshing…";
   const base=state.cache.matches.filter(r=>r.year===CURRENT_SEASON);
   try{
-    const [response,teamListResponse]=await Promise.all([
+    const [response,teamListResponse,forecastResponse]=await Promise.all([
       fetch(`${API_URL}/api/matches?limit=20000`),
-      fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}`).catch(()=>null)
+      fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}`).catch(()=>null),
+      fetch(`data/current-finals-forecast.json`,{cache:"no-store"}).catch(()=>null)
     ]);
     if(!response.ok)throw new Error(`API ${response.status}`);
     const live=await response.json();
     state.teamLists=teamListResponse?.ok?await teamListResponse.json():[];
-    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}|${roundKey(r.round_name)}`,r]));
+    state.currentForecasts=forecastResponse?.ok?(await forecastResponse.json()).forecasts||[]:[];
+    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}|${roundKey(r.round_name)}`,r])),forecastByTeams=new Map(state.currentForecasts.map(r=>[`${r.home}|${r.away}|${roundKey(r.round)}`,r]));
     state.current=live.filter(r=>Number(r.year)===CURRENT_SEASON).map(m=>{
       const cached=byId.get(Number(m.id))||base.find(r=>r.home===m.home_team&&r.away===m.away_team&&String(r.round).replace("Finals Week","Finals Wk")===String(m.round));
-      const pair=validNumber(m.home_odds)&&validNumber(m.away_odds);
-      const observed=marketByTeams.get(`${m.home_team}|${m.away_team}`), liveHome=validNumber(observed?.lastHome)?Number(observed.lastHome):(pair?Number(m.home_odds):null),liveAway=validNumber(observed?.lastAway)?Number(observed.lastAway):(pair?Number(m.away_odds):null),liveP=noVig(liveHome,liveAway),openP=noVig(observed?.openingHome,observed?.openingAway),candidateP=cached?.candidateP??null;
-      const marketFav=liveP==null?null:Math.max(liveP,1-liveP),marketTipHome=liveP==null?null:liveP>.5,modelTipHome=candidateP==null?null:candidateP>=.5;
       const teamList=listByTeams.get(`${shortTeam(m.home_team)}|${shortTeam(m.away_team)}|${roundKey(m.round)}`)||null;
-      return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,teamList,oddsTip:m.odds_tip||cached?.oddsTip||null,userTip:m.user_tip||cached?.userTip||null,liveOdds:validNumber(liveHome)&&validNumber(liveAway),liveHome,liveAway,r1:cached?.r1||(candidateP!=null&&candidateP>=.45&&candidateP<=.55&&marketFav>=.60&&marketTipHome!==modelTipHome),r2:cached?.r2||(candidateP!=null&&marketFav>=.65&&marketTipHome!==modelTipHome),r3:cached?.r3||(openP!=null&&liveP!=null&&Math.abs(liveP-openP)>=.10)};
+      const pair=validNumber(m.home_odds)&&validNumber(m.away_odds);
+      const rawForecast=forecastByTeams.get(`${m.home_team}|${m.away_team}|${roundKey(m.round)}`),forecast=rawForecast&&(!teamList||!rawForecast.lineupSha256||rawForecast.lineupSha256===teamList.lineup_sha256)?rawForecast:null,observed=marketByTeams.get(`${m.home_team}|${m.away_team}`), liveHome=validNumber(observed?.lastHome)?Number(observed.lastHome):(pair?Number(m.home_odds):null),liveAway=validNumber(observed?.lastAway)?Number(observed.lastAway):(pair?Number(m.away_odds):null),liveP=noVig(liveHome,liveAway),openP=noVig(observed?.openingHome,observed?.openingAway),candidateP=cached?.candidateP??forecast?.candidateP??null;
+      const marketFav=liveP==null?null:Math.max(liveP,1-liveP),marketTipHome=liveP==null?null:liveP>.5,modelTipHome=candidateP==null?null:candidateP>=.5;
+      return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,teamList,bstarP:cached?.bstarP??forecast?.bstarP??null,candidateP,candidateDr:cached?.candidateDr??forecast?.candidateDr??null,lineupMargin:cached?.lineupMargin??forecast?.lineupMargin??null,rookieGate:cached?.rookieGate??forecast?.rookieGate??false,stableMargin:cached?.stableMargin??forecast?.stableMargin??null,forecastObservedAt:forecast?.source_observed_at||null,oddsTip:m.odds_tip||cached?.oddsTip||null,userTip:m.user_tip||cached?.userTip||null,liveOdds:validNumber(liveHome)&&validNumber(liveAway),liveHome,liveAway,r1:cached?.r1||(candidateP!=null&&candidateP>=.45&&candidateP<=.55&&marketFav>=.60&&marketTipHome!==modelTipHome),r2:cached?.r2||(candidateP!=null&&marketFav>=.65&&marketTipHome!==modelTipHome),r3:cached?.r3||(openP!=null&&liveP!=null&&Math.abs(liveP-openP)>=.10)};
     });
-    $("#current-updated").textContent=`Live data checked ${new Date().toLocaleString("en-AU")}`;
+    const forecastTimes=state.current.map(r=>r.forecastObservedAt).filter(Boolean).sort(),forecastNote=forecastTimes.length?` · forecast lists ${new Date(forecastTimes.at(-1)).toLocaleString("en-AU")}`:"";
+    $("#current-updated").textContent=`Live data checked ${new Date().toLocaleString("en-AU")}${forecastNote}`;
   }catch(error){
     state.current=base;
     $("#current-updated").textContent="Showing frozen cache";
     showNotice(`The live API could not be reached. The ${state.cache.meta.cutoff} cache is displayed.`,"warning");
   }finally{button.disabled=false;button.textContent="Refresh"}
   state.replayDetails=null;
+  const fallbackDetails=getReplayDetails();
+  state.current=state.current.map(r=>{if(r.candidateP!=null)return r;const p=fallbackDetails.get(Number(r.id))?.coreP;if(p==null)return r;const dr=-400*Math.log10(1/p-1);return {...r,bstarP:p,candidateP:p,candidateDr:dr,generalMargin:Math.abs(dr)<85?4:Math.abs(dr)<185?8:10,coreFallback:true}});
+  state.projectionContext=null;
   renderCurrent();
   state.historySignature=null;
   if($("#tab-history")?.classList.contains("active"))renderHistory();
@@ -70,6 +76,34 @@ function getReplayDetails(){
   const replay=createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true});
   state.replayDetails=new Map(replay.rows.map(r=>[Number(r.match.id),{homeElo:r.out.homeEloBefore,awayElo:r.out.awayEloBefore,homeRank:r.homeRankBeforeRound,awayRank:r.awayRankBeforeRound,coreP:r.out.expected}]));
   return state.replayDetails;
+}
+
+function getProjectionContext(){
+  if(state.projectionContext)return state.projectionContext;
+  const source=allDisplayMatches().filter(r=>r.hs!=null&&r.as!=null),matches=source.map(r=>({id:r.id,year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as}));
+  const teams=[...new Set(matches.flatMap(r=>[r.home_team,r.away_team]).filter(Boolean))].map(name=>({name}));
+  state.projectionContext=createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true});
+  return state.projectionContext;
+}
+
+function projectionFor(match){
+  const existing=state.current.find(r=>r.year===Number(match.year)&&roundKey(r.round)===roundKey(match.round)&&Number(r.game)===Number(match.game_num));
+  if(existing?.candidateP!=null)return {p:existing.candidateP,dr:existing.candidateDr,margin:existing.stableMargin??existing.generalMargin};
+  const context=getProjectionContext(),preview=context.eloCalc.previewMatch(context.state,match),dr=preview.dr;
+  return {p:preview.expected,dr,margin:Math.abs(dr)<85?4:Math.abs(dr)<185?8:10,homeElo:preview.homeEloBefore,awayElo:preview.awayEloBefore};
+}
+
+function projectedFinalsRows(){
+  if(!state.current.length)return [];
+  const seeds=computeLadder(CURRENT_SEASON,"Rd 27").slice(0,8).map(r=>r.team),regularMax=Math.max(0,...state.current.filter(r=>isRegular(r.round)).map(r=>Number(r.matchIndex)||0));
+  const confirmed=state.current.filter(r=>FINALS_ROUNDS.some(round=>roundKey(round.label)===roundKey(r.round))).map(r=>({...r,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as,game_num:r.game}));
+  const bracket=buildFinalsBracket({year:CURRENT_SEASON,seeds,confirmedMatches:confirmed,pickWinner:match=>{const forecast=projectionFor(match);return forecast.p>=.5?match.home_team:match.away_team}});
+  return bracket.map((match,index)=>{
+    const saved=state.current.find(r=>roundKey(r.round)===roundKey(match.round)&&Number(r.game)===Number(match.game_num));
+    if(saved)return {...saved,finalsLabel:match.finals_label};
+    const forecast=projectionFor(match);
+    return {id:`projected-${match.finals_key}`,year:CURRENT_SEASON,round:match.round,finalsLabel:match.finals_label,matchIndex:regularMax+index+1,game:match.game_num,home:match.home_team,away:match.away_team,hs:null,as:null,venue:null,candidateP:forecast.p,candidateDr:forecast.dr,generalMargin:forecast.margin,stableMargin:null,rookieGate:false,projectedHomeElo:forecast.homeElo,projectedAwayElo:forecast.awayElo,projectedHomeRank:seeds.indexOf(match.home_team)+1||null,projectedAwayRank:seeds.indexOf(match.away_team)+1||null,projected:true};
+  });
 }
 
 function allDisplayMatches(){
@@ -100,14 +134,15 @@ function scrollToCurrentRound(tableSelector,rows){
 function pip(pick,eloPick,winner,completed,title){let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip warning";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick===winner)cls="pip error";else cls="pip warning";return `<span class="${cls}" title="${esc(title)}"></span>`}
 function rankPip(pick,eloPick,winner,completed){let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip error";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick!==winner)cls="pip warning";else cls="pip error";return `<span class="${cls}" title="Ladder pick: ${esc(pick||"unknown")}"></span>`}
 function listTick(r){if(r.teamList)return `<span class="list-tick prematch" title="Official pre-match list captured: ${r.teamList.home.players.length}/${r.teamList.away.players.length} named">✓</span>`;if(r.hs!=null&&r.as!=null)return '<span class="list-tick postmatch" title="Post-match run-out list only; not available prospectively">✓</span>';return "—"}
-function flagBoxes(r){return `<span class="flag-stack">${r.rookieGate?'<i class="flag-box rookie" title="Rookie Gate 6 lineup adjustment"></i>':""}${r.r1?'<i class="flag-box r1" title="R1: model coin flip, market favourite at least 60%"></i>':""}${r.r2?'<i class="flag-box r2" title="R2: market favourite at least 65% disagrees with model"></i>':""}${r.r3?'<i class="flag-box r3" title="R3: market moved at least 10 percentage points"></i>':""}</span>`}
+function flagBoxes(r){return `<span class="flag-stack">${r.rookieGate?'<i class="flag-box rookie" title="Rookie Gate 6: already built into win %, Elo tip and margin"></i>':""}${r.r1?'<i class="flag-box r1" title="R1 review only: 45–55% model game and a disagreeing market favourite of at least 60%; not applied automatically"></i>':""}${r.r2?'<i class="flag-box r2" title="R2 review only: explicit market favourite of at least 65% disagrees with Elo; not applied automatically"></i>':""}${r.r3?'<i class="flag-box r3" title="R3 review only: market probability moved at least 10 points; direction matters and no tip is changed automatically"></i>':""}</span>`}
 
 function renderGamesTable(rows){
   const details=getReplayDetails();let lastRound="",stripe=false;
-  const body=rows.map(r=>{
-    const d=details.get(Number(r.id))||{},eloPick=modelTip(r),winner=actualWinner(r),completed=winner!==null,ladderPick=r.ladderTip||(d.homeRank<d.awayRank?r.home:d.away);
+  const body=rows.map(source=>{
+    const r=source.finalsLabel?{...source,round:source.finalsLabel}:source;
+    const d=details.get(Number(r.id))||{homeElo:r.projectedHomeElo,awayElo:r.projectedAwayElo,homeRank:r.projectedHomeRank,awayRank:r.projectedAwayRank},eloPick=modelTip(r),winner=actualWinner(r),completed=winner!==null,ladderPick=r.ladderTip||(d.homeRank<d.awayRank?r.home:r.away);
     const marketHome=r.liveOdds?r.liveHome:r.closeHome,marketAway=r.liveOdds?r.liveAway:r.closeAway,oddsPick=validNumber(marketHome)&&validNumber(marketAway)?(Number(marketHome)<=Number(marketAway)?r.home:r.away):eloPick,userPick=r.userTip||eloPick;
-    const key=`${r.year}|${r.round}`,roundStart=key!==lastRound;if(roundStart){stripe=!stripe;lastRound=key}const rowClass=`${stripe?"round-a":"round-b"}${roundStart?" round-start":""}`;
+    const key=`${r.year}|${source.round}`,roundStart=key!==lastRound;if(roundStart){stripe=!stripe;lastRound=key}const rowClass=`${stripe?"round-a":"round-b"}${roundStart?" round-start":""}${r.projected?" projected-final":""}`;
     const underlying=r.candidateDr==null?null:Math.abs(.048406*r.candidateDr),tipMargin=r.stableMargin??r.generalMargin,tipPoints=tipMargin==null?null:Math.abs(tipMargin),homeClass=eloPick===r.home?(completed?(winner===r.home?"team-pick-green":"team-pick-red"):"team-pick-green"):"",awayClass=eloPick===r.away?(completed?(winner===r.away?"team-pick-green":"team-pick-red"):"team-pick-green"):"";
     return `<tr class="${rowClass}"><td class="col-narrow">${r.year}</td><td class="col-narrow" title="${esc(r.round)}">${esc(r.round)}</td><td class="col-team ${homeClass}">${esc(r.home)}</td><td class="col-team ${awayClass}">${esc(r.away)}</td><td class="col-narrow">${pct(r.candidateP)}</td><td class="col-narrow">${r.hs??""}</td><td class="col-narrow">${r.as??""}</td><td class="col-narrow">${underlying==null?"—":`${underlying.toFixed(1)} (${tipPoints??"—"})`}</td><td class="col-narrow">${validNumber(d.homeElo)?Math.round(d.homeElo):"—"}</td><td class="col-narrow">${validNumber(d.awayElo)?Math.round(d.awayElo):"—"}</td><td class="col-narrow">${d.homeRank??"—"}</td><td class="col-narrow">${d.awayRank??"—"}</td><td class="col-pick">${esc(eloPick||"—")}${tipPoints!=null?` (${tipPoints})`:""}</td><td class="col-pip tip-cell">${rankPip(ladderPick,eloPick,winner,completed)}</td><td class="col-pip tip-cell">${pip(oddsPick,eloPick,winner,completed,`Odds pick: ${oddsPick||"unknown"}`)}</td><td class="col-pip tip-cell">${pip(userPick,eloPick,winner,completed,`Tip: ${userPick||"unknown"}`)}</td><td class="col-pick">${esc(winner||"")}</td><td class="col-status">${listTick(r)}</td><td class="col-price">${money(marketHome)} / ${money(marketAway)}</td><td class="col-flags">${flagBoxes(r)}</td></tr>`
   }).join("");
@@ -120,7 +155,7 @@ function renderCurrent(){
   const marginRows=completed.filter(r=>r.game===1&&isRegular(r.round)&&r.stableMargin!=null);
   const exact=marginRows.filter(r=>{const signed=(r.candidateP>=.5?1:-1)*Math.abs(r.stableMargin);return signed===r.hs-r.as}).length;
   $("#season-scorecards").innerHTML=`<span><b>Candidate:</b> ${candidate.games?`${candidate.correct}/${candidate.games} (${pct(candidate.correct/candidate.games)})`:"—"}</span><span><b>Pre-match lists:</b> ${publishedLists}</span><span><b>Market flags:</b> ${market}</span><span><b>Margin exact:</b> ${exact}/${marginRows.length}</span>`;
-  const rows=[...state.current].sort((a,b)=>a.matchIndex-b.matchIndex);
+  const regularAndOther=state.current.filter(r=>!FINALS_ROUNDS.some(round=>roundKey(round.label)===roundKey(r.round))),rows=[...regularAndOther,...projectedFinalsRows()].sort((a,b)=>a.matchIndex-b.matchIndex);
   $("#current-table").innerHTML=renderGamesTable(rows);
   $$("#current-table tbody tr").forEach((tr,i)=>tr.dataset.matchId=rows[i].id);
   scrollToCurrentRound("#current-table",rows);
@@ -207,7 +242,7 @@ function renderModel(){const p=ACTIVE_MODEL.parameters;$("#model-content").inner
   <article class="model-card"><h2>B* core Elo</h2><div class="parameter-grid">${Object.entries(p).slice(0,10).map(([k,v])=>`<span>${esc(k)}</span><span>${esc(v)}</span>`).join("")}</div><h3>Pre-match strength</h3><div class="formula">actualRestAdj = 5 × (homeRestDays − awayRestDays) / 7\n\nDR_B* = (Rhome − Raway) + 40\n      + 15 × awayTravelKm / 1000\n      + actualRestAdj\n      + 2.15 × (homeStreak − awayStreak)\n\nP(home) = 1 / (1 + 10^(−DR_B* / 400))</div></article>
   <article class="model-card"><h2>Rookie Gate 6</h2><p>A prediction-only lineup adjustment. It does not flow into the zero-sum Elo ledger.</p><div class="formula">raw = β₀ × Δdebutants\n    + β₅ × Δunder5\n    + β₂₀ × Δunder20\n\nlineupMargin = clamp(raw, −18, +18)\napply only when |lineupMargin| ≥ 6\n\nDR_candidate = DR_B* + lineupMargin / 0.048406</div><p class="muted">Eight-year prior-only fit · ridge 300 · nested player counts. Non-NRL senior experience remains a deployment prerequisite.</p></article>
   <article class="model-card"><h2>Stable discrete margin</h2><p>The submitted margin is selected separately from winner probability.</p><div class="formula">x = |0.048406 × Gate6_DR|\nwⱼ = exp(−0.5 × ((xⱼ − x) / 1.5)²)\n   × 2^(−gamesAgo / 1000)\n\nchoose even a ∈ {2,4,…,32}\nminimising weighted mean |actual aligned margin − a|</div></article>
-  <article class="model-card"><h2>Market rules</h2><p><b>Odds never enter Elo.</b> One paired market observation is converted to no-vig probability and used only in the tipping layer.</p><div class="formula">pH = (1 / home $) / ((1 / home $) + (1 / away $))\n\nR1: model 45–55% and market favourite ≥60%\nR2: explicit paired checkpoint favourite ≥65% disagrees\nR3: probability moves ≥10 percentage points</div><p class="muted">Historical display: explicit single-book close where available, otherwise a labelled OddsPortal survey fallback. R2 never fires from the fallback.</p></article>
+  <article class="model-card"><h2>Market rules</h2><p><b>Odds never enter Elo.</b> One paired market observation is converted to no-vig probability and used only as a review layer. R1–R3 do not change the displayed Elo tip or margin automatically.</p><div class="formula">pH = (1 / home $) / ((1 / home $) + (1 / away $))\n\nR1: model 45–55% and market favourite ≥60%\nR2: explicit paired checkpoint favourite ≥65% disagrees\nR3: probability moves ≥10 percentage points</div><p class="muted">Historical display: explicit single-book close where available, otherwise a labelled OddsPortal survey fallback. R2 never fires from the fallback.</p></article>
   <article class="model-card wide"><h2>Version boundary</h2><p><b>${esc(ACTIVE_MODEL.id)}</b> is a preview candidate. The production 2026 formula remains available as a control and has not been altered. Historical ratings are reconstructed under a named core method; historical forecast claims require an archived prediction.</p></article>`}
 
 function csvEscape(v){return `"${String(v??"").replace(/"/g,'""')}"`}

@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-09-16T00:08:50.708471+00:00",
+  "model": "2027-candidate-bstar-rookie-gate6-v1",
+  "note": "Prospective published-team-list forecast; target results excluded.",
+  "forecasts": [
+    {
+      "nrl_match_id": "20261112920",
+      "season": 2026,
+      "round": "Finals Wk 2",
+      "home": "New Zealand Warriors",
+      "away": "Newcastle Knights",
+      "kickoff": "2026-09-20T06:05:00Z",
+      "source_observed_at": "2026-09-15T11:39:00Z",
+      "lineupSha256": "E2F093501B8D9760FFA3EFCA822EC2F74D83CEED6DB8ADE99A671908E8736F51",
+      "base_dr": 188.67429764055262,
+      "bstarP": 0.7476459665463443,
+      "lineupMargin": 1.63661797386087,
+      "rookieGate": false,
+      "candidateDr": 188.67429764055262,
+      "candidateP": 0.7476459665463443,
+      "stableMargin": 10,
+      "tip": "New Zealand Warriors",
+      "homeCounts": [
+        0,
+        0,
+        0
+      ],
+      "awayCounts": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "nrl_match_id": "20261112910",
+      "season": 2026,
+      "round": "Finals Wk 2",
+      "home": "Sydney Roosters",
+      "away": "Cronulla Sharks",
+      "kickoff": "2026-09-19T09:50:00Z",
+      "source_observed_at": "2026-09-15T11:39:00Z",
+      "lineupSha256": "CCC6E98A0F58431F40DBE08D08488E42C843DFBFC51EE58A8A27861320DAEA09",
+      "base_dr": 34.61978652805855,
+      "bstarP": 0.5496576382116768,
+      "lineupMargin": 0.8076765448074945,
+      "rookieGate": false,
+      "candidateDr": 34.61978652805855,
+      "candidateP": 0.5496576382116768,
+      "stableMargin": 4,
+      "tip": "Sydney Roosters",
+      "homeCounts": [
+        0,
+        0,
+        0
+      ],
+      "awayCounts": [
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "unmatchedPlayers": []
+}
