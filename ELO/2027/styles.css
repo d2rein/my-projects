@@ -8,3 +8,7 @@
 .market-swap{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;border:1px solid #a46600;border-radius:50%;color:#8b5700;background:#fff5d9;font-style:normal;font-weight:800;font-size:12px;line-height:1;vertical-align:middle}
 .market-move{display:inline-block;margin-left:2px;font-style:normal;font-size:13px;line-height:1;vertical-align:middle}
 .rookie-compare{color:#285a78;font-size:11px;font-weight:700}
+.overlay-gain{white-space:nowrap;font-size:11px;font-weight:700}
+.overlay-gain.positive{color:#2e7d32}
+.overlay-gain.negative{color:#b71c1c}
+.overlay-gain.neutral{color:#666}

@@ -134,8 +134,8 @@ function scrollToCurrentRound(tableSelector,rows){
 function pip(pick,eloPick,winner,completed,title){let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip warning";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick===winner)cls="pip error";else cls="pip warning";return `<span class="${cls}" title="${esc(title)}"></span>`}
 function rankPip(pick,eloPick,winner,completed){let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip error";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick!==winner)cls="pip warning";else cls="pip error";return `<span class="${cls}" title="Ladder pick: ${esc(pick||"unknown")}"></span>`}
 function listTick(r){if(r.teamList)return `<span class="list-tick prematch" title="Official pre-match list captured: ${r.teamList.home.players.length}/${r.teamList.away.players.length} named">✓</span>`;if(r.hs!=null&&r.as!=null)return '<span class="list-tick postmatch" title="Post-match run-out list only; not available prospectively">✓</span>';return "—"}
-function marketSignals(r){
-  const home=r.liveOdds?r.liveHome:r.closeHome,away=r.liveOdds?r.liveAway:r.closeAway,current=noVig(Number(home),Number(away)),opening=noVig(Number(r.openHome),Number(r.openAway)),model=validNumber(r.candidateP)?Number(r.candidateP):null;
+function marketSignals(r,modelProbability=r.candidateP){
+  const home=r.liveOdds?r.liveHome:r.closeHome,away=r.liveOdds?r.liveAway:r.closeAway,current=noVig(Number(home),Number(away)),opening=noVig(Number(r.openHome),Number(r.openAway)),model=validNumber(modelProbability)?Number(modelProbability):null;
   if(current==null||model==null)return {home,away,current,opening,flip:false,adverseMove:false};
   const modelHome=model>=.5,marketHome=current>.5,modelConfidence=Math.abs(model-.5),marketConfidence=Math.abs(current-.5),confidenceGap=marketConfidence-modelConfidence;
   const flip=modelHome!==marketHome&&confidenceGap>=.10-1e-9;
@@ -145,6 +145,9 @@ function marketSignals(r){
 function swapIndicator(signal){if(!signal.flip)return "";const model=Math.round(100*signal.model),market=Math.round(100*signal.current),modelEdge=Math.round(100*signal.modelConfidence),marketEdge=Math.round(100*signal.marketConfidence),gap=Math.round(100*signal.confidenceGap);return `<span class="market-swap" title="Model ${model}% v market ${market}%; confidence gap ${marketEdge} − ${modelEdge} = ${gap}pp ≥ 10pp: flip">⇄</span>`}
 function moveIndicator(signal){if(!signal.adverseMove)return "";const opening=(100*signal.opening).toFixed(1),current=(100*signal.current).toFixed(1),move=Math.abs(100*signal.movement).toFixed(1);return `<span class="market-move" title="Home market: opening ${opening}% → current ${current}%; ${move}pp move away from the Elo tip">📉</span>`}
 function rookieComparison(r){if(!r.rookieGate||!validNumber(r.bstarP))return "";const base=pct(Number(r.bstarP)),candidate=pct(Number(r.candidateP)),adjustment=validNumber(r.lineupMargin)?`${Number(r.lineupMargin)>=0?"+":""}${Number(r.lineupMargin).toFixed(1)} points`:"applied";return `<span class="rookie-compare" title="Unadjusted B* home ${base}; adjusted home ${candidate}; lineup adjustment ${adjustment}">B* ${base}</span>`}
+function marketPerformance(rows){return metric(rows,r=>{const signal=marketSignals(r);if(signal.current==null)return null;return correct(r,signal.current>=.5?r.home:r.away)})}
+function swapGain(rows,probabilityFor){let base=0,overlaid=0;for(const r of rows){const probability=probabilityFor(r);if(!validNumber(probability)||actualWinner(r)==null)continue;const signal=marketSignals(r,Number(probability)),baseTip=Number(probability)>=.5?r.home:r.away,overlayTip=signal.flip?(signal.current>=.5?r.home:r.away):baseTip;base+=correct(r,baseTip)?1:0;overlaid+=correct(r,overlayTip)?1:0}return overlaid-base}
+function signed(value){return `${value>=0?"+":""}${value}`}
 
 function renderGamesTable(rows){
   const details=getReplayDetails();let lastRound="",stripe=false;
@@ -162,10 +165,10 @@ function renderGamesTable(rows){
 
 function renderCurrent(){
   const completed=state.current.filter(r=>r.hs!=null&&r.as!=null), candidate=metric(completed,r=>correct(r,modelTip(r)));
-  const market=state.current.filter(r=>{const signal=marketSignals(r);return signal.flip||signal.adverseMove}).length, publishedLists=state.current.filter(r=>r.teamList).length;
+  const odds=marketPerformance(completed),market=state.current.filter(r=>{const signal=marketSignals(r);return signal.flip||signal.adverseMove}).length,marketGain=swapGain(completed,r=>r.candidateP),publishedLists=state.current.filter(r=>r.teamList).length;
   const marginRows=completed.filter(r=>r.game===1&&isRegular(r.round)&&r.stableMargin!=null);
   const exact=marginRows.filter(r=>{const signed=(r.candidateP>=.5?1:-1)*Math.abs(r.stableMargin);return signed===r.hs-r.as}).length;
-  $("#season-scorecards").innerHTML=`<span><b>Candidate:</b> ${candidate.games?`${candidate.correct}/${candidate.games} (${pct(candidate.correct/candidate.games)})`:"—"}</span><span><b>Pre-match lists:</b> ${publishedLists}</span><span><b>Market flags:</b> ${market}</span><span><b>Margin exact:</b> ${exact}/${marginRows.length}</span>`;
+  $("#season-scorecards").innerHTML=`<span><b>Candidate:</b> ${candidate.games?`${candidate.correct}/${candidate.games} (${pct(candidate.correct/candidate.games)})`:"—"}</span><span><b>Odds:</b> ${odds.games?`${odds.correct}/${odds.games} (${pct(odds.correct/odds.games)})`:"—"}</span><span><b>Pre-match lists:</b> ${publishedLists}</span><span><b>Market flags:</b> ${market} (swap net ${signed(marketGain)})</span><span><b>Margin exact:</b> ${exact}/${marginRows.length}</span>`;
   const regularAndOther=state.current.filter(r=>!FINALS_ROUNDS.some(round=>roundKey(round.label)===roundKey(r.round))),rows=[...regularAndOther,...projectedFinalsRows()].sort((a,b)=>a.matchIndex-b.matchIndex);
   $("#current-table").innerHTML=renderGamesTable(rows);
   $$("#current-table tbody tr").forEach((tr,i)=>tr.dataset.matchId=rows[i].id);
@@ -236,7 +239,14 @@ function renderHistory(){
   scrollToCurrentRound("#history-table",rows);
 }
 
-function renderAccuracy(){const which=$("#performance-model").value;$("#accuracy-table").innerHTML=`<thead><tr><th>Season</th><th>Model used</th><th>Expected</th><th>Actual forecast</th><th>Selected replay</th><th>Ladder</th><th>Opening</th><th>Effective close</th><th>Margin exact</th><th>Margin error</th></tr></thead><tbody>${state.cache.performance.map(r=>{const selected=r[which],fmt=m=>m?.games?`${m.correct}/${m.games} (${pct(m.correct/m.games)})`:"—";return `<tr><td><b>${r.year}</b></td><td>${r.year===2026?"2026 production":"Not archived"}</td><td>${r.expected?pct(r.expected):"—"}</td><td>${fmt(r.actualForecast)}</td><td>${fmt(selected)}</td><td>${fmt(r.ladder)}</td><td>${fmt(r.open)}</td><td>${fmt(r.close)}</td><td>${r.margin.games?`${r.margin.exact}/${r.margin.games}`:"—"}</td><td>${r.margin.games?r.margin.error:"—"}</td></tr>`}).join("")}</tbody>`;renderCharts(which)}
+function renderAccuracy(){
+  const which=$("#performance-model").value,fmt=m=>m?.games?`${m.correct}/${m.games} (${pct(m.correct/m.games)})`:"—",probabilityFor=r=>which==="production"?(r.productionP??r.bstarP):which==="bstar"?r.bstarP:r.candidateP;
+  $("#accuracy-table").innerHTML=`<thead><tr><th>Season</th><th>Model used</th><th>Expected</th><th>Actual forecast</th><th>Selected replay</th><th>Ladder</th><th>Opening</th><th>Effective close</th><th>Margin exact</th><th>Margin error</th></tr></thead><tbody>${state.cache.performance.map(r=>{
+    const selected=r[which],games=state.cache.matches.filter(m=>m.year===r.year&&m.hs!=null&&m.as!=null),actualGain=r.actualForecast?swapGain(games,m=>m.productionP??m.bstarP):null,selectedGain=swapGain(games,probabilityFor),withGain=(metricValue,gain)=>metricValue?.games?`${fmt(metricValue)} <span class="overlay-gain ${gain>0?"positive":gain<0?"negative":"neutral"}">(swap net ${signed(gain)})</span>`:"—";
+    return `<tr><td><b>${r.year}</b></td><td>${r.year===2026?"2026 production":"Not archived"}</td><td>${r.expected?pct(r.expected):"—"}</td><td>${withGain(r.actualForecast,actualGain)}</td><td>${withGain(selected,selectedGain)}</td><td>${fmt(r.ladder)}</td><td>${fmt(r.open)}</td><td>${fmt(r.close)}</td><td>${r.margin.games?`${r.margin.exact}/${r.margin.games}`:"—"}</td><td>${r.margin.games?r.margin.error:"—"}</td></tr>`
+  }).join("")}</tbody>`;
+  renderCharts(which)
+}
 function destroyChart(name){state.charts[name]?.destroy();state.charts[name]=null}
 function renderCharts(which){
   const years=state.cache.performance.map(r=>r.year).slice(-5),rows=state.cache.matches.filter(r=>years.includes(r.year)&&r.hs!=null&&r.as!=null);destroyChart("calibration");destroyChart("margin");
