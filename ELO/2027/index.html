@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#1a1a2e">
   <title>NRL ELO Ratings — 2027 preview</title>
-  <link rel="stylesheet" href="styles.css?v=20260916-4">
-  <link rel="stylesheet" href="enhancements.css?v=20260916-4">
+  <link rel="stylesheet" href="styles.css?v=20260916-5">
+  <link rel="stylesheet" href="enhancements.css?v=20260916-5">
 </head>
 <body>
   <header><div class="container"><h1>🏉 NRL ELO Ratings</h1><div class="preview-line">2027 preview · <span id="model-chip-label">Loading model…</span></div></div></header>
@@ -18,7 +18,7 @@
     <section id="tab-season" class="tab-content active"><div class="card games-card">
       <div class="compact-heading"><div><h2><span id="current-season-label">2026</span> Season</h2><div id="season-scorecards" class="summary-line"></div></div><div><button id="refresh-current" class="btn compact-btn">Refresh</button><small id="current-updated">Not loaded</small></div></div>
       <div class="finals-note">Chronological order, including the complete projected finals path. Hypothetical future matchups use core Elo until the teams and published lists are confirmed. Team-list tick: <span class="list-tick prematch">✓</span> captured pre-match; <span class="list-tick postmatch">✓</span> post-match run-out only.</div>
-      <div class="flag-legend"><b>Flags:</b><span><i class="flag-box rookie"></i> Rookie lineup adjustment — already built into win %, Elo tip and margin</span><span><i class="flag-box r1"></i> R1 — model coin flip disagrees with a 60%+ market favourite</span><span><i class="flag-box r2"></i> R2 — Elo disagrees with an explicit 65%+ market favourite</span><span><i class="flag-box r3"></i> R3 — market moved by 10+ percentage points</span><em>R1–R3 are review prompts only; they do not automatically change the Elo or margin.</em></div>
+      <div class="flag-legend"><b>Review:</b><span><i class="market-swap">⇄</i> market is 10+ points more confident and opposes Elo</span><span><i class="market-move">📉</i> market moved 10+ points away from Elo</span><span><b>B*</b> in Rookie shows the unadjusted home probability</span><em>Market indicators do not alter Elo or margin automatically.</em></div>
       <div class="games-scroll"><table id="current-table" class="games-table"></table></div>
     </div></section>
     <section id="tab-ladder" class="tab-content"><div class="card"><h2>Rankings</h2><div class="controls"><label>Year<select id="ladder-year"></select></label><label>Round<select id="ladder-round"></select></label></div><div class="table-scroll"><table id="ladder-table" class="rankings-table"></table></div></div></section>
@@ -33,6 +33,6 @@
     <section id="tab-joker" class="tab-content"><div class="card"><div class="compact-heading"><div><h2>Joker Table</h2><div id="joker-summary" class="finals-note"></div></div><div class="controls"><label>Season<select id="joker-year"></select></label></div></div><div class="joker-table-wrap"><table id="joker-table" class="joker-table"></table></div></div></section>
     <section id="tab-model" class="tab-content"><div class="card"><h2>Model Settings</h2><div class="finals-note">Read-only preview. Production parameters cannot be changed here.</div><div id="model-content" class="model-layout"></div></div></section>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script><script type="module" src="app.js?v=20260916-4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script><script type="module" src="app.js?v=20260916-5"></script>
 </body>
 </html>

@@ -34,9 +34,8 @@ export const MODELS = Object.freeze({
 export const ACTIVE_MODEL = MODELS.candidate2027;
 
 export const MARKET_RULES = Object.freeze({
-  r1: { modelLow: 0.45, modelHigh: 0.55, marketFavourite: 0.60 },
-  r2: { marketFavourite: 0.65, explicitPairRequired: true },
-  r3: { movement: 0.10 }
+  confidenceSwap: { marketOverModel: 0.10 },
+  adverseMovement: { movement: 0.10 }
 });
 
 export const MARGIN_MODELS = Object.freeze({

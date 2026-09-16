@@ -22,12 +22,15 @@ the production parameter table, ratings, matches or model. The existing
 Odds are not an Elo input. They are an external tipping-rule input.
 
 - Historical display: the explicit single-book close where available. Where it
-  is absent, the historical table displays the OddsPortal survey pair with a
-  visible `survey fallback` label. The R2 gate never uses that fallback.
+  is absent, the historical table displays the OddsPortal survey pair.
 - Current display: the latest complete Sportsbet home/away pair captured at one
   timestamp. It is not averaged, best-priced or combined with another book.
 - All thresholds use the paired no-vig probability. The frontend displays the
-  actual two decimal prices used to calculate it.
+  actual two decimal prices and implied home probability used to calculate it.
+- The swap indicator fires when the market and candidate choose different
+  teams and the market is at least ten percentage points more confident beyond
+  50%. The adverse-movement marker fires only for a comparable ten-point move
+  away from the Elo selection. Neither signal enters Elo or changes margin.
 
 ## Rebuilding the cache
 
