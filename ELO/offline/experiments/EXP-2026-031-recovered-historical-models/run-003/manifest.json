@@ -1,0 +1,144 @@
+{
+  "experiment": "EXP-2026-031",
+  "createdUtc": "2026-09-16T22:50:05.346184+00:00",
+  "offlineOnly": true,
+  "liveModelChanged": false,
+  "initialRating": 1500,
+  "startYear": 2009,
+  "cutoff": "2026 Round 27; frozen snapshot excludes finals results",
+  "models": [
+    {
+      "id": "legacy2018",
+      "label": "2018",
+      "k": 15,
+      "home": 25,
+      "weight": 14,
+      "margin": "none",
+      "early": 0.0,
+      "rest": 0.0,
+      "streak": 0.0,
+      "travel": 0.0,
+      "ownYears": [
+        2018
+      ]
+    },
+    {
+      "id": "legacy2019",
+      "label": "2019\u20132022",
+      "k": 10,
+      "home": 25,
+      "weight": 2,
+      "margin": "none",
+      "early": 0.0,
+      "rest": 0.0,
+      "streak": 0.0,
+      "travel": 0.0,
+      "ownYears": [
+        2019,
+        2020,
+        2021,
+        2022
+      ]
+    },
+    {
+      "id": "legacy2023",
+      "label": "2023/2024",
+      "k": 10,
+      "home": 25,
+      "weight": 2,
+      "margin": "legacy",
+      "early": 0.0,
+      "rest": 0.0,
+      "streak": 0.0,
+      "travel": 0.0,
+      "ownYears": [
+        2023,
+        2024
+      ]
+    },
+    {
+      "id": "legacy2025",
+      "label": "2025",
+      "k": 11,
+      "home": 45,
+      "weight": 2,
+      "margin": "legacy",
+      "early": 1.0,
+      "rest": 0.0,
+      "streak": 0.0,
+      "travel": 0.0,
+      "ownYears": [
+        2025
+      ]
+    },
+    {
+      "id": "start2026",
+      "label": "2026 preseason",
+      "k": 9.455,
+      "home": 40,
+      "weight": 3,
+      "margin": "current",
+      "early": 0.95,
+      "rest": 3.0,
+      "streak": 2.5,
+      "travel": 15.0,
+      "ownYears": []
+    },
+    {
+      "id": "production",
+      "label": "2026 production",
+      "k": 9.455,
+      "home": 40,
+      "weight": 3,
+      "margin": "current",
+      "early": 0.95,
+      "rest": 3.2,
+      "streak": 2.15,
+      "travel": 15.0,
+      "ownYears": []
+    },
+    {
+      "id": "browser2026",
+      "label": "2026 browser K=9.5",
+      "k": 9.5,
+      "home": 40,
+      "weight": 3,
+      "margin": "current",
+      "early": 0.95,
+      "rest": 3.2,
+      "streak": 2.15,
+      "travel": 15.0,
+      "ownYears": []
+    },
+    {
+      "id": "bstar",
+      "label": "B*",
+      "k": 9.455,
+      "home": 40,
+      "weight": 3,
+      "margin": "current",
+      "early": 0.95,
+      "rest": 5.0,
+      "streak": 2.15,
+      "travel": 15.0,
+      "ownYears": []
+    }
+  ],
+  "inputs": {
+    "snapshots\\prod-observed-2026-09-11\\matches.json": "8a95b88d298e66ceb1e4db318a814a643194e4be3b16a9524e4b0676f723292f",
+    "experiments\\EXP-2026-002C-rldb-context\\completed_matches_with_rldb_context.csv": "d7bea7f22e3df0925429de1528e47ae61f7b5b0f6a38b267af3122bba18ace67",
+    "experiments\\EXP-2026-012-team-list-simple\\run-009-round27-final\\match_features.csv": "e185176f934e2e3ed5c2cd55d7a7721d115b4deb8fb7e54a0dd1ea5f8fc9ee30",
+    "experiments\\EXP-2026-012-team-list-simple\\run-009-round27-final\\match_lineups.csv": "0f2ec928824e805a1a2aee107e7a71649a6b580acae20ce8fb6e1339d732641d",
+    "historical_model_replay.py": "39775f48f1bf2696091494ab045a0c5a81d5bd82288d30350d396a6148c7d35b"
+  },
+  "assumptions": [
+    "No travel/rest/streak before 2026; home advantage always applied as supplied.",
+    "CHOOSE index clamped to 1\u20134, including draws; tail uses continuous abs(margin)/6\u22123, NOT current ceil\u22124.",
+    "2018 uses the written formula (14*R+1500)/15; 2019\u20132025 use (2*R+1500)/3.",
+    "2025 K'=(11+max(0,11-round))*margin multiplier, confirmed by user.",
+    "Pre-2023 margin rules unknown: not scored. 2023 pick 2. 2024 margin: round(.08*abs(effective DR)), no added minimum. 2025: nearest multiple of 2 to .048406*abs(effective DR)\u22121, minimum 1.",
+    "Home advantage occurs once in effective DR; forecasts precede updates; draws count as correct tips.",
+    "Rookie layer: existing prior-only career features, annual refit restricted to 2009 onward; B* fallback where insufficient fitting/lineup data.",
+    "No pre-2018 parameter provenance supplied; earlier results are model exercises, not historical forecast claims."
+  ]
+}

@@ -2,7 +2,7 @@ import { createReplayEngine } from "../shared/replay-engine.js";
 import { buildFinalsBracket, FINALS_ROUNDS } from "../shared/finals-bracket.js";
 import { MODELS, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js";
 
-const state={cache:null,current:[],teamLists:[],currentForecasts:[],charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
+const state={cache:null,historicalComparison:null,current:[],teamLists:[],currentForecasts:[],charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pct=v=>v==null?"—":`${(100*v).toFixed(1)}%`;
@@ -22,6 +22,9 @@ async function loadCache(){
   const res=await fetch(`data/historical-cache.json?v=${CACHE_VERSION}`);
   if(!res.ok)throw new Error(`Historical cache ${res.status}`);
   state.cache=await res.json();
+  const comparison=await fetch(`data/historical-model-comparison.json?v=20260917-1`);
+  if(!comparison.ok)throw new Error(`Historical model comparison ${comparison.status}`);
+  state.historicalComparison=await comparison.json();
   if(state.cache.meta.version!==CACHE_VERSION)console.warn("Cache/config version mismatch");
 }
 
@@ -242,10 +245,17 @@ function renderHistory(){
 function renderAccuracy(){
   const which=$("#performance-model").value,fmt=m=>m?.games?`${m.correct}/${m.games} (${pct(m.correct/m.games)})`:"—",probabilityFor=r=>which==="production"?(r.productionP??r.bstarP):which==="bstar"?r.bstarP:r.candidateP;
   $("#accuracy-table").innerHTML=`<thead><tr><th>Season</th><th>Model used</th><th>Expected</th><th>Actual forecast</th><th>Selected replay</th><th>Ladder</th><th>Opening</th><th>Effective close</th><th>Margin exact</th><th>Margin error</th></tr></thead><tbody>${state.cache.performance.map(r=>{
-    const selected=r[which],games=state.cache.matches.filter(m=>m.year===r.year&&m.hs!=null&&m.as!=null),actualGain=r.actualForecast?swapGain(games,m=>m.productionP??m.bstarP):null,selectedGain=swapGain(games,probabilityFor),adjustedSelected=(selected?.correct??0)+selectedGain,withGain=(metricValue,gain)=>metricValue?.games?`${fmt(metricValue)} <span class="overlay-gain ${gain>0?"positive":gain<0?"negative":"neutral"}">(${signed(gain)})</span>`:"—",versusReplay=marketMetric=>{if(!marketMetric?.games)return "—";const difference=marketMetric.correct-adjustedSelected;return `${fmt(marketMetric)} <span class="overlay-gain ${difference>0?"positive":difference<0?"negative":"neutral"}" title="Correct-tip difference versus selected replay after its recommended swaps; odds coverage may differ">(${signed(difference)})</span>`};
-    return `<tr><td><b>${r.year}</b></td><td>${r.year===2026?"2026 production":"Not archived"}</td><td>${r.expected?pct(r.expected):"—"}</td><td>${withGain(r.actualForecast,actualGain)}</td><td>${withGain(selected,selectedGain)}</td><td>${fmt(r.ladder)}</td><td>${versusReplay(r.open)}</td><td>${versusReplay(r.close)}</td><td>${r.margin.games?`${r.margin.exact}/${r.margin.games}`:"—"}</td><td>${r.margin.games?r.margin.error:"—"}</td></tr>`
+    const selected=r[which],games=state.cache.matches.filter(m=>m.year===r.year&&m.hs!=null&&m.as!=null),actualGain=r.actualForecast?swapGain(games,m=>r.actualForecast.status==="reconstructed"?m.actualForecastP:m.productionP??m.bstarP):null,selectedGain=swapGain(games,probabilityFor),adjustedSelected=(selected?.correct??0)+selectedGain,withGain=(metricValue,gain)=>metricValue?.games?`${fmt(metricValue)} <span class="overlay-gain ${gain>0?"positive":gain<0?"negative":"neutral"}">(${signed(gain)})</span>`:"—",versusReplay=marketMetric=>{if(!marketMetric?.games)return "—";const difference=marketMetric.correct-adjustedSelected;return `${fmt(marketMetric)} <span class="overlay-gain ${difference>0?"positive":difference<0?"negative":"neutral"}" title="Correct-tip difference versus selected replay after its recommended swaps; odds coverage may differ">(${signed(difference)})</span>`};
+    const reconstructed=r.actualForecast?.status==="reconstructed",forecastNote=reconstructed?`Reconstructed from recovered ${r.year} parameters, 1500 start in 2009; not an archived forecast. ${r.actualForecast.marginGames?`First-of-round margin: ${r.actualForecast.marginExact}/${r.actualForecast.marginGames} exact, cumulative error ${r.actualForecast.marginError}.`:"Historical margin rule not supplied."}`:r.actualForecast?"Observed 2026 regular-season result; 130/204. Swap overlay is retrospective.":"Historical parameters and forecasts have not been recovered.";
+    return `<tr><td><b>${r.year}</b></td><td title="${esc(forecastNote)}">${esc(r.modelUsed||"Not archived")}${reconstructed?" *":""}</td><td>${r.expected?pct(r.expected):"—"}</td><td title="${esc(forecastNote)}">${withGain(r.actualForecast,actualGain)}</td><td>${withGain(selected,selectedGain)}</td><td>${fmt(r.ladder)}</td><td>${versusReplay(r.open)}</td><td>${versusReplay(r.close)}</td><td>${r.margin.games?`${r.margin.exact}/${r.margin.games}`:"—"}</td><td>${r.margin.games?r.margin.error:"—"}</td></tr>`
   }).join("")}</tbody>`;
   renderCharts(which)
+  renderHistoricalComparison()
+}
+function renderHistoricalComparison(){
+  const comparison=state.historicalComparison;if(!comparison)return;
+  const models=comparison.models,years=[...new Set(comparison.yearly.map(r=>r.year))],cell=row=>row?`<td title="Brier ${row.brier.toFixed(4)} · log loss ${row.logLoss.toFixed(4)}">${row.correct} (${pct(row.accuracy)})</td>`:"<td>—</td>",lookup=new Map(comparison.yearly.map(r=>[`${r.model}|${r.year}`,r]));
+  $("#historical-comparison-table").innerHTML=`<thead><tr><th>Season</th><th>Games</th>${models.map(m=>`<th>${esc(m.label)}</th>`).join("")}</tr></thead><tbody>${years.map(year=>`<tr><td><b>${year}</b></td><td>${lookup.get(`production|${year}`).games}</td>${models.map(m=>cell(lookup.get(`${m.id}|${year}`))).join("")}</tr>`).join("")}${["2009–2026","2022–2026"].map(period=>`<tr><td><b>${period}</b></td><td>${comparison.periods.find(r=>r.period===period).games}</td>${models.map(m=>cell(comparison.periods.find(r=>r.period===period&&r.model===m.id))).join("")}</tr>`).join("")}</tbody>`
 }
 function destroyChart(name){state.charts[name]?.destroy();state.charts[name]=null}
 function quantile(values,q){if(!values.length)return null;const sorted=[...values].sort((a,b)=>a-b),position=(sorted.length-1)*q,lower=Math.floor(position),fraction=position-lower;return sorted[lower]+(sorted[Math.min(lower+1,sorted.length-1)]-sorted[lower])*fraction}

@@ -46,6 +46,10 @@ const selectedMarginPath = path.join(offline, "experiments", "EXP-2026-028-margi
 const refinedMarginPath = path.join(offline, "experiments", "EXP-2026-028-margin-alternative-models", "run-001", "discrete_refined_predictions.csv");
 const finalsPath = path.join(offline, "experiments", "EXP-2026-029-finals-week1-holdout", "run-001", "predictions.csv");
 const prospectiveMarketPath = path.join(offline, "experiments", "EXP-2026-021-prospective-signal-archive", "data", "observations", "market_observations.csv");
+const recoveredPath = path.join(offline, "experiments", "EXP-2026-031-recovered-historical-models", "run-003", "website_payload.json");
+const recovered = JSON.parse(fs.readFileSync(recoveredPath, "utf8"));
+const recoveredById = new Map(recovered.ownPredictions.map(r=>[Number(r.id),r]));
+const recoveredByYear = new Map(recovered.ownYearly.map(r=>[r.year,r]));
 
 const rawMatches = JSON.parse(fs.readFileSync(matchesPath, "utf8")).sort((a,b) => Number(a.year)-Number(b.year) || Number(a.match_index)-Number(b.match_index));
 const odds = readCsv(oddsPath);
@@ -97,6 +101,7 @@ const compact = rawMatches.map((m, index) => {
   const s = stableById.get(Number(m.id));
   const r = refinedById.get(Number(m.id));
   const fin = finalsByKey.get(key(m));
+  const historicalForecast = recoveredById.get(Number(m.id));
   const bstarP = num(o?.Bstar_home_probability) ?? num(g?.bstar_probability) ?? num(fin?.base_home_probability);
   const candidateP = num(g?.candidate_probability) ?? num(f?.candidate_probability) ?? num(fin?.home_probability) ?? bstarP;
   const candidateDr = num(s?.candidate_dr) ?? num(r?.candidate_dr) ?? num(fin?.candidate_dr) ?? (candidateP == null ? null : -400 * Math.log10(1 / candidateP - 1));
@@ -109,6 +114,7 @@ const compact = rawMatches.map((m, index) => {
     date:o?.match_date || fin?.match_date_utc || null, home:m.home_team, away:m.away_team,
     hs:num(m.home_score), as:num(m.away_score), venue:m.venue_name || fin?.venue || o?.venue || null,
     productionP:num(o?.B0_home_probability), bstarP, candidateP, candidateDr,
+    actualForecastP:historicalForecast?.p ?? null,
     lineupMargin:num(g?.lineup_margin_adjustment) ?? num(f?.lineup_margin_adjustment) ?? num(fin?.capped_lineup_adjustment),
     rookieGate:truth(g?.adjustment_applied) || truth(f?.adjustment_applied) || truth(fin?.gate_applied),
     openHome:num(o?.home_odds_open), openAway:num(o?.away_odds_open),
@@ -148,7 +154,9 @@ for (const year of [...new Set(compact.map(r=>r.year))].filter(y=>y>=2017)) {
     bstar:metric(r=>correct(r,r.bstarP==null?null:r.bstarP>=.5?r.home:r.away)),
     candidate:metric(r=>correct(r,r.candidateP==null?null:r.candidateP>=.5?r.home:r.away)),
     ladder:metric(r=>correct(r,r.ladderTip)),open:metric(r=>correct(r,noVigTip(r,"open"))),close:metric(r=>correct(r,noVigTip(r,"close"))),
-    actualForecast:year===2026?{correct:130,games:204}:null,expected:year===2026?.6667:null,
+    actualForecast:year===2026?{correct:130,games:204,status:"observed"}:recoveredByYear.get(year)??null,
+    modelUsed:year===2026?"2026 production":recoveredByYear.has(year)?`${year} historical`:null,
+    expected:year===2026?.6667:null,
     margin:{exact:marginExact,games:margins.length,error:marginError}
   });
 }
@@ -187,4 +195,5 @@ for (const rows of sportsbetGroups.values()) {
 fs.mkdirSync(outDir,{recursive:true});
 const payload={meta:{version:"2026-09-15-v1",builtAt:new Date().toISOString(),cutoff:"2026 regular season plus frozen Finals Week 1 predictions",historicalYears:[1998,2025],odds:"Historical: explicit single-book close when present, otherwise OddsPortal survey fallback. Current: latest paired Sportsbet H2H observation; never averaged. Market gates require paired prices."},matches:compact,currentMarkets,performance,joker:{"2026":{model:"prod-observed-2026-09-11",selected:selectedJokers,rows:joker}}};
 fs.writeFileSync(path.join(outDir,"historical-cache.json"),JSON.stringify(payload));
+fs.writeFileSync(path.join(outDir,"historical-model-comparison.json"),JSON.stringify({meta:recovered.meta,models:recovered.models,yearly:recovered.yearly,periods:recovered.periods,ownYearly:recovered.ownYearly}));
 console.log(`Wrote ${compact.length} matches, ${performance.length} performance years, ${joker.length} joker rounds.`);

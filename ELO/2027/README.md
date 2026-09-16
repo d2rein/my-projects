@@ -16,6 +16,17 @@ the production parameter table, ratings, matches or model. The existing
 - unchanged production diagnostic download plus a candidate-specific schema;
 - read-only formula and parameter page backed by `model-config.js`;
 - latest paired Sportsbet H2H observation in the current table, when collected.
+- reconstructed own-year 2018–2025 forecast scores from owner-supplied parameters;
+- an expandable nine-system 2009–2026 comparison with a common 1500/2009 start.
+
+Historical forecast reconstruction is archived in
+`../offline/experiments/EXP-2026-031-recovered-historical-models/README.md`.
+The observed 2026 forecast remains unchanged. Reconstructed forecasts are marked
+with an asterisk and must not be described as saved predictions or submitted tips.
+Their market-swap overlays use their own recovered probabilities. The selected
+replay column and charts retain the existing website's 1998-start convention;
+the additional comparison table uses 2009 throughout. The cache build now also
+reads `run-003/website_payload.json` and writes `data/historical-model-comparison.json`.
 
 ## Market-line definition
 
