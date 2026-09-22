@@ -1367,10 +1367,16 @@
       const catalog = state.colesCatalog?.items || {};
       const items = [];
       const unmapped = [];
+      let alreadyHandled = 0;
 
       categories.forEach((category) => {
         Array.from(list[category].entries()).forEach(([name, shoppingQuantity]) => {
           const shoppingKey = category + "|" + name;
+          // Yellow cart entries and green crossed-off entries are complete for this shop.
+          if (done[shoppingKey] || cartAddedItems()[shoppingKey]) {
+            alreadyHandled += 1;
+            return;
+          }
           const catalogKey = category + "::" + name.trim().toLowerCase().replace(/\s+/g, " ");
           const products = (catalog[catalogKey]?.products || []).filter((product) => {
             try {
@@ -1393,19 +1399,21 @@
         });
       });
 
-      return { items, unmapped };
+      return { items, unmapped, alreadyHandled };
     }
 
     function startColesCart() {
-      const { items, unmapped } = buildColesCartItems();
+      const { items, unmapped, alreadyHandled } = buildColesCartItems();
       if (!items.length) {
-        setSyncStatus("There are no selected shopping-list items with a Coles URL yet.");
+        setSyncStatus(alreadyHandled
+          ? "All mapped shopping-list items are already added to Coles or crossed off."
+          : "There are no selected shopping-list items with a Coles URL yet.");
         return;
       }
 
       colesExtensionResponded = false;
       window.postMessage({ source: "drein-groceries", type: "coles-cart-request", items }, window.location.origin);
-      setSyncStatus("Opening a guided Coles shop for " + items.length + " mapped product" + (items.length === 1 ? "" : "s") + ". You add each item yourself; the extension only opens the next page." + (unmapped.length ? " " + unmapped.length + " selected item" + (unmapped.length === 1 ? " is" : "s are") + " not mapped yet." : ""));
+      setSyncStatus("Opening a guided Coles shop for " + items.length + " unfinished mapped product" + (items.length === 1 ? "" : "s") + ". You add each item yourself; the extension only opens the next page." + (alreadyHandled ? " " + alreadyHandled + " completed shopping-list item" + (alreadyHandled === 1 ? " is" : "s are") + " skipped." : "") + (unmapped.length ? " " + unmapped.length + " selected item" + (unmapped.length === 1 ? " is" : "s are") + " not mapped yet." : ""));
       window.setTimeout(() => {
         if (!colesExtensionResponded) {
           setSyncStatus("If Coles did not open, install and enable the Coles Cart Helper extension, then try again.");
