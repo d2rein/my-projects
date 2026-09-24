@@ -14,7 +14,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="./pokedex-assets/styles.css?v=20260702a">
+<link rel="stylesheet" href="./pokedex-assets/styles.css?v=20260925b">
 </head>
 <body>
 <div class="app-shell">
@@ -86,22 +86,28 @@
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table class="summary-table">
-          <thead>
-            <tr>
-              <th>All Regions</th>
-              <th>Total</th>
-              <th>Owned</th>
-              <th>Evolutions</th>
-              <th>Missing</th>
-              <th>Unique Missing</th>
-              <th>Unreleased</th>
-            </tr>
-          </thead>
-          <tbody id="summaryTableBody"></tbody>
-          <tfoot id="summaryTableFoot"></tfoot>
-        </table>
+      <div class="summary-body">
+        <div class="table-wrap">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>All Regions</th>
+                <th>Total</th>
+                <th>Owned</th>
+                <th>Evolutions</th>
+                <th>Missing</th>
+                <th>Unique Missing</th>
+                <th>Unreleased</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody"></tbody>
+            <tfoot id="summaryTableFoot"></tfoot>
+          </table>
+        </div>
+        <aside class="summary-filter-panel" aria-label="Card visibility">
+          <p class="summary-filter-count"><strong id="filterBreakdownCount">0/0</strong> shown</p>
+          <div id="filterChecklist" class="summary-filter-list"></div>
+        </aside>
       </div>
     </section>
 
@@ -125,6 +131,6 @@
 <script src="./pokedex-assets/seed-data.js?v=20260702a"></script>
 <script src="./pokedex-assets/evolution-data.js?v=20260925a"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="./pokedex-assets/app.js?v=20260925a"></script>
+<script src="./pokedex-assets/app.js?v=20260925b"></script>
 </body>
 </html>

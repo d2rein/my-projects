@@ -28,6 +28,7 @@ const STATUS_FILTERS = [
   { id: "unowned", label: "Unowned" },
   { id: "can-evolve", label: "Can evolve" },
   { id: "missing", label: "Missing" },
+  { id: "unique", label: "Unique" },
   { id: "unreleased", label: "Unreleased" },
   { id: "regional", label: "Regional" },
   { id: "mega", label: "Mega" }
@@ -252,6 +253,8 @@ const els = {
   summaryPills: document.querySelector("#summaryPills"),
   summaryTableBody: document.querySelector("#summaryTableBody"),
   summaryTableFoot: document.querySelector("#summaryTableFoot"),
+  filterBreakdownCount: document.querySelector("#filterBreakdownCount"),
+  filterChecklist: document.querySelector("#filterChecklist"),
   availabilityTitle: document.querySelector("#availabilityTitle"),
   availabilityLegend: document.querySelector("#availabilityLegend"),
   cardGrid: document.querySelector("#cardGrid"),
@@ -761,6 +764,8 @@ function seedStateFromData() {
 
   const existing = structuredClone(state);
   Object.assign(state, fallback, existing);
+  state.visibleFilters = Object.fromEntries(STATUS_FILTERS.filter(filter => filter.id !== "all")
+    .map(filter => [filter.id, state.visibleFilters?.[filter.id] !== false]));
 
   let changed = false;
 
@@ -941,6 +946,10 @@ function buildControls() {
     `<button class="filter-btn ${filter.id === state.statusFilter ? "active" : ""}" data-filter="${filter.id}">${filter.label}</button>`
   )).join("");
 
+  els.filterChecklist.innerHTML = STATUS_FILTERS.filter(filter => filter.id !== "all").map(filter => (
+    `<label class="summary-filter-option"><input type="checkbox" data-visible-filter="${filter.id}" ${isVisibleFilterEnabled(filter.id) ? "checked" : ""}><span>${filter.label}</span></label>`
+  )).join("");
+
   els.searchInput.value = state.search;
   els.autoEvolveToggle.checked = state.autoEvolve;
   els.showAltFormsToggle.checked = state.showAltForms;
@@ -981,6 +990,16 @@ function bindEvents() {
     saveState({ sync: false });
     buildControls();
     render();
+  });
+
+  els.filterChecklist.addEventListener("change", event => {
+    const checkbox = event.target.closest("[data-visible-filter]");
+    if (!checkbox) return;
+    state.visibleFilters ||= {};
+    state.visibleFilters[checkbox.dataset.visibleFilter] = checkbox.checked;
+    clearStickyVisibility();
+    saveState({ sync: false });
+    renderGrid();
   });
 
   els.regionFilterBar.addEventListener("click", event => {
@@ -1194,7 +1213,9 @@ function renderAvailabilityLegend() {
 }
 
 function renderGrid() {
-  const entries = getVisibleEntries();
+  const candidates = getVisibleEntries({ ignoreChecklist: true });
+  const entries = candidates.filter(makeVisibilityChecklistPredicate());
+  els.filterBreakdownCount.textContent = `${entries.length}/${candidates.length}`;
   if (els.gridCountNote) {
     els.gridCountNote.textContent = "";
   }
@@ -1294,7 +1315,7 @@ function shouldIncludeCollapsedAvailabilityEntry(entry, mode) {
   return !!storedStatus && storedStatus !== "missing" && storedStatus !== "missing-lock";
 }
 
-function getVisibleEntries() {
+function getVisibleEntries({ ignoreChecklist = false } = {}) {
   const search = state.search.trim().toLowerCase();
   let entries = STANDARD_COLLECTION_MODES.includes(state.activeMode)
     ? getStandardEntriesInDisplayOrder()
@@ -1302,23 +1323,60 @@ function getVisibleEntries() {
   const activeStickyKey = getStickyFilterKey();
   const keepEditedVisible = stickyFilterKey === activeStickyKey ? stickyVisibleEntryIds : new Set();
   const availableMegaDexes = state.statusFilter === "mega" ? getAvailableMegaDexes() : null;
+  const uniqueEntryIds = state.statusFilter === "unique" ? getUniqueMissingEntryIds() : null;
 
   if (["mega", "gmax"].includes(state.activeMode) && !state.showUnavailable) {
     entries = entries.filter(entry => isAvailable(entry));
   }
 
-  return entries.filter(entry => {
-    if (keepEditedVisible.has(entry.id)) return true;
-    const status = getEffectiveStatus(entry, state.activeMode);
+  const filtered = entries.filter(entry => {
     if (state.regionFilter !== "all" && entry.region !== state.regionFilter) return false;
+    if (search && !cleanDisplayName(entry).toLowerCase().includes(search) && !String(entry.dex).includes(search)) return false;
+    if (state.statusFilter !== "unique" && keepEditedVisible.has(entry.id)) return true;
+    const status = getEffectiveStatus(entry, state.activeMode);
     if (state.statusFilter === "unreleased" && !isCurrentlyUnreleased(entry)) return false;
     else if (state.statusFilter === "regional" && !entry.isRegional) return false;
     else if (state.statusFilter === "mega" && !availableMegaDexes?.has(entry.dex)) return false;
+    else if (state.statusFilter === "unique" && !uniqueEntryIds?.has(entry.id)) return false;
     else if (state.statusFilter === "unowned" && !["missing", "can-evolve", "trade", "unreleased"].includes(status)) return false;
-    else if (!["all", "unreleased", "regional", "mega", "unowned"].includes(state.statusFilter) && status !== state.statusFilter) return false;
-    if (!search) return true;
-    return cleanDisplayName(entry).toLowerCase().includes(search) || String(entry.dex).includes(search);
+    else if (!["all", "unreleased", "regional", "mega", "unique", "unowned"].includes(state.statusFilter) && status !== state.statusFilter) return false;
+    return true;
   });
+  return ignoreChecklist ? filtered : filtered.filter(makeVisibilityChecklistPredicate());
+}
+
+function getUniqueMissingEntryIds() {
+  const scoped = getSummaryEntries().filter(entry => state.regionFilter === "all" || entry.region === state.regionFilter);
+  const missing = scoped.filter(entry => (shouldUseSpeciesSummaryLogic(state.activeMode)
+    ? getSpeciesSummaryStatus(entry.dex, state.activeMode) : getEffectiveStatus(entry, state.activeMode)) === "missing");
+  const missingDexes = new Set(missing.map(entry => entry.dex));
+  const roots = new Set([...missingDexes].filter(dex => !missingDexes.has(ALL_EVOLUTION_PREDECESSOR[dex])));
+  const representatives = new Map();
+  missing.forEach(entry => {
+    if (roots.has(entry.dex) && !representatives.has(entry.dex)) representatives.set(entry.dex, entry.id);
+  });
+  return new Set(representatives.values());
+}
+
+function isVisibleFilterEnabled(id) {
+  return state.visibleFilters?.[id] !== false;
+}
+
+function makeVisibilityChecklistPredicate() {
+  const uniqueIds = isVisibleFilterEnabled("unique") ? null : getUniqueMissingEntryIds();
+  const megaDexes = isVisibleFilterEnabled("mega") ? null : getAvailableMegaDexes();
+  return entry => {
+    const status = getEffectiveStatus(entry, state.activeMode);
+    if (!isVisibleFilterEnabled("owned") && status === "owned") return false;
+    if (!isVisibleFilterEnabled("unowned") && status !== "owned") return false;
+    if (!isVisibleFilterEnabled("can-evolve") && ["can-evolve", "trade"].includes(status)) return false;
+    if (!isVisibleFilterEnabled("missing") && status === "missing") return false;
+    if (uniqueIds?.has(entry.id)) return false;
+    if (!isVisibleFilterEnabled("unreleased") && isCurrentlyUnreleased(entry)) return false;
+    if (!isVisibleFilterEnabled("regional") && entry.isRegional) return false;
+    if (megaDexes?.has(entry.dex)) return false;
+    return true;
+  };
 }
 
 function getAvailableMegaDexes() {
