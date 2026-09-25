@@ -1,0 +1,27 @@
+{
+  "overall": {
+    "id": "2027_v1.1.0",
+    "status": "deployed_preview_baseline",
+    "effective_date": "2026-09-25",
+    "supersedes": "2027_v1.0.0",
+    "website_path": "/ELO/2027"
+  },
+  "version_policy": {
+    "major": "model shape or architecture",
+    "minor": "new deployed composition or tipping policy",
+    "patch": "subsystem revision within the same composition",
+    "cascade": "every deployed subsystem update must bump the overall model version"
+  },
+  "systems": [
+    {"deployment_id":"ELO_v1.0","display_name":"Base 2027 ELO","development_designation":"B* / actual-rest baseline","sources":["EXP-2026-010","EXP-2026-034"]},
+    {"deployment_id":"RA_v1.0","display_name":"Rookie Adjustment","development_designation":"Gate 6 / steps_0_5_20_robust_gate6","sources":["EXP-2026-015","EXP-2026-017","EXP-2026-034"]},
+    {"deployment_id":"LA_v1.0","display_name":"Lineup Adjustment","development_designation":"Stage 4C / minutes_rookie_role5 / tip_selected / config 41","sources":["EXP-2026-037","EXP-2026-039"]},
+    {"deployment_id":"MS_v1.0","display_name":"Market Swap","development_designation":"protected 10-point confidence-gap rule","sources":["EXP-2026-030","EXP-2026-039","EXP-2026-045"]},
+    {"deployment_id":"Player_Profile_Full_v1.0","display_name":"Full Player Profile","development_designation":"O10_full","sources":["EXP-2026-042","EXP-2026-043","EXP-2026-044"]},
+    {"deployment_id":"Player_Profile_Core_v1.0","display_name":"Core Player Profile","development_designation":"O9_no_error","sources":["EXP-2026-044"]},
+    {"deployment_id":"Creation_Profile_v1.0","display_name":"Creation Profile","development_designation":"creation-lite / C1_creation_gate4","sources":["EXP-2026-043","EXP-2026-044"]}
+  ],
+  "replay_provenance": "retrospective_prior_only_development_replay_not_archived_forecast",
+  "website_cache_version": "2026-09-25-v2"
+}
+

@@ -46,6 +46,10 @@ const selectedMarginPath = path.join(offline, "experiments", "EXP-2026-028-margi
 const refinedMarginPath = path.join(offline, "experiments", "EXP-2026-028-margin-alternative-models", "run-001", "discrete_refined_predictions.csv");
 const finalsPath = path.join(offline, "experiments", "EXP-2026-029-finals-week1-holdout", "run-001", "predictions.csv");
 const prospectiveMarketPath = path.join(offline, "experiments", "EXP-2026-021-prospective-signal-archive", "data", "observations", "market_observations.csv");
+const stage4cPath = path.join(offline, "experiments", "EXP-2026-039-stage4c-relative-market", "run-001", "selected_decisions.csv");
+const playerProfilesPath = path.join(offline, "experiments", "EXP-2026-044-agency-error-decomposition", "run-001", "candidate_predictions.csv");
+const playerAuditPath = path.join(offline, "experiments", "EXP-2026-043-o10-audit-lite", "run-001-audit", "o10_reversal_audit.csv");
+const teamListDetailsPath = path.join(here, "data", "team-list-details.json");
 const recoveredPath = path.join(offline, "experiments", "EXP-2026-031-recovered-historical-models", "run-003", "website_payload.json");
 const recovered = JSON.parse(fs.readFileSync(recoveredPath, "utf8"));
 const recoveredById = new Map(recovered.ownPredictions.map(r=>[Number(r.id),r]));
@@ -59,6 +63,10 @@ const selectedMargins = readCsv(selectedMarginPath);
 const refinedMargins = readCsv(refinedMarginPath);
 const finals = readCsv(finalsPath);
 const prospective = fs.existsSync(prospectiveMarketPath) ? readCsv(prospectiveMarketPath) : [];
+const stage4c = readCsv(stage4cPath);
+const playerProfiles = readCsv(playerProfilesPath);
+const playerAudit = readCsv(playerAuditPath);
+const teamListDetails = JSON.parse(fs.readFileSync(teamListDetailsPath, "utf8")).matches;
 
 const oddsById = new Map(odds.map(r => [Number(r.match_id), r]));
 const gateById = new Map(gates.filter(r => r.candidate_label === "steps_0_5_20_robust_gate6").map(r => [Number(r.match_id), r]));
@@ -66,6 +74,12 @@ const fixedByIndex = new Map(fixed.filter(r => r.candidate_label === "steps_0_5_
 const stableById = new Map(selectedMargins.map(r => [Number(r.match_id), r]));
 const refinedById = new Map(refinedMargins.map(r => [Number(r.match_id), r]));
 const finalsByKey = new Map(finals.map(r => [`2026|${r.home_team}|${r.away_team}`, r]));
+const stage4cByIndex = new Map(stage4c.map(r => [Number(r.elo_index), r]));
+const profileByName = name => new Map(playerProfiles.filter(r => r.candidate === name).map(r => [Number(r.elo_index), r]));
+const fullProfileByIndex = profileByName("O10_full");
+const coreProfileByIndex = profileByName("O9_no_error");
+const creationProfileByIndex = profileByName("C1_creation_gate4");
+const playerAuditByIndex = new Map(playerAudit.map(r => [Number(r.elo_index), r]));
 
 // Correct ladder replay: membership and byes are scoped to each season.
 const ladderPicks = new Map();
@@ -101,10 +115,23 @@ const compact = rawMatches.map((m, index) => {
   const s = stableById.get(Number(m.id));
   const r = refinedById.get(Number(m.id));
   const fin = finalsByKey.get(key(m));
+  const stage4 = stage4cByIndex.get(index);
+  const fullProfile = fullProfileByIndex.get(index);
+  const coreProfile = coreProfileByIndex.get(index);
+  const creationProfile = creationProfileByIndex.get(index);
+  const playerDetail = playerAuditByIndex.get(index);
   const historicalForecast = recoveredById.get(Number(m.id));
   const bstarP = num(o?.Bstar_home_probability) ?? num(g?.bstar_probability) ?? num(fin?.base_home_probability);
-  const candidateP = num(g?.candidate_probability) ?? num(f?.candidate_probability) ?? num(fin?.home_probability) ?? bstarP;
-  const candidateDr = num(s?.candidate_dr) ?? num(r?.candidate_dr) ?? num(fin?.candidate_dr) ?? (candidateP == null ? null : -400 * Math.log10(1 / candidateP - 1));
+  const gate6P = num(g?.candidate_probability) ?? num(f?.candidate_probability) ?? num(fin?.home_probability) ?? bstarP;
+  const stage4P = num(stage4?.stage4_home_probability);
+  const lineupGate = truth(stage4?.strong_overturn);
+  const rookieGate = truth(g?.adjustment_applied) || truth(f?.adjustment_applied) || truth(fin?.gate_applied);
+  const candidateP = num(stage4?.selected_gate_home_probability) ?? gate6P;
+  const candidateDr = candidateP == null ? null : -400 * Math.log10(1 / candidateP - 1);
+  const o10P = num(fullProfile?.candidate_probability), o9P = num(coreProfile?.candidate_probability), creationP = num(creationProfile?.candidate_probability);
+  const displayedHome = candidateP == null ? null : candidateP >= .5;
+  const playerAlert = displayedHome != null && o10P != null && (o10P >= .5) !== displayedHome;
+  const playerConsensus = playerAlert && o9P != null && creationP != null && (o9P >= .5) === (o10P >= .5) && (creationP >= .5) === (o10P >= .5);
   const explicitHome = num(o?.home_odds_close_explicit);
   const explicitAway = num(o?.away_odds_close_explicit);
   const effectiveHome = num(o?.home_odds_close_effective);
@@ -113,10 +140,20 @@ const compact = rawMatches.map((m, index) => {
     id:Number(m.id), year:Number(m.year), round:m.round, matchIndex:Number(m.match_index), game:Number(m.game_num),
     date:o?.match_date || fin?.match_date_utc || null, home:m.home_team, away:m.away_team,
     hs:num(m.home_score), as:num(m.away_score), venue:m.venue_name || fin?.venue || o?.venue || null,
-    productionP:num(o?.B0_home_probability), bstarP, candidateP, candidateDr,
+    productionP:num(o?.B0_home_probability), bstarP, gate6P, stage4P, candidateP, candidateDr,
     actualForecastP:historicalForecast?.p ?? null,
-    lineupMargin:num(g?.lineup_margin_adjustment) ?? num(f?.lineup_margin_adjustment) ?? num(fin?.capped_lineup_adjustment),
-    rookieGate:truth(g?.adjustment_applied) || truth(f?.adjustment_applied) || truth(fin?.gate_applied),
+    rookieMargin:num(g?.lineup_margin_adjustment) ?? num(f?.lineup_margin_adjustment) ?? num(fin?.capped_lineup_adjustment),
+    rookieGate,
+    lineupMargin:num(stage4?.stage4_adjustment_points), lineupGate,
+    teamListDrivers:(rookieGate || lineupGate) ? teamListDetails[index] ?? null : null,
+    o10P, o9P, creationP,
+    o10Margin:num(fullProfile?.raw_margin_adjustment), o9Margin:num(coreProfile?.raw_margin_adjustment), creationMargin:num(creationProfile?.raw_margin_adjustment),
+    playerAlert, playerConsensus,
+    playerDrivers:playerDetail ? {
+      top:playerDetail.top_three_drivers || null,
+      homeIncoming:playerDetail.home_incoming || null, homeOutgoing:playerDetail.home_outgoing || null,
+      awayIncoming:playerDetail.away_incoming || null, awayOutgoing:playerDetail.away_outgoing || null
+    } : null,
     openHome:num(o?.home_odds_open), openAway:num(o?.away_odds_open),
     closeHome:effectiveHome, closeAway:effectiveAway, explicitClose:explicitHome != null && explicitAway != null,
     closeSource:o?.close_price_source || null, closeHomeP:num(o?.close_home_probability_no_vig), openHomeP:num(o?.open_home_probability_no_vig),
@@ -193,7 +230,7 @@ for (const rows of sportsbetGroups.values()) {
 }
 
 fs.mkdirSync(outDir,{recursive:true});
-const payload={meta:{version:"2026-09-15-v1",builtAt:new Date().toISOString(),cutoff:"2026 regular season plus frozen Finals Week 1 predictions",historicalYears:[1998,2025],odds:"Historical: explicit single-book close when present, otherwise OddsPortal survey fallback. Current: latest paired Sportsbet H2H observation; never averaged. Market gates require paired prices."},matches:compact,currentMarkets,performance,joker:{"2026":{model:"prod-observed-2026-09-11",selected:selectedJokers,rows:joker}}};
+const payload={meta:{version:"2026-09-25-v2",model:"2027_v1.1.0",builtAt:new Date().toISOString(),cutoff:"2026 regular season plus frozen Finals Week 1 predictions",historicalYears:[1998,2025],odds:"Historical: explicit single-book close when present, otherwise OddsPortal survey fallback. Current: latest paired Sportsbet H2H observation; never averaged. Market gates require paired prices."},matches:compact,currentMarkets,performance,joker:{"2026":{model:"prod-observed-2026-09-11",selected:selectedJokers,rows:joker}}};
 fs.writeFileSync(path.join(outDir,"historical-cache.json"),JSON.stringify(payload));
 fs.writeFileSync(path.join(outDir,"historical-model-comparison.json"),JSON.stringify({meta:recovered.meta,models:recovered.models,yearly:recovered.yearly,periods:recovered.periods,ownYearly:recovered.ownYearly}));
 console.log(`Wrote ${compact.length} matches, ${performance.length} performance years, ${joker.length} joker rounds.`);

@@ -183,7 +183,7 @@ def main() -> None:
     destination = root.parent / "2027/data/current-finals-forecast.json"
     destination.write_text(json.dumps({
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "model": "2027-candidate-bstar-rookie-gate6-v1",
+        "model": "2027_v1.0.0",
         "note": "Prospective published-team-list forecast; target results excluded.",
         "forecasts": output, "unmatchedPlayers": unmatched,
     }, indent=2) + "\n", encoding="utf-8")
