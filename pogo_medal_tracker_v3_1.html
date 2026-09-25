@@ -277,6 +277,21 @@ tr.tier-Platinum:nth-child(even) { background: rgba(103,201,255,.18); }
     </div>
 
     <div id="additionalForecastTables"></div>
+    <div class="panel">
+      <div class="section-head">
+        <h3>Candidates</h3>
+        <div class="small">Next 10 non-dex medals after those assigned to the levels above.</div>
+      </div>
+      <div class="mini-table-wrap">
+        <table class="additional-table">
+          <colgroup>
+            <col style="width:42px"><col style="width:210px"><col style="width:98px"><col style="width:130px"><col style="width:120px">
+          </colgroup>
+          <thead><tr><th>#</th><th>Medal</th><th>Type</th><th>Progress</th><th>Expected</th></tr></thead>
+          <tbody id="forecastCandidatesTable"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <section id="graphs" class="tab-pane">
@@ -1061,7 +1076,7 @@ function renderEntry() {
   state.medalOrder.main.forEach((id, idx) => { if (byId[id]) mainBody.appendChild(makeRow(byId[id], idx, latest, prev, projectionsById)); });
   state.medalOrder.catch.forEach((id, idx) => { if (byId[id]) catchBody.appendChild(makeRow(byId[id], idx, latest, prev, projectionsById)); });
   attachSortables();
-  document.getElementById("entryHeaderNote").textContent = `${prev ? fmtDate(prev.date) : "None"} · ${getTotalCompletedMedals(latest)} medals`;
+  document.getElementById("entryHeaderNote").textContent = `${prev ? fmtDate(prev.date) : "None"} Â· ${getTotalCompletedMedals(latest)} medals`;
   Object.keys(liveTierAnnouncements).forEach(k => delete liveTierAnnouncements[k]);
   bindLiveEntryInputs();
 }
@@ -1103,7 +1118,7 @@ function applyLiveRowCalculations() {
 
   const liveHidden = parseNumber(document.getElementById("hiddenBonusInput").value);
   const draftTotal = getVisibleCompletedCount(draft) + Number(liveHidden || 0);
-  document.getElementById("entryHeaderNote").textContent = `${prev ? fmtDate(prev.date) : "None"} · ${draftTotal} medals`;
+  document.getElementById("entryHeaderNote").textContent = `${prev ? fmtDate(prev.date) : "None"} Â· ${draftTotal} medals`;
 
 }
 function bindLiveEntryInputs() {
@@ -1143,9 +1158,7 @@ function computeForecastRows() {
   const completedNonDex = getCompletedNonDexCount(latest) + hiddenBonus;
   const orderRank = getMedalOrderRank();
   const firstPlatinumDates = getFirstPlatinumDates();
-  const incompleteVisible = projections
-    .filter(m => m.type !== "Pokedex" && Number(latest.medals[m.id] || 0) < m.platinum)
-    .sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"));
+  const incompleteVisible = getIncompleteNonDexProjections(projections, latest);
   let prevAdditionalNeeded = 0;
   let prevCompletedVisibleNeeded = 0;
   return state.levels.map(level => {
@@ -1191,6 +1204,11 @@ function computeForecastRows() {
       completionSnapshotDate: completionSnapshot?.date || null
     };
   });
+}
+function getIncompleteNonDexProjections(projections, latest) {
+  return projections
+    .filter(m => m.type !== "Pokedex" && Number(latest.medals[m.id] || 0) < m.platinum)
+    .sort((a,b) => (a.projectedDate || "9999-12-31").localeCompare(b.projectedDate || "9999-12-31"));
 }
 function renderForecast() {
   const rows = computeForecastRows();
@@ -1247,6 +1265,13 @@ function renderForecast() {
     `;
     additionalWrap.appendChild(panel);
   });
+  const assignedIds = new Set(rows.flatMap(row => row.additional.map(medal => medal.id)));
+  const candidates = getIncompleteNonDexProjections(computeAllProjections(), latestSnapshot())
+    .filter(medal => !assignedIds.has(medal.id))
+    .slice(0, 10);
+  document.getElementById("forecastCandidatesTable").innerHTML = candidates.length
+    ? candidates.map((medal, index) => `<tr><td>${index + 1}</td><td class="name">${medal.name}</td><td>${medal.type}</td><td>${progressText(medal.current, medal.platinum)}</td><td>${fmtDate(medal.projectedDate)}</td></tr>`).join("")
+    : '<tr><td colspan="5" class="small">No further non-dex medals to forecast.</td></tr>';
 }
 function setupEntryForm() {
   const latest = latestSnapshot();
