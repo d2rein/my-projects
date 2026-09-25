@@ -24,7 +24,6 @@ from bs4 import BeautifulSoup
 
 
 ODDS_URL = "https://www.oddsportal.com/rugby-league/australia/nrl-women{suffix}/results/"
-NRL_DRAW_URL = "https://www.nrl.com/draw/data?competition=161&round={round_number}&season=2026"
 USER_AGENT = "Mozilla/5.0 (compatible; NRL-Elo-Research/1.0)"
 MARGIN_COEFFICIENT = 0.048406
 TEAM_BASES = {
@@ -54,14 +53,6 @@ ODDS_ALIASES = {
     "St. George Illawarra Dragons": "St George Illawarra Dragons",
     "Sydney Roosters": "Sydney Roosters",
     "Wests Tigers": "Wests Tigers",
-}
-DRAW_ALIASES = {
-    "Broncos": "Brisbane Broncos", "Raiders": "Canberra Raiders",
-    "Bulldogs": "Canterbury-Bankstown Bulldogs", "Sharks": "Cronulla-Sutherland Sharks",
-    "Titans": "Gold Coast Titans", "Warriors": "New Zealand Warriors",
-    "Knights": "Newcastle Knights", "Cowboys": "North Queensland Cowboys",
-    "Eels": "Parramatta Eels", "Dragons": "St George Illawarra Dragons",
-    "Roosters": "Sydney Roosters", "Wests Tigers": "Wests Tigers",
 }
 
 
@@ -125,53 +116,6 @@ def load_odds(cache_path: Path, refresh: bool) -> list[dict[str, Any]]:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
     return rows
-
-
-def load_draw(cache_path: Path, refresh: bool) -> list[dict[str, Any]]:
-    if cache_path.exists() and not refresh:
-        return json.loads(cache_path.read_text(encoding="utf-8"))
-    rows: list[dict[str, Any]] = []
-    for round_number in range(1, 15):
-        request = urllib.request.Request(NRL_DRAW_URL.format(round_number=round_number), headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
-        with urllib.request.urlopen(request, timeout=45) as response:
-            data = json.loads(response.read().decode("utf-8"))
-        for position, fixture in enumerate(data.get("fixtures", []), start=1):
-            home = (fixture.get("homeTeam") or {}).get("nickName")
-            away = (fixture.get("awayTeam") or {}).get("nickName")
-            if not home or not away:
-                continue
-            clock = fixture.get("clock") or {}
-            state = str(fixture.get("matchState") or "")
-            completed = state.lower() == "fulltime"
-            rows.append({
-                "match_id": 202600000 + round_number * 100 + position,
-                "season": 2026, "round_label": fixture.get("roundTitle") or f"Round {round_number}",
-                "round_index": round_number, "match_date_utc": clock.get("kickOffTimeLong"),
-                "is_finals": 1 if round_number >= 12 else 0,
-                "home_team_id": -1, "away_team_id": -2,
-                "home": DRAW_ALIASES.get(home, home), "away": DRAW_ALIASES.get(away, away),
-                "home_score": (fixture.get("homeTeam") or {}).get("score") if completed else None,
-                "away_score": (fixture.get("awayTeam") or {}).get("score") if completed else None,
-                "venue": fixture.get("venue") or None, "source": "NRL official draw",
-            })
-    unique = {(row["season"], row["home"], row["away"], row["match_date_utc"]): row for row in rows}
-    rows = sorted(unique.values(), key=lambda row: (row["match_date_utc"] or "", row["round_index"], row["match_id"]))
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
-    return rows
-
-
-def merge_draw(matches: list[dict[str, Any]], draw: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    existing = {(int(row["season"]), row["home"], row["away"], str(row["match_date_utc"] or "")[:10]) for row in matches}
-    merged = list(matches)
-    for row in draw:
-        key = (int(row["season"]), row["home"], row["away"], str(row["match_date_utc"] or "")[:10])
-        if key not in existing:
-            merged.append(row)
-    merged.sort(key=lambda row: (int(row["season"]), str(row["match_date_utc"] or ""), int(row["round_index"]), int(row["match_id"])))
-    for index, row in enumerate(merged):
-        row["index"] = index
-    return merged
 
 
 def distance_units(away: str, home: str) -> float:
@@ -346,16 +290,13 @@ def main() -> int:
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path(__file__).with_name("data") / "nrlw-cache.json")
     parser.add_argument("--odds-cache", type=Path, default=Path(__file__).with_name("data") / "nrlw-odds-source.json")
-    parser.add_argument("--draw-cache", type=Path, default=Path(__file__).with_name("data") / "nrlw-draw-source.json")
     parser.add_argument("--refresh-odds", action="store_true")
-    parser.add_argument("--refresh-draw", action="store_true")
     args = parser.parse_args()
     db = sqlite3.connect(f"file:{args.database.resolve().as_posix()}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row
     matches = load_matches(db)
     features = load_rookie_features(db, matches)
     db.close()
-    matches = merge_draw(matches, load_draw(args.draw_cache, args.refresh_draw))
     base = replay_base(matches)
     rookie = fit_rookie(matches, base, features)
     odds_rows = load_odds(args.odds_cache, args.refresh_odds)
@@ -405,8 +346,8 @@ def main() -> int:
         comparison["yearly"].append({"year": year, "withoutRookie": metrics(season, base_probability), "withRookie": metrics(season, candidate_probability),
                                      "rookieApplied": sum(bool(rookie.get(int(row["match_id"]), {}).get("applied")) for row in season)})
     payload = {
-        "meta": {"version": "2026-09-25-v2", "competition": "NRLW", "model": "2027_v1.1.0 parameters / NRLW prior-only fit",
-                 "source": "RLDB competition_id=2, augmented with the official NRL draw where 2026 RLDB results are missing", "firstSeason": compact[0]["year"], "lastSeason": compact[-1]["year"],
+        "meta": {"version": "2026-09-25-v3", "competition": "NRLW", "model": "2027_v1.1.0 parameters / NRLW prior-only fit",
+                 "source": "Live installed RLDB C:/RLDB/data/rldb.sqlite, competition_id=2", "firstSeason": compact[0]["year"], "lastSeason": compact[-1]["year"],
                  "lastMatchDate": max(row["date"] for row in compact if row["hs"] is not None), "matches": len(compact),
                  "completedMatches": len(completed_matches), "upcomingMatches": len(compact)-len(completed_matches), "lineupCoverage": len(features),
                  "rookieApplied": sum(bool(row["rookieGate"]) for row in compact),

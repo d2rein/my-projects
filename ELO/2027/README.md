@@ -72,11 +72,10 @@ Build the NRLW cache from the local read-only RLDB database with:
 python ELO/2027/build-nrlw-cache.py --database <path-to-rldb-sqlite>
 ```
 
-Add `--refresh-odds` to refresh the separate OddsPortal source cache and
-`--refresh-draw` to refresh the official NRL fixture/result fallback. The
-builder prefers RLDB records and adds official-draw matches only where the
-2026 RLDB data is missing. The NRLW
-rookie coefficients are trained only on earlier NRLW seasons. Because the
+Add `--refresh-odds` to refresh the separate OddsPortal source cache. Match
+and team-list data come exclusively from the installed live RLDB; the odds
+cache is only an external comparison layer. The NRLW rookie coefficients are
+trained only on earlier NRLW seasons. Because the
 league is young, the replay does not impose the NRL research pipeline's
 200-game minimum; its comparison is explicitly exploratory, not a promotion
 decision.

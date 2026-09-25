@@ -19,7 +19,7 @@ const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Shark
 const roundKey=value=>String(value||"").replace(/Finals Week/i,"Finals Wk").replace(/\s+/g," ").trim().toLowerCase();
 
 async function loadCache(){
-  const [res,nrlwResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260925-2`)]);
+  const [res,nrlwResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260925-3`)]);
   if(!res.ok)throw new Error(`Historical cache ${res.status}`);
   state.cache=await res.json();
   if(!nrlwResponse.ok)throw new Error(`NRLW cache ${nrlwResponse.status}`);
@@ -272,7 +272,7 @@ function renderHistory(){
   if(state.historySignature===signature){const rows=selectedYear==="all"?allDisplayMatches():seasonMatches(Number(selectedYear));scrollToCurrentRound("#history-table",rows);return}
   const rows=(selectedYear==="all"?allDisplayMatches():seasonMatches(Number(selectedYear))).filter(r=>(!team||r.home===team||r.away===team)&&(!q||`${r.round} ${r.venue}`.toLowerCase().includes(q))).sort((a,b)=>a.year-b.year||a.matchIndex-b.matchIndex);
   const meta=activeCache().meta;
-  $("#history-cache-note").innerHTML=`${rows.length} matching games · all results shown in chronological order${state.competition==="NRLW"?` · RLDB + official draw through ${esc(meta.lastMatchDate?.slice(0,10)||meta.lastSeason)} · historical odds ${meta.oddsCoverage}/${meta.completedMatches}`:""}`;
+  $("#history-cache-note").innerHTML=`${rows.length} matching games · all results shown in chronological order${state.competition==="NRLW"?` · live RLDB through ${esc(meta.lastMatchDate?.slice(0,10)||meta.lastSeason)} · historical odds ${meta.oddsCoverage}/${meta.completedMatches}`:""}`;
   const summary=$("#nrlw-model-summary");
   if(state.competition==="NRLW"){const comparison=state.nrlwCache.comparison.overall,a=comparison.withoutRookie,b=comparison.withRookie;summary.classList.remove("hidden");summary.innerHTML=`<b>Initial NRLW model audit:</b> Base ELO ${a.correct}/${a.games} (${pct(a.accuracy)}) · with Rookie Gate 6 ${b.correct}/${b.games} (${pct(b.accuracy)}) · ${b.correct-a.correct>=0?"+":""}${b.correct-a.correct} tips. Gate applied in ${meta.rookieApplied}/${meta.completedMatches}; prior-season fit starts with ${meta.rookieTrainingGamesMin} games. Exploratory retrospective sample.`}else summary.classList.add("hidden");
   $("#history-table").innerHTML=renderGamesTableV110(rows);
@@ -372,7 +372,7 @@ P(home) = 1 / (1 + 10^(-DR_base / 400))</div></article>
 With rookie: ${b.correct}/${b.games} (${pct(b.accuracy)})
 Difference: ${signed(b.correct-a.correct)} tips
 Gate applications: ${meta.rookieApplied}/${meta.completedMatches}</div><p class="muted">The earliest fit has only ${meta.rookieTrainingGamesMin} prior games. This remains exploratory.</p></article>
-  <article class="model-card"><h2>Data boundary</h2><p>${meta.completedMatches} completed matches plus ${meta.upcomingMatches} upcoming fixtures from ${meta.firstSeason}–${meta.lastSeason}; run-out list coverage ${meta.lineupCoverage}/${meta.completedMatches}; historical odds ${meta.oddsCoverage}/${meta.completedMatches}.</p><p class="muted">The cache uses RLDB first and the official NRL draw for missing 2026 results. Odds are an external comparison layer and never enter Elo.</p></article>
+  <article class="model-card"><h2>Data boundary</h2><p>${meta.completedMatches} completed matches from ${meta.firstSeason}–${meta.lastSeason}; run-out list coverage ${meta.lineupCoverage}/${meta.completedMatches}; historical odds ${meta.oddsCoverage}/${meta.completedMatches}.</p><p class="muted">Match and team-list data come exclusively from the installed live RLDB. Odds are an external comparison layer and never enter Elo.</p></article>
   <article class="model-card wide"><h2>Version boundary</h2><p>The parameter family is <b>${esc(ACTIVE_MODEL.id)}</b>, but the NRLW composition is explicitly an initial audit rather than the full NRL deployment. Any promotion of Rookie, Lineup Adjustment or Player Impact requires a named NRLW model version.</p></article>`}
 
 function renderModelV110(){if(state.competition==="NRLW"){renderNrlwModel();return}const p=ACTIVE_MODEL.parameters,systems=Object.values(SYSTEMS);$("#model-content").innerHTML=`
