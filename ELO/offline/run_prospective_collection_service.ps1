@@ -86,8 +86,10 @@ try {
 
     $season = $today.Year
     $rounds = if ($season -eq 2026) { '28,29,30,31' } else { (1..31) -join ',' }
+    $nrlwRounds = if ($season -eq 2026) { '12,13,14' } else { (1..20) -join ',' }
     $started = [datetime]::UtcNow.ToString('o')
-    $collectorArgs = @('--archive-dir', $archiveRoot, '--mode', $effectiveMode, '--season', $season, '--rounds', $rounds)
+    $collectorArgs = @('--archive-dir', $archiveRoot, '--mode', $effectiveMode, '--season', $season,
+                       '--rounds', $rounds, '--nrlw-rounds', $nrlwRounds)
     if (Test-Path -LiteralPath $teamListTokenFile) {
         $collectorArgs += @('--team-list-api-url', $teamListApiUrl,
                             '--team-list-api-token-file', $teamListTokenFile)

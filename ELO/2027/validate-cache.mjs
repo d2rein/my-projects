@@ -23,6 +23,16 @@ assert(data.matches.filter(r=>r.year===2026&&(r.rookieGate||r.lineupGate)).every
 const active2026=new Set(data.matches.filter(r=>r.year===2026&&/^Rd\s*\d+/i.test(r.round)).flatMap(r=>[r.home,r.away]));
 assert(active2026.size===17,"2026 active-team count must be 17");
 assert(data.currentMarkets.every(r=>r.bookmaker==="Sportsbet"&&r.lastHome&&r.lastAway),"current market must be complete Sportsbet pairs");
+assert(data.currentMarkets.some(r=>r.home==="Penrith Panthers"&&r.away==="Newcastle Knights"),"Panthers/Knights current odds were not canonicalized");
+const nrlw=JSON.parse(fs.readFileSync(path.join(here,"data","nrlw-cache.json"),"utf8"));
+assert(nrlw.meta.version==="2026-09-25-v2"&&nrlw.meta.competition==="NRLW","unexpected NRLW cache version");
+assert(nrlw.matches.length===294&&nrlw.meta.completedMatches===292&&nrlw.meta.upcomingMatches===2&&nrlw.meta.lineupCoverage===249,"unexpected NRLW match/team-list coverage");
+assert(nrlw.matches.every(r=>r.id.startsWith("nrlw-")&&r.homeElo!=null&&r.awayElo!=null),"NRLW match identity or Elo missing");
+assert(nrlw.matches.filter(r=>r.closeHome!=null).length===nrlw.meta.oddsCoverage,"NRLW odds coverage mismatch");
+const nrlwAudit=nrlw.comparison.overall;
+assert(nrlwAudit.withoutRookie.games===292&&nrlwAudit.withRookie.games===292,"NRLW audit coverage mismatch");
+assert(nrlwAudit.withoutRookie.correct===185&&nrlwAudit.withRookie.correct===187,"NRLW rookie comparison changed unexpectedly");
+assert(nrlw.meta.rookieApplied===21&&nrlw.meta.rookieTrainingGamesMin===7,"NRLW rookie sample metadata mismatch");
 const historical=JSON.parse(fs.readFileSync(path.join(here,"data","historical-model-comparison.json"),"utf8"));
 assert(historical.meta.startYear===2009&&historical.meta.initialRating===1500,"historical comparison start mismatch");
 assert(historical.models.length===9&&historical.yearly.length===162,"historical comparison incomplete");
@@ -36,4 +46,4 @@ for(const entry of historical.ownYearly){
 assert(!data.performance.find(r=>r.year===2017).actualForecast,"2017 historical parameters unknown");
 assert(perf2026.actualForecast.status==="observed"&&perf2026.actualForecast.correct===130,"observed forecast overwritten");
 assert(historical.periods.find(r=>r.model==="candidate"&&r.period==="2009–2026").correct===2363,"common-start candidate benchmark mismatch");
-console.log("Cache validation passed",{matches:data.matches.length,active2026:active2026.size,currentMarkets:data.currentMarkets.length});
+console.log("Cache validation passed",{matches:data.matches.length,active2026:active2026.size,currentMarkets:data.currentMarkets.length,nrlwMatches:nrlw.matches.length,nrlwOdds:nrlw.meta.oddsCoverage});

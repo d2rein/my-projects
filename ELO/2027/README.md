@@ -18,6 +18,10 @@ the production parameter table, ratings, matches or model. The existing
 - unchanged production diagnostic download plus a candidate-specific schema;
 - read-only formula, version crosswalk and tipping-policy page backed by `model-config.js`;
 - latest paired Sportsbet H2H observation in the current table, when collected.
+- an NRL/NRLW header toggle exposing NRLW Match History and Season Matrix views;
+- an NRLW replay of the frozen Base 2027 parameters, plus a separately fitted
+  prior-season Rookie Gate 6 comparison;
+- NRLW historical survey prices recovered from OddsPortal for 2024 onward;
 - reconstructed own-year 2018–2025 forecast scores from owner-supplied parameters;
 - an expandable nine-system 2009–2026 comparison with a common 1500/2009 start.
 
@@ -62,6 +66,21 @@ node ELO/2027/build-cache.mjs
 node ELO/2027/validate-cache.mjs
 ```
 
+Build the NRLW cache from the local read-only RLDB database with:
+
+```powershell
+python ELO/2027/build-nrlw-cache.py --database <path-to-rldb-sqlite>
+```
+
+Add `--refresh-odds` to refresh the separate OddsPortal source cache and
+`--refresh-draw` to refresh the official NRL fixture/result fallback. The
+builder prefers RLDB records and adds official-draw matches only where the
+2026 RLDB data is missing. The NRLW
+rookie coefficients are trained only on earlier NRLW seasons. Because the
+league is young, the replay does not impose the NRL research pipeline's
+200-game minimum; its comparison is explicitly exploratory, not a promotion
+decision.
+
 The first command opens `C:/RLDB/data/rldb.sqlite` read-only and creates the
 temporary player-name/contribution input used by the Team List hover. The cache
 build reads that file plus frozen offline research artefacts and creates
@@ -79,5 +98,7 @@ the current season calls the live match API on page load.
 - The 2025 Joker table will be imported when the user's saved copy is supplied.
 - Non-NRL senior experience remains a blocker before Gate 6 is used for 2027
   expansion-team tips.
+- The usable NRLW odds archive currently covers 2024 onward and is incomplete
+  where OddsPortal paginates or has no historical season page.
 
 See `BACKEND_PLAN.md` for the production architecture needed before promotion.

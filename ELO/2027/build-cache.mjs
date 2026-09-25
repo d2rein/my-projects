@@ -35,7 +35,11 @@ const isRegular = round => /^Rd\s*\d+/i.test(String(round || ""));
 const roundNo = round => num(String(round || "").match(/\d+/)?.[0]) ?? 999;
 const canonicalTeam = value => ({
   "Cronulla-Sutherland Sharks":"Cronulla Sharks", Sharks:"Cronulla Sharks",
-  Roosters:"Sydney Roosters", Warriors:"New Zealand Warriors", Knights:"Newcastle Knights"
+  Roosters:"Sydney Roosters", Warriors:"New Zealand Warriors", Knights:"Newcastle Knights",
+  Panthers:"Penrith Panthers", Broncos:"Brisbane Broncos", Raiders:"Canberra Raiders",
+  Bulldogs:"Canterbury Bulldogs", Cowboys:"NQ Cowboys", Rabbitohs:"South Sydney Rabbitohs",
+  Dragons:"St. George Illawarra Dragons", Eels:"Parramatta Eels", Titans:"Gold Coast Titans",
+  "Sea Eagles":"Manly Sea Eagles", Storm:"Melbourne Storm", Tigers:"Wests Tigers"
 }[String(value).trim()] || String(value).trim());
 
 const matchesPath = path.join(offline, "snapshots", "prod-observed-2026-09-11", "matches.json");
@@ -66,7 +70,13 @@ const prospective = fs.existsSync(prospectiveMarketPath) ? readCsv(prospectiveMa
 const stage4c = readCsv(stage4cPath);
 const playerProfiles = readCsv(playerProfilesPath);
 const playerAudit = readCsv(playerAuditPath);
-const teamListDetails = JSON.parse(fs.readFileSync(teamListDetailsPath, "utf8")).matches;
+const existingCachePath = path.join(outDir, "historical-cache.json");
+const teamListDetails = fs.existsSync(teamListDetailsPath)
+  ? JSON.parse(fs.readFileSync(teamListDetailsPath, "utf8")).matches
+  : fs.existsSync(existingCachePath)
+    ? Object.fromEntries(JSON.parse(fs.readFileSync(existingCachePath, "utf8")).matches
+        .map((row, index) => [index, row.teamListDrivers]).filter(([, details]) => details))
+    : {};
 
 const oddsById = new Map(odds.map(r => [Number(r.match_id), r]));
 const gateById = new Map(gates.filter(r => r.candidate_label === "steps_0_5_20_robust_gate6").map(r => [Number(r.match_id), r]));

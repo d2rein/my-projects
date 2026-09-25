@@ -6,7 +6,8 @@ Status: active prospective data collection; no live-model change.
 
 Preserve information exactly as it was available before each match so future
 line-up, market, crowd and news research is not dependent on hindsight. The
-first observations cover the remaining 2026 NRL finals.
+first observations cover the remaining 2026 NRL finals. NRLW fixtures,
+official lists and markets were added on 25 September 2026.
 
 ## Collection schedule
 
@@ -29,10 +30,10 @@ collection on 1 March 2027. See [`SOURCES_AND_SCHEDULE.md`](SOURCES_AND_SCHEDULE
 
 | Source | What is retained | Frequency | Notes |
 |---|---|---|---|
-| NRL draw data | Teams, kickoff, round, state, venue and match-centre URL | Daily | Unauthenticated official endpoint; internal schema may change |
-| NRL Match Centre structured data | Published 22-player squads, reductions, roles, jersey numbers, player IDs, captains and NRL update time | Daily and pregame | Pre-match source; separate from RLDB's post-match run-out lists |
-| Sportsbet public NRL listing | H2H, main handicap and main total | Daily and pregame | One listing request, not one request per market |
-| The Odds Sniffer comparison | Published H2H prices for multiple AU bookmakers | Daily and pregame | One polite request; source-reported update time retained |
+| NRL draw data | NRL and NRLW teams, kickoff, round, state, venue and match-centre URL | Daily | Official competition IDs 111 and 161; internal schema may change |
+| NRL Match Centre structured data | Published NRL/NRLW squads, reductions, roles, jersey numbers, player IDs, captains and update time | Daily and pregame | Pre-match source; separate from RLDB's post-match run-out lists |
+| Sportsbet public NRL and NRLW listings | H2H, main handicap and main total | Daily and pregame | One listing request per competition, not one request per market |
+| The Odds Sniffer NRL and NRLW comparisons | Published H2H prices for multiple AU bookmakers | Daily and pregame | One polite request per competition; an empty NRLW listing is retained as evidence |
 | Manifold | Open NRL search results, probability, volume and liquidity | Daily | Public documented API; an empty result is meaningful |
 | Polymarket | NRL public-search results and market metadata | Daily | Public documented API; failures/absence are retained |
 | NRL official tipping index | Index plus at most three new expert-tip pages | Daily | New pages are downloaded once and currently stored raw |
@@ -68,7 +69,9 @@ representative daily payload by 85.3%. Existing evidence remains untouched.
 
 Each row identifies the observation time, source, bookmaker, event, kickoff,
 market type, selection, line, decimal odds, raw implied probability and raw
-payload hash. Bookmaker margin is deliberately not removed in storage; no-vig
+payload hash. NRL keeps its established source IDs; NRLW source IDs have an
+`nrlw_` prefix because the original append-only schema has no competition
+column. Bookmaker margin is deliberately not removed in storage; no-vig
 probabilities are derived during analysis.
 
 ## Ethical and operational limits

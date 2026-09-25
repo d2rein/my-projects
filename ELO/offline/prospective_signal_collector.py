@@ -1,4 +1,4 @@
-"""EXP-2026-021: append-only prospective NRL information collector.
+"""EXP-2026-021: append-only prospective NRL and NRLW information collector.
 
 This script reads public web sources and writes evidence beneath its --archive-dir.
 When explicitly configured, it also uploads normalized, append-only official
@@ -35,9 +35,11 @@ NRL_DRAW = "https://www.nrl.com/draw/data"
 NRL_ORIGIN = "https://www.nrl.com"
 NRL_TIPPING = "https://www.nrl.com/news/topic/tipping/"
 SPORTSBET_NRL = "https://www.sportsbet.com.au/betting/rugby-league/nrl"
+SPORTSBET_NRLW = "https://www.sportsbet.com.au/betting/rugby-league/nrlw"
 SPORTSBET_RL_OUTRIGHTS = "https://www.sportsbet.com.au/betting/rugby-league/outrights"
 SPORTSBET_NRL_FUTURES = "https://www.sportsbet.com.au/betting/rugby-league/nrl-futures-byo"
 ODDS_SNIFFER_NRL = "https://www.theoddssniffer.com/rugby-league/nrl"
+ODDS_SNIFFER_NRLW = "https://www.theoddssniffer.com/rugby-league/nrlw"
 MANIFOLD_SEARCH = "https://api.manifold.markets/v0/search-markets"
 POLYMARKET_SEARCH = "https://gamma-api.polymarket.com/public-search"
 
@@ -65,6 +67,11 @@ TEAM_ALIASES = {
     "south sydney rabbitohs": "Rabbitohs", "st george illawarra dragons": "Dragons",
     "st. george illawarra dragons": "Dragons", "sydney roosters": "Roosters",
     "wests tigers": "Tigers",
+}
+
+COMPETITIONS = {
+    "NRL": {"id": 111, "sportsbet": SPORTSBET_NRL, "odds_sniffer": ODDS_SNIFFER_NRL},
+    "NRLW": {"id": 161, "sportsbet": SPORTSBET_NRLW, "odds_sniffer": ODDS_SNIFFER_NRLW},
 }
 
 MARKET_FIELDS = [
@@ -97,7 +104,8 @@ def extract_nrl_match_data(payload: bytes) -> dict[str, Any]:
     return parsed["match"]
 
 
-def normalize_nrl_team_list(payload: bytes, source_url: str, observed: str) -> dict[str, Any]:
+def normalize_nrl_team_list(payload: bytes, source_url: str, observed: str,
+                            competition: str = "NRL") -> dict[str, Any]:
     match = extract_nrl_match_data(payload)
 
     def team(side: str) -> dict[str, Any]:
@@ -127,6 +135,7 @@ def normalize_nrl_team_list(payload: bytes, source_url: str, observed: str) -> d
 
     normalized = {
         "schema_version": 1,
+        "competition": competition.upper(),
         "nrl_match_id": str(match.get("matchId") or ""),
         "season": int(str(match.get("startTime") or "0000")[:4] or 0),
         "round_number": match.get("roundNumber"),
@@ -189,6 +198,7 @@ def strip_tags(value: str) -> str:
 
 def canonical_team(value: str) -> str:
     cleaned = re.sub(r"\s+", " ", html.unescape(value)).strip()
+    cleaned = re.sub(r"\s+(?:Women|W)$", "", cleaned, flags=re.I)
     return TEAM_ALIASES.get(cleaned.lower(), cleaned)
 
 
@@ -255,7 +265,8 @@ def market_row(base: dict[str, Any], *, market_type: str, selection: str,
     }
 
 
-def parse_nrl_fixtures(payload: bytes, round_number: int) -> list[dict[str, Any]]:
+def parse_nrl_fixtures(payload: bytes, round_number: int, competition: str,
+                       competition_id: int, season: int) -> list[dict[str, Any]]:
     data = json.loads(payload.decode("utf-8"))
     rows: list[dict[str, Any]] = []
     for fixture in data.get("fixtures", []):
@@ -263,8 +274,9 @@ def parse_nrl_fixtures(payload: bytes, round_number: int) -> list[dict[str, Any]
         home = fixture.get("homeTeam") or {}
         away = fixture.get("awayTeam") or {}
         rows.append({
-            "competition": 111,
-            "season": 2026,
+            "competition": competition_id,
+            "competition_code": competition,
+            "season": season,
             "round_number": round_number,
             "round_name": fixture.get("roundTitle") or fixture.get("roundName") or "",
             "home_team": home.get("nickName") or home.get("name") or "",
@@ -278,7 +290,8 @@ def parse_nrl_fixtures(payload: bytes, round_number: int) -> list[dict[str, Any]
     return rows
 
 
-def extract_sportsbet(payload: bytes, observed: str, run_id: str, mode: str) -> list[dict[str, Any]]:
+def extract_sportsbet(payload: bytes, observed: str, run_id: str, mode: str,
+                      source_listing_url: str = SPORTSBET_NRL) -> list[dict[str, Any]]:
     body = payload.decode("utf-8", errors="replace")
     digest = sha256(payload)
     rows: list[dict[str, Any]] = []
@@ -290,7 +303,7 @@ def extract_sportsbet(payload: bytes, observed: str, run_id: str, mode: str) -> 
         block = card.group("body")
         teams = re.findall(r'data-automation-id="participant-(?:one|two)">([^<]+)', block)
         kickoff = re.search(r'<time dateTime="([^"]+)"', block)
-        link = re.search(r'href="([^"]+/nrl/[^"]+)"', block)
+        link = re.search(r'href="([^"]+/rugby-league/(?:nrl|nrlw)/[^"]+)"', block)
         if len(teams) != 2 or not kickoff:
             continue
         home, away = map(canonical_team, teams)
@@ -298,7 +311,7 @@ def extract_sportsbet(payload: bytes, observed: str, run_id: str, mode: str) -> 
             kickoff_utc = iso_utc(parse_datetime(kickoff.group(1)))
         except ValueError:
             kickoff_utc = kickoff.group(1)
-        source_url = "https://www.sportsbet.com.au" + link.group(1) if link and link.group(1).startswith("/") else SPORTSBET_NRL
+        source_url = "https://www.sportsbet.com.au" + link.group(1) if link and link.group(1).startswith("/") else source_listing_url
         base = {
             "run_id": run_id, "observed_at_utc": observed, "mode": mode,
             "source": "sportsbet_public_listing", "bookmaker": "Sportsbet",
@@ -335,7 +348,7 @@ def extract_sportsbet(payload: bytes, observed: str, run_id: str, mode: str) -> 
 
 
 def extract_odds_sniffer(payload: bytes, observed: str, run_id: str, mode: str,
-                         fixtures: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                         fixtures: list[dict[str, Any]], source_listing_url: str = ODDS_SNIFFER_NRL) -> list[dict[str, Any]]:
     body = payload.decode("utf-8", errors="replace")
     digest = sha256(payload)
     reported = ""
@@ -378,7 +391,7 @@ def extract_odds_sniffer(payload: bytes, observed: str, run_id: str, mode: str,
                 base = {
                     "run_id": run_id, "observed_at_utc": observed, "mode": mode,
                     "source": "odds_sniffer_comparison", "bookmaker": BOOKMAKER_CODES.get(headers[position], headers[position]),
-                    "source_url": ODDS_SNIFFER_NRL, "source_event_id": event_name,
+                    "source_url": source_listing_url, "source_event_id": event_name,
                     "home_team": home, "away_team": away, "kickoff_utc": kickoff,
                     "source_reported_at": reported, "raw_sha256": digest,
                 }
@@ -471,10 +484,18 @@ def main() -> int:
     parser.add_argument("--mode", choices=("daily", "pregame", "offseason", "manual"), default="manual")
     parser.add_argument("--season", type=int, default=2026)
     parser.add_argument("--rounds", default="28,29,30,31")
+    parser.add_argument("--nrlw-rounds", default="",
+                        help="NRLW round numbers; defaults to --rounds")
+    parser.add_argument("--competitions", default="NRL,NRLW",
+                        help="Comma-separated competition codes (NRL, NRLW)")
     parser.add_argument("--delay-seconds", type=float, default=1.0)
     parser.add_argument("--team-list-api-url", default=os.environ.get("NRL_ELO_TEAMLIST_API_URL", ""))
     parser.add_argument("--team-list-api-token-file", type=Path)
     args = parser.parse_args()
+    competition_codes = [value.strip().upper() for value in args.competitions.split(",") if value.strip()]
+    unknown = [value for value in competition_codes if value not in COMPETITIONS]
+    if unknown:
+        parser.error(f"unknown competition(s): {', '.join(unknown)}")
 
     archive = args.archive_dir.resolve()
     now = utc_now()
@@ -529,15 +550,23 @@ def main() -> int:
             return 0
 
     if args.mode not in {"pregame", "offseason"}:
-        for round_number in [int(value) for value in args.rounds.split(",") if value.strip()]:
-            query = urlencode({"competition": 111, "round": round_number, "season": args.season})
-            url = f"{NRL_DRAW}?{query}"
-            payload = collect_bytes("nrl_draw", url, f"nrl_draw_round_{round_number}.json")
-            if payload:
-                try:
-                    fixtures.extend(parse_nrl_fixtures(payload, round_number))
-                except Exception as exc:
-                    record_error("nrl_draw_parser", url, exc)
+        round_values = {
+            "NRL": [int(value) for value in args.rounds.split(",") if value.strip()],
+            "NRLW": [int(value) for value in (args.nrlw_rounds or args.rounds).split(",") if value.strip()],
+        }
+        for competition in competition_codes:
+            competition_id = int(COMPETITIONS[competition]["id"])
+            for round_number in round_values[competition]:
+                query = urlencode({"competition": competition_id, "round": round_number, "season": args.season})
+                url = f"{NRL_DRAW}?{query}"
+                payload = collect_bytes(f"{competition.lower()}_draw", url,
+                                        f"{competition.lower()}_draw_round_{round_number}.json")
+                if payload:
+                    try:
+                        fixtures.extend(parse_nrl_fixtures(payload, round_number, competition,
+                                                          competition_id, args.season))
+                    except Exception as exc:
+                        record_error(f"{competition.lower()}_draw_parser", url, exc)
         if fixtures:
             # Invalid/not-yet-published finals round numbers can temporarily
             # return the latest available round. Preserve one canonical copy.
@@ -566,12 +595,13 @@ def main() -> int:
             if not relative_url:
                 continue
             source_url = urljoin(NRL_ORIGIN, relative_url)
-            payload = collect_bytes("nrl_official_team_list", source_url,
-                                    f"nrl_team_list_{position}.html")
+            competition = str(fixture.get("competition_code") or "NRL").lower()
+            payload = collect_bytes(f"{competition}_official_team_list", source_url,
+                                    f"{competition}_team_list_{position}.html")
             if not payload:
                 continue
             try:
-                snapshot = normalize_nrl_team_list(payload, source_url, observed)
+                snapshot = normalize_nrl_team_list(payload, source_url, observed, competition)
                 team_list_snapshots.append(snapshot)
                 events.append({"at": iso_utc(utc_now()), "run_id": run_id,
                                "event": "team_list_parsed", "source": "nrl_official_team_list",
@@ -583,22 +613,32 @@ def main() -> int:
                 record_error("nrl_official_team_list_parser", source_url, exc)
 
     sources = [] if args.mode == "offseason" else [
-        ("sportsbet_public_listing", SPORTSBET_NRL, "sportsbet_nrl.html", extract_sportsbet),
-        ("odds_sniffer_comparison", ODDS_SNIFFER_NRL, "odds_sniffer_nrl.html", extract_odds_sniffer),
+        (competition, kind, str(COMPETITIONS[competition][kind]))
+        for competition in competition_codes for kind in ("sportsbet", "odds_sniffer")
     ]
-    for source, url, filename, extractor in sources:
-        payload = collect_bytes(source, url, filename)
+    for competition, kind, url in sources:
+        source = f"{kind}_public_listing" if kind == "sportsbet" else f"{kind}_comparison"
+        filename = f"{kind}_{competition.lower()}.html"
+        payload = collect_bytes(f"{competition.lower()}_{source}", url, filename)
         if payload:
             try:
-                if source == "odds_sniffer_comparison":
-                    rows = extractor(payload, observed, run_id, args.mode, fixtures)
+                competition_fixtures = [row for row in fixtures if row.get("competition_code") == competition]
+                if kind == "odds_sniffer":
+                    rows = extract_odds_sniffer(payload, observed, run_id, args.mode,
+                                                competition_fixtures, url)
                 else:
-                    rows = extractor(payload, observed, run_id, args.mode)
+                    rows = extract_sportsbet(payload, observed, run_id, args.mode, url)
+                # Keep established NRL source identifiers stable in the
+                # append-only CSV. NRLW needs a prefix because the legacy
+                # observation schema has no competition column.
+                if competition == "NRLW":
+                    for row in rows:
+                        row["source"] = f"nrlw_{row['source']}"
                 market_rows.extend(rows)
                 events.append({"at": iso_utc(utc_now()), "run_id": run_id, "event": "source_parsed",
-                               "source": source, "rows": len(rows)})
+                               "competition": competition, "source": source, "rows": len(rows)})
             except Exception as exc:
-                record_error(source + "_parser", url, exc)
+                record_error(f"{competition.lower()}_{source}_parser", url, exc)
 
     if args.mode == "offseason":
         # Preserve raw pages even before a stable all-team market is published.
@@ -674,7 +714,7 @@ def main() -> int:
         captured_path.write_bytes(canonical_json(captured))
 
     write_csv(run_dir / "fixtures.csv", fixtures, [
-        "competition", "season", "round_number", "round_name", "home_team", "away_team",
+        "competition", "competition_code", "season", "round_number", "round_name", "home_team", "away_team",
         "kickoff_utc", "match_state", "match_mode", "match_centre_url", "venue",
     ])
     write_csv(run_dir / "market_observations.csv", market_rows, MARKET_FIELDS)

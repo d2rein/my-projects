@@ -38,6 +38,7 @@ if ($isOffseason) {
 
 $season = $today.Year
 $rounds = if ($season -eq 2026) { '28,29,30,31' } else { (1..31) -join ',' }
+$nrlwRounds = if ($season -eq 2026) { '12,13,14' } else { (1..20) -join ',' }
 
-& python $collector --archive-dir $archiveRoot --mode $Mode --season $season --rounds $rounds
+& python $collector --archive-dir $archiveRoot --mode $Mode --season $season --rounds $rounds --nrlw-rounds $nrlwRounds
 exit $LASTEXITCODE

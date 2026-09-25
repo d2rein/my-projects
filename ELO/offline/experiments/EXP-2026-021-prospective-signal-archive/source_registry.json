@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "experiment": "EXP-2026-021",
+  "created_date": "2026-09-14",
+  "timezone": "Australia/Brisbane",
+  "live_model_changed": false,
+  "sources": [
+    {
+      "id": "nrl_draw",
+      "url": "https://www.nrl.com/draw/data?competition=111&round=<ROUND>&season=<SEASON>",
+      "access": "public unauthenticated GET",
+      "role": "fixture identity and kickoff"
+    },
+    {
+      "id": "nrlw_draw",
+      "url": "https://www.nrl.com/draw/data?competition=161&round=<ROUND>&season=<SEASON>",
+      "access": "public unauthenticated GET",
+      "role": "NRLW fixture identity, kickoff and Match Centre URL"
+    },
+    {
+      "id": "sportsbet_public_listing",
+      "url": "https://www.sportsbet.com.au/betting/rugby-league/nrl",
+      "access": "one public page GET per capture",
+      "role": "bookmaker H2H, line and total"
+    },
+    {
+      "id": "nrlw_sportsbet_public_listing",
+      "url": "https://www.sportsbet.com.au/betting/rugby-league/nrlw",
+      "access": "one public page GET per capture",
+      "role": "NRLW bookmaker H2H, line and total"
+    },
+    {
+      "id": "sportsbet_rugby_league_outrights",
+      "url": "https://www.sportsbet.com.au/betting/rugby-league/outrights",
+      "access": "one public page GET per weekly offseason capture",
+      "role": "raw rugby-league outright markets including premiership futures when published"
+    },
+    {
+      "id": "sportsbet_nrl_futures",
+      "url": "https://www.sportsbet.com.au/betting/rugby-league/nrl-futures-byo",
+      "access": "one public page GET per weekly offseason capture",
+      "role": "raw NRL futures and expansion-team futures"
+    },
+    {
+      "id": "odds_sniffer_comparison",
+      "url": "https://www.theoddssniffer.com/rugby-league/nrl",
+      "access": "one public page GET per capture",
+      "role": "multi-book H2H comparison",
+      "politeness": "daily plus one pregame request only; never continuous polling"
+    },
+    {
+      "id": "nrlw_odds_sniffer_comparison",
+      "url": "https://www.theoddssniffer.com/rugby-league/nrlw",
+      "access": "one public page GET per capture",
+      "role": "NRLW multi-book H2H comparison when published",
+      "politeness": "daily plus one pregame request only; never continuous polling"
+    },
+    {
+      "id": "manifold",
+      "url": "https://api.manifold.markets/v0/search-markets",
+      "access": "documented public API",
+      "role": "prediction-market discovery"
+    },
+    {
+      "id": "polymarket",
+      "url": "https://gamma-api.polymarket.com/public-search",
+      "access": "documented public API",
+      "role": "prediction-market discovery"
+    },
+    {
+      "id": "nrl_official_expert_tips",
+      "url": "https://www.nrl.com/news/topic/tipping/",
+      "access": "public index; each newly discovered article fetched once",
+      "role": "published expert/journalist tips"
+    }
+  ],
+  "deferred_sources": [
+    {
+      "id": "fan_tip_percentages",
+      "reason": "No stable public unauthenticated source verified yet"
+    },
+    {
+      "id": "licensed_odds_api",
+      "reason": "Requires an account/API key; adapter can be added without changing stored schema"
+    },
+    {
+      "id": "betfair_exchange",
+      "reason": "API credentials and exchange market mapping required"
+    }
+  ]
+}

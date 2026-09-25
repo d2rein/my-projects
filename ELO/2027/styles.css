@@ -13,3 +13,4 @@
 .overlay-gain.positive{color:#2e7d32}
 .overlay-gain.negative{color:#b71c1c}
 .overlay-gain.neutral{color:#666}
+.site-header{display:flex;align-items:center;justify-content:space-between;gap:20px}.competition-toggle{display:inline-flex;padding:3px;border:1px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(255,255,255,.08)}.competition-toggle button{border:0;border-radius:999px;padding:7px 15px;background:transparent;color:#fff;cursor:pointer;font-weight:700}.competition-toggle button.active{background:#fff;color:#1a1a2e}.nrlw-model-summary{margin:0 0 8px;padding:8px 10px;border-left:4px solid #285a78;background:#eef6fa;color:#334;font-size:12px}.competition-unavailable{display:none!important}@media(max-width:600px){.site-header{align-items:flex-start}.competition-toggle button{padding:6px 10px}}
