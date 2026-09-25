@@ -1,6 +1,6 @@
 import { createReplayEngine } from "../shared/replay-engine.js";
 import { buildFinalsBracket, FINALS_ROUNDS } from "../shared/finals-bracket.js";
-import { MODELS, SYSTEMS, TIPPING_POLICY, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js";
+import { MODELS, SYSTEMS, TIPPING_POLICY, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js?v=20260925-3";
 
 const state={cache:null,historicalComparison:null,current:[],teamLists:[],currentForecasts:[],currentForecastModel:null,charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];

@@ -22,6 +22,6 @@
     {"deployment_id":"Creation_Profile_v1.0","display_name":"Creation Profile","development_designation":"creation-lite / C1_creation_gate4","sources":["EXP-2026-043","EXP-2026-044"]}
   ],
   "replay_provenance": "retrospective_prior_only_development_replay_not_archived_forecast",
-  "website_cache_version": "2026-09-25-v2"
+  "website_cache_version": "2026-09-25-v2",
+  "website_asset_version": "20260925-3"
 }
-

@@ -1,5 +1,10 @@
 # Changelog
 
+## Website delivery hotfix - 2026-09-25
+
+- Versioned the `model-config.js` module import and bumped the application asset URL to `20260925-3` so a browser cannot combine the new application with the cached v1.0 model module.
+- No model, subsystem, probability or tipping-policy logic changed; the overall model remains `2027_v1.1.0`.
+
 ## 2027_v1.1.0 - 2026-09-25
 
 - Preserved `2027_v1.0.0` as the previous B* plus Gate-6 preview.
