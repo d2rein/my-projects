@@ -152,13 +152,82 @@ def load_matches(db: sqlite3.Connection) -> list[dict[str, Any]]:
       JOIN teams th ON th.team_id=m.home_team_id
       JOIN teams ta ON ta.team_id=m.away_team_id
       LEFT JOIN venues v ON v.venue_id=m.venue_id
-      WHERE m.competition_id=2 AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL
+      WHERE m.competition_id=2
       ORDER BY m.season,COALESCE(m.match_date_utc,''),m.round_index,m.match_id
     """
     rows = [dict(row) for row in db.execute(query)]
     for index, row in enumerate(rows):
         row["index"] = index
     return rows
+
+
+def project_nrlw_finals(matches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Add only the next knowable finals round when RLDB has not stored it yet."""
+    if not matches:
+        return matches
+    latest_year = max(int(row["season"]) for row in matches)
+    season = [row for row in matches if int(row["season"]) == latest_year]
+    if any(row["home_score"] is None or row["away_score"] is None for row in season):
+        return matches
+
+    names_to_ids: dict[str, int] = {}
+    for row in season:
+        names_to_ids[row["home"]] = int(row["home_team_id"])
+        names_to_ids[row["away"]] = int(row["away_team_id"])
+
+    regular = [row for row in season if not row["is_finals"]]
+    ladder: dict[str, dict[str, int]] = defaultdict(lambda: {"points": 0, "diff": 0, "for": 0})
+    for row in regular:
+        home, away = row["home"], row["away"]
+        home_score, away_score = int(row["home_score"]), int(row["away_score"])
+        ladder[home]["for"] += home_score
+        ladder[away]["for"] += away_score
+        ladder[home]["diff"] += home_score - away_score
+        ladder[away]["diff"] += away_score - home_score
+        if home_score > away_score:
+            ladder[home]["points"] += 2
+        elif away_score > home_score:
+            ladder[away]["points"] += 2
+        else:
+            ladder[home]["points"] += 1
+            ladder[away]["points"] += 1
+    ordered = sorted(ladder, key=lambda team: (-ladder[team]["points"], -ladder[team]["diff"], -ladder[team]["for"], team))
+    rank = {team: index + 1 for index, team in enumerate(ordered)}
+
+    def completed(round_label: str) -> list[dict[str, Any]]:
+        return [row for row in season if row["round_label"] == round_label
+                and row["home_score"] is not None and row["away_score"] is not None]
+
+    def winners(rows: list[dict[str, Any]]) -> list[str]:
+        return [row["home"] if int(row["home_score"]) > int(row["away_score"]) else row["away"] for row in rows]
+
+    projected: list[tuple[str, str, str, int]] = []
+    week_one = completed("Finals Week 1")
+    week_two = completed("Finals Week 2")
+    has_week_two = any(row["round_label"] == "Finals Week 2" for row in season)
+    has_grand_final = any(row["round_label"] == "Grand Final" for row in season)
+    if len(week_one) == 2 and not has_week_two and len(ordered) >= 2:
+        advancing = sorted(winners(week_one), key=lambda team: rank[team], reverse=True)
+        projected = [
+            ("Finals Week 2", ordered[0], advancing[0], 13),
+            ("Finals Week 2", ordered[1], advancing[1], 13),
+        ]
+    elif len(week_two) == 2 and not has_grand_final:
+        advancing = sorted(winners(week_two), key=lambda team: rank[team])
+        projected = [("Grand Final", advancing[0], advancing[1], 14)]
+
+    for offset, (round_label, home, away, round_index) in enumerate(projected, start=1):
+        matches.append({
+            "match_id": -(latest_year * 10 + offset), "season": latest_year,
+            "round_label": round_label, "round_index": round_index,
+            "match_date_utc": None, "is_finals": 1,
+            "home_team_id": names_to_ids[home], "away_team_id": names_to_ids[away],
+            "home": home, "away": away, "home_score": None, "away_score": None,
+            "venue": None, "projected": True,
+        })
+    for index, row in enumerate(matches):
+        row["index"] = index
+    return matches
 
 
 def load_rookie_features(db: sqlite3.Connection, matches: list[dict[str, Any]]) -> dict[int, list[float]]:
@@ -306,7 +375,7 @@ def main() -> int:
     args = parser.parse_args()
     db = sqlite3.connect(f"file:{args.database.resolve().as_posix()}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row
-    matches = load_matches(db)
+    matches = project_nrlw_finals(load_matches(db))
     features = load_rookie_features(db, matches)
     db.close()
     base = replay_base(matches)
@@ -323,11 +392,13 @@ def main() -> int:
         odds_games += int(odds is not None)
         shadow_p = adjusted["p"] if adjusted else baseline["p"]
         compact.append({
-            "id": f"nrlw-{match_id}", "rldbId": match_id, "year": int(row["season"]),
+            "id": f"nrlw-projected-{abs(match_id)}" if row.get("projected") else f"nrlw-{match_id}",
+            "rldbId": None if row.get("projected") else match_id, "year": int(row["season"]),
             "round": re.sub(r"^Round\s+", "Rd ", row["round_label"], flags=re.I),
             "matchIndex": int(row["index"]) + 1, "game": None, "date": row["match_date_utc"],
             "home": row["home"], "away": row["away"], "hs": int(row["home_score"]) if completed else None,
             "as": int(row["away_score"]) if completed else None, "venue": row["venue"],
+            "projected": bool(row.get("projected")),
             "homeElo": baseline["homeElo"], "awayElo": baseline["awayElo"],
             "homePostElo": baseline["homePostElo"], "awayPostElo": baseline["awayPostElo"],
             "bstarP": baseline["p"], "gate6P": shadow_p,
@@ -358,8 +429,8 @@ def main() -> int:
         comparison["yearly"].append({"year": year, "withoutRookie": metrics(season, base_probability), "withRookie": metrics(season, candidate_probability),
                                      "rookieApplied": sum(bool(rookie.get(int(row["match_id"]), {}).get("applied")) for row in season)})
     payload = {
-        "meta": {"version": "2026-09-25-v4", "competition": "NRLW", "model": MODEL_ID,
-                 "source": "Live installed RLDB C:/RLDB/data/rldb.sqlite, competition_id=2", "firstSeason": compact[0]["year"], "lastSeason": compact[-1]["year"],
+        "meta": {"version": "2026-09-25-v5", "competition": "NRLW", "model": MODEL_ID,
+                 "source": "Live installed RLDB C:/RLDB/data/rldb.sqlite, competition_id=2; next finals round derived from RLDB ladder/results when absent", "firstSeason": compact[0]["year"], "lastSeason": compact[-1]["year"],
                  "lastMatchDate": max(row["date"] for row in compact if row["hs"] is not None), "matches": len(compact),
                  "completedMatches": len(completed_matches), "upcomingMatches": len(compact)-len(completed_matches), "lineupCoverage": len(features),
                  "rookieApplied": sum(bool(row["rookieGate"]) for row in compact),

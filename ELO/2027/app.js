@@ -19,7 +19,7 @@ const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Shark
 const roundKey=value=>String(value||"").replace(/Finals Week/i,"Finals Wk").replace(/\s+/g," ").trim().toLowerCase();
 
 async function loadCache(){
-  const [res,nrlwResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260925-4`)]);
+  const [res,nrlwResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260925-5`)]);
   if(!res.ok)throw new Error(`Historical cache ${res.status}`);
   state.cache=await res.json();
   if(!nrlwResponse.ok)throw new Error(`NRLW cache ${nrlwResponse.status}`);

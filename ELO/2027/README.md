@@ -22,6 +22,8 @@ the production parameter table, ratings, matches or model. The existing
 - the named `NRLW_2027_v1.0.0` full-history core, plus a separately fitted
   prior-season Rookie Gate 6 shadow comparison;
 - NRLW historical survey prices recovered from OddsPortal for 2024 onward;
+- the next NRLW finals round derived from the live RLDB ladder and completed
+  finals when RLDB has not yet stored the official scoreless fixtures;
 - reconstructed own-year 2018–2025 forecast scores from owner-supplied parameters;
 - an expandable nine-system 2009–2026 comparison with a common 1500/2009 start.
 
