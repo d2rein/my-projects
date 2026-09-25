@@ -18,9 +18,9 @@ the production parameter table, ratings, matches or model. The existing
 - unchanged production diagnostic download plus a candidate-specific schema;
 - read-only formula, version crosswalk and tipping-policy page backed by `model-config.js`;
 - latest paired Sportsbet H2H observation in the current table, when collected.
-- an NRL/NRLW header toggle exposing NRLW Match History and Season Matrix views;
-- an NRLW replay of the frozen Base 2027 parameters, plus a separately fitted
-  prior-season Rookie Gate 6 comparison;
+- a persistent NRL/NRLW header toggle across all nine views;
+- the named `NRLW_2027_v1.0.0` full-history core, plus a separately fitted
+  prior-season Rookie Gate 6 shadow comparison;
 - NRLW historical survey prices recovered from OddsPortal for 2024 onward;
 - reconstructed own-year 2018–2025 forecast scores from owner-supplied parameters;
 - an expandable nine-system 2009–2026 comparison with a common 1500/2009 start.
@@ -97,6 +97,8 @@ the current season calls the live match API on page load.
 - The 2025 Joker table will be imported when the user's saved copy is supplied.
 - Non-NRL senior experience remains a blocker before Gate 6 is used for 2027
   expansion-team tips.
+- On NRLW, Rookie Gate 6 and market disagreement are review flags only. Neither
+  can automatically replace the displayed core tip.
 - The usable NRLW odds archive currently covers 2024 onward and is incomplete
   where OddsPortal paginates or has no historical season page.
 

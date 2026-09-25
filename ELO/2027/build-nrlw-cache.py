@@ -1,9 +1,9 @@
 """Build the read-only NRLW website cache from RLDB and OddsPortal.
 
-The model audit deliberately reuses the frozen 2027 B* and Rookie Gate 6
-settings.  Rookie coefficients are fitted separately for NRLW, using only
-prior seasons.  The generated cache is presentation data; it does not mutate
-RLDB or the production Elo database.
+The displayed model is the full-history NRLW fit. Rookie Gate 6 is retained
+as a shadow diagnostic only: it never changes the published probability or
+tip. The generated cache is presentation data; it does not mutate RLDB or the
+production Elo database.
 """
 
 from __future__ import annotations
@@ -25,7 +25,18 @@ from bs4 import BeautifulSoup
 
 ODDS_URL = "https://www.oddsportal.com/rugby-league/australia/nrl-women{suffix}/results/"
 USER_AGENT = "Mozilla/5.0 (compatible; NRL-Elo-Research/1.0)"
-MARGIN_COEFFICIENT = 0.048406
+MODEL_ID = "NRLW_2027_v1.0.0"
+INITIAL_RATING = 1500.0
+ENTRY_PRIOR = 1400.0
+K_BASE = 28.0
+HOME_ADVANTAGE = 0.0
+EARLY_BOOST = 0.0
+REVERSION_WEIGHT = 0.75
+PROBABILITY_DIVISOR = 150.0
+TRAVEL_WEIGHT = 0.0
+REST_WEIGHT = 5.0
+STREAK_WEIGHT = 2.0
+MARGIN_COEFFICIENT = 0.1325
 TEAM_BASES = {
     "Brisbane Broncos": (-27.4698, 153.0251),
     "Canberra Raiders": (-35.2809, 149.13),
@@ -129,8 +140,7 @@ def distance_units(away: str, home: str) -> float:
 
 
 def margin_multiplier(margin: int) -> float:
-    bucket = max(1, math.ceil(abs(margin) / 6))
-    return {1: 0.5, 2: 1.0, 3: 1.5, 4: 1.75}[min(bucket, 4)] + max(bucket - 4, 0) / 8
+    return 0.75 * (abs(margin) / 6.0) ** 0.75
 
 
 def load_matches(db: sqlite3.Connection) -> list[dict[str, Any]]:
@@ -184,7 +194,7 @@ def load_rookie_features(db: sqlite3.Connection, matches: list[dict[str, Any]]) 
 
 
 def replay_base(matches: list[dict[str, Any]]) -> dict[int, dict[str, float]]:
-    ratings: defaultdict[str, float] = defaultdict(lambda: 1500.0)
+    ratings: dict[str, float] = {}
     streak: defaultdict[str, int] = defaultdict(int)
     last_date: dict[str, datetime] = {}
     last_year: int | None = None
@@ -193,17 +203,19 @@ def replay_base(matches: list[dict[str, Any]]) -> dict[int, dict[str, float]]:
         year = int(row["season"])
         if last_year is not None and year != last_year:
             for team in list(ratings):
-                ratings[team] = (1500.0 + 3.0 * ratings[team]) / 4.0
+                ratings[team] = (INITIAL_RATING + REVERSION_WEIGHT * ratings[team]) / (1.0 + REVERSION_WEIGHT)
             streak.clear(); last_date.clear()
         home, away = row["home"], row["away"]
+        ratings.setdefault(home, ENTRY_PRIOR)
+        ratings.setdefault(away, ENTRY_PRIOR)
         match_date = datetime.fromisoformat(row["match_date_utc"].replace("Z", "+00:00")) if row["match_date_utc"] else None
         home_rest = (match_date - last_date[home]).total_seconds() / 604800 if match_date and home in last_date else 0.0
         away_rest = (match_date - last_date[away]).total_seconds() / 604800 if match_date and away in last_date else 0.0
         round_number = 28 + int(row["round_index"]) if row["is_finals"] else int(row["round_index"])
         early = max(0, 11 - round_number)
-        dr = (ratings[home] - ratings[away] + 40.0 + 15.0 * distance_units(away, home)
-              + 5.0 * (home_rest - away_rest) + 2.15 * (streak[home] - streak[away]))
-        probability = 1.0 / (10.0 ** (-dr / 400.0) + 1.0)
+        dr = (ratings[home] - ratings[away] + HOME_ADVANTAGE + TRAVEL_WEIGHT * distance_units(away, home)
+              + REST_WEIGHT * (home_rest - away_rest) + STREAK_WEIGHT * (streak[home] - streak[away]))
+        probability = 1.0 / (10.0 ** (-dr / PROBABILITY_DIVISOR) + 1.0)
         output[int(row["match_id"])] = {"homeElo": ratings[home], "awayElo": ratings[away], "dr": dr, "p": probability}
         if row["home_score"] is None or row["away_score"] is None:
             output[int(row["match_id"])]["homePostElo"] = ratings[home]
@@ -212,7 +224,7 @@ def replay_base(matches: list[dict[str, Any]]) -> dict[int, dict[str, float]]:
             continue
         margin = int(row["home_score"]) - int(row["away_score"])
         actual = 1.0 if margin > 0 else 0.0 if margin < 0 else 0.5
-        update = (9.455 + 0.95 * early) * margin_multiplier(margin) * (actual - probability)
+        update = (K_BASE + EARLY_BOOST * early) * margin_multiplier(margin) * (actual - probability)
         ratings[home] += update; ratings[away] -= update
         output[int(row["match_id"])]["homePostElo"] = ratings[home]
         output[int(row["match_id"])]["awayPostElo"] = ratings[away]
@@ -253,7 +265,7 @@ def fit_rookie(matches: list[dict[str, Any]], base: dict[int, dict[str, float]],
             dr = base[match_id]["dr"] + adjustment / MARGIN_COEFFICIENT
             output[match_id] = {
                 "raw": raw, "margin": capped, "applied": applied,
-                "dr": dr, "p": 1.0 / (10.0 ** (-dr / 400.0) + 1.0),
+                "dr": dr, "p": 1.0 / (10.0 ** (-dr / PROBABILITY_DIVISOR) + 1.0),
                 "trainingGames": len(training),
             }
     return output
@@ -269,7 +281,7 @@ def metrics(matches: list[dict[str, Any]], probability: dict[int, float]) -> dic
         brier += (p - actual) ** 2
         clipped = max(1e-15, min(1 - 1e-15, p))
         log_loss += -(actual * math.log(clipped) + (1 - actual) * math.log(1 - clipped))
-        dr = -400.0 * math.log10(1 / p - 1)
+        dr = -PROBABILITY_DIVISOR * math.log10(1 / p - 1)
         margin_error += abs(MARGIN_COEFFICIENT * dr - margin)
     games = len(matches)
     return {"games": games, "correct": correct, "accuracy": correct / games,
@@ -309,8 +321,7 @@ def main() -> int:
         completed = row["home_score"] is not None and row["away_score"] is not None
         odds = odds_by_game.get((int(row["season"]), row["home"], row["away"], int(row["home_score"]), int(row["away_score"]))) if completed else None
         odds_games += int(odds is not None)
-        p = adjusted["p"] if adjusted else baseline["p"]
-        dr = adjusted["dr"] if adjusted else baseline["dr"]
+        shadow_p = adjusted["p"] if adjusted else baseline["p"]
         compact.append({
             "id": f"nrlw-{match_id}", "rldbId": match_id, "year": int(row["season"]),
             "round": re.sub(r"^Round\s+", "Rd ", row["round_label"], flags=re.I),
@@ -319,7 +330,8 @@ def main() -> int:
             "as": int(row["away_score"]) if completed else None, "venue": row["venue"],
             "homeElo": baseline["homeElo"], "awayElo": baseline["awayElo"],
             "homePostElo": baseline["homePostElo"], "awayPostElo": baseline["awayPostElo"],
-            "bstarP": baseline["p"], "gate6P": p, "candidateP": p, "candidateDr": dr,
+            "bstarP": baseline["p"], "gate6P": shadow_p,
+            "candidateP": baseline["p"], "candidateDr": baseline["dr"],
             "lineupAvailable": match_id in features,
             "rookieMargin": adjusted["margin"] if adjusted else None,
             "rookieGate": adjusted["applied"] if adjusted else False,
@@ -346,13 +358,19 @@ def main() -> int:
         comparison["yearly"].append({"year": year, "withoutRookie": metrics(season, base_probability), "withRookie": metrics(season, candidate_probability),
                                      "rookieApplied": sum(bool(rookie.get(int(row["match_id"]), {}).get("applied")) for row in season)})
     payload = {
-        "meta": {"version": "2026-09-25-v3", "competition": "NRLW", "model": "2027_v1.1.0 parameters / NRLW prior-only fit",
+        "meta": {"version": "2026-09-25-v4", "competition": "NRLW", "model": MODEL_ID,
                  "source": "Live installed RLDB C:/RLDB/data/rldb.sqlite, competition_id=2", "firstSeason": compact[0]["year"], "lastSeason": compact[-1]["year"],
                  "lastMatchDate": max(row["date"] for row in compact if row["hs"] is not None), "matches": len(compact),
                  "completedMatches": len(completed_matches), "upcomingMatches": len(compact)-len(completed_matches), "lineupCoverage": len(features),
                  "rookieApplied": sum(bool(row["rookieGate"]) for row in compact),
                  "rookieTrainingGamesMin": min((row["rookieTrainingGames"] for row in compact if row["rookieTrainingGames"]), default=0),
                  "rookieTrainingGamesMax": max((row["rookieTrainingGames"] for row in compact), default=0),
+                 "rookiePolicy": "shadow_only", "marketPolicy": "flag_only", "marginCoefficient": MARGIN_COEFFICIENT,
+                 "parameters": {"initialRating": INITIAL_RATING, "entryPrior": ENTRY_PRIOR, "k": K_BASE,
+                                "homeAdvantage": HOME_ADVANTAGE, "earlyBoost": EARLY_BOOST,
+                                "reversionWeight": REVERSION_WEIGHT, "probabilityDivisor": PROBABILITY_DIVISOR,
+                                "travel": TRAVEL_WEIGHT, "rest": REST_WEIGHT, "streak": STREAK_WEIGHT,
+                                "marginUpdate": "0.75 * (abs(margin) / 6)^0.75"},
                  "oddsCoverage": odds_games, "oddsSource": "OddsPortal NRL Women result-page survey prices found for 2024-2026; earlier usable archives not found"},
         "matches": compact, "ratingsByYear": end_ratings, "comparison": comparison,
     }
