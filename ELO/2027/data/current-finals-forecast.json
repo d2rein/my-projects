@@ -1,53 +1,354 @@
 {
-  "generatedAt": "2026-09-16T00:08:50.708471+00:00",
-  "model": "2027_v1.0.0",
-  "note": "Prospective published-team-list forecast; target results excluded.",
+  "generatedAt": "2026-09-26T04:20:23.692639+00:00",
+  "model": "2027_v1.1.0",
+  "note": "Prospective 2027 v1.1 core forecast using actual-date rest, Rookie Gate 6 and Stage 4C; target results excluded. Player-impact models remain diagnostic shadows and are not used automatically.",
   "forecasts": [
     {
-      "nrl_match_id": "20261112920",
+      "nrl_match_id": "20261113020",
       "season": 2026,
-      "round": "Finals Wk 2",
-      "home": "New Zealand Warriors",
+      "round": "Finals Wk 3",
+      "home": "Penrith Panthers",
       "away": "Newcastle Knights",
-      "kickoff": "2026-09-20T06:05:00Z",
-      "source_observed_at": "2026-09-15T11:39:00Z",
-      "lineupSha256": "E2F093501B8D9760FFA3EFCA822EC2F74D83CEED6DB8ADE99A671908E8736F51",
-      "base_dr": 188.67429764055262,
-      "bstarP": 0.7476459665463443,
-      "lineupMargin": 1.63661797386087,
+      "kickoff": "2026-09-27T06:00:00Z",
+      "source_observed_at": "2026-09-25T23:05:02Z",
+      "lineupSha256": "9202D18AEC3ACEE42CC84A8702DA596FA93798127E9F5996E2C97D5ED5B91C0C",
+      "base_dr": 247.17309059443795,
+      "bstarP": 0.8057836728784687,
+      "rookieMargin": 0.8076765448074945,
       "rookieGate": false,
-      "candidateDr": 188.67429764055262,
-      "candidateP": 0.7476459665463443,
-      "stableMargin": 10,
-      "tip": "New Zealand Warriors",
-      "homeCounts": [
-        0,
-        0,
-        0
-      ],
-      "awayCounts": [
-        0,
-        0,
-        2
-      ]
-    },
-    {
-      "nrl_match_id": "20261112910",
-      "season": 2026,
-      "round": "Finals Wk 2",
-      "home": "Sydney Roosters",
-      "away": "Cronulla Sharks",
-      "kickoff": "2026-09-19T09:50:00Z",
-      "source_observed_at": "2026-09-15T11:39:00Z",
-      "lineupSha256": "CCC6E98A0F58431F40DBE08D08488E42C843DFBFC51EE58A8A27861320DAEA09",
-      "base_dr": 34.61978652805855,
-      "bstarP": 0.5496576382116768,
-      "lineupMargin": 0.8076765448074945,
-      "rookieGate": false,
-      "candidateDr": 34.61978652805855,
-      "candidateP": 0.5496576382116768,
-      "stableMargin": 4,
-      "tip": "Sydney Roosters",
+      "gate6P": 0.8057836728784687,
+      "lineupMargin": 0.4199517057711336,
+      "lineupGate": false,
+      "stage4P": 0.8057836728784687,
+      "teamListDrivers": {
+        "intercept": -0.08368612716292846,
+        "home": {
+          "current": [
+            {
+              "name": "Billy Phillips",
+              "role": "bench",
+              "games": 25,
+              "minutes": 38.3,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Blaize Talagi",
+              "role": "outside",
+              "games": 68,
+              "minutes": 46.1,
+              "incoming": true,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Brian To'o",
+              "role": "outside",
+              "games": 156,
+              "minutes": 79.1,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Casey McLean",
+              "role": "outside",
+              "games": 55,
+              "minutes": 79.1,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Dylan Edwards",
+              "role": "spine",
+              "games": 193,
+              "minutes": 78.3,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Isaah Yeo",
+              "role": "middle",
+              "games": 285,
+              "minutes": 50.9,
+              "incoming": true,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Isaiah Papali'i",
+              "role": "edge",
+              "games": 202,
+              "minutes": 71.9,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Jack Cogger",
+              "role": "bench",
+              "games": 117,
+              "minutes": 58.1,
+              "incoming": true,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Jack Cole",
+              "role": "spine",
+              "games": 35,
+              "minutes": 77.1,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Liam Henry",
+              "role": "bench",
+              "games": 69,
+              "minutes": 35.6,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Liam Martin",
+              "role": "edge",
+              "games": 164,
+              "minutes": 76.2,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Lindsay Smith",
+              "role": "middle",
+              "games": 108,
+              "minutes": 54.6,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Mitch Kenny",
+              "role": "spine",
+              "games": 138,
+              "minutes": 58.9,
+              "incoming": true,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Moses Leota",
+              "role": "middle",
+              "games": 227,
+              "minutes": 46.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Nathan Cleary",
+              "role": "spine",
+              "games": 216,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Scott Sorensen",
+              "role": "bench",
+              "games": 163,
+              "minutes": 33.4,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Thomas Jenkins",
+              "role": "outside",
+              "games": 59,
+              "minutes": 79.1,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            }
+          ],
+          "outgoing": [
+            {
+              "name": "Izack Tago",
+              "role": "outside",
+              "games": 130,
+              "minutes": 78.8
+            },
+            {
+              "name": "Luke Garner",
+              "role": "outside",
+              "games": 153,
+              "minutes": 53.8
+            },
+            {
+              "name": "Freddy Lussick",
+              "role": "spine",
+              "games": 86,
+              "minutes": 42.6
+            },
+            {
+              "name": "Billy Scott",
+              "role": "bench",
+              "games": 18,
+              "minutes": 22.9
+            }
+          ]
+        },
+        "away": {
+          "current": [
+            {
+              "name": "Lachlan Crouch",
+              "role": "bench",
+              "games": 11,
+              "minutes": 31.3,
+              "incoming": false,
+              "homeMarginPoints": 0.5
+            },
+            {
+              "name": "Bradman Best",
+              "role": "outside",
+              "games": 121,
+              "minutes": 78.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Cody Hopwood",
+              "role": "middle",
+              "games": 23,
+              "minutes": 49.2,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Dane Gagai",
+              "role": "outside",
+              "games": 338,
+              "minutes": 78.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Dominic Young",
+              "role": "outside",
+              "games": 117,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Dylan Lucas",
+              "role": "bench",
+              "games": 68,
+              "minutes": 34.9,
+              "incoming": true,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Fletcher Sharpe",
+              "role": "spine",
+              "games": 50,
+              "minutes": 78.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Francis Manuleleua",
+              "role": "edge",
+              "games": 20,
+              "minutes": 67.2,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Greg Marzhew",
+              "role": "outside",
+              "games": 112,
+              "minutes": 78.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Harrison Graham",
+              "role": "bench",
+              "games": 35,
+              "minutes": 36.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Jermaine McEwen",
+              "role": "edge",
+              "games": 39,
+              "minutes": 73.7,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Kalyn Ponga",
+              "role": "spine",
+              "games": 163,
+              "minutes": 77.2,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Mat Croker",
+              "role": "middle",
+              "games": 112,
+              "minutes": 54.1,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Pasami Saulo",
+              "role": "bench",
+              "games": 79,
+              "minutes": 20.6,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Phoenix Crossland",
+              "role": "spine",
+              "games": 134,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Sandon Smith",
+              "role": "spine",
+              "games": 77,
+              "minutes": 78.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Tyson Frizell",
+              "role": "middle",
+              "games": 304,
+              "minutes": 50.3,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            }
+          ],
+          "outgoing": [
+            {
+              "name": "Thomas Cant",
+              "role": "bench",
+              "games": 57,
+              "minutes": 25.0
+            }
+          ]
+        }
+      },
+      "candidateDr": 247.17309059443795,
+      "candidateP": 0.8057836728784687,
+      "o10P": 0.8057836728784687,
+      "o9P": 0.8057836728784687,
+      "creationP": 0.8057836728784687,
+      "playerAlert": false,
+      "playerConsensus": false,
+      "playerDrivers": {
+        "top": "Full +0.10; Core +0.44; Creation +0.69 margin points"
+      },
+      "stableMargin": 14,
+      "tip": "Penrith Panthers",
       "homeCounts": [
         0,
         0,
@@ -57,6 +358,344 @@
         0,
         0,
         1
+      ]
+    },
+    {
+      "nrl_match_id": "20261113010",
+      "season": 2026,
+      "round": "Finals Wk 3",
+      "home": "Dolphins",
+      "away": "Sydney Roosters",
+      "kickoff": "2026-09-25T09:50:00Z",
+      "source_observed_at": "2026-09-25T08:58:43Z",
+      "lineupSha256": "7A05038960AF17E8548F54438C6FB1F3F56FE9FFA1F8F2D00BFE9EF491695E61",
+      "base_dr": 61.714371739565074,
+      "bstarP": 0.5878916788253459,
+      "rookieMargin": -0.02126488424588085,
+      "rookieGate": false,
+      "gate6P": 0.5878916788253459,
+      "lineupMargin": -0.08368612716292846,
+      "lineupGate": false,
+      "stage4P": 0.5878916788253459,
+      "teamListDrivers": {
+        "intercept": -0.08368612716292846,
+        "home": {
+          "current": [
+            {
+              "name": "Connelly Lemuelu",
+              "role": "bench",
+              "games": 114,
+              "minutes": 36.7,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Francis Molo",
+              "role": "bench",
+              "games": 175,
+              "minutes": 26.5,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Hamiso Tabuai-Fidow",
+              "role": "spine",
+              "games": 127,
+              "minutes": 78.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Herbie Farnworth",
+              "role": "outside",
+              "games": 142,
+              "minutes": 78.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Isaiya Katoa",
+              "role": "spine",
+              "games": 90,
+              "minutes": 78.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Jack Bostock",
+              "role": "outside",
+              "games": 55,
+              "minutes": 78.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Jamayne Isaako",
+              "role": "outside",
+              "games": 187,
+              "minutes": 78.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Jeremy Marshall-King",
+              "role": "spine",
+              "games": 168,
+              "minutes": 73.6,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Kodi Nikorima",
+              "role": "spine",
+              "games": 245,
+              "minutes": 78.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Kulikefu Finefeuiaki",
+              "role": "edge",
+              "games": 80,
+              "minutes": 75.9,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Kurt Donoghoe",
+              "role": "bench",
+              "games": 59,
+              "minutes": 48.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Max Plath",
+              "role": "edge",
+              "games": 55,
+              "minutes": 71.8,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Morgan Knowles",
+              "role": "middle",
+              "games": 24,
+              "minutes": 42.9,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Ray Stone",
+              "role": "bench",
+              "games": 115,
+              "minutes": 29.9,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Selwyn Cobbo",
+              "role": "outside",
+              "games": 103,
+              "minutes": 77.1,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Thomas Flegler",
+              "role": "middle",
+              "games": 120,
+              "minutes": 37.7,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            },
+            {
+              "name": "Tom Gilbert",
+              "role": "middle",
+              "games": 92,
+              "minutes": 46.6,
+              "incoming": false,
+              "homeMarginPoints": -0.0
+            }
+          ],
+          "outgoing": []
+        },
+        "away": {
+          "current": [
+            {
+              "name": "Angus Crichton",
+              "role": "bench",
+              "games": 212,
+              "minutes": 48.2,
+              "incoming": true,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Billy Smith",
+              "role": "outside",
+              "games": 64,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Connor Watson",
+              "role": "bench",
+              "games": 196,
+              "minutes": 38.8,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Daly Cherry-Evans",
+              "role": "spine",
+              "games": 377,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Daniel Tupou",
+              "role": "outside",
+              "games": 305,
+              "minutes": 72.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "James Tedesco",
+              "role": "spine",
+              "games": 295,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Lindsay Collins",
+              "role": "middle",
+              "games": 148,
+              "minutes": 46.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Mark Nawaqanitawase",
+              "role": "outside",
+              "games": 46,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Nat Butcher",
+              "role": "bench",
+              "games": 177,
+              "minutes": 39.8,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Naufahu Whyte",
+              "role": "middle",
+              "games": 86,
+              "minutes": 44.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Reece Robson",
+              "role": "spine",
+              "games": 161,
+              "minutes": 76.0,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Robert Toia",
+              "role": "outside",
+              "games": 44,
+              "minutes": 76.4,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Salesi Foketi",
+              "role": "edge",
+              "games": 45,
+              "minutes": 66.9,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Sam Walker",
+              "role": "spine",
+              "games": 109,
+              "minutes": 71.0,
+              "incoming": true,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Siua Wong",
+              "role": "edge",
+              "games": 65,
+              "minutes": 73.6,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Spencer Leniu",
+              "role": "bench",
+              "games": 142,
+              "minutes": 26.5,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            },
+            {
+              "name": "Victor Radley",
+              "role": "middle",
+              "games": 180,
+              "minutes": 53.9,
+              "incoming": false,
+              "homeMarginPoints": 0.0
+            }
+          ],
+          "outgoing": [
+            {
+              "name": "Hugo Savala",
+              "role": "spine",
+              "games": 44,
+              "minutes": 75.9
+            },
+            {
+              "name": "Egan Butcher",
+              "role": "edge",
+              "games": 97,
+              "minutes": 49.4
+            }
+          ]
+        }
+      },
+      "candidateDr": 61.714371739565074,
+      "candidateP": 0.5878916788253459,
+      "o10P": 0.5878916788253459,
+      "o9P": 0.5878916788253459,
+      "creationP": 0.5878916788253459,
+      "playerAlert": false,
+      "playerConsensus": false,
+      "playerDrivers": {
+        "top": "Full -0.78; Core -0.98; Creation -1.41 margin points"
+      },
+      "stableMargin": 6,
+      "tip": "Dolphins",
+      "homeCounts": [
+        0,
+        0,
+        0
+      ],
+      "awayCounts": [
+        0,
+        0,
+        0
       ]
     }
   ],
