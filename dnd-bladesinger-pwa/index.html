@@ -4115,7 +4115,7 @@ function runAnimateObjectsAction(event){
   const sections = [];
   const results = [];
   for (let i = 0; i < count; i++){
-    const attack = rollD20("-");
+    const attack = rollD20(state.concentrationMode);
     const toHit = attack.chosen + config.hit;
     const damage = rollSpec(config.dice);
     const critBonus = attack.isCrit ? damage.max : 0;
@@ -5052,7 +5052,7 @@ function parseNumberOrNull(value){
 
 render();
 if ("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260712alaric10").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=20260926animateadv").catch(() => {});
 }
 </script>
 </body>
