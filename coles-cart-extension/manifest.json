@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Drein Grocery Coles Cart Helper",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Guides mapped grocery items through Coles one at a time. It never adds items or checks out.",
   "permissions": ["storage", "tabs"],
   "host_permissions": ["https://drein.net/*", "https://www.coles.com.au/*"],
