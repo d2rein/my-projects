@@ -11,11 +11,12 @@ official lists and markets were added on 25 September 2026.
 
 ## Collection schedule
 
-- `daily`: fixtures, official NRL pre-match team lists, Sportsbet markets, low-frequency multi-book odds,
+- `daily`: fixtures, official announced and completed-game team lists, Sportsbet markets, low-frequency multi-book odds,
   prediction-market searches and newly published official NRL expert-tip pages.
 - `pregame`: checks the cached fixture list without using the network and
   collects official lists plus odds when a match is 45–75 minutes from kickoff. Each fixture is
-  captured at most once in that window.
+  captured at most once in that window. Every successful in-season collection
+  pass is followed by a forecast refresh using the newest announced list.
 - A failed source is logged independently and does not destroy successful data.
 - `offseason`: one Monday snapshot of Sportsbet rugby-league outrights and NRL
   futures plus prediction-market searches. Published outcomes and prices are
@@ -31,7 +32,7 @@ collection on 1 March 2027. See [`SOURCES_AND_SCHEDULE.md`](SOURCES_AND_SCHEDULE
 | Source | What is retained | Frequency | Notes |
 |---|---|---|---|
 | NRL draw data | NRL and NRLW teams, kickoff, round, state, venue and match-centre URL | Daily | Official competition IDs 111 and 161; internal schema may change |
-| NRL Match Centre structured data | Published NRL/NRLW squads, reductions, roles, jersey numbers, player IDs, captains and update time | Daily and pregame | Pre-match source; separate from RLDB's post-match run-out lists |
+| NRL Match Centre structured data | Published NRL/NRLW squads, reductions, roles, jersey numbers, player IDs, captains and update time | Daily and pregame | Announced snapshots remain the display record; post-match run-outs are archived separately and can be checked against RLDB |
 | Sportsbet public NRL and NRLW listings | H2H, main handicap and main total | Daily and pregame | One listing request per competition, not one request per market |
 | The Odds Sniffer NRL and NRLW comparisons | Published H2H prices for multiple AU bookmakers | Daily and pregame | One polite request per competition; an empty NRLW listing is retained as evidence |
 | Manifold | Open NRL search results, probability, volume and liquidity | Daily | Public documented API; an empty result is meaningful |
@@ -55,6 +56,10 @@ changing the observation schema.
 - `data/observations/team_list_snapshots.jsonl`: append-only normalized list
   changes; identical repeat observations are retained in run evidence but not
   duplicated here.
+- `data/observations/final_announced_team_lists.jsonl`: the last captured
+  announced list before each completed match, retained as the tipping record.
+- `data/observations/actual_team_lists.jsonl`: post-match actual run-out lists,
+  retained for retrospective modelling and cross-checking against RLDB.
 - `data/state/latest_fixtures.json`: replaceable operational cache, not evidence.
 - `data/state/pregame_captured.json`: prevents repeated near-kickoff capture.
 - [`../../prospective_signal_collector.py`](../../prospective_signal_collector.py): collector.
@@ -82,9 +87,10 @@ probabilities are derived during analysis.
 - The collector identifies itself with a research user-agent.
 - Access failures are recorded; access controls are not bypassed.
 - This archive does not place bets or modify the Elo model. When the private
-  uploader credential is present it inserts only into the API's isolated,
-  append-only `prospective_team_list_snapshots` table. The 2027 preview reads
-  the latest snapshot; ratings, parameters and historical matches are untouched.
+  uploader credential is present it inserts only into isolated append-only API
+  tables for team lists, market observations and forecast snapshots. The 2027
+  preview reads the latest announced-list forecast; ratings, parameters and
+  historical match results are untouched.
 
 See [`HARDENING.md`](HARDENING.md) for the implemented mutex, heartbeat,
 idempotence and compression controls, and for the one remaining

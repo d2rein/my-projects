@@ -7,6 +7,7 @@ each target kickoff.
 from __future__ import annotations
 
 import json
+import argparse
 import re
 import sqlite3
 import unicodedata
@@ -27,7 +28,7 @@ import stage7b_opportunity_adjusted_stats as stage7b
 import stage7c_o10_lite as stage7c
 
 
-API = "https://nrl-elo-api.d2-rein.workers.dev/api/prospective/team-lists?season=2026"
+API_ROOT = "https://nrl-elo-api.d2-rein.workers.dev"
 TEAM_MAP = {
     "Warriors": "New Zealand Warriors",
     "New Zealand Warriors": "New Zealand Warriors",
@@ -57,9 +58,21 @@ def canonical(value: str) -> str:
     return TEAM_MAP.get(value, value)
 
 
-def get_lists() -> list[dict]:
-    request = urllib.request.Request(API, headers={"User-Agent": "NRL-ELO-Prospective-Forecast/1.0"})
+def get_lists(season: int, api_root: str = API_ROOT) -> list[dict]:
+    url = api_root.rstrip("/") + f"/api/prospective/team-lists?season={season}&view=announced"
+    request = urllib.request.Request(url, headers={"User-Agent": "NRL-ELO-Prospective-Forecast/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def upload_forecasts(api_root: str, token: str, payload: dict) -> dict:
+    url = api_root.rstrip("/") + "/api/prospective/forecasts"
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(url, data=body, method="POST", headers={
+        "User-Agent": "NRL-ELO-Prospective-Forecast/1.0",
+        "Content-Type": "application/json", "Authorization": f"Bearer {token}",
+    })
+    with urllib.request.urlopen(request, timeout=45) as response:
         return json.load(response)
 
 
@@ -287,22 +300,30 @@ def player_shadows(root: Path, database: Path, model_rows: list[dict], base_dr: 
             "playerDrivers": {"top": f"Full {o10_adjustment:+.2f}; Core {o9_adjustment:+.2f}; Creation {creation_adjustment:+.2f} margin points"}}
 
 
-def update_completed_finals(connection: sqlite3.Connection, ratings: dict[str, float], state: dict) -> None:
+def update_completed_since_baseline(connection: sqlite3.Connection, ratings: dict[str, float], state: dict) -> None:
+    cutoff = max(state["last_date"].values())
     rows = connection.execute("""
         SELECT m.match_date_utc, ht.canonical_name, at.canonical_name,
                m.home_score, m.away_score
         FROM matches m
+        JOIN competitions c ON c.competition_id=m.competition_id
         JOIN teams ht ON ht.team_id=m.home_team_id
         JOIN teams at ON at.team_id=m.away_team_id
-        WHERE m.season=2026 AND m.is_finals=1
+        WHERE c.code='NRL' AND m.match_date_utc > ?
           AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL
         ORDER BY m.match_date_utc
-    """).fetchall()
+    """, (cutoff.isoformat().replace("+00:00", "Z"),)).fetchall()
+    active_year = cutoff.year
     for date_text, home_raw, away_raw, home_score, away_score in rows:
         home, away = canonical(str(home_raw)), canonical(str(away_raw))
         kickoff = core.parse_date(date_text)
-        home_rest = (kickoff - state["last_date"][home]).total_seconds() / 604800
-        away_rest = (kickoff - state["last_date"][away]).total_seconds() / 604800
+        if kickoff.year != active_year:
+            for team in list(ratings):
+                ratings[team] = (1500.0 + 3.0 * ratings[team]) / 4.0
+            state["streak"].clear(); state["last_date"].clear(); active_year = kickoff.year
+        ratings.setdefault(home, 1500.0); ratings.setdefault(away, 1500.0)
+        home_rest = (kickoff - state["last_date"][home]).total_seconds() / 604800 if home in state["last_date"] else 0.0
+        away_rest = (kickoff - state["last_date"][away]).total_seconds() / 604800 if away in state["last_date"] else 0.0
         dr = (ratings[home] - ratings[away] + 40 + 15 * core.distance_km(away, home) / 1000
               + 5 * (home_rest - away_rest)
               + 2.15 * (state["streak"].get(home, 0) - state["streak"].get(away, 0)))
@@ -331,6 +352,12 @@ def stable_margin(history, candidate_dr: float) -> int:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--season", type=int, default=datetime.now(timezone.utc).year)
+    parser.add_argument("--api-url", default=API_ROOT)
+    parser.add_argument("--api-token-file", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
     root = Path(__file__).resolve().parent
     database = Path("C:/RLDB/data/rldb.sqlite")
     matches_path = root / "snapshots/prod-observed-2026-09-11/matches.json"
@@ -339,14 +366,14 @@ def main() -> None:
     lineups_path = root / "experiments/EXP-2026-012-team-list-simple/run-009-round27-final/match_lineups.csv"
     connection = sqlite3.connect(f"file:{database.as_posix()}?mode=ro", uri=True)
     _, ratings, state = prior.replay_end_state(matches_path, context_path)
-    update_completed_finals(connection, ratings, state)
+    update_completed_since_baseline(connection, ratings, state)
     data = core.prepare_data(matches_path, context_path)
     base = prior.teamlist.replay_bstar(data)
     rookie_fit = prior.fit_rookie_model(data, base, features_path, lineups_path)
     history = alt.load_data(root)
     index = player_index(connection)
     output, unmatched = [], []
-    for snapshot in get_lists():
+    for snapshot in get_lists(args.season, args.api_url):
         if str(snapshot.get("match_state", "")).lower() != "upcoming":
             continue
         if " Women" in str(snapshot["home"].get("name", "")) or " Women" in str(snapshot["away"].get("name", "")):
@@ -408,14 +435,21 @@ def main() -> None:
             "homeCounts": counts["home"].astype(int).tolist(),
             "awayCounts": counts["away"].astype(int).tolist(),
         })
-    destination = root.parent / "2027/data/current-finals-forecast.json"
-    destination.write_text(json.dumps({
+    destination = args.output or (root.parent / "2027/data/current-finals-forecast.json")
+    payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "model": "2027_v1.1.0",
         "note": "Prospective 2027 v1.1 core forecast using actual-date rest, Rookie Gate 6 and Stage 4C; target results excluded. Player-impact models remain diagnostic shadows and are not used automatically.",
         "forecasts": output, "unmatchedPlayers": unmatched,
-    }, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"destination": str(destination), "forecasts": output, "unmatchedPlayers": unmatched}, indent=2))
+    }
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    upload_result = None
+    if args.api_token_file:
+        token = args.api_token_file.read_text(encoding="utf-8-sig").strip()
+        upload_result = upload_forecasts(args.api_url, token, payload)
+    print(json.dumps({"destination": str(destination), "forecasts": output,
+                      "unmatchedPlayers": unmatched, "upload": upload_result}, indent=2))
 
 
 if __name__ == "__main__":

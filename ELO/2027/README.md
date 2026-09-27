@@ -17,13 +17,16 @@ the production parameter table, ratings, matches or model. The existing
 - recent-year fading calibration curves and continuous-margin scatter;
 - unchanged production diagnostic download plus a candidate-specific schema;
 - read-only formula, version crosswalk and tipping-policy page backed by `model-config.js`;
-- latest paired Sportsbet H2H observation in the current table, when collected.
+- latest paired Sportsbet H2H observation in the current table, when collected;
+- live forecasts regenerated after each in-season collection pass, using the
+  newest official announced list while retaining every earlier forecast;
 - a persistent NRL/NRLW header toggle across all nine views;
 - the named `NRLW_2027_v1.0.0` full-history core, plus a separately fitted
   prior-season Rookie Gate 6 shadow comparison;
 - NRLW historical survey prices recovered from OddsPortal for 2024 onward;
-- the next NRLW finals round derived from the live RLDB ladder and completed
-  finals when RLDB has not yet stored the official scoreless fixtures;
+- the remaining NRLW finals bracket derived from the live RLDB ladder,
+  completed finals and frozen model tips when RLDB has not yet stored the
+  official scoreless fixtures;
 - reconstructed own-year 2018–2025 forecast scores from owner-supplied parameters;
 - an expandable nine-system 2009–2026 comparison with a common 1500/2009 start.
 
@@ -94,8 +97,12 @@ the current season calls the live match API on page load.
   the frozen prior-only research pipeline produced them. A future prospective
   forecast must identify `2027_v1.1.0` and supply the corresponding subsystem
   fields; it must not silently label an older Gate-6-only forecast as v1.1.0.
-- The odds collector writes locally. A durable upload/API path is still needed
-  before new captures can appear online without rebuilding and redeploying.
+- Market observations, announced team-list changes and generated forecasts are
+  also uploaded to append-only API tables. The current page reads those tables
+  without requiring a static-site rebuild.
+- After a match, the page deliberately keeps the final announced team list used
+  for tipping. The collector and RLDB retain the actual run-out separately for
+  retrospective player analysis.
 - The 2025 Joker table will be imported when the user's saved copy is supplied.
 - Non-NRL senior experience remains a blocker before Gate 6 is used for 2027
   expansion-team tips.

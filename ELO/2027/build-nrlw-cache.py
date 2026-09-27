@@ -230,6 +230,36 @@ def project_nrlw_finals(matches: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return matches
 
 
+def project_nrlw_grand_final(matches: list[dict[str, Any]], base: dict[int, dict[str, float]]) -> bool:
+    """Complete the visible bracket using frozen core tips for an unplayed week two."""
+    latest_year = max(int(row["season"]) for row in matches)
+    season = [row for row in matches if int(row["season"]) == latest_year]
+    if any(row["round_label"] == "Grand Final" for row in season):
+        return False
+    week_two = sorted((row for row in season if row["round_label"] == "Finals Week 2"),
+                      key=lambda row: int(row["index"]))
+    if len(week_two) != 2:
+        return False
+    winners = []
+    for row in week_two:
+        if row["home_score"] is not None and row["away_score"] is not None:
+            winners.append(row["home"] if int(row["home_score"]) > int(row["away_score"]) else row["away"])
+        else:
+            winners.append(row["home"] if base[int(row["match_id"])]["p"] >= .5 else row["away"])
+    names_to_ids = {row["home"]: int(row["home_team_id"]) for row in season}
+    names_to_ids.update({row["away"]: int(row["away_team_id"]) for row in season})
+    matches.append({
+        "match_id": -(latest_year * 10 + 3), "season": latest_year,
+        "round_label": "Grand Final", "round_index": 14, "match_date_utc": None,
+        "is_finals": 1, "home_team_id": names_to_ids[winners[0]],
+        "away_team_id": names_to_ids[winners[1]], "home": winners[0], "away": winners[1],
+        "home_score": None, "away_score": None, "venue": None, "projected": True,
+    })
+    for index, row in enumerate(matches):
+        row["index"] = index
+    return True
+
+
 def load_rookie_features(db: sqlite3.Connection, matches: list[dict[str, Any]]) -> dict[int, list[float]]:
     query = """
       SELECT p.match_id,p.player_id,p.player_name_raw,p.team_id,p.jumper_number,p.position_label
@@ -379,6 +409,8 @@ def main() -> int:
     features = load_rookie_features(db, matches)
     db.close()
     base = replay_base(matches)
+    if project_nrlw_grand_final(matches, base):
+        base = replay_base(matches)
     rookie = fit_rookie(matches, base, features)
     odds_rows = load_odds(args.odds_cache, args.refresh_odds)
     odds_by_game = odds_lookup(odds_rows)

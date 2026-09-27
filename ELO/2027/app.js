@@ -2,7 +2,7 @@ import { createReplayEngine } from "../shared/replay-engine.js";
 import { buildFinalsBracket, FINALS_ROUNDS } from "../shared/finals-bracket.js";
 import { MODELS, SYSTEMS, TIPPING_POLICY, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js?v=20260925-3";
 
-const state={cache:null,nrlwCache:null,competition:"NRL",historicalComparison:null,current:[],teamLists:[],currentForecasts:[],currentForecastModel:null,charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
+const state={cache:null,nrlwCache:null,competition:"NRL",historicalComparison:null,current:[],teamLists:[],currentMarkets:[],currentForecasts:[],currentForecastModel:null,charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pct=v=>v==null?"—":`${(100*v).toFixed(1)}%`;
@@ -19,7 +19,7 @@ const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Shark
 const roundKey=value=>String(value||"").replace(/Finals Week/i,"Finals Wk").replace(/\s+/g," ").trim().toLowerCase();
 
 async function loadCache(){
-  const [res,nrlwResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260925-5`)]);
+  const [res,nrlwResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260927-1`)]);
   if(!res.ok)throw new Error(`Historical cache ${res.status}`);
   state.cache=await res.json();
   if(!nrlwResponse.ok)throw new Error(`NRLW cache ${nrlwResponse.status}`);
@@ -38,25 +38,31 @@ async function refreshCurrent(){
   const button=$("#refresh-current"); button.disabled=true; button.textContent="Refreshing…";
   const base=state.cache.matches.filter(r=>r.year===CURRENT_SEASON);
   try{
-    const [response,teamListResponse,forecastResponse]=await Promise.all([
+    const [response,teamListResponse,forecastApiResponse,marketResponse,forecastFileResponse]=await Promise.all([
       fetch(`${API_URL}/api/matches?limit=20000`),
-      fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}`).catch(()=>null),
+      fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}&view=announced`,{cache:"no-store"}).catch(()=>null),
+      fetch(`${API_URL}/api/prospective/forecasts?season=${CURRENT_SEASON}`,{cache:"no-store"}).catch(()=>null),
+      fetch(`${API_URL}/api/prospective/markets?season=${CURRENT_SEASON}&competition=NRL`,{cache:"no-store"}).catch(()=>null),
       fetch(`data/current-finals-forecast.json`,{cache:"no-store"}).catch(()=>null)
     ]);
     if(!response.ok)throw new Error(`API ${response.status}`);
     const live=await response.json();
     state.teamLists=teamListResponse?.ok?await teamListResponse.json():[];
-    const forecastPayload=forecastResponse?.ok?await forecastResponse.json():null;
+    state.currentMarkets=marketResponse?.ok?await marketResponse.json():[];
+    const apiForecast=forecastApiResponse?.ok?await forecastApiResponse.json():null;
+    const fileForecast=forecastFileResponse?.ok?await forecastFileResponse.json():null;
+    const forecastPayload=apiForecast?.forecasts?.length?apiForecast:fileForecast;
     state.currentForecastModel=forecastPayload?.model||null;
     state.currentForecasts=state.currentForecastModel===ACTIVE_MODEL.id?forecastPayload.forecasts||[]:[];
-    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map((state.cache.currentMarkets||[]).map(r=>[`${r.home}|${r.away}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}|${roundKey(r.round_name)}`,r])),forecastByTeams=new Map(state.currentForecasts.map(r=>[`${r.home}|${r.away}|${roundKey(r.round)}`,r]));
+    const liveSportsbet=state.currentMarkets.filter(r=>r.bookmaker==="Sportsbet"&&String(r.source).includes("sportsbet_public_listing"));
+    const byId=new Map(base.map(r=>[Number(r.id),r])), marketByTeams=new Map([...(state.cache.currentMarkets||[]),...liveSportsbet].map(r=>[`${shortTeam(r.home)}|${shortTeam(r.away)}`,r])), listByTeams=new Map(state.teamLists.map(r=>[`${shortTeam(r.home?.nick_name||r.home?.name)}|${shortTeam(r.away?.nick_name||r.away?.name)}|${roundKey(r.round_name)}`,r])),forecastByTeams=new Map(state.currentForecasts.map(r=>[`${r.home}|${r.away}|${roundKey(r.round)}`,r]));
     state.current=live.filter(r=>Number(r.year)===CURRENT_SEASON).map(m=>{
       const cached=byId.get(Number(m.id))||base.find(r=>r.home===m.home_team&&r.away===m.away_team&&String(r.round).replace("Finals Week","Finals Wk")===String(m.round));
       const teamList=listByTeams.get(`${shortTeam(m.home_team)}|${shortTeam(m.away_team)}|${roundKey(m.round)}`)||null;
       const pair=validNumber(m.home_odds)&&validNumber(m.away_odds);
-      const rawForecast=forecastByTeams.get(`${m.home_team}|${m.away_team}|${roundKey(m.round)}`),forecast=rawForecast&&(!teamList||!rawForecast.lineupSha256||rawForecast.lineupSha256===teamList.lineup_sha256)?rawForecast:null,observed=marketByTeams.get(`${m.home_team}|${m.away_team}`), liveHome=validNumber(observed?.lastHome)?Number(observed.lastHome):(pair?Number(m.home_odds):null),liveAway=validNumber(observed?.lastAway)?Number(observed.lastAway):(pair?Number(m.away_odds):null),liveP=noVig(liveHome,liveAway),openP=noVig(observed?.openingHome,observed?.openingAway),candidateP=cached?.candidateP??forecast?.candidateP??null;
+      const forecast=forecastByTeams.get(`${m.home_team}|${m.away_team}|${roundKey(m.round)}`)||null,forecastStale=Boolean(forecast&&teamList&&forecast.lineupSha256&&forecast.lineupSha256!==teamList.lineup_sha256),observed=marketByTeams.get(`${shortTeam(m.home_team)}|${shortTeam(m.away_team)}`), liveHome=validNumber(observed?.lastHome)?Number(observed.lastHome):(pair?Number(m.home_odds):null),liveAway=validNumber(observed?.lastAway)?Number(observed.lastAway):(pair?Number(m.away_odds):null),liveP=noVig(liveHome,liveAway),openP=noVig(observed?.openingHome,observed?.openingAway),candidateP=forecast?.candidateP??cached?.candidateP??null;
       const marketFav=liveP==null?null:Math.max(liveP,1-liveP),marketTipHome=liveP==null?null:liveP>.5,modelTipHome=candidateP==null?null:candidateP>=.5;
-      return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,teamList,bstarP:cached?.bstarP??forecast?.bstarP??null,gate6P:cached?.gate6P??forecast?.gate6P??null,stage4P:cached?.stage4P??forecast?.stage4P??null,candidateP,candidateDr:cached?.candidateDr??forecast?.candidateDr??null,rookieMargin:cached?.rookieMargin??forecast?.rookieMargin??null,rookieGate:cached?.rookieGate??forecast?.rookieGate??false,lineupMargin:cached?.lineupMargin??forecast?.lineupMargin??null,lineupGate:cached?.lineupGate??forecast?.lineupGate??false,teamListDrivers:cached?.teamListDrivers??forecast?.teamListDrivers??null,o10P:cached?.o10P??forecast?.o10P??null,o9P:cached?.o9P??forecast?.o9P??null,creationP:cached?.creationP??forecast?.creationP??null,playerAlert:cached?.playerAlert??forecast?.playerAlert??false,playerConsensus:cached?.playerConsensus??forecast?.playerConsensus??false,playerDrivers:cached?.playerDrivers??forecast?.playerDrivers??null,stableMargin:cached?.stableMargin??forecast?.stableMargin??null,forecastObservedAt:forecast?.source_observed_at||null,oddsTip:m.odds_tip||cached?.oddsTip||null,userTip:m.user_tip||cached?.userTip||null,liveOdds:validNumber(liveHome)&&validNumber(liveAway),liveHome,liveAway,openHome:validNumber(observed?.openingHome)?Number(observed.openingHome):cached?.openHome??null,openAway:validNumber(observed?.openingAway)?Number(observed.openingAway):cached?.openAway??null};
+      return {...cached,id:Number(m.id),year:Number(m.year),round:m.round,matchIndex:Number(m.match_index),game:Number(m.game_num),home:m.home_team,away:m.away_team,hs:m.home_score==null?null:Number(m.home_score),as:m.away_score==null?null:Number(m.away_score),venue:m.venue_name||cached?.venue||null,teamList,forecastStale,bstarP:forecast?.bstarP??cached?.bstarP??null,gate6P:forecast?.gate6P??cached?.gate6P??null,stage4P:forecast?.stage4P??cached?.stage4P??null,candidateP,candidateDr:forecast?.candidateDr??cached?.candidateDr??null,rookieMargin:forecast?.rookieMargin??cached?.rookieMargin??null,rookieGate:forecast?.rookieGate??cached?.rookieGate??false,lineupMargin:forecast?.lineupMargin??cached?.lineupMargin??null,lineupGate:forecast?.lineupGate??cached?.lineupGate??false,teamListDrivers:forecast?.teamListDrivers??cached?.teamListDrivers??null,o10P:forecast?.o10P??cached?.o10P??null,o9P:forecast?.o9P??cached?.o9P??null,creationP:forecast?.creationP??cached?.creationP??null,playerAlert:forecast?.playerAlert??cached?.playerAlert??false,playerConsensus:forecast?.playerConsensus??cached?.playerConsensus??false,playerDrivers:forecast?.playerDrivers??cached?.playerDrivers??null,stableMargin:forecast?.stableMargin??cached?.stableMargin??null,forecastObservedAt:forecast?.source_observed_at||null,forecastStatus:forecast?.forecastStatus||null,oddsTip:m.odds_tip||cached?.oddsTip||null,userTip:m.user_tip||cached?.userTip||null,liveOdds:validNumber(liveHome)&&validNumber(liveAway),liveHome,liveAway,openHome:validNumber(observed?.openingHome)?Number(observed.openingHome):cached?.openHome??null,openAway:validNumber(observed?.openingAway)?Number(observed.openingAway):cached?.openAway??null};
     });
     const forecastTimes=state.current.map(r=>r.forecastObservedAt).filter(Boolean).sort(),forecastNote=forecastTimes.length?` · forecast lists ${new Date(forecastTimes.at(-1)).toLocaleString("en-AU")}`:"";
     $("#current-updated").textContent=`Live data checked ${new Date().toLocaleString("en-AU")}${forecastNote}`;
@@ -146,7 +152,7 @@ function scrollToCurrentRound(tableSelector,rows){
 
 function pip(pick,eloPick,winner,completed,title){let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip warning";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick===winner)cls="pip error";else cls="pip warning";return `<span class="${cls}" title="${esc(title)}"></span>`}
 function rankPip(pick,eloPick,winner,completed){if(!pick)return '<span class="pip neutral" title="Ladder pick unavailable"></span>';let cls="pip neutral";if(!completed)cls=pick===eloPick?"pip success":"pip error";else if(winner==="Draw"||pick===winner)cls="pip success";else if(eloPick!==winner)cls="pip warning";else cls="pip error";return `<span class="${cls}" title="Ladder pick: ${esc(pick)}"></span>`}
-function listTick(r){if(r.teamList)return `<span class="list-tick prematch" title="Official pre-match list captured: ${r.teamList.home.players.length}/${r.teamList.away.players.length} named">✓</span>`;if(r.hs!=null&&r.as!=null)return '<span class="list-tick postmatch" title="Post-match run-out list only; not available prospectively">✓</span>';return "—"}
+function listTick(r){if(r.teamList){const timing=r.forecastStale?"; forecast refresh pending for this newer list":r.forecastStatus==="reconstructed_from_archived_pregame_inputs"?"; displayed forecast was reconstructed from this archived pregame snapshot after the match":"; displayed forecast uses this list";return `<span class="list-tick prematch" title="Official announced list captured: ${r.teamList.home.players.length}/${r.teamList.away.players.length} named${timing}">✓</span>`}if(r.hs!=null&&r.as!=null)return '<span class="list-tick postmatch" title="Post-match run-out list archived separately; announced tipping list unavailable">✓</span>';return "—"}
 function marketSignals(r,modelProbability=r.candidateP){
   const home=r.liveOdds?r.liveHome:r.closeHome,away=r.liveOdds?r.liveAway:r.closeAway,current=noVig(Number(home),Number(away)),opening=noVig(Number(r.openHome),Number(r.openAway)),model=validNumber(modelProbability)?Number(modelProbability):null;
   if(current==null||model==null)return {home,away,current,opening,flip:false,adverseMove:false};

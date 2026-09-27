@@ -1,0 +1,12 @@
+{
+  "retrieved_at_utc": "2026-09-27T10:12:00Z",
+  "source": "OddsPortal historical result-page survey",
+  "source_url": "https://www.oddsportal.com/rugby-league/australia/nrl/results/",
+  "scope": "Closing/survey prices only; opening prices were not retrospectively recoverable from the prospective collector.",
+  "matches": [
+    {"year": 2026, "home": "Penrith Panthers", "away": "Sydney Roosters", "home_odds": 1.36, "away_odds": 3.25},
+    {"year": 2026, "home": "Cronulla Sharks", "away": "NQ Cowboys", "home_odds": 1.42, "away_odds": 2.96},
+    {"year": 2026, "home": "New Zealand Warriors", "away": "Dolphins", "home_odds": 1.63, "away_odds": 2.36},
+    {"year": 2026, "home": "South Sydney Rabbitohs", "away": "Newcastle Knights", "home_odds": 1.37, "away_odds": 3.17}
+  ]
+}

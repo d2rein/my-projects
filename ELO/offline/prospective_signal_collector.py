@@ -133,16 +133,21 @@ def normalize_nrl_team_list(payload: bytes, source_url: str, observed: str,
             "players": players,
         }
 
+    state = str(match.get("matchState") or "")
+    mode = str(match.get("matchMode") or "")
+    lineup_kind = "announced" if (state.lower() in {"", "upcoming", "prematch"}
+                                      and mode.lower() in {"", "pre", "prematch"}) else "actual"
     normalized = {
-        "schema_version": 1,
+        "schema_version": 2,
         "competition": competition.upper(),
+        "lineup_kind": lineup_kind,
         "nrl_match_id": str(match.get("matchId") or ""),
         "season": int(str(match.get("startTime") or "0000")[:4] or 0),
         "round_number": match.get("roundNumber"),
         "round_name": str(match.get("roundTitle") or ""),
         "kickoff_utc": str(match.get("startTime") or ""),
-        "match_state": str(match.get("matchState") or ""),
-        "match_mode": str(match.get("matchMode") or ""),
+        "match_state": state,
+        "match_mode": mode,
         "venue": str(match.get("venue") or ""),
         "source_url": source_url,
         "source_updated_at_utc": str(match.get("updated") or ""),
@@ -168,6 +173,19 @@ def upload_team_lists(api_url: str, token: str, snapshots: list[dict[str, Any]])
     request = Request(target, data=body, headers={
         "User-Agent": USER_AGENT,
         "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }, method="POST")
+    with urlopen(request, timeout=45) as response:
+        if response.status not in {200, 201}:
+            raise RuntimeError(f"POST {target} returned HTTP {response.status}")
+        return json.loads(response.read().decode("utf-8"))
+
+
+def upload_markets(api_url: str, token: str, observations: list[dict[str, Any]]) -> dict[str, Any]:
+    target = api_url.rstrip("/") + "/api/prospective/markets"
+    body = json.dumps({"observations": observations}, ensure_ascii=False).encode("utf-8")
+    request = Request(target, data=body, headers={
+        "User-Agent": USER_AGENT, "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
     }, method="POST")
     with urlopen(request, timeout=45) as response:
@@ -586,10 +604,10 @@ def main() -> int:
     # Match Centre page. Daily captures preserve the week-long evolution;
     # pregame captures preserve the last list available near kickoff.
     if args.mode != "offseason":
-        eligible = due if args.mode == "pregame" else [
-            fixture for fixture in fixtures
-            if str(fixture.get("match_state", "")).lower() in {"upcoming", "prematch", ""}
-        ]
+        # Daily runs revisit the small configured round window after kickoff as
+        # well. NRL Match Centre then supplies the actual run-out side, which is
+        # archived separately from the last announced/prematch list.
+        eligible = due if args.mode == "pregame" else fixtures
         for position, fixture in enumerate(eligible, start=1):
             relative_url = str(fixture.get("match_centre_url") or "")
             if not relative_url:
@@ -743,6 +761,31 @@ def main() -> int:
                 changed.append(snapshot)
                 known_hashes[match_id] = snapshot["lineup_sha256"]
         write_jsonl(archive / "observations" / "team_list_snapshots.jsonl", changed)
+        write_jsonl(archive / "observations" / "actual_team_lists.jsonl",
+                    [row for row in changed if row.get("lineup_kind") == "actual"])
+
+        # Once an actual run-out is observed, freeze the latest earlier
+        # announced snapshot as the list against which the tip was made.
+        actual_ids = {row["nrl_match_id"] for row in changed if row.get("lineup_kind") == "actual"}
+        if actual_ids:
+            finalized_path = archive / "state" / "finalized_announced_matches.json"
+            finalized = set(load_json(finalized_path, []))
+            history_path = archive / "observations" / "team_list_snapshots.jsonl"
+            history = []
+            if history_path.exists():
+                for line in history_path.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        history.append(json.loads(line))
+            final_rows = []
+            for match_id in sorted(actual_ids - finalized):
+                candidates = [row for row in history if row.get("nrl_match_id") == match_id
+                              and row.get("lineup_kind", "announced") == "announced"]
+                if candidates:
+                    selected = max(candidates, key=lambda row: row.get("observed_at_utc", ""))
+                    final_rows.append({**selected, "archive_stage": "final_announced"})
+                    finalized.add(match_id)
+            write_jsonl(archive / "observations" / "final_announced_team_lists.jsonl", final_rows)
+            finalized_path.write_bytes(canonical_json(sorted(finalized)))
         hashes_path.parent.mkdir(parents=True, exist_ok=True)
         hashes_path.write_bytes(canonical_json(known_hashes))
 
@@ -763,6 +806,23 @@ def main() -> int:
             write_jsonl(archive / "observations" / "events.jsonl", [events[-1]])
         except Exception as exc:
             record_error("elo_team_list_api_upload", args.team_list_api_url, exc)
+            write_jsonl(run_dir / "errors.jsonl", [errors[-1]])
+            write_jsonl(archive / "observations" / "errors.jsonl", [errors[-1]])
+
+    if market_rows and args.team_list_api_url:
+        try:
+            if not args.team_list_api_token_file:
+                raise ValueError("--team-list-api-token-file is required when API upload is enabled")
+            token = args.team_list_api_token_file.read_text(encoding="utf-8-sig").strip()
+            market_upload = upload_markets(args.team_list_api_url, token, market_rows)
+            events.append({"at": iso_utc(utc_now()), "run_id": run_id,
+                           "event": "markets_uploaded", "source": "elo_forecast_data_api",
+                           "received": market_upload.get("received"),
+                           "inserted": market_upload.get("inserted")})
+            write_jsonl(run_dir / "events.jsonl", [events[-1]])
+            write_jsonl(archive / "observations" / "events.jsonl", [events[-1]])
+        except Exception as exc:
+            record_error("elo_market_api_upload", args.team_list_api_url, exc)
             write_jsonl(run_dir / "errors.jsonl", [errors[-1]])
             write_jsonl(archive / "observations" / "errors.jsonl", [errors[-1]])
 

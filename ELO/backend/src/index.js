@@ -55,6 +55,14 @@ export default {
         response = await handleGetProspectiveTeamLists(db, url.searchParams);
       } else if (path === '/api/prospective/team-lists' && request.method === 'POST') {
         response = await handlePostProspectiveTeamLists(db, request, env);
+      } else if (path === '/api/prospective/forecasts' && request.method === 'GET') {
+        response = await handleGetProspectiveForecasts(db, url.searchParams);
+      } else if (path === '/api/prospective/forecasts' && request.method === 'POST') {
+        response = await handlePostProspectiveForecasts(db, request, env);
+      } else if (path === '/api/prospective/markets' && request.method === 'GET') {
+        response = await handleGetProspectiveMarkets(db, url.searchParams);
+      } else if (path === '/api/prospective/markets' && request.method === 'POST') {
+        response = await handlePostProspectiveMarkets(db, request, env);
       } else {
         response = new Response('Not Found', { status: 404 });
       }
@@ -111,8 +119,8 @@ async function handlePostProspectiveTeamLists(db, request, env) {
       INSERT OR IGNORE INTO prospective_team_list_snapshots (
         nrl_match_id, season, round_number, round_name, kickoff_utc,
         home_team, away_team, observed_at_utc, source_updated_at_utc,
-        source_url, lineup_sha256, payload_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        source_url, lineup_sha256, payload_json, lineup_kind
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       String(snapshot.nrl_match_id), Number(snapshot.season),
       snapshot.round_number == null ? null : Number(snapshot.round_number),
@@ -120,7 +128,8 @@ async function handlePostProspectiveTeamLists(db, request, env) {
       String(snapshot.home?.nick_name || snapshot.home?.name || ''),
       String(snapshot.away?.nick_name || snapshot.away?.name || ''),
       String(snapshot.observed_at_utc || ''), String(snapshot.source_updated_at_utc || ''),
-      snapshot.source_url, snapshot.lineup_sha256.toUpperCase(), payload
+      snapshot.source_url, snapshot.lineup_sha256.toUpperCase(), payload,
+      snapshot.lineup_kind === 'actual' ? 'actual' : 'announced'
     ).run();
     inserted += Number(result.meta?.changes || 0);
   }
@@ -131,16 +140,19 @@ async function handleGetProspectiveTeamLists(db, searchParams) {
   const season = Number(searchParams?.get('season') || 0);
   const matchId = String(searchParams?.get('match_id') || '').trim();
   const history = searchParams?.get('history') === '1';
+  const view = String(searchParams?.get('view') || 'announced');
   const limitValue = Number(searchParams?.get('limit') || (history ? 500 : 100));
   const limit = Number.isFinite(limitValue) ? Math.max(1, Math.min(limitValue, 1000)) : 100;
   const filters = [];
   const bindings = [];
   if (season) { filters.push('s.season = ?'); bindings.push(season); }
   if (matchId) { filters.push('s.nrl_match_id = ?'); bindings.push(matchId); }
+  if (view !== 'all') { filters.push('s.lineup_kind = ?'); bindings.push(view === 'actual' ? 'actual' : 'announced'); }
   if (!history) {
     filters.push(`NOT EXISTS (
       SELECT 1 FROM prospective_team_list_snapshots newer
-      WHERE newer.nrl_match_id = s.nrl_match_id AND newer.id > s.id
+      WHERE newer.nrl_match_id = s.nrl_match_id
+        AND newer.lineup_kind = s.lineup_kind AND newer.id > s.id
     )`);
   }
   const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
@@ -155,7 +167,118 @@ async function handleGetProspectiveTeamLists(db, searchParams) {
     ...JSON.parse(row.payload_json),
     snapshot_id: row.id,
     captured_at_utc: row.captured_at_utc,
+    archive_stage: view === 'actual' ? 'actual_run_out' : 'final_announced',
   })));
+}
+
+function authorizedCollector(request, env) {
+  return Boolean(env.COLLECTOR_TOKEN && bearerToken(request) === env.COLLECTOR_TOKEN);
+}
+
+async function handlePostProspectiveForecasts(db, request, env) {
+  if (!authorizedCollector(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const body = await request.json();
+  const model = String(body?.model || '');
+  const generatedAt = String(body?.generatedAt || '');
+  const forecasts = body?.forecasts;
+  if (!model || !generatedAt || !Array.isArray(forecasts) || forecasts.length > 100) {
+    return jsonResponse({ error: 'Invalid forecast payload' }, 400);
+  }
+  let inserted = 0;
+  for (const row of forecasts) {
+    if (!/^\d+$/.test(String(row.nrl_match_id || '')) || !Number.isFinite(Number(row.season))) continue;
+    const payload = JSON.stringify(row);
+    const result = await db.prepare(`
+      INSERT OR IGNORE INTO prospective_forecast_snapshots
+      (nrl_match_id,season,round_name,home_team,away_team,model,generated_at_utc,
+       source_observed_at_utc,lineup_sha256,payload_json)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+    `).bind(String(row.nrl_match_id),Number(row.season),String(row.round || ''),String(row.home || ''),
+      String(row.away || ''),model,generatedAt,String(row.source_observed_at || ''),
+      String(row.lineupSha256 || '').toUpperCase(),payload).run();
+    inserted += Number(result.meta?.changes || 0);
+  }
+  return jsonResponse({ ok: true, received: forecasts.length, inserted }, 201);
+}
+
+async function handleGetProspectiveForecasts(db, searchParams) {
+  const season = Number(searchParams?.get('season') || 0);
+  const history = searchParams?.get('history') === '1';
+  const filters = [], bindings = [];
+  if (season) { filters.push('f.season = ?'); bindings.push(season); }
+  if (!history) filters.push(`NOT EXISTS (SELECT 1 FROM prospective_forecast_snapshots newer
+    WHERE newer.nrl_match_id=f.nrl_match_id AND newer.model=f.model AND newer.id>f.id)`);
+  const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  const { results } = await db.prepare(`SELECT f.id,f.model,f.generated_at_utc,f.captured_at_utc,f.payload_json
+    FROM prospective_forecast_snapshots f ${where} ORDER BY f.id DESC LIMIT ?`)
+    .bind(...bindings, history ? 1000 : 100).all();
+  const rows = (results || []).map(row => ({...JSON.parse(row.payload_json), forecast_snapshot_id: row.id,
+    model: row.model, generatedAt: row.generated_at_utc, captured_at_utc: row.captured_at_utc}));
+  return jsonResponse({ model: rows[0]?.model || null, generatedAt: rows[0]?.generatedAt || null, forecasts: rows });
+}
+
+function validMarketRow(row) {
+  return row && typeof row === 'object' && row.market_type && row.selection &&
+    row.home_team && row.away_team && Number(row.decimal_odds) > 1 && row.observed_at_utc;
+}
+
+async function handlePostProspectiveMarkets(db, request, env) {
+  if (!authorizedCollector(request, env)) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const body = await request.json();
+  const observations = body?.observations;
+  if (!Array.isArray(observations) || observations.length > 1000 || !observations.every(validMarketRow)) {
+    return jsonResponse({ error: 'Invalid market observations' }, 400);
+  }
+  let inserted = 0;
+  for (const row of observations) {
+    const payload = JSON.stringify(row);
+    const competition = String(row.competition || (String(row.source).startsWith('nrlw_') ? 'NRLW' : 'NRL'));
+    const season = Number(String(row.kickoff_utc || row.observed_at_utc).slice(0,4));
+    const fingerprint = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+    const hash = [...new Uint8Array(fingerprint)].map(value => value.toString(16).padStart(2,'0')).join('').toUpperCase();
+    const result = await db.prepare(`INSERT OR IGNORE INTO prospective_market_observations
+      (observation_sha256,season,competition,observed_at_utc,mode,source,bookmaker,home_team,away_team,
+       kickoff_utc,market_type,selection_name,line,decimal_odds,payload_json)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(hash,season,competition,String(row.observed_at_utc),
+      String(row.mode || ''),String(row.source),String(row.bookmaker || ''),String(row.home_team),
+      String(row.away_team),String(row.kickoff_utc || ''),String(row.market_type),String(row.selection),
+      row.line === '' || row.line == null ? null : Number(row.line),Number(row.decimal_odds),payload).run();
+    inserted += Number(result.meta?.changes || 0);
+  }
+  return jsonResponse({ ok: true, received: observations.length, inserted }, 201);
+}
+
+async function handleGetProspectiveMarkets(db, searchParams) {
+  const season = Number(searchParams?.get('season') || 0);
+  const competition = String(searchParams?.get('competition') || 'NRL').toUpperCase();
+  const { results } = await db.prepare(`SELECT payload_json FROM prospective_market_observations
+    WHERE (?=0 OR season=?) AND competition=? AND market_type='h2h'
+    ORDER BY observed_at_utc,id LIMIT 10000`).bind(season,season,competition).all();
+  const rows = (results || []).map(row => JSON.parse(row.payload_json));
+  const groups = new Map();
+  for (const row of rows) {
+    const key = `${row.home_team}|${row.away_team}|${row.bookmaker}|${row.source}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const markets = [];
+  for (const group of groups.values()) {
+    const stamps = [...new Set(group.map(row => row.observed_at_utc))].sort();
+    const pairAt = stamp => {
+      const block = group.filter(row => row.observed_at_utc === stamp);
+      const home = block.find(row => row.selection === row.home_team);
+      const away = block.find(row => row.selection === row.away_team);
+      return home && away ? { home: Number(home.decimal_odds), away: Number(away.decimal_odds) } : null;
+    };
+    const firstStamp = stamps.find(stamp => pairAt(stamp));
+    const lastStamp = [...stamps].reverse().find(stamp => pairAt(stamp));
+    if (!firstStamp || !lastStamp) continue;
+    const first = pairAt(firstStamp), last = pairAt(lastStamp), sample = group[0];
+    markets.push({home:sample.home_team,away:sample.away_team,kickoff:sample.kickoff_utc,
+      bookmaker:sample.bookmaker,source:sample.source,openingObservedAt:firstStamp,openingHome:first.home,
+      openingAway:first.away,lastObservedAt:lastStamp,lastHome:last.home,lastAway:last.away});
+  }
+  return jsonResponse(markets);
 }
 
 async function handleParity(db) {

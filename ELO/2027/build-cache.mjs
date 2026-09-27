@@ -55,7 +55,11 @@ const playerProfilesPath = path.join(offline, "experiments", "EXP-2026-044-agenc
 const playerAuditPath = path.join(offline, "experiments", "EXP-2026-043-o10-audit-lite", "run-001-audit", "o10_reversal_audit.csv");
 const teamListDetailsPath = path.join(here, "data", "team-list-details.json");
 const recoveredPath = path.join(offline, "experiments", "EXP-2026-031-recovered-historical-models", "run-003", "website_payload.json");
+const finalsOddsBackfillPath = path.join(offline, "season-reviews", "2026-season-review", "data", "mens_finals_week1_odds_backfill.json");
 const recovered = JSON.parse(fs.readFileSync(recoveredPath, "utf8"));
+const finalsOddsBackfill = fs.existsSync(finalsOddsBackfillPath)
+  ? JSON.parse(fs.readFileSync(finalsOddsBackfillPath, "utf8")).matches : [];
+const finalsOddsByKey = new Map(finalsOddsBackfill.map(row => [`${row.year}|${row.home}|${row.away}`, row]));
 const recoveredById = new Map(recovered.ownPredictions.map(r=>[Number(r.id),r]));
 const recoveredByYear = new Map(recovered.ownYearly.map(r=>[r.year,r]));
 
@@ -131,6 +135,7 @@ const compact = rawMatches.map((m, index) => {
   const creationProfile = creationProfileByIndex.get(index);
   const playerDetail = playerAuditByIndex.get(index);
   const historicalForecast = recoveredById.get(Number(m.id));
+  const oddsBackfill = finalsOddsByKey.get(key(m));
   const bstarP = num(o?.Bstar_home_probability) ?? num(g?.bstar_probability) ?? num(fin?.base_home_probability);
   const gate6P = num(g?.candidate_probability) ?? num(f?.candidate_probability) ?? num(fin?.home_probability) ?? bstarP;
   const stage4P = num(stage4?.stage4_home_probability);
@@ -144,8 +149,9 @@ const compact = rawMatches.map((m, index) => {
   const playerConsensus = playerAlert && o9P != null && creationP != null && (o9P >= .5) === (o10P >= .5) && (creationP >= .5) === (o10P >= .5);
   const explicitHome = num(o?.home_odds_close_explicit);
   const explicitAway = num(o?.away_odds_close_explicit);
-  const effectiveHome = num(o?.home_odds_close_effective);
-  const effectiveAway = num(o?.away_odds_close_effective);
+  const effectiveHome = num(o?.home_odds_close_effective) ?? num(oddsBackfill?.home_odds);
+  const effectiveAway = num(o?.away_odds_close_effective) ?? num(oddsBackfill?.away_odds);
+  const effectiveHomeP = effectiveHome == null || effectiveAway == null ? null : (1/effectiveHome)/((1/effectiveHome)+(1/effectiveAway));
   return {
     id:Number(m.id), year:Number(m.year), round:m.round, matchIndex:Number(m.match_index), game:Number(m.game_num),
     date:o?.match_date || fin?.match_date_utc || null, home:m.home_team, away:m.away_team,
@@ -166,7 +172,7 @@ const compact = rawMatches.map((m, index) => {
     } : null,
     openHome:num(o?.home_odds_open), openAway:num(o?.away_odds_open),
     closeHome:effectiveHome, closeAway:effectiveAway, explicitClose:explicitHome != null && explicitAway != null,
-    closeSource:o?.close_price_source || null, closeHomeP:num(o?.close_home_probability_no_vig), openHomeP:num(o?.open_home_probability_no_vig),
+    closeSource:o?.close_price_source || (oddsBackfill ? "OddsPortal historical survey" : null), closeHomeP:num(o?.close_home_probability_no_vig) ?? effectiveHomeP, openHomeP:num(o?.open_home_probability_no_vig),
     r1:truth(g?.R1_new_candidate_fires), r2:truth(g?.R2_new_candidate_fires) || truth(o?.high_confidence_close_veto_65), r3:truth(g?.R3_major_move_flag),
     stableMargin:num(s?.["discrete_b1.5_h1000_u0_even"]), refinedMargin:num(r?.prediction) ?? num(fin?.refined_margin),
     generalMargin:candidateDr == null ? null : (Math.abs(candidateDr)<85?4:Math.abs(candidateDr)<185?8:10),

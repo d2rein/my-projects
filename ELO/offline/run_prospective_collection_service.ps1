@@ -6,10 +6,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # This is an isolated companion to RLDB. It never opens or modifies rldb.sqlite.
-# Its only remote write is a validated team-list snapshot upload to the Elo
-# API's separate prospective table; it cannot invoke model recalculation.
+# Remote writes are confined to append-only team-list, market and forecast
+# evidence tables. Model parameters and match results are never mutated.
 $python = 'C:\Users\d2rei\AppData\Local\Programs\Python\Python311\python.exe'
 $collector = 'C:\Users\d2rei\My_Site\ELO\offline\prospective_signal_collector.py'
+$forecast = 'C:\Users\d2rei\My_Site\ELO\offline\forecast_published_finals.py'
 $archiveRoot = 'C:\Users\d2rei\My_Site\ELO\offline\experiments\EXP-2026-021-prospective-signal-archive\data'
 $serviceState = Join-Path $archiveRoot 'service'
 $heartbeat = Join-Path $serviceState 'heartbeat.json'
@@ -101,6 +102,19 @@ try {
     if ($exitCode -ne 0) {
         Write-Heartbeat 'failed' $effectiveMode $exitCode 'Collector returned a non-zero exit code.'
         exit $exitCode
+    }
+
+    # Recalculate the frozen deployed model from the newest announced list and
+    # publish an append-only forecast snapshot after every in-season scrape.
+    if ($effectiveMode -ne 'offseason' -and (Test-Path -LiteralPath $teamListTokenFile)) {
+        $forecastOutput = & $python $forecast --season $season --api-url $teamListApiUrl `
+            --api-token-file $teamListTokenFile 2>&1 | Out-String
+        $forecastExitCode = $LASTEXITCODE
+        Add-Content -LiteralPath $logPath -Encoding UTF8 -Value ("[{0}] forecast season={1} exit={2}`r`n{3}" -f [datetime]::UtcNow.ToString('o'),$season,$forecastExitCode,$forecastOutput.Trim())
+        if ($forecastExitCode -ne 0) {
+            Write-Heartbeat 'forecast_failed' $effectiveMode $forecastExitCode 'Collection succeeded but forecast refresh failed.'
+            exit $forecastExitCode
+        }
     }
     if ($effectiveMode -ne 'pregame') {
         $state[$stateKey] = $dateKey
