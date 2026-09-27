@@ -1,4 +1,5 @@
 const JOB_KEY = "drein-coles-cart-job";
+const ACTIVE_JOB_KEY = "drein-coles-cart-active-job";
 const COLES_HOME = "https://www.coles.com.au/";
 const PRELOAD_COUNT = 2;
 
@@ -10,13 +11,33 @@ function putJob(job) {
   return chrome.storage.local.set({ [JOB_KEY]: job });
 }
 
+function activateJob(job) {
+  return chrome.storage.session.set({
+    [ACTIVE_JOB_KEY]: { id: job.id, version: chrome.runtime.getManifest().version }
+  });
+}
+
+async function getActiveJob() {
+  const [job, stored] = await Promise.all([
+    getJob(),
+    chrome.storage.session.get(ACTIVE_JOB_KEY)
+  ]);
+  const active = stored[ACTIVE_JOB_KEY];
+  return job && active?.id === job.id && active.version === chrome.runtime.getManifest().version
+    ? job
+    : null;
+}
+
 async function discardJob(job) {
+  await Promise.all([
+    chrome.storage.local.remove(JOB_KEY),
+    chrome.storage.session.remove(ACTIVE_JOB_KEY)
+  ]);
   if (!job) return;
   const tabIds = [...new Set([
     job.colesTabId,
     ...(Array.isArray(job.preloadTabs) ? job.preloadTabs.map((entry) => entry?.tabId) : [])
   ].filter(Number.isInteger))];
-  await chrome.storage.local.remove(JOB_KEY);
   await Promise.all(tabIds.map((tabId) => chrome.tabs.remove(tabId).catch(() => {})));
 }
 
@@ -134,6 +155,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         colesTabId: tab.id, currentIndex: 0, items, results: [], preloadTabs: []
       };
       await putJob(job);
+      await activateJob(job);
       sendToGrocery(job, "coles-cart-ready", { total: items.length });
       sendResponse({ ok: true, jobId: job.id });
     })().catch((error) => sendResponse({ ok: false, error: error.message }));
@@ -141,7 +163,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "coles-page-ready" && sender.tab?.id) {
-    getJob().then((job) => {
+    getActiveJob().then((job) => {
       if (!job || job.colesTabId !== sender.tab.id || job.status === "complete") return;
       if (job.status === "awaiting-login") {
         chrome.tabs.sendMessage(sender.tab.id, { type: "coles-awaiting-login" }).catch(() => {});
@@ -153,7 +175,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "coles-start-guided" && sender.tab?.id) {
-    getJob().then(async (job) => {
+    getActiveJob().then(async (job) => {
       if (!job || job.colesTabId !== sender.tab.id || job.status !== "awaiting-login") return;
       job.status = "guided";
       await moveToCurrentProduct(job);
@@ -162,7 +184,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if ((message?.type === "coles-guided-next" || message?.type === "coles-guided-skip") && sender.tab?.id) {
-    getJob().then(async (job) => {
+    getActiveJob().then(async (job) => {
       if (!job || job.colesTabId !== sender.tab.id || job.status !== "guided") return;
       await recordCurrentResult(job, {
         ok: message.type === "coles-guided-next",
