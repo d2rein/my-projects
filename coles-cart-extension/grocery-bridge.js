@@ -1,12 +1,22 @@
 window.addEventListener("message", (event) => {
   if (event.source !== window || event.data?.source !== "drein-groceries" || event.data?.type !== "coles-cart-request") return;
-  chrome.runtime.sendMessage({ type: "coles-cart-request", items: event.data.items }, (response) => {
+  try {
+    chrome.runtime.sendMessage({ type: "coles-cart-request", items: event.data.items }, (response) => {
+      const error = chrome.runtime.lastError?.message || response?.error || "";
+      window.postMessage({
+        source: "coles-cart-helper",
+        type: response?.ok ? "coles-cart-ready" : "coles-cart-error",
+        error
+      }, window.location.origin);
+    });
+  } catch (error) {
+    // Chrome invalidates existing content scripts after an extension reload.
     window.postMessage({
       source: "coles-cart-helper",
-      type: response?.ok ? "coles-cart-ready" : "coles-cart-error",
-      error: response?.error || ""
+      type: "coles-cart-error",
+      error: "The Coles helper was reloaded. Refresh this grocery page, then try again."
     }, window.location.origin);
-  });
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
