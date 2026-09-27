@@ -10,6 +10,16 @@ function putJob(job) {
   return chrome.storage.local.set({ [JOB_KEY]: job });
 }
 
+async function discardJob(job) {
+  if (!job) return;
+  const tabIds = [...new Set([
+    job.colesTabId,
+    ...(Array.isArray(job.preloadTabs) ? job.preloadTabs.map((entry) => entry?.tabId) : [])
+  ].filter(Number.isInteger))];
+  await chrome.storage.local.remove(JOB_KEY);
+  await Promise.all(tabIds.map((tabId) => chrome.tabs.remove(tabId).catch(() => {})));
+}
+
 function sendToGrocery(job, type, extra = {}) {
   if (!job.sourceTabId) return;
   chrome.tabs.sendMessage(job.sourceTabId, { type, jobId: job.id, ...extra }).catch(() => {});
@@ -115,7 +125,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false, error: "No mapped Coles products were supplied." });
       return;
     }
-    chrome.tabs.create({ url: COLES_HOME, active: true }).then(async (tab) => {
+    (async () => {
+      // A new map request always starts from today's planner state, never an old queue.
+      await discardJob(await getJob());
+      const tab = await chrome.tabs.create({ url: COLES_HOME, active: true });
       const job = {
         id: crypto.randomUUID(), status: "awaiting-login", sourceTabId: sender.tab.id,
         colesTabId: tab.id, currentIndex: 0, items, results: [], preloadTabs: []
@@ -123,7 +136,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await putJob(job);
       sendToGrocery(job, "coles-cart-ready", { total: items.length });
       sendResponse({ ok: true, jobId: job.id });
-    }).catch((error) => sendResponse({ ok: false, error: error.message }));
+    })().catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 
