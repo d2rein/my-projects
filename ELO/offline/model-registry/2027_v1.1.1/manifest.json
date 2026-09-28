@@ -1,0 +1,21 @@
+{
+  "overall": {
+    "id": "2027_v1.1.1",
+    "status": "deployed_preview_baseline",
+    "effective_date": "2026-09-28",
+    "supersedes": "2027_v1.1.0",
+    "website_path": "/ELO/2027"
+  },
+  "change": "Grand finals use zero home/travel adjustment; all upcoming fixtures receive an immediate core forecast.",
+  "systems": [
+    {"deployment_id":"ELO_v1.1","display_name":"Base 2027 ELO","change":"zero home and travel adjustment in grand finals"},
+    {"deployment_id":"RA_v1.0","display_name":"Rookie Adjustment","change":"unchanged"},
+    {"deployment_id":"LA_v1.0","display_name":"Lineup Adjustment","change":"unchanged"},
+    {"deployment_id":"MS_v1.0","display_name":"Market Swap","change":"unchanged"},
+    {"deployment_id":"Player_Profile_Full_v1.0","display_name":"Full Player Profile","change":"unchanged"},
+    {"deployment_id":"Player_Profile_Core_v1.0","display_name":"Core Player Profile","change":"unchanged"},
+    {"deployment_id":"Creation_Profile_v1.0","display_name":"Creation Profile","change":"unchanged"}
+  ],
+  "evidence": "EXP-2026-051 plus grand-final-only 1998-2025 screen",
+  "website_asset_version": "20260928-3"
+}

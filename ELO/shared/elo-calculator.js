@@ -88,8 +88,8 @@ export class ELOCalculator {
     return 1 / (Math.pow(10, -dr / this.drWeighting) + 1);
   }
 
-  getRatingDifference(homeElo, awayElo, travelAdj = 0, restAdj = 0, streakAdj = 0) {
-    return (homeElo + this.homeAdvantage + travelAdj + restAdj + streakAdj) - awayElo;
+  getRatingDifference(homeElo, awayElo, travelAdj = 0, restAdj = 0, streakAdj = 0, homeAdvantage = this.homeAdvantage) {
+    return (homeElo + homeAdvantage + travelAdj + restAdj + streakAdj) - awayElo;
   }
 
   predictMargin(dr) {
@@ -188,8 +188,12 @@ export class ELOCalculator {
     const away = match.away_team;
     const roundNo = this.extractRoundNumber(match.round);
 
-    // travel: away -> home
-    const kmAway = this.travelKm(away, home);
+    // A neutral fixture keeps the teams' Elo/rest/streak information but must
+    // not manufacture a home-ground or away-to-home travel advantage. The
+    // caller supplies this fact explicitly; ordinary matches remain unchanged.
+    const neutralVenue = match.neutral_venue === true;
+    const homeAdvantage = neutralVenue ? 0 : this.homeAdvantage;
+    const kmAway = neutralVenue ? 0 : this.travelKm(away, home);
     const travelAdj = (kmAway / 1000) * this.travelPer1000km;
 
     // rest: based on last round played THIS SEASON
@@ -213,6 +217,8 @@ export class ELOCalculator {
 
     return {
       roundNo,
+      neutralVenue,
+      homeAdvantage,
       kmAway,
       homeRest,
       awayRest,
@@ -241,7 +247,8 @@ export class ELOCalculator {
         awayEloBefore,
         adj.travelAdj,
         adj.restAdj,
-        adj.streakAdj
+        adj.streakAdj,
+        adj.homeAdvantage
       );
 
       return {
@@ -289,7 +296,8 @@ export class ELOCalculator {
       awayEloBefore,
       adj.travelAdj,
       adj.restAdj,
-      adj.streakAdj
+      adj.streakAdj,
+      adj.homeAdvantage
     );
 
     const expected = this.calculateWinExpectancy(dr);

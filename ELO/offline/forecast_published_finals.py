@@ -404,7 +404,12 @@ def main() -> None:
         applied = capped if gate else 0.0
         home_rest = (kickoff - state["last_date"][home]).total_seconds() / 604800
         away_rest = (kickoff - state["last_date"][away]).total_seconds() / 604800
-        base_dr = (ratings[home] - ratings[away] + 40 + 15 * core.distance_km(away, home) / 1000
+        # The grand-final home label is administrative at a neutral venue. It
+        # must not create either the normal +40 or away-to-home travel points.
+        neutral_grand_final = str(snapshot.get("round_name", "")).strip().lower() in {"grand final", "gf"}
+        venue_home = 0 if neutral_grand_final else 40
+        venue_travel = 0 if neutral_grand_final else 15 * core.distance_km(away, home) / 1000
+        base_dr = (ratings[home] - ratings[away] + venue_home + venue_travel
                    + 5 * (home_rest - away_rest)
                    + 2.15 * (state["streak"].get(home, 0) - state["streak"].get(away, 0)))
         gate6_dr = base_dr + applied / 0.048406
@@ -438,8 +443,8 @@ def main() -> None:
     destination = args.output or (root.parent / "2027/data/current-finals-forecast.json")
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "model": "2027_v1.1.0",
-        "note": "Prospective 2027 v1.1 core forecast using actual-date rest, Rookie Gate 6 and Stage 4C; target results excluded. Player-impact models remain diagnostic shadows and are not used automatically.",
+        "model": "2027_v1.1.1",
+        "note": "Prospective 2027 v1.1.1 forecast using actual-date rest, Rookie Gate 6 and Stage 4C; grand finals have zero home/travel adjustment; target results excluded. Player-impact models remain diagnostic shadows and are not used automatically.",
         "forecasts": output, "unmatchedPlayers": unmatched,
     }
     destination.parent.mkdir(parents=True, exist_ok=True)

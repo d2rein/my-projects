@@ -1,6 +1,6 @@
 import { createReplayEngine } from "../shared/replay-engine.js";
 import { buildFinalsBracket, FINALS_ROUNDS } from "../shared/finals-bracket.js";
-import { MODELS, SYSTEMS, TIPPING_POLICY, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js?v=20260925-3";
+import { MODELS, SYSTEMS, TIPPING_POLICY, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js?v=20260928-1";
 
 const state={cache:null,nrlwCache:null,nrlwStaticMatches:[],nrlwManualResults:[],competition:"NRL",historicalComparison:null,current:[],teamLists:[],currentMarkets:[],currentForecasts:[],currentForecastModel:null,charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -17,6 +17,10 @@ const correct=(r,tip)=>{const w=actualWinner(r);return w==null?null:w==="Draw"?t
 const noVig=(home,away)=>home&&away?(1/home)/((1/home)+(1/away)):null;
 const shortTeam=value=>({"Sydney Roosters":"Roosters","Cronulla-Sutherland Sharks":"Sharks","Cronulla Sharks":"Sharks","New Zealand Warriors":"Warriors","Newcastle Knights":"Knights","South Sydney Rabbitohs":"Rabbitohs","Penrith Panthers":"Panthers","North Queensland Cowboys":"Cowboys","NQ Cowboys":"Cowboys","Brisbane Broncos":"Broncos","Canberra Raiders":"Raiders","Canterbury-Bankstown Bulldogs":"Bulldogs","Gold Coast Titans":"Titans","Manly-Warringah Sea Eagles":"Sea Eagles","Melbourne Storm":"Storm","Parramatta Eels":"Eels","St George Illawarra Dragons":"Dragons","St. George Illawarra Dragons":"Dragons","Wests Tigers":"Tigers"}[value]||value);
 const roundKey=value=>String(value||"").replace(/Finals Week/i,"Finals Wk").replace(/\s+/g," ").trim().toLowerCase();
+const isGrandFinal=value=>/^(grand final|gf)$/i.test(String(value||"").trim());
+// Grand finals are played at a designated neutral venue. Do not let the
+// administrative home/away ordering create home advantage or travel points.
+const replayFixture=r=>({id:r.id,year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as,neutral_venue:isGrandFinal(r.round)});
 
 async function loadCache(){
   const [res,nrlwResponse,nrlwManualResponse]=await Promise.all([fetch(`data/historical-cache.json?v=${CACHE_VERSION}`),fetch(`data/nrlw-cache.json?v=20260928-1`),fetch(`${API_URL}/api/nrlw/results`,{cache:"no-store"}).catch(()=>null)]);
@@ -85,10 +89,11 @@ async function refreshCurrent(){
     showNotice(`The live API could not be reached. The ${state.cache.meta.cutoff} cache is displayed.`,"warning");
   }finally{button.disabled=false;button.textContent="Refresh"}
   state.replayDetails=null;
-  const fallbackDetails=getReplayDetails();
-  state.current=state.current.map(r=>{if(r.candidateP!=null||r.hs==null||r.as==null)return r;const p=fallbackDetails.get(Number(r.id))?.coreP;if(p==null)return r;const dr=-400*Math.log10(1/p-1);return {...r,bstarP:p,candidateP:p,candidateDr:dr,generalMargin:Math.abs(dr)<85?4:Math.abs(dr)<185?8:10,coreFallback:true}});
-  if(state.current.some(r=>r.hs==null&&r.as==null&&r.candidateP==null))showNotice(`A current ${ACTIVE_MODEL.id} forecast is not available for every upcoming match. No older model has been substituted.`);
   state.projectionContext=null;
+  const fallbackDetails=getReplayDetails();
+  // Every fixture has an immediate core forecast. Later market/team-list
+  // snapshots enrich or replace this baseline; they are never prerequisites.
+  state.current=state.current.map(r=>{if(r.candidateP!=null)return r;const saved=fallbackDetails.get(Number(r.id));let p=saved?.coreP,dr;if(p==null){const context=getProjectionContext(),preview=context.eloCalc.previewMatch(context.state,replayFixture(r));p=preview.expected;dr=preview.dr}else dr=-400*Math.log10(1/p-1);return {...r,bstarP:p,candidateP:p,candidateDr:dr,generalMargin:Math.abs(dr)<85?4:Math.abs(dr)<185?8:10,coreFallback:true}});
   renderCurrent();
   state.historySignature=null;
   if($("#tab-history")?.classList.contains("active"))renderHistory();
@@ -102,7 +107,7 @@ function getReplayDetails(){
   if(state.replayDetails)return state.replayDetails;
   const currentIds=new Set(state.current.map(r=>Number(r.id)));
   const source=[...state.cache.matches.filter(r=>!currentIds.has(Number(r.id))),...state.current].sort((a,b)=>a.year-b.year||a.matchIndex-b.matchIndex);
-  const matches=source.map(r=>({id:r.id,year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as}));
+  const matches=source.map(replayFixture);
   const teams=[...new Set(matches.flatMap(r=>[r.home_team,r.away_team]).filter(Boolean))].map(name=>({name}));
   const replay=createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true});
   state.replayDetails=new Map(replay.rows.map(r=>[Number(r.match.id),{homeElo:r.out.homeEloBefore,awayElo:r.out.awayEloBefore,homeRank:r.homeRankBeforeRound,awayRank:r.awayRankBeforeRound,coreP:r.out.expected}]));
@@ -111,7 +116,7 @@ function getReplayDetails(){
 
 function getProjectionContext(){
   if(state.projectionContext)return state.projectionContext;
-  const source=allDisplayMatches().filter(r=>r.hs!=null&&r.as!=null),matches=source.map(r=>({id:r.id,year:r.year,round:r.round,match_index:r.matchIndex,home_team:r.home,away_team:r.away,home_score:r.hs,away_score:r.as}));
+  const source=allDisplayMatches().filter(r=>r.hs!=null&&r.as!=null),matches=source.map(replayFixture);
   const teams=[...new Set(matches.flatMap(r=>[r.home_team,r.away_team]).filter(Boolean))].map(name=>({name}));
   state.projectionContext=createReplayEngine(MODELS.production2026.parameters,teams).replayMatches(matches,{applyByes:true});
   return state.projectionContext;
@@ -120,7 +125,7 @@ function getProjectionContext(){
 function projectionFor(match){
   const existing=state.current.find(r=>r.year===Number(match.year)&&roundKey(r.round)===roundKey(match.round)&&Number(r.game)===Number(match.game_num));
   if(existing?.candidateP!=null)return {p:existing.candidateP,dr:existing.candidateDr,margin:existing.stableMargin??existing.generalMargin};
-  const context=getProjectionContext(),preview=context.eloCalc.previewMatch(context.state,match),dr=preview.dr;
+  const fixture={...match,neutral_venue:isGrandFinal(match.round)},context=getProjectionContext(),preview=context.eloCalc.previewMatch(context.state,fixture),dr=preview.dr;
   return {p:preview.expected,dr,margin:Math.abs(dr)<85?4:Math.abs(dr)<185?8:10,homeElo:preview.homeEloBefore,awayElo:preview.awayEloBefore};
 }
 
@@ -376,7 +381,7 @@ function renderJoker(){
 }
 
 function renderModel(){const p=ACTIVE_MODEL.parameters;$("#model-content").innerHTML=`
-  <article class="model-card"><h2>B* core Elo</h2><div class="parameter-grid">${Object.entries(p).slice(0,10).map(([k,v])=>`<span>${esc(k)}</span><span>${esc(v)}</span>`).join("")}</div><h3>Pre-match strength</h3><div class="formula">actualRestAdj = 5 × (homeRestDays − awayRestDays) / 7\n\nDR_B* = (Rhome − Raway) + 40\n      + 15 × awayTravelKm / 1000\n      + actualRestAdj\n      + 2.15 × (homeStreak − awayStreak)\n\nP(home) = 1 / (1 + 10^(−DR_B* / 400))</div></article>
+  <article class="model-card"><h2>B* core Elo</h2><div class="parameter-grid">${Object.entries(p).slice(0,10).map(([k,v])=>`<span>${esc(k)}</span><span>${esc(v)}</span>`).join("")}</div><h3>Pre-match strength</h3><div class="formula">actualRestAdj = 5 × (homeRestDays − awayRestDays) / 7\n\nvenueHome = Grand Final ? 0 : 40\nvenueTravel = Grand Final ? 0 : 15 × awayTravelKm / 1000\n\nDR_B* = (Rhome − Raway) + venueHome\n      + venueTravel + actualRestAdj\n      + 2.15 × (homeStreak − awayStreak)\n\nP(home) = 1 / (1 + 10^(−DR_B* / 400))</div></article>
   <article class="model-card"><h2>Rookie Gate 6</h2><p>A prediction-only lineup adjustment. It does not flow into the zero-sum Elo ledger.</p><div class="formula">raw = β₀ × Δdebutants\n    + β₅ × Δunder5\n    + β₂₀ × Δunder20\n\nlineupMargin = clamp(raw, −18, +18)\napply only when |lineupMargin| ≥ 6\n\nDR_candidate = DR_B* + lineupMargin / 0.048406</div><p class="muted">Eight-year prior-only fit · ridge 300 · nested player counts. Non-NRL senior experience remains a deployment prerequisite.</p></article>
   <article class="model-card"><h2>Stable discrete margin</h2><p>The submitted margin is selected separately from winner probability.</p><div class="formula">x = |0.048406 × Gate6_DR|\nwⱼ = exp(−0.5 × ((xⱼ − x) / 1.5)²)\n   × 2^(−gamesAgo / 1000)\n\nchoose even a ∈ {2,4,…,32}\nminimising weighted mean |actual aligned margin − a|</div></article>
   <article class="model-card"><h2>Market review rules</h2><p><b>Odds never enter Elo.</b> Paired prices are converted to a no-vig probability and used only as a review layer.</p><div class="formula">pH = (1 / home $) / ((1 / home $) + (1 / away $))\n\nmodelConfidence  = |modelP − 0.50|\nmarketConfidence = |marketP − 0.50|\n\n⇄ when tips disagree and\nmarketConfidence − modelConfidence ≥ 0.10\n\n📉 when marketP moves ≥0.10 away from the Elo tip</div><p class="muted">The swap is a proposed tipping rule, not an Elo input. The movement marker is review-only and uses comparable opening/current paired prices.</p></article>
@@ -406,12 +411,12 @@ market confidence - model confidence &gt;= 0.10</div><p class="muted">Flag only:
 
 function renderModelV110(){if(state.competition==="NRLW"){renderNrlwModel();return}const p=ACTIVE_MODEL.parameters,systems=Object.values(SYSTEMS);$("#model-content").innerHTML=`
   <article class="model-card wide policy-card"><h2>Tipping policy - ${esc(ACTIVE_MODEL.id)}</h2><ol>${TIPPING_POLICY.map(rule=>`<li>${esc(rule)}</li>`).join("")}</ol><p class="policy-example"><b>Yellow flag against an 80% market:</b> the registered policy still follows the Player Alert, after checking that the team list and market timestamp are current. Record any manual override.</p><p class="muted">Precedence: Player Consensus &gt; Player Alert &gt; protected Lineup Adjustment &gt; active Market Swap &gt; displayed 2027 ELO.</p></article>
-  <article class="model-card"><h2>Base 2027 ELO <small>${SYSTEMS.elo.id}</small></h2><div class="parameter-grid">${Object.entries(p).slice(0,10).map(([k,v])=>`<span>${esc(k)}</span><span>${esc(v)}</span>`).join("")}</div><h3>Pre-match strength</h3><div class="formula">actualRestAdj = 5 x (homeRestDays - awayRestDays) / 7\n\nDR_base = (Rhome - Raway) + 40\n        + 15 x awayTravelKm / 1000\n        + actualRestAdj\n        + 2.15 x (homeStreak - awayStreak)\n\nP(home) = 1 / (1 + 10^(-DR_base / 400))</div></article>
+  <article class="model-card"><h2>Base 2027 ELO <small>${SYSTEMS.elo.id}</small></h2><div class="parameter-grid">${Object.entries(p).slice(0,10).map(([k,v])=>`<span>${esc(k)}</span><span>${esc(v)}</span>`).join("")}</div><h3>Pre-match strength</h3><div class="formula">actualRestAdj = 5 x (homeRestDays - awayRestDays) / 7\n\nvenueHome = Grand Final ? 0 : 40\nvenueTravel = Grand Final ? 0 : 15 x awayTravelKm / 1000\n\nDR_base = (Rhome - Raway) + venueHome\n        + venueTravel + actualRestAdj\n        + 2.15 x (homeStreak - awayStreak)\n\nP(home) = 1 / (1 + 10^(-DR_base / 400))</div></article>
   <article class="model-card"><h2>Team-list selection</h2><p><b>Rookie Adjustment (${SYSTEMS.rookie.id})</b> is Gate 6: prior-only nested debutant, under-5 and under-20 counts, capped at 18 margin points and applied from 6.</p><p><b>Lineup Adjustment (${SYSTEMS.lineup.id})</b> is Stage 4C: role-weighted expected minutes. It replaces, rather than adds to, Rookie Adjustment only when it reverses a Base ELO tip that began at least 60/40.</p><div class="formula">P_rookie = Gate6(Base ELO)\nP_lineup = Stage4 role/minutes model\n\nP_display = P_lineup  if strong Stage4C overturn\n            P_rookie  otherwise</div><p class="muted">Neither prediction-only adjustment flows into the zero-sum ELO ledger.</p></article>
   <article class="model-card"><h2>Player Impact</h2><p><b>Player Alert</b> (yellow) means ${SYSTEMS.playerFull.label} reverses the displayed tip. <b>Player Consensus</b> (green) means Full, Core and Creation profiles all support that same reversal.</p><div class="version-list">${[SYSTEMS.playerFull,SYSTEMS.playerCore,SYSTEMS.creation].map(system=>`<div><b>${esc(system.id)}</b><span>${esc(system.development)}</span></div>`).join("")}</div><p class="muted">These signals are decision overlays, not displayed probabilities. Player Alert is cautious; Player Consensus is stronger.</p></article>
   <article class="model-card"><h2>Market Swap <small>${SYSTEMS.market.id}</small></h2><p>Odds never enter ELO. Convert paired prices to no-vig probability, then activate a swap only when the tips oppose and the market is at least 10 percentage points more confident.</p><div class="formula">modelConfidence  = |modelP - 0.50|\nmarketConfidence = |marketP - 0.50|\n\nactivate when tips disagree and\nmarketConfidence - modelConfidence &gt;= 0.10</div><p class="muted">Grey means the numerical market rule fired but Lineup Adjustment or Player Impact superseded it.</p></article>
   <article class="model-card"><h2>Stable discrete margin</h2><p>Winner probability and submitted margin remain separate. The stable even-number bucket model remains the deployed margin rule.</p><div class="formula">x = |0.048406 x selected DR|\nweight = Gaussian distance bandwidth 1.5\n       x recency half-life 1000 games\nchoose even margin 2..32 minimizing weighted absolute error</div></article>
-  <article class="model-card wide"><h2>Version registry</h2><p><b>${esc(ACTIVE_MODEL.id)}</b> supersedes <b>${esc(MODELS.website2027v100.id)}</b> on the 2027 preview. Every subsystem change must bump the overall version. Major = model shape; minor = deployed composition or policy; patch = subsystem revision without a new composition.</p><div class="version-list">${systems.map(system=>`<div><b>${esc(system.id)}</b><span>${esc(system.label)} - ${esc(system.development)}</span></div>`).join("")}</div><p class="muted">Permanent record: ELO/offline/model-registry/CURRENT.md and 2027_v1.1.0/. Historical forecast claims still require an archived prediction.</p></article>`}
+  <article class="model-card wide"><h2>Version registry</h2><p><b>${esc(ACTIVE_MODEL.id)}</b> supersedes <b>2027_v1.1.0</b> on the 2027 preview. Every subsystem change must bump the overall version. Major = model shape; minor = deployed composition or policy; patch = subsystem revision without a new composition.</p><div class="version-list">${systems.map(system=>`<div><b>${esc(system.id)}</b><span>${esc(system.label)} - ${esc(system.development)}</span></div>`).join("")}</div><p class="muted">Permanent record: ELO/offline/model-registry/CURRENT.md and 2027_v1.1.1/. Historical forecast claims still require an archived prediction.</p></article>`}
 
 function updateTerminologyV110(){const legend=$(".flag-legend");if(legend)legend.innerHTML=`<b>Decision layers:</b><span><i class="market-swap">&#8644;</i> active Market Swap</span><span><i class="market-swap suppressed">&#8644;</i> superseded swap</span><span><i class="player-impact alert">!</i> Player Alert</span><span><i class="player-impact consensus">C</i> Player Consensus</span><span><b>Base</b> unadjusted Base 2027 ELO</span><span>Teams: <i class="list-tick prematch">&#10003;</i> pre-match / <i class="list-tick postmatch">&#10003;</i> post-match</span><em>Hover over a marker for its calculation and precedence.</em>`;const performance=$("#performance-model option[value='candidate']"),diagnostic=$("#diagnostic-model option[value='candidate']");if(performance)performance.textContent=ACTIVE_MODEL.label;if(diagnostic)diagnostic.textContent=ACTIVE_MODEL.label}
 

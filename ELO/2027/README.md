@@ -11,7 +11,9 @@ the production parameter table, ratings, matches or model. The existing
 - prebuilt historical match cache with closing prices and provenance;
 - separate historical match, Elo history, performance and Joker views;
 - frozen 2026 Joker snapshot;
-- versioned `2027_v1.1.0` replay with Base 2027 ELO, Rookie Adjustment and the protected Lineup Adjustment selection;
+- versioned `2027_v1.1.1` forecast with Base 2027 ELO, Rookie Adjustment and the protected Lineup Adjustment selection;
+- an immediate Base ELO forecast for every scoreless fixture, before team lists or market observations exist;
+- zero home-advantage and travel terms for grand finals, whose home label is administrative;
 - a separate Player Impact column for yellow Full Player Profile alerts and green Full/Core/Creation consensus;
 - active and grey/superseded Market Swap states under the explicit tipping precedence;
 - recent-year fading calibration curves and continuous-margin scatter;
@@ -95,7 +97,7 @@ the current season calls the live match API on page load.
 
 - Historical Lineup Adjustment and Player Impact outputs are shown only where
   the frozen prior-only research pipeline produced them. A future prospective
-  forecast must identify `2027_v1.1.0` and supply the corresponding subsystem
+  enriched forecast must identify `2027_v1.1.1` and supply the corresponding subsystem
   fields; it must not silently label an older Gate-6-only forecast as v1.1.0.
 - Market observations, announced team-list changes and generated forecasts are
   also uploaded to append-only API tables. The current page reads those tables

@@ -8,7 +8,7 @@ The separate offline research process, frozen baselines, experiment naming rules
 
 ## 2027 preview deployment registry
 
-The versioned 2027 tipping system and its decision overlays are registered in [`offline/model-registry/CURRENT.md`](offline/model-registry/CURRENT.md). The active preview is `2027_v1.1.0`; `2027_v1.0.0` is retained as its superseded Gate-6 predecessor. Development names such as Stage 4C, O10 and O9 must be resolved through that registry before answering operational tipping questions.
+The versioned 2027 tipping system and its decision overlays are registered in [`offline/model-registry/CURRENT.md`](offline/model-registry/CURRENT.md). The active preview is `2027_v1.1.1`; `2027_v1.1.0` is retained as its predecessor. Version 1.1.1 removes administrative home advantage and travel from grand finals and guarantees a core forecast before team lists arrive. Development names such as Stage 4C, O10 and O9 must be resolved through that registry before answering operational tipping questions.
 
 ## Deployment checklist
 

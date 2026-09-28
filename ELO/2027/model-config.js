@@ -1,5 +1,5 @@
 export const SYSTEMS = Object.freeze({
-  elo: { id: "ELO_v1.0", label: "Base 2027 ELO", development: "B* / actual-rest baseline" },
+  elo: { id: "ELO_v1.1", label: "Base 2027 ELO", development: "B* / actual-rest baseline; neutral grand final" },
   rookie: { id: "RA_v1.0", label: "Rookie Adjustment", development: "Gate 6 / steps_0_5_20_robust_gate6" },
   lineup: { id: "LA_v1.0", label: "Lineup Adjustment", development: "Stage 4C / minutes_rookie_role5 / tip_selected / config 41" },
   market: { id: "MS_v1.0", label: "Market Swap", development: "Protected 10-point confidence-gap rule" },
@@ -19,14 +19,14 @@ export const MODELS = Object.freeze({
   },
   website2027v100: { id: "2027_v1.0.0", label: "2027 v1.0.0 - B* + Rookie Gate 6", status: "superseded preview" },
   candidate2027: {
-    id: "2027_v1.1.0", label: "2027 ELO v1.1.0", shortLabel: "2027 ELO", status: "deployed 2027 preview baseline",
+    id: "2027_v1.1.1", label: "2027 ELO v1.1.1", shortLabel: "2027 ELO", status: "deployed 2027 preview baseline",
     systems: Object.values(SYSTEMS).map(system => system.id),
     parameters: {
       initialRating: 1500, k: 9.455, homeAdvantage: 40, travelPer1000km: 15,
       actualRestPerWeek: 5, streakPts: 2.15, earlyBoost: 0.95, reversionWeight: 3,
       divisor: 400, marginCoefficient: 0.048406, rookieWindowYears: 8, rookieRidge: 300,
       rookieCapMargin: 18, rookieGateMargin: 6, lineupOriginalConfidenceGate: 0.10,
-      marketConfidenceGap: 0.10
+      marketConfidenceGap: 0.10, neutralGrandFinal: true
     }
   }
 });
