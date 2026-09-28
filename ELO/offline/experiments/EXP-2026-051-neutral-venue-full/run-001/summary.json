@@ -1,0 +1,103 @@
+{
+  "finals": {
+    "selected": {
+      "home": 80,
+      "shared": 0,
+      "opponent": 20,
+      "neutral": 40,
+      "grand": 40,
+      "travel": 40,
+      "seed": 0,
+      "selection_correct": 123,
+      "selection_brier": 0.21837447725942513
+    },
+    "selection": {
+      "current": {
+        "games": 175,
+        "correct": 117,
+        "brier": 0.22046954819638429,
+        "changed": 0
+      },
+      "candidate": {
+        "games": 175,
+        "correct": 123,
+        "brier": 0.21837447725942513,
+        "changed": 10
+      }
+    },
+    "holdout": {
+      "current": {
+        "games": 81,
+        "correct": 56,
+        "brier": 0.19506911431947224,
+        "changed": 0
+      },
+      "candidate": {
+        "games": 81,
+        "correct": 60,
+        "brier": 0.1887459312504995,
+        "changed": 10
+      }
+    }
+  },
+  "constrained_finals": {
+    "no_neutral_bonus": {
+      "home": 80,
+      "shared": 0,
+      "opponent": 0,
+      "neutral": 0,
+      "grand": 0,
+      "travel": 40,
+      "seed": 0,
+      "selection_correct": 111,
+      "selection_brier": 0.22929599338559903
+    },
+    "no_home_labels": {
+      "home": 0,
+      "shared": 0,
+      "opponent": 0,
+      "neutral": 0,
+      "grand": 0,
+      "travel": 40,
+      "seed": 10,
+      "selection_correct": 107,
+      "selection_brier": 0.23322768190500165
+    }
+  },
+  "regular_nonstandard_venues": {
+    "selected": {
+      "shared": 20,
+      "opponent": 0,
+      "neutral": 0,
+      "travel": 0
+    },
+    "selection": {
+      "current": {
+        "games": 265,
+        "correct": 165,
+        "brier": 0.22524823893152696,
+        "changed": 0
+      },
+      "candidate": {
+        "games": 265,
+        "correct": 167,
+        "brier": 0.2220331186322337,
+        "changed": 46
+      }
+    },
+    "holdout": {
+      "current": {
+        "games": 346,
+        "correct": 236,
+        "brier": 0.21844970456705076,
+        "changed": 0
+      },
+      "candidate": {
+        "games": 346,
+        "correct": 226,
+        "brier": 0.215189351605998,
+        "changed": 48
+      }
+    }
+  }
+}

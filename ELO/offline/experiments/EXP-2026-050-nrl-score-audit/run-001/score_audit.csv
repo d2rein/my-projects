@@ -1,0 +1,213 @@
+round,home,away,home_score,away_score,venue,kickoff,source_url,rldb_match_id,rldb_home_score,rldb_away_score,site_id,site_home_score,site_away_score,rldb_match,site_match,status
+Round 1,Knights,Cowboys,28,18,Allegiant Stadium,2026-03-01T02:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/knights-v-cowboys/,14838,28,18,26202,28,18,True,True,match
+Round 1,Bulldogs,Dragons,15,14,Allegiant Stadium,2026-03-01T04:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/bulldogs-v-dragons/,14839,15,14,26201,15,14,True,True,match
+Round 1,Storm,Eels,52,4,AAMI Park,2026-03-05T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/storm-v-eels/,14840,52,4,26203,52,4,True,True,match
+Round 1,Warriors,Roosters,42,18,Go Media Stadium,2026-03-06T07:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/warriors-v-roosters/,14841,42,18,26205,42,18,True,True,match
+Round 1,Broncos,Panthers,0,26,Suncorp Stadium,2026-03-06T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/broncos-v-panthers/,14842,0,26,26204,0,26,True,True,match
+Round 1,Sharks,Titans,50,10,Ocean Protect Stadium,2026-03-07T06:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/sharks-v-titans/,14843,50,10,26206,50,10,True,True,match
+Round 1,Sea Eagles,Raiders,28,29,4 Pines Park,2026-03-07T08:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/sea-eagles-v-raiders/,14844,28,29,26207,28,29,True,True,match
+Round 1,Dolphins,Rabbitohs,30,40,Suncorp Stadium,2026-03-08T05:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-1/dolphins-v-rabbitohs/,14845,30,40,26208,30,40,True,True,match
+Round 2,Broncos,Eels,32,40,Suncorp Stadium,2026-03-12T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/broncos-v-eels/,14846,32,40,26209,32,40,True,True,match
+Round 2,Warriors,Raiders,40,6,Go Media Stadium,2026-03-13T07:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/warriors-v-raiders/,14847,40,6,26210,40,6,True,True,match
+Round 2,Roosters,Rabbitohs,26,18,Allianz Stadium,2026-03-13T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/roosters-v-rabbitohs/,14848,26,18,26211,26,18,True,True,match
+Round 2,Wests Tigers,Cowboys,44,16,Leichhardt Oval,2026-03-14T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/wests-tigers-v-cowboys/,14849,44,16,26212,44,16,True,True,match
+Round 2,Dragons,Storm,20,46,WIN Stadium,2026-03-14T06:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/dragons-v-storm/,14850,20,46,26213,20,46,True,True,match
+Round 2,Panthers,Sharks,26,6,Carrington Park,2026-03-14T08:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/panthers-v-sharks/,14851,26,6,26214,26,6,True,True,match
+Round 2,Sea Eagles,Knights,16,36,4 Pines Park,2026-03-15T05:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/sea-eagles-v-knights/,14852,16,36,26215,16,36,True,True,match
+Round 2,Dolphins,Titans,18,14,Suncorp Stadium,2026-03-15T07:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-2/dolphins-v-titans/,14853,18,14,26216,18,14,True,True,match
+Round 3,Raiders,Bulldogs,10,14,GIO Stadium,2026-03-19T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/raiders-v-bulldogs/,14854,10,14,26217,10,14,True,True,match
+Round 3,Roosters,Panthers,4,40,Allianz Stadium,2026-03-20T07:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/roosters-v-panthers/,14855,4,40,26218,4,40,True,True,match
+Round 3,Storm,Broncos,14,18,AAMI Park,2026-03-20T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/storm-v-broncos/,14856,14,18,26219,14,18,True,True,match
+Round 3,Knights,Warriors,12,38,McDonald Jones Stadium,2026-03-21T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/knights-v-warriors/,14857,12,38,26220,12,38,True,True,match
+Round 3,Sharks,Dolphins,10,38,Ocean Protect Stadium,2026-03-21T06:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/sharks-v-dolphins/,14858,10,38,26221,10,38,True,True,match
+Round 3,Rabbitohs,Wests Tigers,20,16,Polytec Stadium,2026-03-21T08:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/rabbitohs-v-wests-tigers/,14859,20,16,26222,20,16,True,True,match
+Round 3,Eels,Dragons,30,20,CommBank Stadium,2026-03-22T05:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/eels-v-dragons/,14860,30,20,26223,30,20,True,True,match
+Round 3,Cowboys,Titans,30,16,Queensland Country Bank Stadium,2026-03-22T07:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-3/cowboys-v-titans/,14861,30,16,26224,30,16,True,True,match
+Round 4,Sea Eagles,Roosters,16,33,4 Pines Park,2026-03-26T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/sea-eagles-v-roosters/,14862,16,33,26225,16,33,True,True,match
+Round 4,Warriors,Wests Tigers,14,32,Go Media Stadium,2026-03-27T07:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/warriors-v-wests-tigers/,14863,14,32,26226,14,32,True,True,match
+Round 4,Broncos,Dolphins,26,12,Suncorp Stadium,2026-03-27T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/broncos-v-dolphins/,14864,26,12,26227,26,12,True,True,match
+Round 4,Bulldogs,Knights,16,24,Accor Stadium,2026-03-28T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/bulldogs-v-knights/,14865,16,24,26228,16,24,True,True,match
+Round 4,Panthers,Eels,48,20,CommBank Stadium,2026-03-28T06:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/panthers-v-eels/,14866,48,20,26229,48,20,True,True,match
+Round 4,Cowboys,Storm,28,24,Queensland Country Bank Stadium,2026-03-28T08:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/cowboys-v-storm/,14867,28,24,26230,28,24,True,True,match
+Round 4,Raiders,Sharks,22,34,GIO Stadium,2026-03-29T05:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/raiders-v-sharks/,14868,22,34,26231,22,34,True,True,match
+Round 4,Titans,Dragons,22,14,Cbus Super Stadium,2026-03-29T07:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-4/titans-v-dragons/,14869,22,14,26232,22,14,True,True,match
+Round 5,Dolphins,Sea Eagles,18,52,Kayo Stadium,2026-04-02T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/dolphins-v-sea-eagles/,14870,18,52,26233,18,52,True,True,match
+Round 5,Rabbitohs,Bulldogs,32,24,Accor Stadium,2026-04-03T05:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/rabbitohs-v-bulldogs/,14871,32,24,26234,32,24,True,True,match
+Round 5,Panthers,Storm,50,10,CommBank Stadium,2026-04-03T09:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/panthers-v-storm/,14872,50,10,26235,50,10,True,True,match
+Round 5,Dragons,Cowboys,0,32,St George Venues Jubilee Stadium,2026-04-04T06:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/dragons-v-cowboys/,14873,0,32,26236,0,32,True,True,match
+Round 5,Titans,Broncos,12,26,Cbus Super Stadium,2026-04-04T08:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/titans-v-broncos/,14874,12,26,26237,12,26,True,True,match
+Round 5,Sharks,Warriors,36,22,Ocean Protect Stadium,2026-04-05T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/sharks-v-warriors/,14875,36,22,26238,36,22,True,True,match
+Round 5,Knights,Raiders,32,12,McDonald Jones Stadium,2026-04-05T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/knights-v-raiders/,14876,32,12,26239,32,12,True,True,match
+Round 5,Eels,Wests Tigers,20,22,CommBank Stadium,2026-04-06T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-5/eels-v-wests-tigers/,14877,20,22,26240,20,22,True,True,match
+Round 6,Bulldogs,Panthers,32,16,Accor Stadium,2026-04-09T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/bulldogs-v-panthers/,14878,32,16,26241,32,16,True,True,match
+Round 6,Dragons,Sea Eagles,18,28,WIN Stadium,2026-04-10T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/dragons-v-sea-eagles/,14879,18,28,26242,18,28,True,True,match
+Round 6,Broncos,Cowboys,31,35,Suncorp Stadium,2026-04-10T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/broncos-v-cowboys/,14880,31,35,26243,31,35,True,True,match
+Round 6,Rabbitohs,Raiders,34,36,Optus Stadium,2026-04-11T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/rabbitohs-v-raiders/,14881,34,36,26244,34,36,True,True,match
+Round 6,Sharks,Roosters,22,34,Optus Stadium,2026-04-11T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/sharks-v-roosters/,14882,22,34,26245,22,34,True,True,match
+Round 6,Storm,Warriors,14,38,AAMI Park,2026-04-11T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/storm-v-warriors/,14883,14,38,26246,14,38,True,True,match
+Round 6,Eels,Titans,10,52,CommBank Stadium,2026-04-12T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/eels-v-titans/,14884,10,52,26247,10,52,True,True,match
+Round 6,Wests Tigers,Knights,42,22,Campbelltown Sports Stadium,2026-04-12T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-6/wests-tigers-v-knights/,14885,42,22,26248,42,22,True,True,match
+Round 7,Cowboys,Sea Eagles,6,38,Queensland Country Bank Stadium,2026-04-16T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/cowboys-v-sea-eagles/,14886,6,38,26249,6,38,True,True,match
+Round 7,Raiders,Storm,26,22,GIO Stadium,2026-04-17T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/raiders-v-storm/,14887,26,22,26250,26,22,True,True,match
+Round 7,Dolphins,Panthers,22,23,TIO Stadium,2026-04-17T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/dolphins-v-panthers/,14888,22,23,26251,22,23,True,True,match
+Round 7,Warriors,Titans,28,20,Go Media Stadium,2026-04-18T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/warriors-v-titans/,14889,28,20,26252,28,20,True,True,match
+Round 7,Rabbitohs,Dragons,30,12,Accor Stadium,2026-04-18T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/rabbitohs-v-dragons/,14890,30,12,26253,30,12,True,True,match
+Round 7,Wests Tigers,Broncos,20,21,Campbelltown Sports Stadium,2026-04-18T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/wests-tigers-v-broncos/,14891,20,21,26254,20,21,True,True,match
+Round 7,Roosters,Knights,38,24,Allianz Stadium,2026-04-19T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/roosters-v-knights/,14892,38,24,26255,38,24,True,True,match
+Round 7,Eels,Bulldogs,38,20,CommBank Stadium,2026-04-19T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-7/eels-v-bulldogs/,14893,38,20,26256,38,20,True,True,match
+Round 8,Wests Tigers,Raiders,33,14,Leichhardt Oval,2026-04-23T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/wests-tigers-v-raiders/,14894,33,14,26257,33,14,True,True,match
+Round 8,Cowboys,Sharks,46,34,Queensland Country Bank Stadium,2026-04-24T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/cowboys-v-sharks/,14895,46,34,26258,46,34,True,True,match
+Round 8,Broncos,Bulldogs,32,12,Suncorp Stadium,2026-04-24T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/broncos-v-bulldogs/,14896,32,12,26259,32,12,True,True,match
+Round 8,Dragons,Roosters,16,62,Allianz Stadium,2026-04-25T06:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/dragons-v-roosters/,14897,16,62,26260,16,62,True,True,match
+Round 8,Warriors,Dolphins,20,18,Hnry Stadium,2026-04-25T08:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/warriors-v-dolphins/,14898,20,18,26261,20,18,True,True,match
+Round 8,Storm,Rabbitohs,6,48,AAMI Park,2026-04-25T10:10:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/storm-v-rabbitohs/,14899,6,48,26262,6,48,True,True,match
+Round 8,Knights,Panthers,12,44,McDonald Jones Stadium,2026-04-26T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/knights-v-panthers/,14900,12,44,26263,12,44,True,True,match
+Round 8,Sea Eagles,Eels,33,18,4 Pines Park,2026-04-26T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-8/sea-eagles-v-eels/,14901,33,18,26264,33,18,True,True,match
+Round 9,Bulldogs,Cowboys,12,28,Accor Stadium,2026-05-01T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/bulldogs-v-cowboys/,14902,12,28,26265,12,28,True,True,match
+Round 9,Dolphins,Storm,28,10,Suncorp Stadium,2026-05-01T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/dolphins-v-storm/,14903,28,10,26266,28,10,True,True,match
+Round 9,Titans,Raiders,12,28,Cbus Super Stadium,2026-05-02T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/titans-v-raiders/,14904,12,28,26267,12,28,True,True,match
+Round 9,Eels,Warriors,14,36,CommBank Stadium,2026-05-02T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/eels-v-warriors/,14905,14,36,26268,14,36,True,True,match
+Round 9,Roosters,Broncos,38,24,Allianz Stadium,2026-05-02T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/roosters-v-broncos/,14906,38,24,26269,38,24,True,True,match
+Round 9,Knights,Rabbitohs,42,38,McDonald Jones Stadium,2026-05-03T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/knights-v-rabbitohs/,14907,42,38,26270,42,38,True,True,match
+Round 9,Sharks,Wests Tigers,52,10,Ocean Protect Stadium,2026-05-03T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/sharks-v-wests-tigers/,14908,52,10,26271,52,10,True,True,match
+Round 9,Panthers,Sea Eagles,18,16,CommBank Stadium,2026-05-03T08:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-9/panthers-v-sea-eagles/,14909,18,16,26272,18,16,True,True,match
+Round 10,Dolphins,Bulldogs,44,12,Suncorp Stadium,2026-05-07T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/dolphins-v-bulldogs/,14910,44,12,26273,44,12,True,True,match
+Round 10,Roosters,Titans,28,12,Polytec Stadium,2026-05-08T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/roosters-v-titans/,14911,28,12,26274,28,12,True,True,match
+Round 10,Cowboys,Eels,30,33,Queensland Country Bank Stadium,2026-05-08T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/cowboys-v-eels/,14912,30,33,26275,30,33,True,True,match
+Round 10,Dragons,Knights,10,44,WIN Stadium,2026-05-09T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/dragons-v-knights/,14913,10,44,26276,10,44,True,True,match
+Round 10,Rabbitohs,Sharks,36,12,Accor Stadium,2026-05-09T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/rabbitohs-v-sharks/,14914,36,12,26277,36,12,True,True,match
+Round 10,Sea Eagles,Broncos,32,4,4 Pines Park,2026-05-09T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/sea-eagles-v-broncos/,14915,32,4,26278,32,4,True,True,match
+Round 10,Storm,Wests Tigers,44,16,AAMI Park,2026-05-10T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/storm-v-wests-tigers/,14916,44,16,26279,44,16,True,True,match
+Round 10,Raiders,Panthers,18,30,GIO Stadium,2026-05-10T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-10/raiders-v-panthers/,14917,18,30,26280,18,30,True,True,match
+Round 11,Sharks,Bulldogs,38,16,Suncorp Stadium,2026-05-15T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/sharks-v-bulldogs/,14918,38,16,26281,38,16,True,True,match
+Round 11,Rabbitohs,Dolphins,10,32,Suncorp Stadium,2026-05-15T10:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/rabbitohs-v-dolphins/,14919,10,32,26282,10,32,True,True,match
+Round 11,Wests Tigers,Sea Eagles,18,46,Suncorp Stadium,2026-05-16T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/wests-tigers-v-sea-eagles/,14920,18,46,26283,18,46,True,True,match
+Round 11,Roosters,Cowboys,12,18,Suncorp Stadium,2026-05-16T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/roosters-v-cowboys/,14921,12,18,26284,12,18,True,True,match
+Round 11,Eels,Storm,8,34,Suncorp Stadium,2026-05-16T09:45:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/eels-v-storm/,14922,8,34,26285,8,34,True,True,match
+Round 11,Titans,Knights,12,36,Suncorp Stadium,2026-05-17T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/titans-v-knights/,14923,12,36,26286,12,36,True,True,match
+Round 11,Warriors,Broncos,42,12,Suncorp Stadium,2026-05-17T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/warriors-v-broncos/,14924,42,12,26287,42,12,True,True,match
+Round 11,Panthers,Dragons,28,6,Suncorp Stadium,2026-05-17T08:25:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-11/panthers-v-dragons/,14925,28,6,26288,28,6,True,True,match
+Round 12,Raiders,Dolphins,22,30,GIO Stadium,2026-05-21T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-12/raiders-v-dolphins/,14926,22,30,26289,22,30,True,True,match
+Round 12,Bulldogs,Storm,30,20,Accor Stadium,2026-05-22T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-12/bulldogs-v-storm/,14927,30,20,26290,30,20,True,True,match
+Round 12,Dragons,Warriors,12,30,St George Venues Jubilee Stadium,2026-05-23T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-12/dragons-v-warriors/,14928,12,30,26291,12,30,True,True,match
+Round 12,Sea Eagles,Titans,12,10,4 Pines Park,2026-05-23T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-12/sea-eagles-v-titans/,14929,12,10,26292,12,10,True,True,match
+Round 12,Cowboys,Rabbitohs,30,18,Queensland Country Bank Stadium,2026-05-24T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-12/cowboys-v-rabbitohs/,14930,30,18,26293,30,18,True,True,match
+Round 13,Sharks,Sea Eagles,28,22,Ocean Protect Stadium,2026-05-29T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/sharks-v-sea-eagles/,14931,28,22,26294,28,22,True,True,match
+Round 13,Knights,Eels,28,22,McDonald Jones Stadium,2026-05-30T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/knights-v-eels/,14932,28,22,26295,28,22,True,True,match
+Round 13,Wests Tigers,Bulldogs,22,16,CommBank Stadium,2026-05-30T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/wests-tigers-v-bulldogs/,14933,22,16,26296,22,16,True,True,match
+Round 13,Storm,Roosters,18,4,AAMI Park,2026-05-30T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/storm-v-roosters/,14934,18,4,26297,18,4,True,True,match
+Round 13,Broncos,Dragons,26,30,Suncorp Stadium,2026-05-31T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/broncos-v-dragons/,14935,26,30,26298,26,30,True,True,match
+Round 13,Raiders,Cowboys,26,12,GIO Stadium,2026-05-31T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/raiders-v-cowboys/,14936,26,12,26299,26,12,True,True,match
+Round 13,Panthers,Warriors,20,18,CommBank Stadium,2026-05-31T08:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-13/panthers-v-warriors/,14937,20,18,26300,20,18,True,True,match
+Round 14,Sea Eagles,Rabbitohs,28,14,4 Pines Park,2026-06-04T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/sea-eagles-v-rabbitohs/,14938,28,14,26301,28,14,True,True,match
+Round 14,Storm,Knights,32,30,AAMI Park,2026-06-05T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/storm-v-knights/,14939,32,30,26302,32,30,True,True,match
+Round 14,Raiders,Roosters,0,26,GIO Stadium,2026-06-05T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/raiders-v-roosters/,14940,0,26,26303,0,26,True,True,match
+Round 14,Cowboys,Dolphins,14,40,Queensland Country Bank Stadium,2026-06-06T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/cowboys-v-dolphins/,14941,14,40,26304,14,40,True,True,match
+Round 14,Broncos,Titans,23,28,Suncorp Stadium,2026-06-06T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/broncos-v-titans/,14942,23,28,26305,23,28,True,True,match
+Round 14,Wests Tigers,Panthers,0,68,CommBank Stadium,2026-06-07T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/wests-tigers-v-panthers/,14943,0,68,26306,0,68,True,True,match
+Round 14,Sharks,Dragons,34,12,Ocean Protect Stadium,2026-06-07T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/sharks-v-dragons/,14944,34,12,26307,34,12,True,True,match
+Round 14,Bulldogs,Eels,14,12,Accor Stadium,2026-06-08T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-14/bulldogs-v-eels/,14945,14,12,26308,14,12,True,True,match
+Round 15,Rabbitohs,Broncos,48,6,Accor Stadium,2026-06-11T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-15/rabbitohs-v-broncos/,14946,48,6,26309,48,6,True,True,match
+Round 15,Dolphins,Roosters,48,10,Suncorp Stadium,2026-06-12T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-15/dolphins-v-roosters/,14947,48,10,26310,48,10,True,True,match
+Round 15,Warriors,Sharks,8,10,Go Media Stadium,2026-06-13T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-15/warriors-v-sharks/,14948,8,10,26311,8,10,True,True,match
+Round 15,Eels,Raiders,15,12,CommBank Stadium,2026-06-13T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-15/eels-v-raiders/,14949,15,12,26312,15,12,True,True,match
+Round 15,Wests Tigers,Titans,36,28,Leichhardt Oval,2026-06-14T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-15/wests-tigers-v-titans/,14950,36,28,26313,36,28,True,True,match
+Round 16,Knights,Dragons,22,20,McDonald Jones Stadium,2026-06-19T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/knights-v-dragons/,14951,22,20,26314,22,20,True,True,match
+Round 16,Wests Tigers,Dolphins,22,36,Campbelltown Sports Stadium,2026-06-20T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/wests-tigers-v-dolphins/,14952,22,36,26315,22,36,True,True,match
+Round 16,Titans,Panthers,19,18,Cbus Super Stadium,2026-06-20T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/titans-v-panthers/,14953,19,18,26316,19,18,True,True,match
+Round 16,Bulldogs,Sea Eagles,13,12,Accor Stadium,2026-06-20T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/bulldogs-v-sea-eagles/,14954,13,12,26317,13,12,True,True,match
+Round 16,Warriors,Cowboys,38,20,One NZ Stadium,2026-06-21T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/warriors-v-cowboys/,14955,38,20,26318,38,20,True,True,match
+Round 16,Storm,Raiders,42,20,AAMI Park,2026-06-21T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/storm-v-raiders/,14956,42,20,26319,42,20,True,True,match
+Round 16,Roosters,Sharks,27,8,Allianz Stadium,2026-06-21T08:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-16/roosters-v-sharks/,14957,27,8,26320,27,8,True,True,match
+Round 17,Eels,Rabbitohs,12,32,CommBank Stadium,2026-06-25T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/eels-v-rabbitohs/,14958,12,32,26321,12,32,True,True,match
+Round 17,Titans,Bulldogs,12,30,Cbus Super Stadium,2026-06-26T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/titans-v-bulldogs/,14959,12,30,26322,12,30,True,True,match
+Round 17,Broncos,Roosters,18,24,Suncorp Stadium,2026-06-26T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/broncos-v-roosters/,14960,18,24,26323,18,24,True,True,match
+Round 17,Dolphins,Warriors,26,24,Suncorp Stadium,2026-06-27T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/dolphins-v-warriors/,14961,26,24,26324,26,24,True,True,match
+Round 17,Cowboys,Panthers,26,12,Queensland Country Bank Stadium,2026-06-27T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/cowboys-v-panthers/,14962,26,12,26325,26,12,True,True,match
+Round 17,Sea Eagles,Storm,30,4,4 Pines Park,2026-06-27T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/sea-eagles-v-storm/,14963,30,4,26326,30,4,True,True,match
+Round 17,Raiders,Dragons,24,16,GIO Stadium,2026-06-28T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/raiders-v-dragons/,14964,24,16,26327,24,16,True,True,match
+Round 17,Knights,Wests Tigers,12,6,McDonald Jones Stadium,2026-06-28T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-17/knights-v-wests-tigers/,14965,12,6,26328,12,6,True,True,match
+Round 18,Panthers,Rabbitohs,36,14,CommBank Stadium,2026-07-03T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-18/panthers-v-rabbitohs/,14966,36,14,26329,36,14,True,True,match
+Round 18,Dragons,Wests Tigers,24,10,St George Venues Jubilee Stadium,2026-07-04T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-18/dragons-v-wests-tigers/,14967,24,10,26330,24,10,True,True,match
+Round 18,Broncos,Sharks,16,28,Suncorp Stadium,2026-07-04T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-18/broncos-v-sharks/,14968,16,28,26331,16,28,True,True,match
+Round 18,Eels,Sea Eagles,23,14,CommBank Stadium,2026-07-05T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-18/eels-v-sea-eagles/,14969,23,14,26332,23,14,True,True,match
+Round 18,Knights,Dolphins,13,12,McDonald Jones Stadium,2026-07-05T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-18/knights-v-dolphins/,14970,13,12,26333,13,12,True,True,match
+Round 19,Wests Tigers,Warriors,6,32,Campbelltown Sports Stadium,2026-07-10T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/wests-tigers-v-warriors/,14971,6,32,26334,6,32,True,True,match
+Round 19,Dolphins,Sharks,0,66,Kayo Stadium,2026-07-11T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/dolphins-v-sharks/,14972,0,66,26335,0,66,True,True,match
+Round 19,Bulldogs,Raiders,16,40,Accor Stadium,2026-07-11T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/bulldogs-v-raiders/,14973,16,40,26336,16,40,True,True,match
+Round 19,Roosters,Eels,28,12,Allianz Stadium,2026-07-11T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/roosters-v-eels/,14974,28,12,26337,28,12,True,True,match
+Round 19,Rabbitohs,Knights,26,24,Accor Stadium,2026-07-12T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/rabbitohs-v-knights/,14975,26,24,26338,26,24,True,True,match
+Round 19,Sea Eagles,Cowboys,18,19,4 Pines Park,2026-07-12T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/sea-eagles-v-cowboys/,14976,18,19,26339,18,19,True,True,match
+Round 19,Storm,Titans,22,18,AAMI Park,2026-07-12T08:15:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-19/storm-v-titans/,14977,22,18,26340,22,18,True,True,match
+Round 20,Panthers,Broncos,12,14,CommBank Stadium,2026-07-16T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/panthers-v-broncos/,14978,12,14,26341,12,14,True,True,match
+Round 20,Sharks,Knights,20,18,Ocean Protect Stadium,2026-07-17T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/sharks-v-knights/,14979,20,18,26342,20,18,True,True,match
+Round 20,Roosters,Storm,14,6,Allianz Stadium,2026-07-17T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/roosters-v-storm/,14980,14,6,26343,14,6,True,True,match
+Round 20,Raiders,Rabbitohs,34,24,GIO Stadium,2026-07-18T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/raiders-v-rabbitohs/,14981,34,24,26344,34,24,True,True,match
+Round 20,Warriors,Dragons,20,12,Go Media Stadium,2026-07-18T07:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/warriors-v-dragons/,14982,20,12,26345,20,12,True,True,match
+Round 20,Bulldogs,Wests Tigers,32,0,Accor Stadium,2026-07-18T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/bulldogs-v-wests-tigers/,14983,32,0,26346,32,0,True,True,match
+Round 20,Titans,Sea Eagles,38,32,Cbus Super Stadium,2026-07-19T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/titans-v-sea-eagles/,14984,38,32,26347,38,32,True,True,match
+Round 20,Dolphins,Cowboys,36,16,Suncorp Stadium,2026-07-19T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-20/dolphins-v-cowboys/,14985,36,16,26348,36,16,True,True,match
+Round 21,Eels,Panthers,18,24,CommBank Stadium,2026-07-23T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/eels-v-panthers/,14986,18,24,26349,18,24,True,True,match
+Round 21,Knights,Roosters,22,23,McDonald Jones Stadium,2026-07-24T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/knights-v-roosters/,14987,22,23,26350,22,23,True,True,match
+Round 21,Rabbitohs,Storm,28,26,Accor Stadium,2026-07-24T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/rabbitohs-v-storm/,14988,28,26,26351,28,26,True,True,match
+Round 21,Raiders,Wests Tigers,56,10,GIO Stadium,2026-07-25T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/raiders-v-wests-tigers/,14989,56,10,26352,56,10,True,True,match
+Round 21,Bulldogs,Warriors,18,6,Accor Stadium,2026-07-25T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/bulldogs-v-warriors/,14990,18,6,26353,18,6,True,True,match
+Round 21,Cowboys,Broncos,18,10,Queensland Country Bank Stadium,2026-07-25T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/cowboys-v-broncos/,14991,18,10,26354,18,10,True,True,match
+Round 21,Dragons,Titans,18,38,St George Venues Jubilee Stadium,2026-07-26T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/dragons-v-titans/,14992,18,38,26355,18,38,True,True,match
+Round 21,Sea Eagles,Sharks,12,48,4 Pines Park,2026-07-26T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-21/sea-eagles-v-sharks/,14993,12,48,26356,12,48,True,True,match
+Round 22,Cowboys,Roosters,12,82,Queensland Country Bank Stadium,2026-07-30T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/cowboys-v-roosters/,14994,12,82,26357,12,82,True,True,match
+Round 22,Dragons,Dolphins,22,28,WIN Stadium,2026-07-31T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/dragons-v-dolphins/,14995,22,28,26358,22,28,True,True,match
+Round 22,Storm,Bulldogs,22,36,AAMI Park,2026-07-31T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/storm-v-bulldogs/,14996,22,36,26359,22,36,True,True,match
+Round 22,Titans,Warriors,6,42,Cbus Super Stadium,2026-08-01T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/titans-v-warriors/,14997,6,42,26360,6,42,True,True,match
+Round 22,Panthers,Raiders,42,18,Glen Willow Oval,2026-08-01T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/panthers-v-raiders/,14998,42,18,26361,42,18,True,True,match
+Round 22,Broncos,Knights,6,30,Suncorp Stadium,2026-08-01T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/broncos-v-knights/,14999,6,30,26362,6,30,True,True,match
+Round 22,Sharks,Rabbitohs,32,16,Ocean Protect Stadium,2026-08-02T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/sharks-v-rabbitohs/,15000,32,16,26363,32,16,True,True,match
+Round 22,Wests Tigers,Eels,13,16,CommBank Stadium,2026-08-02T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-22/wests-tigers-v-eels/,15001,13,16,26364,13,16,True,True,match
+Round 23,Titans,Cowboys,8,30,Cbus Super Stadium,2026-08-06T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/titans-v-cowboys/,15002,8,30,26365,8,30,True,True,match
+Round 23,Warriors,Panthers,28,12,Go Media Stadium,2026-08-07T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/warriors-v-panthers/,15003,28,12,26366,28,12,True,True,match
+Round 23,Roosters,Bulldogs,20,18,Allianz Stadium,2026-08-07T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/roosters-v-bulldogs/,15004,20,18,26367,20,18,True,True,match
+Round 23,Storm,Sea Eagles,42,20,HBF Park,2026-08-08T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/storm-v-sea-eagles/,15005,42,20,26368,42,20,True,True,match
+Round 23,Dolphins,Broncos,40,32,Suncorp Stadium,2026-08-08T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/dolphins-v-broncos/,15006,40,32,26369,40,32,True,True,match
+Round 23,Rabbitohs,Eels,28,24,Allianz Stadium,2026-08-08T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/rabbitohs-v-eels/,15007,28,24,26370,28,24,True,True,match
+Round 23,Raiders,Knights,24,30,GIO Stadium,2026-08-09T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/raiders-v-knights/,15008,24,30,26371,24,30,True,True,match
+Round 23,Dragons,Sharks,24,16,St George Venues Jubilee Stadium,2026-08-09T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-23/dragons-v-sharks/,15009,24,16,26372,24,16,True,True,match
+Round 24,Panthers,Roosters,6,12,CommBank Stadium,2026-08-13T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/panthers-v-roosters/,15010,6,12,26373,6,12,True,True,match
+Round 24,Sea Eagles,Dolphins,0,22,4 Pines Park,2026-08-14T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/sea-eagles-v-dolphins/,15011,0,22,26374,0,22,True,True,match
+Round 24,Bulldogs,Rabbitohs,6,22,Accor Stadium,2026-08-14T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/bulldogs-v-rabbitohs/,15012,6,22,26375,6,22,True,True,match
+Round 24,Sharks,Raiders,20,24,Ocean Protect Stadium,2026-08-15T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/sharks-v-raiders/,15013,20,24,26376,20,24,True,True,match
+Round 24,Eels,Cowboys,32,30,CommBank Stadium,2026-08-15T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/eels-v-cowboys/,15014,32,30,26377,32,30,True,True,match
+Round 24,Broncos,Warriors,6,40,Suncorp Stadium,2026-08-15T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/broncos-v-warriors/,15015,6,40,26378,6,40,True,True,match
+Round 24,Knights,Titans,36,26,McDonald Jones Stadium,2026-08-16T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/knights-v-titans/,15016,36,26,26379,36,26,True,True,match
+Round 24,Wests Tigers,Dragons,22,24,CommBank Stadium,2026-08-16T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-24/wests-tigers-v-dragons/,15017,22,24,26380,22,24,True,True,match
+Round 25,Storm,Panthers,14,22,AAMI Park,2026-08-20T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/storm-v-panthers/,15018,14,22,26381,14,22,True,True,match
+Round 25,Raiders,Broncos,30,34,GIO Stadium,2026-08-21T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/raiders-v-broncos/,15019,30,34,26382,30,34,True,True,match
+Round 25,Dolphins,Eels,34,16,Suncorp Stadium,2026-08-21T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/dolphins-v-eels/,15020,34,16,26383,34,16,True,True,match
+Round 25,Knights,Sea Eagles,24,44,McDonald Jones Stadium,2026-08-22T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/knights-v-sea-eagles/,15021,24,44,26384,24,44,True,True,match
+Round 25,Rabbitohs,Warriors,26,45,Accor Stadium,2026-08-22T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/rabbitohs-v-warriors/,15022,26,45,26385,26,45,True,True,match
+Round 25,Dragons,Bulldogs,14,44,Allianz Stadium,2026-08-22T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/dragons-v-bulldogs/,15023,14,44,26386,14,44,True,True,match
+Round 25,Titans,Sharks,22,30,Cbus Super Stadium,2026-08-23T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/titans-v-sharks/,15024,22,30,26387,22,30,True,True,match
+Round 25,Roosters,Wests Tigers,24,25,Allianz Stadium,2026-08-23T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-25/roosters-v-wests-tigers/,15025,24,25,26388,24,25,True,True,match
+Round 26,Broncos,Storm,20,46,Suncorp Stadium,2026-08-27T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/broncos-v-storm/,15026,20,46,26389,20,46,True,True,match
+Round 26,Sea Eagles,Dragons,44,10,4 Pines Park,2026-08-28T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/sea-eagles-v-dragons/,15027,44,10,26390,44,10,True,True,match
+Round 26,Panthers,Bulldogs,24,10,CommBank Stadium,2026-08-28T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/panthers-v-bulldogs/,15028,24,10,26391,24,10,True,True,match
+Round 26,Titans,Rabbitohs,22,42,Cbus Super Stadium,2026-08-29T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/titans-v-rabbitohs/,15029,22,42,26392,22,42,True,True,match
+Round 26,Roosters,Dolphins,12,26,Allianz Stadium,2026-08-29T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/roosters-v-dolphins/,15030,12,26,26393,12,26,True,True,match
+Round 26,Cowboys,Wests Tigers,24,10,Queensland Country Bank Stadium,2026-08-29T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/cowboys-v-wests-tigers/,15031,24,10,26394,24,10,True,True,match
+Round 26,Warriors,Knights,46,32,Go Media Stadium,2026-08-30T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/warriors-v-knights/,15032,46,32,26395,46,32,True,True,match
+Round 26,Eels,Sharks,38,18,CommBank Stadium,2026-08-30T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-26/eels-v-sharks/,15033,38,18,26396,38,18,True,True,match
+Round 27,Bulldogs,Broncos,20,34,Accor Stadium,2026-09-03T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/bulldogs-v-broncos/,15451,20,34,26397,20,34,True,True,match
+Round 27,Titans,Dolphins,20,24,Cbus Super Stadium,2026-09-04T08:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/titans-v-dolphins/,15452,20,24,26398,20,24,True,True,match
+Round 27,Rabbitohs,Roosters,50,20,Allianz Stadium,2026-09-04T10:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/rabbitohs-v-roosters/,15453,50,20,26399,50,20,True,True,match
+Round 27,Warriors,Sea Eagles,31,30,Go Media Stadium,2026-09-05T05:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/warriors-v-sea-eagles/,15454,31,30,26400,31,30,True,True,match
+Round 27,Cowboys,Raiders,30,50,Queensland Country Bank Stadium,2026-09-05T07:30:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/cowboys-v-raiders/,15455,30,50,26401,30,50,True,True,match
+Round 27,Sharks,Storm,20,24,Ocean Protect Stadium,2026-09-05T09:35:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/sharks-v-storm/,15456,20,24,26402,20,24,True,True,match
+Round 27,Dragons,Eels,24,22,WIN Stadium,2026-09-06T04:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/dragons-v-eels/,15457,24,22,26403,24,22,True,True,match
+Round 27,Panthers,Wests Tigers,38,10,CommBank Stadium,2026-09-06T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/round-27/panthers-v-wests-tigers/,15458,38,10,26404,38,10,True,True,match
+Finals Week 1,Rabbitohs,Knights,10,20,Allianz Stadium,2026-09-11T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-1/rabbitohs-v-knights/,15489,10,20,26408,10,20,True,True,match
+Finals Week 1,Warriors,Dolphins,16,26,Go Media Stadium,2026-09-12T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-1/warriors-v-dolphins/,15490,16,26,26406,16,26,True,True,match
+Finals Week 1,Sharks,Cowboys,26,16,Allianz Stadium,2026-09-12T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-1/sharks-v-cowboys/,15491,26,16,26407,26,16,True,True,match
+Finals Week 1,Panthers,Roosters,19,12,CommBank Stadium,2026-09-13T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-1/panthers-v-roosters/,15492,19,12,26405,19,12,True,True,match
+Finals Week 2,Roosters,Sharks,46,10,Allianz Stadium,2026-09-19T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-2/roosters-v-sharks/,15499,46,10,26409,46,10,True,True,match
+Finals Week 2,Warriors,Knights,10,12,Eden Park,2026-09-20T06:05:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-2/warriors-v-knights/,15500,10,12,26410,10,12,True,True,match
+Finals Week 3,Dolphins,Roosters,20,36,Suncorp Stadium,2026-09-25T09:50:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-3/dolphins-v-roosters/,15503,20,36,26412,20,36,True,True,match
+Finals Week 3,Panthers,Knights,14,22,Accor Stadium,2026-09-27T06:00:00Z,https://www.nrl.com/draw/nrl-premiership/2026/finals-week-3/panthers-v-knights/,15504,14,22,26411,14,22,True,True,match
