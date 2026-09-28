@@ -1,0 +1,155 @@
+{
+  "method": "Fixed-rating probability overlay; subtracts the deployed +40 term and tests alternatives without replaying later rating updates.",
+  "rows": [
+    {
+      "period": "recent_2009_2026",
+      "category": "all",
+      "current_games": 3625,
+      "current_correct": 2330,
+      "current_brier": 0.22323552914080344,
+      "current_homeWinRateExDraws": 0.5702021600664636,
+      "current_homeWins": 2059,
+      "current_awayWins": 1552,
+      "current_draws": 14,
+      "zero_correct": 2281,
+      "zero_brier": 0.2262263061962122,
+      "best_hga": 40,
+      "best_correct": 2330,
+      "best_brier": 0.22323552914080344
+    },
+    {
+      "period": "recent_2009_2026",
+      "category": "final_away_primary",
+      "current_games": 4,
+      "current_correct": 3,
+      "current_brier": 0.21833565107167616,
+      "current_homeWinRateExDraws": 0.5,
+      "current_homeWins": 2,
+      "current_awayWins": 2,
+      "current_draws": 0,
+      "zero_correct": 3,
+      "zero_brier": 0.21060452244798253,
+      "best_hga": -25,
+      "best_correct": 3,
+      "best_brier": 0.20939859875092368
+    },
+    {
+      "period": "recent_2009_2026",
+      "category": "final_home_primary",
+      "current_games": 94,
+      "current_correct": 63,
+      "current_brier": 0.21315330938704602,
+      "current_homeWinRateExDraws": 0.7021276595744681,
+      "current_homeWins": 66,
+      "current_awayWins": 28,
+      "current_draws": 0,
+      "zero_correct": 62,
+      "zero_brier": 0.2268712493468012,
+      "best_hga": 80,
+      "best_correct": 68,
+      "best_brier": 0.20558506418060907
+    },
+    {
+      "period": "recent_2009_2026",
+      "category": "final_neutral_other",
+      "current_games": 37,
+      "current_correct": 22,
+      "current_brier": 0.2127572429968453,
+      "current_homeWinRateExDraws": 0.7027027027027027,
+      "current_homeWins": 26,
+      "current_awayWins": 11,
+      "current_draws": 0,
+      "zero_correct": 23,
+      "zero_brier": 0.2240557157146109,
+      "best_hga": 80,
+      "best_correct": 24,
+      "best_brier": 0.20721462535624502
+    },
+    {
+      "period": "recent_2009_2026",
+      "category": "final_shared_primary",
+      "current_games": 1,
+      "current_correct": 1,
+      "current_brier": 0.1367988574030157,
+      "current_homeWinRateExDraws": 1.0,
+      "current_homeWins": 1,
+      "current_awayWins": 0,
+      "current_draws": 0,
+      "zero_correct": 1,
+      "zero_brier": 0.18057017997166225,
+      "best_hga": 80,
+      "best_correct": 1,
+      "best_brier": 0.10111247545262723
+    },
+    {
+      "period": "recent_2009_2026",
+      "category": "grand_final",
+      "current_games": 17,
+      "current_correct": 10,
+      "current_brier": 0.19543485716044162,
+      "current_homeWinRateExDraws": 0.7058823529411765,
+      "current_homeWins": 12,
+      "current_awayWins": 5,
+      "current_draws": 0,
+      "zero_correct": 12,
+      "zero_brier": 0.20777807813859828,
+      "best_hga": 80,
+      "best_correct": 12,
+      "best_brier": 0.189294912256696
+    }
+  ],
+  "policies": [
+    {
+      "policy": "always_40",
+      "games": 3625,
+      "correct": 2330,
+      "brier": 0.22323552914080344,
+      "changedTipsVsAlways40": 0
+    },
+    {
+      "policy": "grand_final_zero",
+      "games": 3625,
+      "correct": 2332,
+      "brier": 0.22329341459090798,
+      "changedTipsVsAlways40": 2
+    },
+    {
+      "policy": "inferred_neutral_finals_zero",
+      "games": 3625,
+      "correct": 2333,
+      "brier": 0.22341228088018558,
+      "changedTipsVsAlways40": 5
+    },
+    {
+      "policy": "all_finals_zero",
+      "games": 3625,
+      "correct": 2332,
+      "brier": 0.22376800125431429,
+      "changedTipsVsAlways40": 22
+    }
+  ],
+  "grandFinalChangedTips": [
+    {
+      "year": "2020",
+      "round": "Grand Final",
+      "home_team": "Penrith Panthers",
+      "away_team": "Melbourne Storm",
+      "home_score": "20.0",
+      "away_score": "26.0",
+      "venue": "Accor Stadium",
+      "currentP": 0.5189593547918084,
+      "zeroP": 0.4614803003012849
+    },
+    {
+      "year": "2024",
+      "round": "Grand Final",
+      "home_team": "Melbourne Storm",
+      "away_team": "Penrith Panthers",
+      "home_score": "6.0",
+      "away_score": "14.0",
+      "venue": "Accor Stadium",
+      "currentP": 0.5366676115291241,
+      "zeroP": 0.4791809746450195
+    }
+  ]
+}

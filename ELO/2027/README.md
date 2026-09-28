@@ -103,6 +103,9 @@ the current season calls the live match API on page load.
 - After a match, the page deliberately keeps the final announced team list used
   for tipping. The collector and RLDB retain the actual run-out separately for
   retrospective player analysis.
+- NRLW results can be entered manually from Add Result. Each submission is an
+  append-only revision overlay and never writes to RLDB; periodic official-NRL
+  versus RLDB audits remain the independent accuracy check.
 - The 2025 Joker table will be imported when the user's saved copy is supplied.
 - Non-NRL senior experience remains a blocker before Gate 6 is used for 2027
   expansion-team tips.

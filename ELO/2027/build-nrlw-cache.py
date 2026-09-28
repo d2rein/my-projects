@@ -461,7 +461,7 @@ def main() -> int:
         comparison["yearly"].append({"year": year, "withoutRookie": metrics(season, base_probability), "withRookie": metrics(season, candidate_probability),
                                      "rookieApplied": sum(bool(rookie.get(int(row["match_id"]), {}).get("applied")) for row in season)})
     payload = {
-        "meta": {"version": "2026-09-25-v5", "competition": "NRLW", "model": MODEL_ID,
+        "meta": {"version": "2026-09-28-v6", "competition": "NRLW", "model": MODEL_ID,
                  "source": "Live installed RLDB C:/RLDB/data/rldb.sqlite, competition_id=2; next finals round derived from RLDB ladder/results when absent", "firstSeason": compact[0]["year"], "lastSeason": compact[-1]["year"],
                  "lastMatchDate": max(row["date"] for row in compact if row["hs"] is not None), "matches": len(compact),
                  "completedMatches": len(completed_matches), "upcomingMatches": len(compact)-len(completed_matches), "lineupCoverage": len(features),

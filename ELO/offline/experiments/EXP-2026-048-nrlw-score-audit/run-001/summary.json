@@ -1,0 +1,47 @@
+{
+  "officialCompleted": 70,
+  "rldbCompleted": 70,
+  "officialRldbMatches": 70,
+  "officialSiteMatches": 68,
+  "mismatches": [
+    {
+      "round": "Finals Week 2",
+      "kickoff": "2026-09-26T09:50:00Z",
+      "home": "Roosters",
+      "away": "Raiders",
+      "home_score": 20,
+      "away_score": 10,
+      "venue": "Allianz Stadium",
+      "source_url": "https://www.nrl.com/draw/womens-premiership/2026/finals-week-2/roosters-v-raiders/",
+      "rldb_match_id": 15505,
+      "rldb_home_score": 20,
+      "rldb_away_score": 10,
+      "site_home_score": null,
+      "site_away_score": null,
+      "reversed_orientation": false,
+      "score_match": true,
+      "site_match": false,
+      "status": "mismatch"
+    },
+    {
+      "round": "Finals Week 2",
+      "kickoff": "2026-09-27T03:05:00Z",
+      "home": "Titans",
+      "away": "Broncos",
+      "home_score": 8,
+      "away_score": 20,
+      "venue": "Cbus Super Stadium",
+      "source_url": "https://www.nrl.com/draw/womens-premiership/2026/finals-week-2/titans-v-broncos/",
+      "rldb_match_id": 15506,
+      "rldb_home_score": 8,
+      "rldb_away_score": 20,
+      "site_home_score": null,
+      "site_away_score": null,
+      "reversed_orientation": false,
+      "score_match": true,
+      "site_match": false,
+      "status": "mismatch"
+    }
+  ],
+  "rldbRowsNotMatchedToOfficial": []
+}

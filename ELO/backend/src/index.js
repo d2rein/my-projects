@@ -63,6 +63,10 @@ export default {
         response = await handleGetProspectiveMarkets(db, url.searchParams);
       } else if (path === '/api/prospective/markets' && request.method === 'POST') {
         response = await handlePostProspectiveMarkets(db, request, env);
+      } else if (path === '/api/nrlw/results' && request.method === 'GET') {
+        response = await handleGetNrlwResults(db, url.searchParams);
+      } else if (path === '/api/nrlw/results' && request.method === 'POST') {
+        response = await handlePostNrlwResults(db, request);
       } else {
         response = new Response('Not Found', { status: 404 });
       }
@@ -83,6 +87,55 @@ export default {
 function bearerToken(request) {
   const value = request.headers.get('Authorization') || '';
   return value.startsWith('Bearer ') ? value.slice(7) : '';
+}
+
+function nrlwMatchKey(row) {
+  return `${Number(row.season)}|${String(row.round || row.round_name || '').trim()}|${String(row.home || row.home_team || '').trim()}|${String(row.away || row.away_team || '').trim()}`;
+}
+
+function validNrlwResult(row) {
+  const homeScore = row?.home_score, awayScore = row?.away_score;
+  const hasHome = homeScore !== null && homeScore !== '' && homeScore !== undefined;
+  const hasAway = awayScore !== null && awayScore !== '' && awayScore !== undefined;
+  const bothBlank = (homeScore === null || homeScore === '' || homeScore === undefined) &&
+    (awayScore === null || awayScore === '' || awayScore === undefined);
+  const bothScores = hasHome && hasAway && Number.isInteger(Number(homeScore)) && Number.isInteger(Number(awayScore)) &&
+    Number(homeScore) >= 0 && Number(homeScore) <= 100 && Number(awayScore) >= 0 && Number(awayScore) <= 100;
+  return Number.isInteger(Number(row?.season)) && String(row?.round || '').trim() &&
+    String(row?.home || '').trim() && String(row?.away || '').trim() && (bothBlank || bothScores);
+}
+
+async function handlePostNrlwResults(db, request) {
+  const body = await request.json();
+  const updates = Array.isArray(body) ? body : body?.updates;
+  if (!Array.isArray(updates) || updates.length < 1 || updates.length > 20 || !updates.every(validNrlwResult)) {
+    return jsonResponse({ error: 'Expected 1 to 20 valid NRLW result updates' }, 400);
+  }
+  const statement = db.prepare(`INSERT INTO nrlw_manual_result_revisions
+    (match_key,season,round_name,home_team,away_team,home_score,away_score)
+    VALUES (?,?,?,?,?,?,?)`);
+  let inserted = 0;
+  for (const row of updates) {
+    const homeScore = row.home_score === null || row.home_score === '' || row.home_score === undefined ? null : Number(row.home_score);
+    const awayScore = row.away_score === null || row.away_score === '' || row.away_score === undefined ? null : Number(row.away_score);
+    const result = await statement.bind(nrlwMatchKey(row), Number(row.season), String(row.round).trim(),
+      String(row.home).trim(), String(row.away).trim(), homeScore, awayScore).run();
+    inserted += Number(result.meta?.changes || 0);
+  }
+  return jsonResponse({ ok: true, received: updates.length, inserted }, 201);
+}
+
+async function handleGetNrlwResults(db, searchParams) {
+  const season = Number(searchParams?.get('season') || 0);
+  const where = season ? 'WHERE r.season=? AND ' : 'WHERE ';
+  const bindings = season ? [season] : [];
+  const { results } = await db.prepare(`SELECT r.id,r.match_key,r.season,r.round_name,r.home_team,r.away_team,
+      r.home_score,r.away_score,r.source,r.entered_at_utc
+    FROM nrlw_manual_result_revisions r
+    ${where} NOT EXISTS (SELECT 1 FROM nrlw_manual_result_revisions newer
+      WHERE newer.match_key=r.match_key AND newer.id>r.id)
+    ORDER BY r.season,r.id`).bind(...bindings).all();
+  return jsonResponse(results || []);
 }
 
 function validTeamListSnapshot(value) {

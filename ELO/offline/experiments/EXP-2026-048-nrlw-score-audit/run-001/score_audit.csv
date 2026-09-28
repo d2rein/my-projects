@@ -1,0 +1,71 @@
+away,away_score,home,home_score,kickoff,reversed_orientation,rldb_away_score,rldb_home_score,rldb_match_id,round,score_match,site_away_score,site_home_score,site_match,source_url,status,venue
+Knights,18,Sharks,4,2026-07-02T09:45:00Z,False,18,4,15266,Round 1,True,18,4,True,https://www.nrl.com/draw/womens-premiership/2026/round-1/sharks-v-knights/,match,Ocean Protect Stadium
+Roosters,34,Titans,10,2026-07-04T02:45:00Z,False,34,10,15267,Round 1,True,34,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-1/titans-v-roosters/,match,Cbus Super Stadium
+Raiders,20,Dragons,4,2026-07-04T05:15:00Z,False,20,4,15268,Round 1,True,20,4,True,https://www.nrl.com/draw/womens-premiership/2026/round-1/dragons-v-raiders/,match,St George Venues Jubilee Stadium
+Cowboys,4,Broncos,50,2026-07-04T07:15:00Z,False,4,50,15269,Round 1,True,4,50,True,https://www.nrl.com/draw/womens-premiership/2026/round-1/broncos-v-cowboys/,match,Suncorp Stadium
+Wests Tigers,28,Eels,16,2026-07-05T01:50:00Z,False,28,16,15270,Round 1,True,28,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-1/eels-v-wests-tigers/,match,CommBank Stadium
+Bulldogs,10,Warriors,32,2026-07-05T03:45:00Z,False,10,32,15271,Round 1,True,10,32,True,https://www.nrl.com/draw/womens-premiership/2026/round-1/warriors-v-bulldogs/,match,FMG Stadium Waikato
+Broncos,22,Sharks,16,2026-07-09T09:45:00Z,False,22,16,15272,Round 2,True,22,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-2/sharks-v-broncos/,match,Ocean Protect Stadium
+Wests Tigers,30,Cowboys,18,2026-07-11T02:45:00Z,False,30,18,15273,Round 2,True,30,18,True,https://www.nrl.com/draw/womens-premiership/2026/round-2/cowboys-v-wests-tigers/,match,Queensland Country Bank Stadium
+Titans,36,Bulldogs,10,2026-07-11T05:15:00Z,False,36,10,15274,Round 2,True,36,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-2/bulldogs-v-titans/,match,Accor Stadium
+Knights,10,Roosters,12,2026-07-11T07:15:00Z,False,10,12,15275,Round 2,True,10,12,True,https://www.nrl.com/draw/womens-premiership/2026/round-2/roosters-v-knights/,match,Allianz Stadium
+Warriors,16,Raiders,42,2026-07-12T01:55:00Z,False,16,42,15276,Round 2,True,16,42,True,https://www.nrl.com/draw/womens-premiership/2026/round-2/raiders-v-warriors/,match,GIO Stadium
+Eels,8,Dragons,22,2026-07-12T03:45:00Z,False,8,22,15277,Round 2,True,8,22,True,https://www.nrl.com/draw/womens-premiership/2026/round-2/dragons-v-eels/,match,WIN Stadium
+Roosters,22,Raiders,18,2026-07-18T02:40:00Z,False,22,18,15433,Round 3,True,22,18,True,https://www.nrl.com/draw/womens-premiership/2026/round-3/raiders-v-roosters/,match,GIO Stadium
+Cowboys,4,Warriors,42,2026-07-18T05:15:00Z,False,4,42,15434,Round 3,True,4,42,True,https://www.nrl.com/draw/womens-premiership/2026/round-3/warriors-v-cowboys/,match,Go Media Stadium
+Sharks,18,Bulldogs,24,2026-07-18T07:15:00Z,False,18,24,15435,Round 3,True,18,24,True,https://www.nrl.com/draw/womens-premiership/2026/round-3/bulldogs-v-sharks/,match,Accor Stadium
+Eels,12,Titans,50,2026-07-19T01:50:00Z,False,12,50,15436,Round 3,True,12,50,True,https://www.nrl.com/draw/womens-premiership/2026/round-3/titans-v-eels/,match,Cbus Super Stadium
+Wests Tigers,12,Broncos,40,2026-07-19T03:45:00Z,False,12,40,15437,Round 3,True,12,40,True,https://www.nrl.com/draw/womens-premiership/2026/round-3/broncos-v-wests-tigers/,match,Totally Workwear Stadium
+Dragons,0,Knights,38,2026-07-19T08:15:00Z,False,0,38,15438,Round 3,True,0,38,True,https://www.nrl.com/draw/womens-premiership/2026/round-3/knights-v-dragons/,match,McDonald Jones Stadium
+Sharks,22,Raiders,10,2026-07-25T02:40:00Z,False,22,10,15439,Round 4,True,22,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-4/raiders-v-sharks/,match,GIO Stadium
+Dragons,8,Bulldogs,28,2026-07-25T05:15:00Z,False,8,28,15440,Round 4,True,8,28,True,https://www.nrl.com/draw/womens-premiership/2026/round-4/bulldogs-v-dragons/,match,Accor Stadium
+Titans,34,Cowboys,6,2026-07-25T07:15:00Z,False,34,6,15441,Round 4,True,34,6,True,https://www.nrl.com/draw/womens-premiership/2026/round-4/cowboys-v-titans/,match,Queensland Country Bank Stadium
+Warriors,14,Eels,12,2026-07-26T02:00:00Z,False,14,12,15442,Round 4,True,14,12,True,https://www.nrl.com/draw/womens-premiership/2026/round-4/eels-v-warriors/,match,Eric Tweedale Stadium
+Knights,12,Broncos,30,2026-07-26T03:45:00Z,False,12,30,15443,Round 4,True,12,30,True,https://www.nrl.com/draw/womens-premiership/2026/round-4/broncos-v-knights/,match,Totally Workwear Stadium
+Roosters,48,Wests Tigers,10,2026-07-26T08:15:00Z,False,48,10,15444,Round 4,True,48,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-4/wests-tigers-v-roosters/,match,Leichhardt Oval
+Wests Tigers,32,Sharks,20,2026-08-01T01:35:00Z,False,32,20,15445,Round 5,True,32,20,True,https://www.nrl.com/draw/womens-premiership/2026/round-5/sharks-v-wests-tigers/,match,Geohex Park
+Roosters,38,Dragons,8,2026-08-01T03:25:00Z,False,38,8,15446,Round 5,True,38,8,True,https://www.nrl.com/draw/womens-premiership/2026/round-5/dragons-v-roosters/,match,Geohex Park
+Cowboys,18,Raiders,16,2026-08-01T05:15:00Z,False,18,16,15447,Round 5,True,18,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-5/raiders-v-cowboys/,match,Geohex Park
+Broncos,34,Bulldogs,4,2026-08-02T01:35:00Z,False,34,4,15448,Round 5,True,34,4,True,https://www.nrl.com/draw/womens-premiership/2026/round-5/bulldogs-v-broncos/,match,Geohex Park
+Titans,18,Warriors,16,2026-08-02T03:25:00Z,False,18,16,15449,Round 5,True,18,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-5/warriors-v-titans/,match,Geohex Park
+Knights,32,Eels,12,2026-08-02T05:15:00Z,False,32,12,15450,Round 5,True,32,12,True,https://www.nrl.com/draw/womens-premiership/2026/round-5/eels-v-knights/,match,Geohex Park
+Cowboys,26,Bulldogs,28,2026-08-08T02:45:00Z,False,26,28,15459,Round 6,True,26,28,True,https://www.nrl.com/draw/womens-premiership/2026/round-6/bulldogs-v-cowboys/,match,Belmore Sports Ground
+Titans,24,Sharks,10,2026-08-08T05:15:00Z,False,24,10,15460,Round 6,True,24,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-6/sharks-v-titans/,match,Ocean Protect Stadium
+Knights,14,Warriors,22,2026-08-08T07:15:00Z,False,14,22,15461,Round 6,True,14,22,True,https://www.nrl.com/draw/womens-premiership/2026/round-6/warriors-v-knights/,match,FMG Stadium Waikato
+Broncos,4,Raiders,28,2026-08-09T01:35:00Z,False,4,28,15462,Round 6,True,4,28,True,https://www.nrl.com/draw/womens-premiership/2026/round-6/raiders-v-broncos/,match,GIO Stadium
+Wests Tigers,16,Dragons,12,2026-08-09T03:35:00Z,False,16,12,15463,Round 6,True,16,12,True,https://www.nrl.com/draw/womens-premiership/2026/round-6/dragons-v-wests-tigers/,match,St George Venues Jubilee Stadium
+Eels,6,Roosters,46,2026-08-09T08:15:00Z,False,6,46,15464,Round 6,True,6,46,True,https://www.nrl.com/draw/womens-premiership/2026/round-6/roosters-v-eels/,match,Polytec Stadium
+Dragons,10,Titans,26,2026-08-15T02:45:00Z,False,10,26,15465,Round 7,True,10,26,True,https://www.nrl.com/draw/womens-premiership/2026/round-7/titans-v-dragons/,match,Cbus Super Stadium
+Bulldogs,18,Eels,30,2026-08-15T05:15:00Z,False,18,30,15466,Round 7,True,18,30,True,https://www.nrl.com/draw/womens-premiership/2026/round-7/eels-v-bulldogs/,match,CommBank Stadium
+Roosters,34,Broncos,20,2026-08-15T07:15:00Z,False,34,20,15467,Round 7,True,34,20,True,https://www.nrl.com/draw/womens-premiership/2026/round-7/broncos-v-roosters/,match,Suncorp Stadium
+Raiders,25,Knights,18,2026-08-16T01:50:00Z,False,25,18,15468,Round 7,True,25,18,True,https://www.nrl.com/draw/womens-premiership/2026/round-7/knights-v-raiders/,match,McDonald Jones Stadium
+Warriors,22,Wests Tigers,30,2026-08-16T03:45:00Z,False,22,30,15469,Round 7,True,22,30,True,https://www.nrl.com/draw/womens-premiership/2026/round-7/wests-tigers-v-warriors/,match,CommBank Stadium
+Sharks,18,Cowboys,30,2026-08-16T08:15:00Z,False,18,30,15470,Round 7,True,18,30,True,https://www.nrl.com/draw/womens-premiership/2026/round-7/cowboys-v-sharks/,match,Queensland Country Bank Stadium
+Wests Tigers,27,Knights,26,2026-08-22T02:45:00Z,False,27,26,15471,Round 8,True,27,26,True,https://www.nrl.com/draw/womens-premiership/2026/round-8/knights-v-wests-tigers/,match,McDonald Jones Stadium
+Raiders,48,Bulldogs,4,2026-08-22T05:15:00Z,False,48,4,15472,Round 8,True,48,4,True,https://www.nrl.com/draw/womens-premiership/2026/round-8/bulldogs-v-raiders/,match,Belmore Sports Ground
+Cowboys,32,Dragons,28,2026-08-22T07:15:00Z,False,32,28,15473,Round 8,True,32,28,True,https://www.nrl.com/draw/womens-premiership/2026/round-8/dragons-v-cowboys/,match,Allianz Stadium
+Broncos,20,Titans,28,2026-08-23T01:50:00Z,False,20,28,15474,Round 8,True,20,28,True,https://www.nrl.com/draw/womens-premiership/2026/round-8/titans-v-broncos/,match,Cbus Super Stadium
+Warriors,8,Roosters,66,2026-08-23T03:45:00Z,False,8,66,15475,Round 8,True,8,66,True,https://www.nrl.com/draw/womens-premiership/2026/round-8/roosters-v-warriors/,match,Allianz Stadium
+Eels,42,Sharks,16,2026-08-23T08:15:00Z,False,42,16,15476,Round 8,True,42,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-8/sharks-v-eels/,match,Ocean Protect Stadium
+Raiders,20,Titans,26,2026-08-29T02:45:00Z,False,20,26,15477,Round 9,True,20,26,True,https://www.nrl.com/draw/womens-premiership/2026/round-9/titans-v-raiders/,match,Cbus Super Stadium
+Sharks,8,Roosters,36,2026-08-29T05:15:00Z,False,8,36,15478,Round 9,True,8,36,True,https://www.nrl.com/draw/womens-premiership/2026/round-9/roosters-v-sharks/,match,Allianz Stadium
+Knights,40,Cowboys,6,2026-08-29T07:15:00Z,False,40,6,15479,Round 9,True,40,6,True,https://www.nrl.com/draw/womens-premiership/2026/round-9/cowboys-v-knights/,match,Queensland Country Bank Stadium
+Dragons,22,Warriors,18,2026-08-30T01:45:00Z,False,22,18,15480,Round 9,True,22,18,True,https://www.nrl.com/draw/womens-premiership/2026/round-9/warriors-v-dragons/,match,Go Media Stadium
+Broncos,44,Eels,10,2026-08-30T03:45:00Z,False,44,10,15481,Round 9,True,44,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-9/eels-v-broncos/,match,CommBank Stadium
+Bulldogs,14,Wests Tigers,44,2026-08-30T08:15:00Z,False,14,44,15482,Round 9,True,14,44,True,https://www.nrl.com/draw/womens-premiership/2026/round-9/wests-tigers-v-bulldogs/,match,Campbelltown Sports Stadium
+Sharks,40,Warriors,32,2026-09-05T02:30:00Z,False,40,32,15483,Round 10,True,40,32,True,https://www.nrl.com/draw/womens-premiership/2026/round-10/warriors-v-sharks/,match,Go Media Stadium
+Roosters,56,Cowboys,6,2026-09-05T05:15:00Z,False,56,6,15484,Round 10,True,56,6,True,https://www.nrl.com/draw/womens-premiership/2026/round-10/cowboys-v-roosters/,match,Queensland Country Bank Stadium
+Bulldogs,22,Knights,56,2026-09-05T07:15:00Z,False,22,56,15485,Round 10,True,22,56,True,https://www.nrl.com/draw/womens-premiership/2026/round-10/knights-v-bulldogs/,match,McDonald Jones Stadium
+Broncos,24,Dragons,16,2026-09-06T01:50:00Z,False,24,16,15486,Round 10,True,24,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-10/dragons-v-broncos/,match,WIN Stadium
+Titans,58,Wests Tigers,0,2026-09-06T03:45:00Z,False,58,0,15487,Round 10,True,58,0,True,https://www.nrl.com/draw/womens-premiership/2026/round-10/wests-tigers-v-titans/,match,Campbelltown Sports Stadium
+Eels,17,Raiders,16,2026-09-06T08:15:00Z,False,17,16,15488,Round 10,True,17,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-10/raiders-v-eels/,match,GIO Stadium
+Bulldogs,12,Roosters,42,2026-09-10T09:45:00Z,False,12,42,15493,Round 11,True,12,42,True,https://www.nrl.com/draw/womens-premiership/2026/round-11/roosters-v-bulldogs/,match,Allianz Stadium
+Raiders,22,Wests Tigers,10,2026-09-11T07:40:00Z,False,22,10,15494,Round 11,True,22,10,True,https://www.nrl.com/draw/womens-premiership/2026/round-11/wests-tigers-v-raiders/,match,Leichhardt Oval
+Cowboys,28,Eels,33,2026-09-12T02:00:00Z,False,28,33,15495,Round 11,True,28,33,True,https://www.nrl.com/draw/womens-premiership/2026/round-11/eels-v-cowboys/,match,CommBank Stadium
+Dragons,8,Sharks,16,2026-09-12T07:10:00Z,False,8,16,15496,Round 11,True,8,16,True,https://www.nrl.com/draw/womens-premiership/2026/round-11/sharks-v-dragons/,match,Allianz Stadium
+Warriors,18,Broncos,52,2026-09-13T02:00:00Z,False,18,52,15497,Round 11,True,18,52,True,https://www.nrl.com/draw/womens-premiership/2026/round-11/broncos-v-warriors/,match,Totally Workwear Stadium
+Titans,32,Knights,20,2026-09-13T03:45:00Z,False,32,20,15498,Round 11,True,32,20,True,https://www.nrl.com/draw/womens-premiership/2026/round-11/knights-v-titans/,match,McDonald Jones Stadium
+Raiders,6,Wests Tigers,0,2026-09-18T09:50:00Z,False,6,0,15501,Finals Week 1,True,6,0,True,https://www.nrl.com/draw/womens-premiership/2026/finals-week-1/wests-tigers-v-raiders/,match,Campbelltown Sports Stadium
+Knights,16,Broncos,40,2026-09-19T06:05:00Z,False,16,40,15502,Finals Week 1,True,16,40,True,https://www.nrl.com/draw/womens-premiership/2026/finals-week-1/broncos-v-knights/,match,Totally Workwear Stadium
+Raiders,10,Roosters,20,2026-09-26T09:50:00Z,False,10,20,15505,Finals Week 2,True,,,False,https://www.nrl.com/draw/womens-premiership/2026/finals-week-2/roosters-v-raiders/,mismatch,Allianz Stadium
+Broncos,20,Titans,8,2026-09-27T03:05:00Z,False,20,8,15506,Finals Week 2,True,,,False,https://www.nrl.com/draw/womens-premiership/2026/finals-week-2/titans-v-broncos/,mismatch,Cbus Super Stadium
