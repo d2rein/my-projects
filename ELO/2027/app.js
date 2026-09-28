@@ -36,7 +36,7 @@ async function loadCache(){
 function activeCache(){return state.competition==="NRLW"?state.nrlwCache:state.cache}
 function competitionMatches(){return activeCache()?.matches||[]}
 function marginCoefficient(){return state.competition==="NRLW"?Number(state.nrlwCache?.meta?.marginCoefficient||.1325):.048406}
-const nrlwResultKey=row=>`${Number(row.year??row.season)}|${String(row.round??row.round_name||"").trim()}|${String(row.home??row.home_team||"").trim()}|${String(row.away??row.away_team||"").trim()}`;
+const nrlwResultKey=row=>`${Number(row.year??row.season)}|${String((row.round??row.round_name)||"").trim()}|${String((row.home??row.home_team)||"").trim()}|${String((row.away??row.away_team)||"").trim()}`;
 function applyNrlwManualResults(){
   if(!state.nrlwCache)return;
   const manual=new Map(state.nrlwManualResults.map(row=>[row.match_key||nrlwResultKey(row),row]));
