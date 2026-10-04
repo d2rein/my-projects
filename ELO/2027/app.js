@@ -2,7 +2,7 @@ import { createReplayEngine } from "../shared/replay-engine.js";
 import { buildFinalsBracket, FINALS_ROUNDS } from "../shared/finals-bracket.js";
 import { MODELS, SYSTEMS, TIPPING_POLICY, ACTIVE_MODEL, API_URL, CACHE_VERSION, CURRENT_SEASON } from "./model-config.js?v=20260928-1";
 
-const state={cache:null,nrlwCache:null,nrlwStaticMatches:[],nrlwManualResults:[],competition:"NRL",historicalComparison:null,current:[],teamLists:[],currentMarkets:[],currentForecasts:[],currentForecastModel:null,charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
+const state={cache:null,nrlwCache:null,nrlwStaticMatches:[],nrlwManualResults:[],nrlwTeamLists:[],nrlwMarkets:[],competition:"NRL",historicalComparison:null,current:[],teamLists:[],currentMarkets:[],currentForecasts:[],currentForecastModel:null,charts:{},ratings:null,replayDetails:null,projectionContext:null,selectedRatingTeams:new Set(),historySignature:null};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pct=v=>v==null?"—":`${(100*v).toFixed(1)}%`;
@@ -51,21 +51,43 @@ function applyNrlwManualResults(){
   state.nrlwCache={...state.nrlwCache,matches};
 }
 
+function applyNrlwProspectiveSignals(){
+  if(!state.nrlwCache)return;
+  const season=Number(state.nrlwCache.meta.lastSeason||CURRENT_SEASON),seasonRows=state.nrlwCache.matches.filter(row=>Number(row.year)===season);
+  const validPairs=new Set(seasonRows.map(row=>`${shortTeam(row.home)}|${shortTeam(row.away)}`));
+  const lists=state.nrlwTeamLists.filter(row=>String(row.competition||"").toUpperCase()==="NRLW");
+  const listByTeams=new Map(lists.map(row=>[`${shortTeam(row.home?.nick_name||row.home?.name)}|${shortTeam(row.away?.nick_name||row.away?.name)}|${roundKey(row.round_name)}`,row]));
+  // Old contaminated observations may remain in the append-only archive.
+  // Only a pairing that exists in the NRLW draw is eligible for display.
+  const sportsbet=state.nrlwMarkets.filter(row=>row.bookmaker==="Sportsbet"&&String(row.source).includes("sportsbet_public_listing")&&validPairs.has(`${shortTeam(row.home)}|${shortTeam(row.away)}`));
+  const marketByTeams=new Map(sportsbet.map(row=>[`${shortTeam(row.home)}|${shortTeam(row.away)}`,row]));
+  state.nrlwCache={...state.nrlwCache,matches:state.nrlwCache.matches.map(row=>{
+    if(Number(row.year)!==season)return row;
+    const teamList=listByTeams.get(`${shortTeam(row.home)}|${shortTeam(row.away)}|${roundKey(row.round)}`)||null,observed=marketByTeams.get(`${shortTeam(row.home)}|${shortTeam(row.away)}`)||null;
+    const liveHome=validNumber(observed?.lastHome)?Number(observed.lastHome):row.liveHome??row.closeHome??null,liveAway=validNumber(observed?.lastAway)?Number(observed.lastAway):row.liveAway??row.closeAway??null;
+    return {...row,teamList,lineupAvailable:Boolean(teamList)||Boolean(row.lineupAvailable),liveOdds:validNumber(liveHome)&&validNumber(liveAway),liveHome,liveAway,openHome:validNumber(observed?.openingHome)?Number(observed.openingHome):row.openHome??null,openAway:validNumber(observed?.openingAway)?Number(observed.openingAway):row.openAway??null};
+  })};
+}
+
 async function refreshCurrent(){
   const button=$("#refresh-current"); button.disabled=true; button.textContent="Refreshing…";
   const base=state.cache.matches.filter(r=>r.year===CURRENT_SEASON);
   try{
-    const [response,teamListResponse,forecastApiResponse,marketResponse,forecastFileResponse]=await Promise.all([
+    const [response,teamListResponse,forecastApiResponse,marketResponse,nrlwMarketResponse,forecastFileResponse]=await Promise.all([
       fetch(`${API_URL}/api/matches?limit=20000`),
       fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}&view=announced`,{cache:"no-store"}).catch(()=>null),
       fetch(`${API_URL}/api/prospective/forecasts?season=${CURRENT_SEASON}`,{cache:"no-store"}).catch(()=>null),
       fetch(`${API_URL}/api/prospective/markets?season=${CURRENT_SEASON}&competition=NRL`,{cache:"no-store"}).catch(()=>null),
+      fetch(`${API_URL}/api/prospective/markets?season=${CURRENT_SEASON}&competition=NRLW`,{cache:"no-store"}).catch(()=>null),
       fetch(`data/current-finals-forecast.json`,{cache:"no-store"}).catch(()=>null)
     ]);
     if(!response.ok)throw new Error(`API ${response.status}`);
     const live=await response.json();
     state.teamLists=teamListResponse?.ok?await teamListResponse.json():[];
+    state.nrlwTeamLists=state.teamLists;
     state.currentMarkets=marketResponse?.ok?await marketResponse.json():[];
+    state.nrlwMarkets=nrlwMarketResponse?.ok?await nrlwMarketResponse.json():[];
+    applyNrlwProspectiveSignals();
     const apiForecast=forecastApiResponse?.ok?await forecastApiResponse.json():null;
     const fileForecast=forecastFileResponse?.ok?await forecastFileResponse.json():null;
     const forecastPayload=apiForecast?.forecasts?.length?apiForecast:fileForecast;
@@ -476,7 +498,7 @@ function renderRatings(){
 async function refreshSelectedCompetition(){
   if(state.competition==="NRL")return refreshCurrent();
   const button=$("#refresh-current");button.disabled=true;button.textContent="Refreshing…";
-  try{const [response,manualResponse]=await Promise.all([fetch(`data/nrlw-cache.json?v=${Date.now()}`,{cache:"no-store"}),fetch(`${API_URL}/api/nrlw/results`,{cache:"no-store"}).catch(()=>null)]);if(!response.ok)throw new Error(`NRLW cache ${response.status}`);state.nrlwCache=await response.json();state.nrlwStaticMatches=state.nrlwCache.matches.map(row=>({...row}));state.nrlwManualResults=manualResponse?.ok?await manualResponse.json():[];applyNrlwManualResults();state.historySignature=null;state.ratings=null;populateSelectors();renderCurrent();activate($$('.tab.active')[0]?.dataset.tab||"season")}
+  try{const [response,manualResponse,listResponse,marketResponse]=await Promise.all([fetch(`data/nrlw-cache.json?v=${Date.now()}`,{cache:"no-store"}),fetch(`${API_URL}/api/nrlw/results`,{cache:"no-store"}).catch(()=>null),fetch(`${API_URL}/api/prospective/team-lists?season=${CURRENT_SEASON}&view=announced`,{cache:"no-store"}).catch(()=>null),fetch(`${API_URL}/api/prospective/markets?season=${CURRENT_SEASON}&competition=NRLW`,{cache:"no-store"}).catch(()=>null)]);if(!response.ok)throw new Error(`NRLW cache ${response.status}`);state.nrlwCache=await response.json();state.nrlwStaticMatches=state.nrlwCache.matches.map(row=>({...row}));state.nrlwManualResults=manualResponse?.ok?await manualResponse.json():[];state.nrlwTeamLists=listResponse?.ok?await listResponse.json():state.nrlwTeamLists;state.nrlwMarkets=marketResponse?.ok?await marketResponse.json():state.nrlwMarkets;applyNrlwManualResults();applyNrlwProspectiveSignals();state.historySignature=null;state.ratings=null;populateSelectors();renderCurrent();activate($$('.tab.active')[0]?.dataset.tab||"season")}
   catch(error){console.error(error);showNotice(`The NRLW cache could not be refreshed: ${error.message}`,"warning")}
   finally{button.disabled=false;button.textContent="Refresh cache"}
 }

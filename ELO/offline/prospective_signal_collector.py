@@ -365,6 +365,25 @@ def extract_sportsbet(payload: bytes, observed: str, run_id: str, mode: str,
     return rows
 
 
+def rows_for_competition(rows: list[dict[str, Any]],
+                         fixtures: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Reject listing cards that belong to another Sportsbet competition.
+
+    Sportsbet occasionally serves the NRL listing at its NRLW URL (and vice
+    versa).  The fixture API is the authority for which team pairing belongs
+    to the requested competition.  Filtering before upload prevents a men's
+    price from being archived and displayed as an NRLW observation.
+    """
+    pairs = {
+        (canonical_team(str(fixture.get("home_team") or "")),
+         canonical_team(str(fixture.get("away_team") or "")))
+        for fixture in fixtures
+    }
+    return [row for row in rows if
+            (canonical_team(str(row.get("home_team") or "")),
+             canonical_team(str(row.get("away_team") or ""))) in pairs]
+
+
 def extract_odds_sniffer(payload: bytes, observed: str, run_id: str, mode: str,
                          fixtures: list[dict[str, Any]], source_listing_url: str = ODDS_SNIFFER_NRL) -> list[dict[str, Any]]:
     body = payload.decode("utf-8", errors="replace")
@@ -646,6 +665,7 @@ def main() -> int:
                                                 competition_fixtures, url)
                 else:
                     rows = extract_sportsbet(payload, observed, run_id, args.mode, url)
+                    rows = rows_for_competition(rows, competition_fixtures)
                 # Keep established NRL source identifiers stable in the
                 # append-only CSV. NRLW needs a prefix because the legacy
                 # observation schema has no competition column.

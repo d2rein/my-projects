@@ -24,8 +24,11 @@ official lists and markets were added on 25 September 2026.
 
 The local schedule is daily at 9:05am Brisbane time and a local pregame
 eligibility check every 30 minutes. It switches automatically to weekly Monday
-offseason collection after the 4 October 2026 Grand Final and returns to daily
-collection on 1 March 2027. See [`SOURCES_AND_SCHEDULE.md`](SOURCES_AND_SCHEDULE.md).
+offseason collection after a final daily pass on Monday 5 October 2026. That
+pass finalises the Grand Final announced and actual run-out lists; the first
+weekly offseason capture is Monday 12 October. Daily and pregame collection
+resume automatically on 1 March 2027. See
+[`SOURCES_AND_SCHEDULE.md`](SOURCES_AND_SCHEDULE.md).
 
 ## Current sources
 

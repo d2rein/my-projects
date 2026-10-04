@@ -49,7 +49,10 @@ try {
     }
 
     $today = (Get-Date).Date
-    $grandFinal2026 = [datetime]'2026-10-04'
+    # Keep the first Monday after the Grand Final in daily mode.  That final
+    # pass archives the NRL.com run-out sides and the last announced lists.
+    # Weekly offseason futures collection begins on the following Monday.
+    $grandFinal2026 = [datetime]'2026-10-05'
     $isOffseason = ($today -gt $grandFinal2026 -and $today -lt [datetime]'2027-03-01') -or
                    ($today.Year -gt 2026 -and ($today.Month -in @(11, 12, 1, 2)))
     $effectiveMode = $Mode
@@ -107,9 +110,16 @@ try {
     # Recalculate the frozen deployed model from the newest announced list and
     # publish an append-only forecast snapshot after every in-season scrape.
     if ($effectiveMode -ne 'offseason' -and (Test-Path -LiteralPath $teamListTokenFile)) {
-        $forecastOutput = & $python $forecast --season $season --api-url $teamListApiUrl `
-            --api-token-file $teamListTokenFile 2>&1 | Out-String
-        $forecastExitCode = $LASTEXITCODE
+        $forecastExitCode = 1
+        $forecastOutput = ''
+        foreach ($attempt in 1..3) {
+            $attemptOutput = & $python $forecast --season $season --api-url $teamListApiUrl `
+                --api-token-file $teamListTokenFile 2>&1 | ForEach-Object { $_.ToString() } | Out-String
+            $forecastExitCode = $LASTEXITCODE
+            $forecastOutput += "attempt=$attempt exit=$forecastExitCode`r`n$($attemptOutput.Trim())`r`n"
+            if ($forecastExitCode -eq 0) { break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+        }
         Add-Content -LiteralPath $logPath -Encoding UTF8 -Value ("[{0}] forecast season={1} exit={2}`r`n{3}" -f [datetime]::UtcNow.ToString('o'),$season,$forecastExitCode,$forecastOutput.Trim())
         if ($forecastExitCode -ne 0) {
             Write-Heartbeat 'forecast_failed' $effectiveMode $forecastExitCode 'Collection succeeded but forecast refresh failed.'

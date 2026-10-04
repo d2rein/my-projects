@@ -22,7 +22,9 @@ if ($Mode -ne 'manual') {
 # - resume daily/pregame collection on 1 March for the new season.
 # Future Grand Final cutoffs should be checked when each official draw appears.
 $today = (Get-Date).Date
-$grandFinal2026 = [datetime]'2026-10-04'
+# The first Monday after the Grand Final remains an in-season pass so the
+# actual run-out sides and final announced lists are archived.
+$grandFinal2026 = [datetime]'2026-10-05'
 $isOffseason = ($today -gt $grandFinal2026 -and $today -lt [datetime]'2027-03-01') -or
                ($today.Year -gt 2026 -and ($today.Month -in @(11, 12, 1, 2)))
 
