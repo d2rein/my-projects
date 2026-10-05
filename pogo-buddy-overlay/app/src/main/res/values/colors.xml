@@ -1,0 +1,15 @@
+<resources>
+    <color name="surface">#131921</color>
+    <color name="surfaceRaised">#18212C</color>
+    <color name="surfaceOverlay">#C2141C26</color>
+    <color name="surfaceGlass">#96202834</color>
+    <color name="textPrimary">#F7FAFC</color>
+    <color name="textSecondary">#C2D2E2</color>
+    <color name="accent">#4FD1C5</color>
+    <color name="accentWarm">#F6AD55</color>
+    <color name="accentDanger">#F56565</color>
+    <color name="accentReady">#68D391</color>
+    <color name="iconMuted">#7B8794</color>
+    <color name="panelStroke">#39506A</color>
+    <color name="badgeBg">#294258</color>
+</resources>

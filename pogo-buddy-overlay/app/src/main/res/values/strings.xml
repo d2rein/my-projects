@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Buddy Excitement Overlay</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_log">Event Log</string>
+    <string name="title_debug">Debug Preview</string>
+    <string name="notification_title">Buddy overlay running</string>
+    <string name="notification_text">Tap to open controls or use the bubble on screen.</string>
+    <string name="capture_notification_title">Postcard capture active</string>
+    <string name="capture_notification_text">Tap SNAP over a Pokémon GO postcard.</string>
+</resources>

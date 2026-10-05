@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e8d83">
+  <title>Pokemon Postcards | DRE Projects</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="map-header">
+    <div>
+      <p class="eyebrow">DRE Projects</p>
+      <h1>Postcard atlas</h1>
+    </div>
+    <p id="summary" class="summary">Loading postcards...</p>
+  </header>
+  <aside id="stats" class="stats" aria-label="Postcard collection totals" hidden></aside>
+  <main id="map" aria-label="World map of Pokemon GO postcards"></main>
+  <div id="emptyState" class="empty-state" hidden>
+    <strong>No postcards mapped yet.</strong>
+    <span>Captured postcards will appear here after desktop processing and deployment.</span>
+  </div>
+  <dialog id="statsDialog" class="stats-dialog">
+    <header>
+      <h2 id="statsDialogTitle">Collection details</h2>
+      <button id="statsDialogClose" type="button" aria-label="Close">&times;</button>
+    </header>
+    <div id="statsDialogBody" class="stats-dialog-body"></div>
+  </dialog>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
