@@ -195,6 +195,7 @@ def run_ocr(jpeg: bytes, languages: str = "eng") -> list[dict]:
         input=jpeg,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         timeout=40,
         check=False,
     )
