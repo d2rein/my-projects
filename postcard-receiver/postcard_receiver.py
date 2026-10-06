@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
 import hashlib
 import hmac
+from html import escape
 import io
 import json
 import mimetypes
@@ -19,7 +20,7 @@ import traceback
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from urllib.request import Request, urlopen
 
 import cv2
@@ -38,6 +39,8 @@ TOKEN_PATH = DATA_DIR / "access-token.txt"
 CATALOG_PATH = SITE_ROOT / "data" / "postcards.json"
 IMAGE_DIR = SITE_ROOT / "images"
 GEOCODE_CACHE_PATH = DATA_DIR / "geocode-cache.json"
+REVIEW_PATH = DATA_DIR / "review-records.json"
+DISCARDED_DIR = DATA_DIR / "discarded"
 TESSERACT = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024
 HOST = "0.0.0.0"
@@ -45,6 +48,7 @@ PORT = 8766
 PROCESSOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="postcard-processor")
 _log_lock = threading.Lock()
 _auth_lock = threading.Lock()
+_catalog_lock = threading.RLock()
 _auth_failures: dict[str, list[float]] = {}
 
 
@@ -506,6 +510,56 @@ def save_pending(jpeg: bytes, details: dict, reason: str) -> str:
     return image_name
 
 
+def store_postcard(photo: np.ndarray, fields: dict, coordinates: dict, source_id: str, manually_reviewed: bool = False) -> tuple[bool, str]:
+    photo_hash = image_hash(photo)
+    dedupe_key = hashlib.sha256(
+        f"{normalized(fields['stopName'])}|{normalized(fields['locationText'])}".encode("utf-8")
+    ).hexdigest()[:20]
+    with _catalog_lock:
+        catalog = load_json(CATALOG_PATH, {"updatedAt": None, "postcards": []})
+        records = catalog.get("postcards", [])
+        for record in records:
+            if record.get("dedupeKey") == dedupe_key:
+                return True, f"Duplicate discarded: {fields['stopName']}"
+            if titles_match(record.get("stopName", ""), fields["stopName"]) and coordinates_close(record, coordinates):
+                return True, f"Duplicate name/location discarded: {fields['stopName']}"
+            existing_hash = record.get("imageHash")
+            if existing_hash and hamming_hash(existing_hash, photo_hash) <= 5:
+                return True, f"Duplicate image discarded: {fields['stopName']}"
+
+        identifier = f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{dedupe_key[:8]}"
+        image_name = f"{identifier}.webp"
+        IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+        ok, encoded = cv2.imencode(".webp", photo, [cv2.IMWRITE_WEBP_QUALITY, 88])
+        if not ok:
+            raise RuntimeError("Could not encode postcard photo")
+        atomic_write(IMAGE_DIR / image_name, encoded.tobytes())
+        record = {
+            "id": identifier,
+            "stopName": fields["stopName"],
+            "locationText": fields["locationText"],
+            "friendUsername": fields.get("friendUsername", ""),
+            "lat": coordinates["lat"],
+            "lon": coordinates["lon"],
+            "geocodedName": coordinates["displayName"],
+            "country": coordinates.get("country", ""),
+            "countryCode": coordinates.get("countryCode", ""),
+            "state": coordinates.get("state", ""),
+            "image": f"images/{image_name}",
+            "capturedAt": now_iso(),
+            "dedupeKey": dedupe_key,
+            "imageHash": photo_hash,
+            "sourceId": clean_source_id(source_id),
+            "ocrConfidence": fields.get("titleConfidence"),
+            "ocrHasGreeting": fields.get("hasGreeting", False),
+        }
+        if manually_reviewed:
+            record["manuallyReviewed"] = True
+        records.append(record)
+        atomic_write(CATALOG_PATH, (json.dumps({"updatedAt": now_iso(), "postcards": records}, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+    return True, f"Saved {fields['stopName']}"
+
+
 def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
     source_id = clean_source_id(source_id)
     image = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
@@ -552,52 +606,7 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
         return False, f"Needs review ({pending})"
     fields["friendUsername"] = clean_friend_username(fields, coordinates)
 
-    photo = crop_postcard_photo(image, panel)
-    photo_hash = image_hash(photo)
-    catalog = load_json(CATALOG_PATH, {"updatedAt": None, "postcards": []})
-    records = catalog.get("postcards", [])
-    dedupe_key = hashlib.sha256(
-        f"{normalized(fields['stopName'])}|{normalized(fields['locationText'])}".encode("utf-8")
-    ).hexdigest()[:20]
-    for record in records:
-        if record.get("dedupeKey") == dedupe_key:
-            return True, f"Duplicate discarded: {fields['stopName']}"
-        if titles_match(record.get("stopName", ""), fields["stopName"]) and coordinates_close(record, coordinates):
-            return True, f"Duplicate name/location discarded: {fields['stopName']}"
-        existing_hash = record.get("imageHash")
-        if existing_hash and hamming_hash(existing_hash, photo_hash) <= 5:
-            return True, f"Duplicate image discarded: {fields['stopName']}"
-
-    identifier = f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{dedupe_key[:8]}"
-    image_name = f"{identifier}.webp"
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    ok, encoded = cv2.imencode(".webp", photo, [cv2.IMWRITE_WEBP_QUALITY, 88])
-    if not ok:
-        raise RuntimeError("Could not encode postcard photo")
-    atomic_write(IMAGE_DIR / image_name, encoded.tobytes())
-    record = {
-        "id": identifier,
-        "stopName": fields["stopName"],
-        "locationText": fields["locationText"],
-        "friendUsername": fields["friendUsername"],
-        "lat": coordinates["lat"],
-        "lon": coordinates["lon"],
-        "geocodedName": coordinates["displayName"],
-        "country": coordinates.get("country", ""),
-        "countryCode": coordinates.get("countryCode", ""),
-        "state": coordinates.get("state", ""),
-        "image": f"images/{image_name}",
-        "capturedAt": now_iso(),
-        "dedupeKey": dedupe_key,
-        "imageHash": photo_hash,
-        "sourceId": source_id,
-        "ocrConfidence": fields["titleConfidence"],
-        "ocrHasGreeting": fields["hasGreeting"],
-    }
-    records.append(record)
-    catalog = {"updatedAt": now_iso(), "postcards": records}
-    atomic_write(CATALOG_PATH, (json.dumps(catalog, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
-    return True, f"Saved {fields['stopName']}"
+    return store_postcard(crop_postcard_photo(image, panel), fields, coordinates, source_id)
 
 
 def process_inbox(path: Path) -> None:
@@ -629,13 +638,214 @@ def process_inbox(path: Path) -> None:
         metadata_path.unlink(missing_ok=True)
 
 
+def pending_paths(item: str) -> tuple[Path, Path]:
+    safe_name = Path(item).name
+    if safe_name != item or not safe_name.endswith(".jpg"):
+        raise ValueError("Invalid pending item")
+    image_path = PENDING_DIR / safe_name
+    metadata_path = image_path.with_suffix(".json")
+    if not image_path.is_file() or not metadata_path.is_file():
+        raise FileNotFoundError("Pending capture no longer exists")
+    return image_path, metadata_path
+
+
+def archive_files(paths: list[Path], category: str) -> None:
+    destination = DISCARDED_DIR / category
+    destination.mkdir(parents=True, exist_ok=True)
+    for path in paths:
+        if path.exists():
+            target = destination / path.name
+            if target.exists():
+                target = destination / f"{path.stem}-{time.time_ns()}{path.suffix}"
+            os.replace(path, target)
+
+
+def finish_pending(image_path: Path, metadata_path: Path) -> None:
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    for path in (image_path, metadata_path):
+        if path.exists():
+            target = PROCESSED_DIR / path.name
+            if target.exists():
+                target = PROCESSED_DIR / f"{path.stem}-{time.time_ns()}{path.suffix}"
+            os.replace(path, target)
+
+
+def approve_pending(item: str, stop_name: str, location_text: str, friend_username: str) -> str:
+    image_path, metadata_path = pending_paths(item)
+    stop_name = stop_name.strip()
+    location_text = location_text.strip()
+    if not stop_name:
+        raise ValueError("Enter the Pokestop name before approving")
+    coordinates = geocode(stop_name, location_text)
+    if coordinates is None:
+        raise ValueError("That name/location could not be geocoded; add a city, state or country")
+    jpeg = image_path.read_bytes()
+    image = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError("The pending screenshot is unreadable")
+    image = deskew_postcard(image)
+    ok, ocr_source = cv2.imencode(".png", image)
+    words = run_ocr(ocr_source.tobytes() if ok else jpeg)
+    panel = detect_text_panel(image, words)
+    if panel is None:
+        raise ValueError("The postcard panel cannot be located automatically; keep this item for a future crop fix")
+    metadata = load_json(metadata_path, {})
+    fields = {
+        "stopName": stop_name,
+        "locationText": location_text,
+        "friendUsername": friend_username.strip(),
+        "titleConfidence": metadata.get("titleConfidence"),
+        "hasGreeting": metadata.get("hasGreeting", False),
+    }
+    success, message = store_postcard(
+        crop_postcard_photo(image, panel), fields, coordinates, metadata.get("sourceId", "1"), manually_reviewed=True
+    )
+    if success:
+        finish_pending(image_path, metadata_path)
+    return message
+
+
+def retry_pending(item: str) -> str:
+    image_path, metadata_path = pending_paths(item)
+    metadata = load_json(metadata_path, {})
+    before = {path.name for path in PENDING_DIR.iterdir()}
+    success, message = process_postcard(image_path.read_bytes(), metadata.get("sourceId", "1"))
+    if success:
+        finish_pending(image_path, metadata_path)
+    else:
+        # Keep the original review item and remove the duplicate generated by this retry.
+        for path in PENDING_DIR.iterdir():
+            if path.name not in before:
+                path.unlink(missing_ok=True)
+    return message
+
+
+def review_records() -> list[dict]:
+    value = load_json(REVIEW_PATH, {"records": []})
+    return value.get("records", []) if isinstance(value, dict) else []
+
+
+def restore_review_record(identifier: str, stop_name: str, location_text: str, friend_username: str) -> str:
+    stop_name = stop_name.strip()
+    location_text = location_text.strip()
+    if not stop_name:
+        raise ValueError("Enter the Pokestop name before restoring")
+    coordinates = geocode(stop_name, location_text)
+    if coordinates is None:
+        raise ValueError("That name/location could not be geocoded; add a city, state or country")
+    with _catalog_lock:
+        review = load_json(REVIEW_PATH, {"updatedAt": None, "records": []})
+        records = review.get("records", [])
+        record = next((entry for entry in records if entry.get("id") == identifier), None)
+        if record is None:
+            raise FileNotFoundError("Review record no longer exists")
+        catalog = load_json(CATALOG_PATH, {"updatedAt": None, "postcards": []})
+        active = catalog.get("postcards", [])
+        dedupe_key = hashlib.sha256(f"{normalized(stop_name)}|{normalized(location_text)}".encode("utf-8")).hexdigest()[:20]
+        if not any(entry.get("dedupeKey") == dedupe_key for entry in active):
+            record.update({
+                "stopName": stop_name,
+                "locationText": location_text,
+                "friendUsername": friend_username.strip(),
+                "lat": coordinates["lat"],
+                "lon": coordinates["lon"],
+                "geocodedName": coordinates["displayName"],
+                "country": coordinates.get("country", ""),
+                "countryCode": coordinates.get("countryCode", ""),
+                "state": coordinates.get("state", ""),
+                "dedupeKey": dedupe_key,
+                "manuallyReviewed": True,
+            })
+            record.pop("reviewReason", None)
+            active.append(record)
+            atomic_write(CATALOG_PATH, (json.dumps({"updatedAt": now_iso(), "postcards": active}, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+            message = f"Restored {stop_name}"
+        else:
+            message = f"Duplicate archived: {stop_name}"
+        review["records"] = [entry for entry in records if entry.get("id") != identifier]
+        review["updatedAt"] = now_iso()
+        atomic_write(REVIEW_PATH, (json.dumps(review, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+    return message
+
+
+def archive_review_record(identifier: str) -> str:
+    with _catalog_lock:
+        review = load_json(REVIEW_PATH, {"updatedAt": None, "records": []})
+        records = review.get("records", [])
+        selected = [entry for entry in records if entry.get("id") == identifier]
+        if not selected:
+            raise FileNotFoundError("Review record no longer exists")
+        discarded_path = DISCARDED_DIR / "review-records.json"
+        discarded = load_json(discarded_path, {"updatedAt": None, "records": []})
+        discarded["records"] = discarded.get("records", []) + selected
+        discarded["updatedAt"] = now_iso()
+        atomic_write(discarded_path, (json.dumps(discarded, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+        review["records"] = [entry for entry in records if entry.get("id") != identifier]
+        review["updatedAt"] = now_iso()
+        atomic_write(REVIEW_PATH, (json.dumps(review, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+    return "Archived quarantined record"
+
+
+def review_page(message: str = "") -> str:
+    pending = []
+    for metadata_path in sorted(PENDING_DIR.glob("*.json")):
+        metadata = load_json(metadata_path, {})
+        screenshot = metadata.get("screenshot") or metadata_path.with_suffix(".jpg").name
+        if (PENDING_DIR / Path(screenshot).name).is_file():
+            pending.append((Path(screenshot).name, metadata))
+    quarantined = review_records()
+
+    def field(name: str, value: object, label: str) -> str:
+        return f'<label>{escape(label)}<input name="{name}" value="{escape(str(value or ""), quote=True)}"></label>'
+
+    cards = []
+    for screenshot, metadata in pending:
+        cards.append(f'''<form class="card" method="post" action="/review/action">
+          <img src="/review/image?kind=pending&amp;name={quote(screenshot)}" alt="Pending postcard screenshot">
+          <div class="body"><span class="badge">Pending screenshot</span><p class="reason">{escape(str(metadata.get("reason", "Needs review")))}</p>
+          {field("stopName", metadata.get("stopName"), "Pokestop name")}{field("locationText", metadata.get("locationText"), "Location")}{field("friendUsername", metadata.get("friendUsername"), "Friend username")}
+          <input type="hidden" name="kind" value="pending"><input type="hidden" name="item" value="{escape(screenshot, quote=True)}">
+          <div class="actions"><button name="action" value="approve">Approve edits</button><button class="secondary" name="action" value="retry">Retry OCR</button><button class="danger" name="action" value="archive">Archive</button></div></div></form>''')
+    for record in quarantined:
+        cards.append(f'''<form class="card" method="post" action="/review/action">
+          <img src="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" alt="Quarantined postcard crop">
+          <div class="body"><span class="badge quarantine">Quarantined crop</span><p class="reason">{escape(str(record.get("reviewReason", "Unreliable OCR")))}</p>
+          {field("stopName", record.get("stopName"), "Pokestop name")}{field("locationText", record.get("locationText"), "Location")}{field("friendUsername", record.get("friendUsername"), "Friend username")}
+          <input type="hidden" name="kind" value="quarantine"><input type="hidden" name="item" value="{escape(str(record.get("id", "")), quote=True)}">
+          <div class="actions"><button name="action" value="restore">Restore edits</button><button class="danger" name="action" value="archive">Archive</button></div></div></form>''')
+    notice = f'<div class="notice">{escape(message)}</div>' if message else ""
+    content = "".join(cards) or '<div class="empty">Nothing currently needs manual review.</div>'
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Postcard review</title><style>
+      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:2;padding:18px 24px;background:rgba(247,243,231,.96);border-bottom:1px solid var(--line)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:4px 0 0;color:#536769}}main{{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.card>img{{display:block;width:100%;height:280px;object-fit:contain;background:#152327}}.body{{padding:16px}}.badge{{display:inline-block;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{grid-column:1/-1;border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1}}@media(max-width:500px){{main{{padding:10px;grid-template-columns:1fr}}header{{padding:14px}}}}
+    </style></head><body><header><h1>Postcard review</h1><p>{len(pending)} pending screenshots, {len(quarantined)} quarantined crops. Changes stay local until the site is deployed.</p></header>{notice}<main>{content}</main></body></html>'''
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "DREPostcardReceiver/1.0"
 
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path == "/health":
             self.send_text(HTTPStatus.OK, "ok")
+            return
+        if path == "/review" and self.is_local_request():
+            message = parse_qs(parsed.query).get("message", [""])[-1]
+            self.send_html(HTTPStatus.OK, review_page(message))
+            return
+        if path == "/review/image" and self.is_local_request():
+            query = parse_qs(parsed.query)
+            try:
+                if query.get("kind", [""])[-1] == "pending":
+                    image_path, _ = pending_paths(query.get("name", [""])[-1])
+                else:
+                    identifier = query.get("id", [""])[-1]
+                    record = next(entry for entry in review_records() if entry.get("id") == identifier)
+                    image_path = (SITE_ROOT / record["image"]).resolve()
+                    image_path.relative_to(SITE_ROOT.resolve())
+                self.send_file(image_path)
+            except (FileNotFoundError, KeyError, StopIteration, ValueError):
+                self.send_text(HTTPStatus.NOT_FOUND, "review image not found")
             return
         if path == "/setup" and self.client_address[0] in {"127.0.0.1", "::1"}:
             self.send_text(HTTPStatus.OK, f"Android receiver URL: http://192.168.1.119:{PORT}/upload\nReceiver PIN: {self.server.access_token}\n")
@@ -659,7 +869,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_text(HTTPStatus.NOT_FOUND, "not found")
 
     def do_POST(self) -> None:
-        if urlparse(self.path).path != "/upload":
+        path = urlparse(self.path).path
+        if path == "/review/action" and self.is_local_request():
+            self.handle_review_action()
+            return
+        if path != "/upload":
             self.send_text(HTTPStatus.NOT_FOUND, "not found")
             return
         address = self.client_address[0]
@@ -696,6 +910,38 @@ class Handler(BaseHTTPRequestHandler):
             log_event(f"upload-error ip={self.client_address[0]} error={error}\n{traceback.format_exc()}")
             self.send_text(HTTPStatus.INTERNAL_SERVER_ERROR, str(error))
 
+    def is_local_request(self) -> bool:
+        return self.client_address[0] in {"127.0.0.1", "::1"}
+
+    def handle_review_action(self) -> None:
+        try:
+            length = min(int(self.headers.get("Content-Length", "0")), 64 * 1024)
+            values = {key: items[-1] for key, items in parse_qs(self.rfile.read(length).decode("utf-8")).items()}
+            kind = values.get("kind", "")
+            action = values.get("action", "")
+            item = values.get("item", "")
+            if kind == "pending" and action == "approve":
+                message = approve_pending(item, values.get("stopName", ""), values.get("locationText", ""), values.get("friendUsername", ""))
+            elif kind == "pending" and action == "retry":
+                message = retry_pending(item)
+            elif kind == "pending" and action == "archive":
+                image_path, metadata_path = pending_paths(item)
+                archive_files([image_path, metadata_path], "pending")
+                message = "Archived pending screenshot"
+            elif kind == "quarantine" and action == "restore":
+                message = restore_review_record(item, values.get("stopName", ""), values.get("locationText", ""), values.get("friendUsername", ""))
+            elif kind == "quarantine" and action == "archive":
+                message = archive_review_record(item)
+            else:
+                raise ValueError("Unknown review action")
+            log_event(f"review kind={kind} action={action} item={item} message={message}")
+        except Exception as error:
+            message = f"Could not complete review: {error}"
+            log_event(f"review-error error={error}\n{traceback.format_exc()}")
+        self.send_response(HTTPStatus.SEE_OTHER)
+        self.send_header("Location", "/review?message=" + quote(message))
+        self.end_headers()
+
     def send_file(self, path: Path) -> None:
         body = path.read_bytes()
         content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
@@ -711,6 +957,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_html(self, status: HTTPStatus, text: str) -> None:
+        body = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -739,6 +994,7 @@ def main() -> None:
     print(f"Postcard receiver listening on http://127.0.0.1:{PORT}")
     print(f"Open http://127.0.0.1:{PORT}/setup for Android settings")
     print(f"Open http://127.0.0.1:{PORT}/postcards/ for the local map")
+    print(f"Open http://127.0.0.1:{PORT}/review for manual review")
     log_event("receiver-started")
     Server((HOST, PORT), Handler, token).serve_forever()
 
