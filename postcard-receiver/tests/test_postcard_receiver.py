@@ -3,7 +3,7 @@ import unittest
 import cv2
 import numpy as np
 
-from postcard_receiver import clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalized, titles_match
+from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalized, title_looks_like_location, titles_match
 
 
 class PostcardReceiverTest(unittest.TestCase):
@@ -70,6 +70,27 @@ class PostcardReceiverTest(unittest.TestCase):
         self.assertEqual("1", clean_source_id(""))
         self.assertEqual("phone-2", clean_source_id("phone-2"))
         self.assertEqual("phone2", clean_source_id("phone 2!"))
+
+    def test_quality_gate_accepts_native_text_and_rejects_fragments(self):
+        self.assertIsNone(field_quality_issue({"stopName": "千葉神社", "locationText": "Funabashi", "titleConfidence": 70}))
+        self.assertIsNotNone(field_quality_issue({"stopName": "AP Re fe iat 2218 9 5", "locationText": "Tokyo", "titleConfidence": 70}))
+        self.assertIsNotNone(field_quality_issue({"stopName": "Valid name", "locationText": "Brisbane", "titleConfidence": 12}))
+
+    def test_location_is_not_mistaken_for_friend_username(self):
+        fields = {"friendUsername": "UnitedStates", "locationText": "Chicago, Illinois, United States"}
+        coordinates = {"country": "United States", "state": "Illinois"}
+        self.assertEqual("", clean_friend_username(fields, coordinates))
+        fields["friendUsername"] = "CaptWintio"
+        self.assertEqual("CaptWintio", clean_friend_username(fields, coordinates))
+
+    def test_location_text_cannot_be_published_as_the_title(self):
+        coordinates = {
+            "displayName": "Chandler, Maricopa County, Arizona, United States",
+            "country": "United States",
+            "state": "Arizona",
+        }
+        self.assertTrue(title_looks_like_location({"stopName": "Chandler, Arizona, United", "locationText": "States"}, coordinates))
+        self.assertFalse(title_looks_like_location({"stopName": "Pelican Fountain", "locationText": "Chandler, Arizona"}, coordinates))
 
 
 if __name__ == "__main__":

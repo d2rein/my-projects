@@ -55,8 +55,16 @@ function distinctFriends(postcards) {
   return new Set(postcards.map(friendKey).filter(Boolean));
 }
 
-function countryName(code, postcards = []) {
-  return postcards.find((item) => item.countryCode === code)?.country || regionNames.of(code) || code;
+function friendSummary(postcards) {
+  const named = distinctFriends(postcards);
+  // An unread sender still proves at least one friend supplied a card from
+  // that country. Count one anonymous sender per affected country.
+  const unreadCountries = new Set(postcards.filter((item) => !friendKey(item)).map((item) => item.countryCode || item.id));
+  return { count: named.size + unreadCountries.size, named: named.size, unread: unreadCountries.size };
+}
+
+function countryName(code) {
+  return regionNames.of(code) || code;
 }
 
 function detailRows(items, checklist = false) {
@@ -78,17 +86,18 @@ function renderStats(postcards) {
   const countries = new Set(postcards.map((item) => item.countryCode).filter(Boolean));
   const euCountries = new Set([...countries].filter((code) => EU_COUNTRIES.has(code)));
   const usStates = new Set(postcards.filter((item) => item.countryCode === "US").map((item) => item.state).filter(Boolean));
-  const continentFriends = new Map(Object.keys(CONTINENTS).map((name) => [name, distinctFriends(postcards.filter((item) => continentFor(item.countryCode) === name))]));
+  const continentFriends = new Map(Object.keys(CONTINENTS).map((name) => [name, friendSummary(postcards.filter((item) => continentFor(item.countryCode) === name))]));
   summary.innerHTML = `<button type="button" data-stat="cards"><strong>${postcards.length}</strong><span>cards</span></button><button type="button" data-stat="countries"><strong>${countries.size}</strong><span>countries</span></button>`;
   const collectionTiles = [["EU countries", `${euCountries.size}/27`, "eu"], ["US states", `${usStates.size}/50`, "us"]];
-  const continentTiles = Object.keys(CONTINENTS).map((name) => [name, continentFriends.get(name).size, `continent:${name}`]);
+  const continentTiles = Object.keys(CONTINENTS).map((name) => [name, continentFriends.get(name).count, `continent:${name}`]);
   const tiles = (items) => items.map(([label, value, key]) => `<button type="button" class="stat" data-stat="${escapeHtml(key)}"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></button>`).join("");
-  stats.innerHTML = `<div class="stat-group">${tiles(collectionTiles)}</div><div class="stat-section"><span class="stat-label">Distinct friends by continent</span><div class="stat-group continents">${tiles(continentTiles)}</div></div>`;
+  stats.innerHTML = `<div class="stat-group">${tiles(collectionTiles)}</div><div class="stat-section"><span class="stat-label">Friends by continent</span><div class="stat-group continents">${tiles(continentTiles)}</div></div>`;
   stats.hidden = false;
 
   const countryRows = [...countries].sort((a, b) => countryName(a, postcards).localeCompare(countryName(b, postcards))).map((code) => {
     const cards = postcards.filter((item) => item.countryCode === code);
-    return { label: countryName(code, postcards), meta: `${cards.length} cards · ${distinctFriends(cards).size} friends` };
+    const friends = friendSummary(cards);
+    return { label: countryName(code), meta: `${cards.length} cards · ${friends.count} friends${friends.unread ? ` (${friends.unread} unread)` : ""}` };
   });
   const handlers = {
     cards: () => openStats("Postcards by country", detailRows(countryRows)),
@@ -105,9 +114,11 @@ function renderStats(postcards) {
     const codes = [...new Set(cards.map((item) => item.countryCode).filter(Boolean))];
     const rows = codes.map((code) => {
       const countryCards = cards.filter((item) => item.countryCode === code);
-      return { label: countryName(code, postcards), meta: `${distinctFriends(countryCards).size} friends` };
+      const friends = friendSummary(countryCards);
+      return { label: countryName(code), meta: `${friends.count} friends${friends.unread ? ` (${friends.unread} unread)` : ""}` };
     }).sort((a, b) => a.label.localeCompare(b.label));
-    openStats(`${continent}: ${distinctFriends(cards).size} distinct friends`, detailRows(rows));
+    const friends = friendSummary(cards);
+    openStats(`${continent}: ${friends.count} friends${friends.unread ? ` (${friends.unread} unread)` : ""}`, detailRows(rows));
   }));
 }
 

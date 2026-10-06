@@ -76,22 +76,78 @@ def clean_source_id(value: str | None) -> str:
     return cleaned or "1"
 
 
+def compact_text(value: str) -> str:
+    return "".join(character.lower() for character in value if character.isalnum())
+
+
+def clean_friend_username(fields: dict, coordinates: dict) -> str:
+    username = str(fields.get("friendUsername", "")).strip()
+    if not username:
+        return ""
+    candidate = compact_text(username)
+    location_parts = re.split(r"[,/]", str(fields.get("locationText", "")))
+    forbidden = {
+        compact_text(value)
+        for value in [*location_parts, coordinates.get("country", ""), coordinates.get("state", "")]
+        if len(compact_text(value)) >= 3
+    }
+    forbidden.update({"unitedstates", "states", "australia", "canada"})
+    return "" if candidate in forbidden else username
+
+
+def title_looks_like_location(fields: dict, coordinates: dict) -> bool:
+    title_tokens = [token for token in normalized(str(fields.get("stopName", ""))).split() if len(token) > 1]
+    if not title_tokens:
+        return False
+    context = " ".join([
+        str(fields.get("locationText", "")),
+        str(coordinates.get("displayName", "")),
+        str(coordinates.get("country", "")),
+        str(coordinates.get("state", "")),
+    ])
+    context_tokens = set(normalized(context).split())
+    overlap = sum(token in context_tokens for token in title_tokens) / len(title_tokens)
+    return overlap >= 0.75
+
+
 def field_quality_issue(fields: dict) -> str | None:
     """Reject obvious OCR fragments before a coincidental geocode can publish them."""
     stop_name = str(fields.get("stopName", "")).strip()
     location = str(fields.get("locationText", "")).strip()
-    letters = re.sub(r"[^A-Za-z]", "", stop_name)
+    letters = "".join(character for character in stop_name if character.isalpha())
     normalized_location = normalized(location)
-    visible_characters = re.sub(r"\s", "", stop_name)
-    readable_characters = re.sub(r"[^A-Za-z0-9'&.,!?() -]", "", stop_name)
+    visible_characters = [character for character in stop_name if not character.isspace()]
+    readable_characters = [character for character in visible_characters if character.isalnum() or character in "'&.,!?()-/#"]
+    tokens = re.findall(r"[^\W_]+(?:['’][^\W_]+)*|\d+", stop_name, flags=re.UNICODE)
 
     if len(letters) < 4:
         return "PokéStop name is too short to trust"
-    if visible_characters and len(readable_characters) / len(visible_characters) < 0.75:
+    if visible_characters and len(readable_characters) / len(visible_characters) < 0.70:
         return "PokéStop name contains too many unreadable characters"
+    if len(tokens) >= 3 and sum(len(token) <= 2 for token in tokens) / len(tokens) >= 0.60:
+        return "PokéStop name looks like fragmented OCR"
+    if float(fields.get("titleConfidence", 100.0)) < 30.0:
+        return "PokéStop name OCR confidence is too low"
     if not normalized_location and len(letters) < 6:
         return "Short PokéStop name has no readable location"
     return None
+
+
+COUNTRY_OCR_LANGUAGES = {
+    "CN": "eng+chi_sim",
+    "GR": "eng+ell",
+    "HK": "eng+chi_tra",
+    "JP": "eng+jpn",
+    "KR": "eng+kor",
+    "RS": "eng+srp+srp_latn",
+    "TH": "eng+tha",
+    "TW": "eng+chi_tra",
+    "VN": "eng+vie",
+}
+
+
+def has_non_latin_letters(value: str) -> bool:
+    return any(character.isalpha() and not ("A" <= character.upper() <= "Z") for character in value)
 
 
 def load_token() -> str:
@@ -127,11 +183,11 @@ def load_json(path: Path, fallback):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def run_ocr(jpeg: bytes) -> list[dict]:
+def run_ocr(jpeg: bytes, languages: str = "eng") -> list[dict]:
     if not TESSERACT.exists():
         raise RuntimeError(f"Tesseract was not found at {TESSERACT}")
     result = subprocess.run(
-        [str(TESSERACT), "stdin", "stdout", "-l", "eng", "--psm", "11", "tsv"],
+        [str(TESSERACT), "stdin", "stdout", "-l", languages, "--psm", "11", "tsv"],
         input=jpeg,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -200,7 +256,7 @@ def detect_text_panel(image: np.ndarray, words: list[dict] | None = None) -> tup
     return max(candidates, key=lambda item: item[0])[1]
 
 
-def run_ocr_region(image: np.ndarray, region: tuple[int, int, int, int]) -> list[dict]:
+def run_ocr_region(image: np.ndarray, region: tuple[int, int, int, int], languages: str = "eng") -> list[dict]:
     image_height, image_width = image.shape[:2]
     x, y, w, h = region
     margin_x = int(w * 0.12)
@@ -219,7 +275,7 @@ def run_ocr_region(image: np.ndarray, region: tuple[int, int, int, int]) -> list
         ok, encoded = cv2.imencode(".png", enlarged)
         if not ok:
             return []
-        result = run_ocr(encoded.tobytes())
+        result = run_ocr(encoded.tobytes(), languages)
         for word in result:
             word["left"] = left + int(word["left"] / scale)
             word["top"] = top + int(word["top"] / scale)
@@ -317,6 +373,7 @@ def extract_fields(image: np.ndarray, words: list[dict], panel: tuple[int, int, 
     usable = [line for line in after_greeting if normalized(line["text"]) not in ignored]
 
     title_lines = []
+    title_confidences = []
     location_lines = []
     username = ""
     for line in usable:
@@ -331,18 +388,25 @@ def extract_fields(image: np.ndarray, words: list[dict], panel: tuple[int, int, 
             continue
         if teal_score(image, line) >= 0.35:
             title_lines.append(text)
+            title_confidences.extend(word["confidence"] for word in line["words"])
         elif title_lines and len(normalized(text)) > 2:
             location_lines.append(text.strip(" ,"))
 
     if not title_lines and usable:
         title_lines.append(usable[0]["text"])
+        title_confidences.extend(word["confidence"] for word in usable[0]["words"])
         location_lines = [line["text"] for line in usable[1:3]]
+
+    if username:
+        location_lines = [part for part in location_lines if compact_text(part) != compact_text(username)]
 
     return {
         "stopName": " ".join(title_lines).strip(),
         "locationText": ", ".join(part for part in location_lines if part).strip(" ,"),
         "friendUsername": username,
         "ocrLines": [line["text"] for line in lines],
+        "titleConfidence": round(sum(title_confidences) / len(title_confidences), 1) if title_confidences else 0.0,
+        "hasGreeting": has_greeting,
     }
 
 
@@ -457,10 +521,6 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
     focused_words = run_ocr_region(image, panel)
     fields = extract_fields(image, focused_words or words, panel)
     fields["sourceId"] = source_id
-    quality_issue = field_quality_issue(fields)
-    if quality_issue:
-        pending = save_pending(jpeg, fields, quality_issue)
-        return False, f"Needs review ({pending})"
     try:
         coordinates = geocode(fields["stopName"], fields["locationText"])
     except Exception as error:
@@ -469,6 +529,28 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
     if coordinates is None:
         pending = save_pending(jpeg, fields, "Location could not be geocoded")
         return False, f"Needs review ({pending})"
+
+    regional_languages = COUNTRY_OCR_LANGUAGES.get(coordinates.get("countryCode", ""))
+    if regional_languages and not has_non_latin_letters(fields["stopName"]):
+        regional_words = run_ocr_region(image, panel, regional_languages)
+        regional_fields = extract_fields(image, regional_words, panel) if regional_words else None
+        if regional_fields and regional_fields["stopName"] and (
+            has_non_latin_letters(regional_fields["stopName"])
+            or regional_fields["titleConfidence"] > fields["titleConfidence"] + 8
+        ):
+            regional_fields["sourceId"] = source_id
+            if not regional_fields["friendUsername"]:
+                regional_fields["friendUsername"] = fields["friendUsername"]
+            fields = regional_fields
+
+    quality_issue = field_quality_issue(fields)
+    if quality_issue:
+        pending = save_pending(jpeg, fields, quality_issue)
+        return False, f"Needs review ({pending})"
+    if title_looks_like_location(fields, coordinates):
+        pending = save_pending(jpeg, fields, "PokéStop title appears to contain only location text")
+        return False, f"Needs review ({pending})"
+    fields["friendUsername"] = clean_friend_username(fields, coordinates)
 
     photo = crop_postcard_photo(image, panel)
     photo_hash = image_hash(photo)
@@ -509,6 +591,8 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
         "dedupeKey": dedupe_key,
         "imageHash": photo_hash,
         "sourceId": source_id,
+        "ocrConfidence": fields["titleConfidence"],
+        "ocrHasGreeting": fields["hasGreeting"],
     }
     records.append(record)
     catalog = {"updatedAt": now_iso(), "postcards": records}
