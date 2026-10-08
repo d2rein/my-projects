@@ -100,11 +100,17 @@ def clean_friend_username(fields: dict, coordinates: dict) -> str:
 
 
 def title_looks_like_location(fields: dict, coordinates: dict) -> bool:
-    title_tokens = [token for token in normalized(str(fields.get("stopName", ""))).split() if len(token) > 1]
+    raw_title = str(fields.get("stopName", "")).strip()
+    location_text = str(fields.get("locationText", "")).strip()
+    title_tokens = [token for token in normalized(raw_title).split() if len(token) > 1]
     if not title_tokens:
         return False
+    # Geocoders commonly echo a legitimate venue name at the start of their
+    # result. Only apply this guard to titles that themselves look address-like.
+    if "," not in raw_title and normalized(raw_title) != normalized(location_text):
+        return False
     context = " ".join([
-        str(fields.get("locationText", "")),
+        location_text,
         str(coordinates.get("displayName", "")),
         str(coordinates.get("country", "")),
         str(coordinates.get("state", "")),

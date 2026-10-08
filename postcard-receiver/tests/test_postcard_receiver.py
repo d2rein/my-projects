@@ -92,6 +92,15 @@ class PostcardReceiverTest(unittest.TestCase):
         self.assertTrue(title_looks_like_location({"stopName": "Chandler, Arizona, United", "locationText": "States"}, coordinates))
         self.assertFalse(title_looks_like_location({"stopName": "Pelican Fountain", "locationText": "Chandler, Arizona"}, coordinates))
 
+    def test_geocoder_echoing_venue_name_does_not_reject_title(self):
+        coordinates = {
+            "displayName": "ABC Country Restaurant, Red Deer, Alberta, Canada",
+            "country": "Canada",
+            "state": "Alberta",
+        }
+        fields = {"stopName": "ABC Country Restaurant", "locationText": "Red Deer, Alberta"}
+        self.assertFalse(title_looks_like_location(fields, coordinates))
+
 
 if __name__ == "__main__":
     unittest.main()
