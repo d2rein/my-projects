@@ -3,7 +3,7 @@ import unittest
 import cv2
 import numpy as np
 
-from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalized, title_looks_like_location, titles_match
+from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalized, ocr_candidate_score, title_looks_like_location, titles_match
 
 
 class PostcardReceiverTest(unittest.TestCase):
@@ -13,6 +13,11 @@ class PostcardReceiverTest(unittest.TestCase):
     def test_perceptual_hash_distance(self):
         self.assertEqual(0, hamming_hash("000000000000000f", "000000000000000f"))
         self.assertEqual(1, hamming_hash("000000000000000f", "000000000000000e"))
+
+    def test_ocr_candidate_scoring_prefers_words_over_fragments(self):
+        noisy = [{"text": value, "confidence": 70} for value in ["Greetings", "from", "=", ".", "A", "Vv", "lount"]]
+        readable = [{"text": value, "confidence": 88} for value in ["Greetings", "from", "Ekibin", "Creek", "Sign", "Mount", "Gravatt"]]
+        self.assertGreater(ocr_candidate_score(readable), ocr_candidate_score(noisy))
 
     def test_duplicate_title_matching_tolerates_small_ocr_changes(self):
         self.assertTrue(titles_match("Åvallen", "Avallen"))
@@ -75,6 +80,9 @@ class PostcardReceiverTest(unittest.TestCase):
         self.assertIsNone(field_quality_issue({"stopName": "千葉神社", "locationText": "Funabashi", "titleConfidence": 70}))
         self.assertIsNotNone(field_quality_issue({"stopName": "AP Re fe iat 2218 9 5", "locationText": "Tokyo", "titleConfidence": 70}))
         self.assertIsNotNone(field_quality_issue({"stopName": "Valid name", "locationText": "Brisbane", "titleConfidence": 12}))
+
+    def test_short_connector_does_not_make_a_title_fragmented(self):
+        self.assertIsNone(field_quality_issue({"stopName": "Milsten i As", "locationText": "Sweden", "titleConfidence": 90}))
 
     def test_location_is_not_mistaken_for_friend_username(self):
         fields = {"friendUsername": "UnitedStates", "locationText": "Chicago, Illinois, United States"}

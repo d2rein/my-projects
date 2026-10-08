@@ -134,7 +134,7 @@ def field_quality_issue(fields: dict) -> str | None:
         return "PokéStop name is too short to trust"
     if visible_characters and len(readable_characters) / len(visible_characters) < 0.70:
         return "PokéStop name contains too many unreadable characters"
-    if len(tokens) >= 3 and sum(len(token) <= 2 for token in tokens) / len(tokens) >= 0.60:
+    if len(tokens) >= 4 and sum(len(token) <= 2 for token in tokens) / len(tokens) >= 0.60:
         return "PokéStop name looks like fragmented OCR"
     if float(fields.get("titleConfidence", 100.0)) < 30.0:
         return "PokéStop name OCR confidence is too low"
@@ -299,11 +299,17 @@ def run_ocr_region(image: np.ndarray, region: tuple[int, int, int, int], languag
     high_contrast = cv2.threshold(gray, 210, 255, cv2.THRESH_BINARY)[1]
     contrast_words = recognize(high_contrast)
 
-    def score(candidate: list[dict]) -> int:
-        greeting_bonus = 20 if any("greeting" in normalized(word["text"]) for word in candidate) else 0
-        return greeting_bonus + len(candidate)
+    return max((colour_words, contrast_words), key=ocr_candidate_score)
 
-    return max((colour_words, contrast_words), key=score)
+
+def ocr_candidate_score(candidate: list[dict]) -> float:
+    if not candidate:
+        return 0.0
+    greeting_bonus = 20 if any("greeting" in normalized(word["text"]) for word in candidate) else 0
+    meaningful = sum(len(compact_text(word["text"])) >= 2 for word in candidate)
+    fragments = sum(len(compact_text(word["text"])) <= 1 for word in candidate)
+    confidence = sum(float(word.get("confidence", 0)) for word in candidate) / len(candidate)
+    return greeting_bonus + meaningful * 3 - fragments * 2 + confidence / 20
 
 
 def deskew_postcard(image: np.ndarray) -> np.ndarray:
@@ -409,7 +415,12 @@ def extract_fields(image: np.ndarray, words: list[dict], panel: tuple[int, int, 
         location_lines = [line["text"] for line in usable[1:3]]
 
     if username:
-        location_lines = [part for part in location_lines if compact_text(part) != compact_text(username)]
+        cleaned_locations = []
+        for part in location_lines:
+            cleaned = re.sub(re.escape(username), "", part, flags=re.IGNORECASE).strip(" ,.-")
+            if cleaned and compact_text(cleaned) != compact_text(username):
+                cleaned_locations.append(cleaned)
+        location_lines = cleaned_locations
 
     return {
         "stopName": " ".join(title_lines).strip(),
@@ -732,6 +743,28 @@ def review_records() -> list[dict]:
     return value.get("records", []) if isinstance(value, dict) else []
 
 
+def review_preview(jpeg: bytes) -> bytes:
+    image = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        return jpeg
+    image = deskew_postcard(image)
+    height, width = image.shape[:2]
+    panel = detect_text_panel(image)
+    if panel is not None:
+        x, y, w, h = panel
+        left = max(0, x - int(w * 1.02))
+        right = min(width, x + w + int(w * 0.08))
+        top = max(0, y - int(h * 0.12))
+        bottom = min(height, y + h + int(h * 0.12))
+    else:
+        # Even an unrecognised card is normally centred in this vertical band.
+        left, right = 0, width
+        top, bottom = int(height * 0.28), int(height * 0.62)
+    crop = image[top:bottom, left:right]
+    ok, encoded = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    return encoded.tobytes() if ok else jpeg
+
+
 def restore_review_record(identifier: str, stop_name: str, location_text: str, friend_username: str) -> str:
     stop_name = stop_name.strip()
     location_text = location_text.strip()
@@ -807,15 +840,17 @@ def review_page(message: str = "") -> str:
 
     cards = []
     for screenshot, metadata in pending:
+        preview_url = f"/review/image?kind=pending&amp;name={quote(screenshot)}&amp;crop=1"
+        full_url = f"/review/image?kind=pending&amp;name={quote(screenshot)}"
         cards.append(f'''<form class="card" method="post" action="/review/action">
-          <img src="/review/image?kind=pending&amp;name={quote(screenshot)}" alt="Pending postcard screenshot">
+          <a class="preview pending" href="{full_url}" target="_blank" title="Open full screenshot"><img loading="lazy" src="{preview_url}" alt="Pending postcard crop"></a>
           <div class="body"><span class="badge">Pending screenshot</span><p class="reason">{escape(str(metadata.get("reason", "Needs review")))}</p>
           {field("stopName", metadata.get("stopName"), "Pokestop name")}{field("locationText", metadata.get("locationText"), "Location")}{field("friendUsername", metadata.get("friendUsername"), "Friend username")}
           <input type="hidden" name="kind" value="pending"><input type="hidden" name="item" value="{escape(screenshot, quote=True)}">
           <div class="actions"><button name="action" value="approve">Approve edits</button><button class="secondary" name="action" value="retry">Retry OCR</button><button class="danger" name="action" value="archive">Archive</button></div></div></form>''')
     for record in quarantined:
         cards.append(f'''<form class="card" method="post" action="/review/action">
-          <img src="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" alt="Quarantined postcard crop">
+          <a class="preview" href="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" target="_blank"><img loading="lazy" src="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" alt="Quarantined postcard crop"></a>
           <div class="body"><span class="badge quarantine">Quarantined crop</span><p class="reason">{escape(str(record.get("reviewReason", "Unreliable OCR")))}</p>
           {field("stopName", record.get("stopName"), "Pokestop name")}{field("locationText", record.get("locationText"), "Location")}{field("friendUsername", record.get("friendUsername"), "Friend username")}
           <input type="hidden" name="kind" value="quarantine"><input type="hidden" name="item" value="{escape(str(record.get("id", "")), quote=True)}">
@@ -823,7 +858,7 @@ def review_page(message: str = "") -> str:
     notice = f'<div class="notice">{escape(message)}</div>' if message else ""
     content = "".join(cards) or '<div class="empty">Nothing currently needs manual review.</div>'
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Postcard review</title><style>
-      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:2;padding:18px 24px;background:rgba(247,243,231,.96);border-bottom:1px solid var(--line)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:4px 0 0;color:#536769}}main{{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.card>img{{display:block;width:100%;height:280px;object-fit:contain;background:#152327}}.body{{padding:16px}}.badge{{display:inline-block;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{grid-column:1/-1;border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1}}@media(max-width:500px){{main{{padding:10px;grid-template-columns:1fr}}header{{padding:14px}}}}
+      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:2;padding:18px 24px;background:rgba(247,243,231,.96);border-bottom:1px solid var(--line)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:4px 0 0;color:#536769}}main{{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.preview{{display:block;width:100%;height:280px;background:#152327}}.preview img{{display:block;width:100%;height:100%;object-fit:contain}}.preview.pending img{{object-fit:cover}}.body{{padding:16px}}.badge{{display:inline-block;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{grid-column:1/-1;border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1}}@media(max-width:500px){{main{{padding:10px;grid-template-columns:1fr}}header{{padding:14px}}}}
     </style></head><body><header><h1>Postcard review</h1><p>{len(pending)} pending screenshots, {len(quarantined)} quarantined crops. Changes stay local until the site is deployed.</p></header>{notice}<main>{content}</main></body></html>'''
 
 
@@ -845,6 +880,9 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 if query.get("kind", [""])[-1] == "pending":
                     image_path, _ = pending_paths(query.get("name", [""])[-1])
+                    if query.get("crop", [""])[-1] == "1":
+                        self.send_image(review_preview(image_path.read_bytes()), "image/jpeg")
+                        return
                 else:
                     identifier = query.get("id", [""])[-1]
                     record = next(entry for entry in review_records() if entry.get("id") == identifier)
@@ -971,6 +1009,14 @@ class Handler(BaseHTTPRequestHandler):
         body = text.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_image(self, body: bytes, content_type: str) -> None:
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
