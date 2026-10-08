@@ -3,7 +3,7 @@ import unittest
 import cv2
 import numpy as np
 
-from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalized, ocr_candidate_score, title_looks_like_location, titles_match
+from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalize_location_text, normalized, ocr_candidate_score, title_looks_like_location, titles_match
 
 
 class PostcardReceiverTest(unittest.TestCase):
@@ -18,6 +18,12 @@ class PostcardReceiverTest(unittest.TestCase):
         noisy = [{"text": value, "confidence": 70} for value in ["Greetings", "from", "=", ".", "A", "Vv", "lount"]]
         readable = [{"text": value, "confidence": 88} for value in ["Greetings", "from", "Ekibin", "Creek", "Sign", "Mount", "Gravatt"]]
         self.assertGreater(ocr_candidate_score(readable), ocr_candidate_score(noisy))
+
+    def test_location_ocr_variants_and_split_countries_are_normalized(self):
+        self.assertEqual("København, Denmark", normalize_location_text("Kgbenhavn, Denmark"))
+        self.assertEqual("Istanbul, Türkiye", normalize_location_text("Istanbul, Tiirkiye"))
+        self.assertEqual("San José Province, Costa Rica", normalize_location_text("San Josée Province, Costa, Rica"))
+        self.assertEqual("Des Moines, Iowa, United States", normalize_location_text("Des Moines, lowa, United, States"))
 
     def test_duplicate_title_matching_tolerates_small_ocr_changes(self):
         self.assertTrue(titles_match("Åvallen", "Avallen"))

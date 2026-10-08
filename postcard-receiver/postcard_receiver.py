@@ -84,6 +84,26 @@ def compact_text(value: str) -> str:
     return "".join(character.lower() for character in value if character.isalnum())
 
 
+LOCATION_REPLACEMENTS = (
+    (r"\bK[gq]benhavn\b|\bKobenhavn\b", "København"),
+    (r"\bT(?:ii|u|ü)rkiy(?:e|ie)\b", "Türkiye"),
+    (r"\blowa\b", "Iowa"),
+    (r"\bSan Jos[eé]e\b", "San José"),
+    (r"\bUnited\s*,\s*States\b", "United States"),
+    (r"\bCosta\s*,\s*Rica\b", "Costa Rica"),
+    (r"\bUnited\s*,\s*Kingdom\b", "United Kingdom"),
+    (r"\bNew\s*,\s*Zealand\b", "New Zealand"),
+    (r"\bSouth\s*,\s*Korea\b", "South Korea"),
+)
+
+
+def normalize_location_text(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", value).strip(" ,")
+    for pattern, replacement in LOCATION_REPLACEMENTS:
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+
 def clean_friend_username(fields: dict, coordinates: dict) -> str:
     username = str(fields.get("friendUsername", "")).strip()
     if not username:
@@ -393,13 +413,19 @@ def extract_fields(image: np.ndarray, words: list[dict], panel: tuple[int, int, 
     title_confidences = []
     location_lines = []
     username = ""
+    country_continuations = {"states", "rica", "kingdom", "zealand", "korea"}
     for line in usable:
         center_y = (line["top"] + line["bottom"]) / 2
         text = line["text"].strip(" -|_")
         if not text:
             continue
-        if has_greeting and center_y > y + h * 0.66 and re.fullmatch(r"[A-Za-z0-9_.-]{3,24}", text.replace(" ", "")):
-            username = text.replace(" ", "")
+        if title_lines and normalized(text) in country_continuations:
+            location_lines.append(text.strip(" ,"))
+            continue
+        username_candidate = text.strip(" °'‘’`.,:;").replace(" ", "")
+        if has_greeting and center_y > y + h * 0.66 and re.fullmatch(r"[A-Za-z0-9_.-]{3,24}", username_candidate):
+            if len(username_candidate) > len(username):
+                username = username_candidate
             continue
         if center_y > y + h * 0.78:
             continue
@@ -424,7 +450,7 @@ def extract_fields(image: np.ndarray, words: list[dict], panel: tuple[int, int, 
 
     return {
         "stopName": " ".join(title_lines).strip(),
-        "locationText": ", ".join(part for part in location_lines if part).strip(" ,"),
+        "locationText": normalize_location_text(", ".join(part for part in location_lines if part)),
         "friendUsername": username,
         "ocrLines": [line["text"] for line in lines],
         "titleConfidence": round(sum(title_confidences) / len(title_confidences), 1) if title_confidences else 0.0,

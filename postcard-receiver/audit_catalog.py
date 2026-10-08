@@ -11,6 +11,8 @@ CATALOG_PATH = ROOT.parent / "postcards" / "data" / "postcards.json"
 REVIEW_PATH = ROOT / "data" / "review-records.json"
 
 REVIEW_IDS = {
+    "20261008123043-37d05bc0",
+    "20261008123332-24acd721",
     "20261008120951-00a57a7a",
     "20261008120957-d80f2fa4",
     "20261006144358-9af481b0",
