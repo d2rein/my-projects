@@ -962,6 +962,22 @@ def archive_review_record(identifier: str) -> str:
     return "Archived quarantined record"
 
 
+def perform_review_action(kind: str, action: str, item: str, values: dict) -> str:
+    if kind == "pending" and action == "approve":
+        return approve_pending(item, values.get("stopName", ""), values.get("locationText", ""), values.get("friendUsername", ""))
+    if kind == "pending" and action == "retry":
+        return retry_pending(item)
+    if kind == "pending" and action == "archive":
+        image_path, metadata_path = pending_paths(item)
+        archive_files([image_path, metadata_path], "pending")
+        return "Archived pending screenshot"
+    if kind == "quarantine" and action in {"approve", "restore"}:
+        return restore_review_record(item, values.get("stopName", ""), values.get("locationText", ""), values.get("friendUsername", ""))
+    if kind == "quarantine" and action == "archive":
+        return archive_review_record(item)
+    raise ValueError("Unknown review action")
+
+
 def review_page(message: str = "") -> str:
     pending = []
     for metadata_path in sorted(PENDING_DIR.glob("*.json")):
@@ -975,29 +991,49 @@ def review_page(message: str = "") -> str:
     def field(name: str, value: object, label: str) -> str:
         return f'<label>{escape(label)}<input name="{name}" value="{escape(str(value or ""), quote=True)}"></label>'
 
-    cards = []
+    pending_cards = []
     for screenshot, metadata, group_label in pending:
         preview_url = f"/review/image?kind=pending&amp;name={quote(screenshot)}&amp;crop=1"
         full_url = f"/review/image?kind=pending&amp;name={quote(screenshot)}"
         group_badge = f'<span class="badge similar">{escape(group_label)}</span>' if group_label else ""
-        cards.append(f'''<form class="card" method="post" action="/review/action">
+        pending_cards.append(f'''<form class="card" method="post" action="/review/action">
+          <label class="pick" title="Select for a batch action"><input class="select-item" type="checkbox"> Select</label>
           <a class="preview pending" href="{full_url}" target="_blank" title="Open full screenshot"><img loading="lazy" src="{preview_url}" alt="Pending postcard crop"></a>
           <div class="body"><span class="badge">Pending screenshot</span>{group_badge}<p class="reason">{escape(str(metadata.get("reason", "Needs review")))}</p>
           {field("stopName", metadata.get("stopName"), "Pokestop name")}{field("locationText", metadata.get("locationText"), "Location")}{field("friendUsername", metadata.get("friendUsername"), "Friend username")}
           <input type="hidden" name="kind" value="pending"><input type="hidden" name="item" value="{escape(screenshot, quote=True)}">
           <div class="actions"><button name="action" value="approve">Approve edits</button><button class="secondary" name="action" value="retry">Retry OCR</button><button class="danger" name="action" value="archive" onclick="return confirm('Delete this review item?')">Delete</button></div></div></form>''')
+    quarantine_cards = []
     for record in quarantined:
-        cards.append(f'''<form class="card" method="post" action="/review/action">
+        quarantine_cards.append(f'''<form class="card" method="post" action="/review/action">
+          <label class="pick" title="Select for a batch action"><input class="select-item" type="checkbox"> Select</label>
           <a class="preview" href="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" target="_blank"><img loading="lazy" src="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" alt="Quarantined postcard crop"></a>
           <div class="body"><span class="badge quarantine">Quarantined crop</span><p class="reason">{escape(str(record.get("reviewReason", "Unreliable OCR")))}</p>
           {field("stopName", record.get("stopName"), "Pokestop name")}{field("locationText", record.get("locationText"), "Location")}{field("friendUsername", record.get("friendUsername"), "Friend username")}
           <input type="hidden" name="kind" value="quarantine"><input type="hidden" name="item" value="{escape(str(record.get("id", "")), quote=True)}">
           <div class="actions"><button name="action" value="restore">Restore edits</button><button class="danger" name="action" value="archive" onclick="return confirm('Delete this review item?')">Delete</button></div></div></form>''')
     notice = f'<div class="notice">{escape(message)}</div>' if message else ""
-    content = "".join(cards) or '<div class="empty">Nothing currently needs manual review.</div>'
+    pending_content = "".join(pending_cards) or '<div class="empty">No pending screenshots.</div>'
+    quarantine_content = "".join(quarantine_cards) or '<div class="empty">No quarantined crops.</div>'
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Postcard review</title><style>
-      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:2;padding:18px 24px;background:rgba(247,243,231,.96);border-bottom:1px solid var(--line)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:4px 0 0;color:#536769}}main{{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.preview{{display:block;width:100%;height:280px;background:#152327}}.preview img{{display:block;width:100%;height:100%;object-fit:contain}}.preview.pending img{{object-fit:cover}}.body{{padding:16px}}.badge{{display:inline-block;margin:0 6px 4px 0;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.similar{{background:#ffe4a6;color:#704d00}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{grid-column:1/-1;border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1}}@media(max-width:500px){{main{{padding:10px;grid-template-columns:1fr}}header{{padding:14px}}}}
-    </style></head><body><header><h1>Postcard review</h1><p>{len(pending)} pending screenshots, {len(quarantined)} quarantined crops. Changes stay local until the site is deployed.</p></header>{notice}<main>{content}</main></body></html>'''
+      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}html{{scroll-padding-top:150px}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:3;padding:12px 20px;background:rgba(247,243,231,.97);border-bottom:1px solid var(--line);box-shadow:0 3px 12px rgba(23,51,53,.08)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:2px 0 8px;color:#536769}}.toolbar{{display:flex;align-items:center;gap:7px;flex-wrap:wrap}}.toolbar a{{color:var(--teal);font-weight:700;text-decoration:none;margin-right:5px}}section{{padding:16px 20px 4px}}section h2{{margin:0 0 10px;font:700 22px Georgia,serif}}.grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{position:relative;overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.pick{{position:absolute;z-index:2;top:10px;left:10px;display:flex;align-items:center;gap:6px;margin:0;padding:6px 9px;border-radius:999px;background:rgba(247,243,231,.94);box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:12px;font-weight:700;cursor:pointer}}.pick .select-item{{display:inline-block;width:17px;height:17px;margin:0;padding:0;accent-color:var(--teal)}}.preview{{display:block;width:100%;height:280px;background:#152327}}.preview img{{display:block;width:100%;height:100%;object-fit:contain}}.preview.pending img{{object-fit:cover}}.body{{padding:16px}}.badge{{display:inline-block;margin:0 6px 4px 0;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.similar{{background:#ffe4a6;color:#704d00}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:16px 20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1;margin:0}}@media(max-width:650px){{section{{padding:10px}}.grid{{grid-template-columns:1fr}}header{{padding:10px}}.toolbar button{{padding:7px 9px}}}}
+    </style></head><body><header><h1>Postcard review</h1><p>{len(pending)} pending screenshots, {len(quarantined)} quarantined crops. Changes stay local until the site is deployed.</p>
+      <div class="toolbar"><a href="#pending">Pending ({len(pending)})</a><a href="#quarantine">Quarantine ({len(quarantined)})</a><button type="button" onclick="selectVisible('pending')">Select pending</button><button type="button" onclick="selectVisible('quarantine')">Select quarantine</button><button type="button" onclick="batch('approve')">Approve selected</button><button class="secondary" type="button" onclick="batch('retry')">Retry selected</button><button class="danger" type="button" onclick="batch('archive')">Delete selected</button></div>
+      <form id="batch-form" method="post" action="/review/batch"><input id="batch-items" type="hidden" name="items"><input id="batch-action" type="hidden" name="action"></form>
+    </header>{notice}<section id="pending"><h2>Pending screenshots</h2><div class="grid">{pending_content}</div></section><section id="quarantine"><h2>Quarantined crops</h2><div class="grid">{quarantine_content}</div></section>
+    <script>
+      function selectedCards() {{ return [...document.querySelectorAll('.select-item:checked')].map(box => box.closest('.card')); }}
+      function selectVisible(kind) {{ document.querySelectorAll(`.card input[name="kind"][value="${{kind}}"]`).forEach(input => input.closest('.card').querySelector('.select-item').checked = true); }}
+      function batch(action) {{
+        const cards = selectedCards();
+        if (!cards.length) {{ alert('Select at least one review card first.'); return; }}
+        if (action === 'retry' && cards.some(card => card.elements.kind.value !== 'pending')) {{ alert('Retry OCR only applies to pending screenshots.'); return; }}
+        if (action === 'archive' && !confirm(`Delete ${{cards.length}} selected review item(s)?`)) return;
+        document.getElementById('batch-action').value = action;
+        document.getElementById('batch-items').value = JSON.stringify(cards.map(card => Object.fromEntries(new FormData(card))));
+        document.getElementById('batch-form').submit();
+      }}
+    </script></body></html>'''
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1056,6 +1092,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/review/action" and self.is_local_request():
             self.handle_review_action()
             return
+        if path == "/review/batch" and self.is_local_request():
+            self.handle_review_batch()
+            return
         if path != "/upload":
             self.send_text(HTTPStatus.NOT_FOUND, "not found")
             return
@@ -1103,24 +1142,44 @@ class Handler(BaseHTTPRequestHandler):
             kind = values.get("kind", "")
             action = values.get("action", "")
             item = values.get("item", "")
-            if kind == "pending" and action == "approve":
-                message = approve_pending(item, values.get("stopName", ""), values.get("locationText", ""), values.get("friendUsername", ""))
-            elif kind == "pending" and action == "retry":
-                message = retry_pending(item)
-            elif kind == "pending" and action == "archive":
-                image_path, metadata_path = pending_paths(item)
-                archive_files([image_path, metadata_path], "pending")
-                message = "Archived pending screenshot"
-            elif kind == "quarantine" and action == "restore":
-                message = restore_review_record(item, values.get("stopName", ""), values.get("locationText", ""), values.get("friendUsername", ""))
-            elif kind == "quarantine" and action == "archive":
-                message = archive_review_record(item)
-            else:
-                raise ValueError("Unknown review action")
+            message = perform_review_action(kind, action, item, values)
             log_event(f"review kind={kind} action={action} item={item} message={message}")
         except Exception as error:
             message = f"Could not complete review: {error}"
             log_event(f"review-error error={error}\n{traceback.format_exc()}")
+        self.send_response(HTTPStatus.SEE_OTHER)
+        self.send_header("Location", "/review?message=" + quote(message))
+        self.end_headers()
+
+    def handle_review_batch(self) -> None:
+        try:
+            length = min(int(self.headers.get("Content-Length", "0")), 1024 * 1024)
+            values = {key: items[-1] for key, items in parse_qs(self.rfile.read(length).decode("utf-8")).items()}
+            action = values.get("action", "")
+            items = json.loads(values.get("items", "[]"))
+            if action not in {"approve", "retry", "archive"} or not isinstance(items, list) or not 1 <= len(items) <= 250:
+                raise ValueError("Invalid batch review request")
+            completed = 0
+            failures = []
+            for values_for_item in items:
+                if not isinstance(values_for_item, dict):
+                    failures.append("invalid item")
+                    continue
+                kind = str(values_for_item.get("kind", ""))
+                item = str(values_for_item.get("item", ""))
+                try:
+                    result = perform_review_action(kind, action, item, values_for_item)
+                    completed += 1
+                    log_event(f"review-batch kind={kind} action={action} item={item} message={result}")
+                except Exception as error:
+                    failures.append(f"{item}: {error}")
+                    log_event(f"review-batch-error kind={kind} action={action} item={item} error={error}")
+            message = f"Batch {action}: {completed} completed"
+            if failures:
+                message += f", {len(failures)} failed. " + "; ".join(failures[:3])
+        except Exception as error:
+            message = f"Could not complete batch review: {error}"
+            log_event(f"review-batch-error error={error}\n{traceback.format_exc()}")
         self.send_response(HTTPStatus.SEE_OTHER)
         self.send_header("Location", "/review?message=" + quote(message))
         self.end_headers()
