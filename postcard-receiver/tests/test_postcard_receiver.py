@@ -3,7 +3,7 @@ import unittest
 import cv2
 import numpy as np
 
-from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, hamming_hash, normalize_location_text, normalized, ocr_candidate_score, title_looks_like_location, titles_match
+from postcard_receiver import clean_friend_username, clean_source_id, coordinates_close, detect_text_panel, field_quality_issue, group_pending_reviews, hamming_hash, normalize_location_text, normalized, ocr_candidate_score, review_items_similar, title_looks_like_location, titles_match
 
 
 class PostcardReceiverTest(unittest.TestCase):
@@ -18,6 +18,15 @@ class PostcardReceiverTest(unittest.TestCase):
         noisy = [{"text": value, "confidence": 70} for value in ["Greetings", "from", "=", ".", "A", "Vv", "lount"]]
         readable = [{"text": value, "confidence": 88} for value in ["Greetings", "from", "Ekibin", "Creek", "Sign", "Mount", "Gravatt"]]
         self.assertGreater(ocr_candidate_score(readable), ocr_candidate_score(noisy))
+
+    def test_review_similarity_prefers_photo_hash_and_groups_matches(self):
+        first = {"stopName": "Yorkshire Wolds Cycle Trail", "locationText": "England", "imageHash": "0000000000000000"}
+        second = {"stopName": "Unreadable", "locationText": "", "imageHash": "0000000000000001"}
+        third = {"stopName": "Different card", "locationText": "Australia", "imageHash": "ffffffffffffffff"}
+        self.assertTrue(review_items_similar({**first, "reviewHash": first["imageHash"]}, {**second, "reviewHash": second["imageHash"]}))
+        grouped = group_pending_reviews([("one.jpg", first), ("two.jpg", second), ("three.jpg", third)])
+        self.assertEqual(["one.jpg", "two.jpg"], [item[0] for item in grouped[:2]])
+        self.assertTrue(all(item[2].startswith("Similar group") for item in grouped[:2]))
 
     def test_location_ocr_variants_and_split_countries_are_normalized(self):
         self.assertEqual("København, Denmark", normalize_location_text("Kgbenhavn, Denmark"))

@@ -49,6 +49,7 @@ PROCESSOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="postcard-proce
 _log_lock = threading.Lock()
 _auth_lock = threading.Lock()
 _catalog_lock = threading.RLock()
+_review_hash_cache: dict[str, tuple[int, str | None]] = {}
 _auth_failures: dict[str, list[float]] = {}
 
 
@@ -545,13 +546,30 @@ def geocode(stop_name: str, location_text: str) -> dict | None:
 
 
 def save_pending(jpeg: bytes, details: dict, reason: str) -> str:
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    incoming_hash = details.get("imageHash")
+    if incoming_hash:
+        for metadata_path in PENDING_DIR.glob("*.json"):
+            existing = load_json(metadata_path, {})
+            existing_hash = existing.get("imageHash")
+            if existing_hash and hamming_hash(existing_hash, incoming_hash) <= 5:
+                return existing.get("screenshot") or metadata_path.with_suffix(".jpg").name
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     image_name = f"pending-{stamp}.jpg"
     atomic_write(PENDING_DIR / image_name, jpeg)
     details = {**details, "reason": reason, "capturedAt": now_iso(), "screenshot": image_name}
     atomic_write(PENDING_DIR / f"pending-{stamp}.json", (json.dumps(details, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
     return image_name
+
+
+def catalog_image_duplicate(photo_hash: str) -> dict | None:
+    with _catalog_lock:
+        catalog = load_json(CATALOG_PATH, {"postcards": []})
+        for record in catalog.get("postcards", []):
+            existing_hash = record.get("imageHash")
+            if existing_hash and hamming_hash(existing_hash, photo_hash) <= 5:
+                return record
+    return None
 
 
 def store_postcard(photo: np.ndarray, fields: dict, coordinates: dict, source_id: str, manually_reviewed: bool = False) -> tuple[bool, str]:
@@ -616,9 +634,15 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
     if panel is None:
         pending = save_pending(jpeg, {"sourceId": source_id, "ocrLines": [line["text"] for line in group_lines(words)]}, "Postcard text panel not found")
         return False, f"Needs review ({pending})"
+    photo = crop_postcard_photo(image, panel)
+    photo_hash = image_hash(photo)
+    existing = catalog_image_duplicate(photo_hash)
+    if existing:
+        return True, f"Duplicate image discarded: {existing.get('stopName', 'existing postcard')}"
     focused_words = run_ocr_region(image, panel)
     fields = extract_fields(image, focused_words or words, panel)
     fields["sourceId"] = source_id
+    fields["imageHash"] = photo_hash
     try:
         coordinates = geocode(fields["stopName"], fields["locationText"])
     except Exception as error:
@@ -641,6 +665,7 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
                 regional_fields["friendUsername"] = fields["friendUsername"]
             fields = regional_fields
 
+    fields["imageHash"] = photo_hash
     quality_issue = field_quality_issue(fields)
     if quality_issue:
         pending = save_pending(jpeg, fields, quality_issue)
@@ -650,7 +675,7 @@ def process_postcard(jpeg: bytes, source_id: str = "1") -> tuple[bool, str]:
         return False, f"Needs review ({pending})"
     fields["friendUsername"] = clean_friend_username(fields, coordinates)
 
-    return store_postcard(crop_postcard_photo(image, panel), fields, coordinates, source_id)
+    return store_postcard(photo, fields, coordinates, source_id)
 
 
 def process_inbox(path: Path) -> None:
@@ -791,6 +816,91 @@ def review_preview(jpeg: bytes) -> bytes:
     return encoded.tobytes() if ok else jpeg
 
 
+def pending_review_hash(image_path: Path) -> str | None:
+    modified = image_path.stat().st_mtime_ns
+    cached = _review_hash_cache.get(str(image_path))
+    if cached and cached[0] == modified:
+        return cached[1]
+    image = cv2.imdecode(np.frombuffer(image_path.read_bytes(), dtype=np.uint8), cv2.IMREAD_COLOR)
+    value = None
+    if image is not None:
+        image = deskew_postcard(image)
+        panel = detect_text_panel(image)
+        if panel is not None:
+            value = image_hash(crop_postcard_photo(image, panel))
+    _review_hash_cache[str(image_path)] = (modified, value)
+    return value
+
+
+def review_items_similar(left: dict, right: dict) -> bool:
+    left_hash = left.get("reviewHash")
+    right_hash = right.get("reviewHash")
+    if left_hash and right_hash and hamming_hash(left_hash, right_hash) <= 5:
+        return True
+    left_title = str(left.get("stopName", ""))
+    right_title = str(right.get("stopName", ""))
+    if not titles_match(left_title, right_title):
+        return False
+    left_location = normalized(str(left.get("locationText", "")))
+    right_location = normalized(str(right.get("locationText", "")))
+    return not left_location or not right_location or SequenceMatcher(None, left_location, right_location).ratio() >= 0.80
+
+
+def group_pending_reviews(items: list[tuple[str, dict]]) -> list[tuple[str, dict, str]]:
+    enriched = []
+    for screenshot, metadata in items:
+        enriched.append({**metadata, "screenshot": screenshot, "reviewHash": metadata.get("imageHash") or pending_review_hash(PENDING_DIR / screenshot)})
+    parents = list(range(len(enriched)))
+
+    def root(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def join(left: int, right: int) -> None:
+        left_root, right_root = root(left), root(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
+
+    for left in range(len(enriched)):
+        for right in range(left + 1, len(enriched)):
+            if review_items_similar(enriched[left], enriched[right]):
+                join(left, right)
+    groups: dict[int, list[int]] = {}
+    for index in range(len(enriched)):
+        groups.setdefault(root(index), []).append(index)
+    repeated = sorted((indices for indices in groups.values() if len(indices) > 1), key=lambda indices: min(enriched[index]["screenshot"] for index in indices))
+    labels = {root(indices[0]): f"Similar group {number} · {len(indices)} items" for number, indices in enumerate(repeated, start=1)}
+    ordered = sorted(
+        range(len(enriched)),
+        key=lambda index: (
+            0 if root(index) in labels else 1,
+            labels.get(root(index), normalized(str(enriched[index].get("stopName", "")))),
+            enriched[index]["screenshot"],
+        ),
+    )
+    return [(enriched[index]["screenshot"], enriched[index], labels.get(root(index), "")) for index in ordered]
+
+
+def backfill_pending_image_hashes() -> int:
+    updated = 0
+    for metadata_path in PENDING_DIR.glob("*.json"):
+        metadata = load_json(metadata_path, {})
+        if metadata.get("imageHash"):
+            continue
+        screenshot = Path(metadata.get("screenshot") or metadata_path.with_suffix(".jpg").name).name
+        image_path = PENDING_DIR / screenshot
+        if not image_path.is_file():
+            continue
+        value = pending_review_hash(image_path)
+        if value:
+            metadata["imageHash"] = value
+            atomic_write(metadata_path, (json.dumps(metadata, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+            updated += 1
+    return updated
+
+
 def restore_review_record(identifier: str, stop_name: str, location_text: str, friend_username: str) -> str:
     stop_name = stop_name.strip()
     location_text = location_text.strip()
@@ -859,32 +969,34 @@ def review_page(message: str = "") -> str:
         screenshot = metadata.get("screenshot") or metadata_path.with_suffix(".jpg").name
         if (PENDING_DIR / Path(screenshot).name).is_file():
             pending.append((Path(screenshot).name, metadata))
+    pending = group_pending_reviews(pending)
     quarantined = review_records()
 
     def field(name: str, value: object, label: str) -> str:
         return f'<label>{escape(label)}<input name="{name}" value="{escape(str(value or ""), quote=True)}"></label>'
 
     cards = []
-    for screenshot, metadata in pending:
+    for screenshot, metadata, group_label in pending:
         preview_url = f"/review/image?kind=pending&amp;name={quote(screenshot)}&amp;crop=1"
         full_url = f"/review/image?kind=pending&amp;name={quote(screenshot)}"
+        group_badge = f'<span class="badge similar">{escape(group_label)}</span>' if group_label else ""
         cards.append(f'''<form class="card" method="post" action="/review/action">
           <a class="preview pending" href="{full_url}" target="_blank" title="Open full screenshot"><img loading="lazy" src="{preview_url}" alt="Pending postcard crop"></a>
-          <div class="body"><span class="badge">Pending screenshot</span><p class="reason">{escape(str(metadata.get("reason", "Needs review")))}</p>
+          <div class="body"><span class="badge">Pending screenshot</span>{group_badge}<p class="reason">{escape(str(metadata.get("reason", "Needs review")))}</p>
           {field("stopName", metadata.get("stopName"), "Pokestop name")}{field("locationText", metadata.get("locationText"), "Location")}{field("friendUsername", metadata.get("friendUsername"), "Friend username")}
           <input type="hidden" name="kind" value="pending"><input type="hidden" name="item" value="{escape(screenshot, quote=True)}">
-          <div class="actions"><button name="action" value="approve">Approve edits</button><button class="secondary" name="action" value="retry">Retry OCR</button><button class="danger" name="action" value="archive">Archive</button></div></div></form>''')
+          <div class="actions"><button name="action" value="approve">Approve edits</button><button class="secondary" name="action" value="retry">Retry OCR</button><button class="danger" name="action" value="archive" onclick="return confirm('Delete this review item?')">Delete</button></div></div></form>''')
     for record in quarantined:
         cards.append(f'''<form class="card" method="post" action="/review/action">
           <a class="preview" href="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" target="_blank"><img loading="lazy" src="/review/image?kind=quarantine&amp;id={quote(str(record.get("id", "")))}" alt="Quarantined postcard crop"></a>
           <div class="body"><span class="badge quarantine">Quarantined crop</span><p class="reason">{escape(str(record.get("reviewReason", "Unreliable OCR")))}</p>
           {field("stopName", record.get("stopName"), "Pokestop name")}{field("locationText", record.get("locationText"), "Location")}{field("friendUsername", record.get("friendUsername"), "Friend username")}
           <input type="hidden" name="kind" value="quarantine"><input type="hidden" name="item" value="{escape(str(record.get("id", "")), quote=True)}">
-          <div class="actions"><button name="action" value="restore">Restore edits</button><button class="danger" name="action" value="archive">Archive</button></div></div></form>''')
+          <div class="actions"><button name="action" value="restore">Restore edits</button><button class="danger" name="action" value="archive" onclick="return confirm('Delete this review item?')">Delete</button></div></div></form>''')
     notice = f'<div class="notice">{escape(message)}</div>' if message else ""
     content = "".join(cards) or '<div class="empty">Nothing currently needs manual review.</div>'
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Postcard review</title><style>
-      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:2;padding:18px 24px;background:rgba(247,243,231,.96);border-bottom:1px solid var(--line)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:4px 0 0;color:#536769}}main{{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.preview{{display:block;width:100%;height:280px;background:#152327}}.preview img{{display:block;width:100%;height:100%;object-fit:contain}}.preview.pending img{{object-fit:cover}}.body{{padding:16px}}.badge{{display:inline-block;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{grid-column:1/-1;border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1}}@media(max-width:500px){{main{{padding:10px;grid-template-columns:1fr}}header{{padding:14px}}}}
+      :root{{--ink:#173335;--paper:#f7f3e7;--teal:#087f78;--red:#b94432;--line:#d5d0c3}}*{{box-sizing:border-box}}body{{margin:0;background:#d7e8e5;color:var(--ink);font:15px/1.4 "Segoe UI",sans-serif}}header{{position:sticky;top:0;z-index:2;padding:18px 24px;background:rgba(247,243,231,.96);border-bottom:1px solid var(--line)}}h1{{margin:0;font:700 28px Georgia,serif}}header p{{margin:4px 0 0;color:#536769}}main{{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}}.card{{overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 28px rgba(23,51,53,.1)}}.preview{{display:block;width:100%;height:280px;background:#152327}}.preview img{{display:block;width:100%;height:100%;object-fit:contain}}.preview.pending img{{object-fit:cover}}.body{{padding:16px}}.badge{{display:inline-block;margin:0 6px 4px 0;padding:4px 9px;border-radius:999px;background:#cde6df;color:#075f5a;font-size:12px;font-weight:700}}.badge.similar{{background:#ffe4a6;color:#704d00}}.badge.quarantine{{background:#f4ddb1;color:#73500d}}.reason{{min-height:42px;color:#6e443b}}label{{display:block;margin:10px 0 4px;font-size:12px;font-weight:700}}input{{display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);font:inherit}}.actions{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}button{{border:0;border-radius:9px;padding:9px 12px;background:var(--teal);color:white;font-weight:700;cursor:pointer}}button.secondary{{background:#52686a}}button.danger{{background:var(--red)}}.notice,.empty{{margin:20px;padding:14px 18px;border-radius:12px;background:var(--paper)}}.notice{{grid-column:1/-1;border-left:5px solid var(--teal)}}.empty{{grid-column:1/-1}}@media(max-width:500px){{main{{padding:10px;grid-template-columns:1fr}}header{{padding:14px}}}}
     </style></head><body><header><h1>Postcard review</h1><p>{len(pending)} pending screenshots, {len(quarantined)} quarantined crops. Changes stay local until the site is deployed.</p></header>{notice}<main>{content}</main></body></html>'''
 
 
@@ -1066,6 +1178,9 @@ def main() -> None:
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     INBOX_DIR.mkdir(parents=True, exist_ok=True)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    backfilled = backfill_pending_image_hashes()
+    if backfilled:
+        log_event(f"backfilled-pending-image-hashes count={backfilled}")
     if not CATALOG_PATH.exists():
         atomic_write(CATALOG_PATH, b'{"updatedAt": null, "postcards": []}\n')
     for inbox_path in sorted(INBOX_DIR.glob("*.jpg")):
