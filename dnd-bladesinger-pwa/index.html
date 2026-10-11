@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=430, initial-scale=1, viewport-fit=cover">
 <title>DND - Alaric</title>
 <link rel="icon" href="./icon-192.png">
-<link rel="manifest" href="./manifest.webmanifest?v=20260712alaric10">
+<link rel="manifest" href="./manifest.webmanifest?v=20261011alaric1">
 <meta name="theme-color" content="#09111a">
 <style>
   :root{
@@ -589,6 +589,67 @@
     overflow:hidden;
     text-overflow:ellipsis;
   }
+  .ammo-strip{
+    display:grid;
+    grid-template-columns:26px repeat(3,minmax(0,1fr)) repeat(3,58px);
+    gap:4px;
+    align-items:center;
+    padding:0 5px 5px;
+  }
+  .ammo-toggle{
+    min-width:0;
+    padding:6px 3px;
+    font-size:9px;
+  }
+  .ammo-toggle.active{
+    background:#8a6820;
+    color:#fff3c8;
+    border-color:#d6ad43;
+  }
+  .compact-counter{
+    min-width:0;
+    height:28px;
+    display:grid;
+    grid-template-columns:16px 1fr 16px;
+    align-items:center;
+    border:1px solid var(--line2);
+    border-radius:8px;
+    overflow:hidden;
+    background:#0d151f;
+  }
+  .compact-counter button{
+    height:100%;
+    padding:0;
+    border:0;
+    background:#172537;
+    color:#fff;
+    font-weight:900;
+  }
+  .compact-counter b{
+    text-align:center;
+    font-size:10px;
+    font-variant-numeric:tabular-nums;
+  }
+  .consumable-list{display:grid;gap:5px;padding:5px}
+  .consumable-row{
+    display:grid;
+    grid-template-columns:1fr 72px 78px 78px;
+    gap:5px;
+    align-items:center;
+  }
+  .consumable-name{
+    min-width:0;
+    font-size:11px;
+    font-weight:800;
+  }
+  .consumable-name span{
+    display:block;
+    margin-top:2px;
+    color:var(--muted);
+    font-size:9px;
+    font-weight:500;
+  }
+  .consumable-row .action-btn{padding:6px 4px;font-size:10px}
   .spell-corner{
     position:absolute;
     right:5px;
@@ -1382,6 +1443,7 @@
         </div>
         <div id="weaponRows"></div>
       </div>
+      <div class="ammo-strip" id="ammoStrip"></div>
     </div>
 
     <div class="combat-box">
@@ -1392,6 +1454,11 @@
         </div>
         <div id="cantripRows"></div>
       </div>
+    </div>
+
+    <div class="combat-box">
+      <div class="combat-title">Consumables</div>
+      <div class="consumable-list" id="consumableRows"></div>
     </div>
 
     <div class="card">
@@ -1502,7 +1569,7 @@
 </div>
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
-<script src="./spell-data.js?v=20260712alaric10"></script>
+<script src="./spell-data.js?v=20261011alaric1"></script>
 <script>
 const STORAGE_KEY = "bladesinger_alaric_pwa_v2";
 const CLOUD_SYNC_KEY = `${STORAGE_KEY}_cloud_sync`;
@@ -1653,6 +1720,27 @@ const DEFAULT_INVENTORY_ITEMS = Object.fromEntries(MAGIC_ITEMS.map(item => [
   item.id,
   { equipped:false, attuned:false }
 ]));
+const AMMUNITION_TYPES = [
+  {
+    id:"walloping",
+    label:"Wallop",
+    details:"On a hit, the target must succeed on a DC 10 Strength saving throw or be knocked Prone."
+  },
+  {
+    id:"explosive",
+    label:"Explode",
+    details:"On a hit, the bolt explodes and deals an extra 1d6 Fire damage."
+  },
+  {
+    id:"poison",
+    label:"Poison",
+    details:"On a hit, the target gains the Poisoned condition. A Poisoned creature has disadvantage on attack rolls and ability checks."
+  }
+];
+const POTION_TYPES = {
+  healingPotion:{ name:"Healing Potion", dice:"2d4", modifier:4 },
+  greaterHealingPotion:{ name:"Greater Healing", dice:"4d4", modifier:4 }
+};
 const EXTRA_SPELL_DATA = [
   {
     name:"Toll the Dead",
@@ -1713,7 +1801,7 @@ const DEFAULT_STATE = {
   spellFilters:{ search:"", class:"all", minLevel:0, maxLevel:9, sort:"level" },
   spellbookLimitsCollapsed:false,
   notes:DEFAULT_NOTES.map(note => ({ ...note })),
-  dataVersion:9,
+  dataVersion:10,
   coreRollType:"check",
   coreAdvMode:"-",
   skillAdvMode:"-",
@@ -1724,6 +1812,16 @@ const DEFAULT_STATE = {
     spellLevel:1,
     type:"Celestial"
   },
+  consumables:{
+    healingPotion:2,
+    greaterHealingPotion:2
+  },
+  ammunition:{
+    walloping:20,
+    explosive:20,
+    poison:20
+  },
+  activeAmmunition:"",
   attackModes:{
     handCrossbow:{ crit:false, adv:"-" },
     bonusCrossbow:{ crit:false, adv:"-" },
@@ -1854,6 +1952,17 @@ function ensureState(raw){
   raw.familiar.active = Boolean(raw.familiar.active);
   raw.familiar.spellLevel = Math.max(1, Number(raw.familiar.spellLevel || 1));
   raw.familiar.type = ["Celestial","Fey","Fiend"].includes(raw.familiar.type) ? raw.familiar.type : "Celestial";
+  raw.consumables = Object.assign({}, DEFAULT_STATE.consumables, raw.consumables || {});
+  Object.keys(DEFAULT_STATE.consumables).forEach(key => {
+    raw.consumables[key] = Math.max(0, Math.floor(Number(raw.consumables[key]) || 0));
+  });
+  raw.ammunition = Object.assign({}, DEFAULT_STATE.ammunition, raw.ammunition || {});
+  Object.keys(DEFAULT_STATE.ammunition).forEach(key => {
+    raw.ammunition[key] = Math.max(0, Math.floor(Number(raw.ammunition[key]) || 0));
+  });
+  raw.activeAmmunition = Object.prototype.hasOwnProperty.call(DEFAULT_STATE.ammunition, raw.activeAmmunition)
+    ? raw.activeAmmunition
+    : "";
   raw.dataVersion = Number(raw.dataVersion || 0);
   raw.slotCur = raw.slotCur || {};
   raw.hitDiceCur = Object.assign({}, DEFAULT_STATE.hitDiceCur, raw.hitDiceCur || {});
@@ -1900,6 +2009,18 @@ function ensureState(raw){
     raw.quickCombatButtons = ["owl",""];
     raw.familiar = { active:false, spellLevel:1, type:"Celestial" };
     raw.dataVersion = 9;
+  }
+  if (raw.dataVersion < 10){
+    const dexBase = 10 + abilityMod(raw.abilityScores.DEX);
+    const mageBase = 13 + abilityMod(raw.abilityScores.DEX);
+    const unarmoured = /^unarmou?red$/i.test(String(raw.armourName || "").trim());
+    if (unarmoured && [dexBase, mageBase].includes(Number(raw.customBaseAc))){
+      raw.customBaseAc = null;
+    }
+    if (unarmoured && Number(raw.armourLongPressBonus || 0) === 1 && isMagicItemActive("cloakOfProtection", raw)){
+      raw.armourLongPressBonus = 0;
+    }
+    raw.dataVersion = 10;
   }
   syncPreparedLists(raw);
   syncSlotsToLevel(raw);
@@ -2209,6 +2330,9 @@ function acBonusFromItems(){
 function crossbowMagicBonus(){
   return isMagicItemActive("magicCrossbowPlus1") ? 1 : 0;
 }
+function isUnarmoured(target = state){
+  return /^unarmou?red$/i.test(String(target.armourName || "").trim());
+}
 function hasInitiativeAdvantage(){
   return isMagicItemActive("weaponOfWarningRapier");
 }
@@ -2229,17 +2353,41 @@ function saveMod(abil){
 function getBaseAc(){
   const dex = abilityMod(state.abilityScores.DEX);
   let base = state.customBaseAc === null || state.customBaseAc === "" ? 10 + dex : Number(state.customBaseAc) || 0;
-  if (state.mageArmorActive) base = Math.max(base, 13 + dex);
+  if (state.mageArmorActive && isUnarmoured()) base = Math.max(base, 13 + dex);
   return base + Number(state.armourLongPressBonus || 0);
 }
 function currentAc(){
   let total = getBaseAc();
   total += acBonusFromItems();
-  if (state.bladesongActive) total += Math.max(1, abilityMod(state.abilityScores.INT));
+  if (state.bladesongActive) total += abilityMod(state.abilityScores.INT);
   if (state.shieldActive) total += 5;
   if (state.hasteActive) total += 2;
   if (state.shieldOfFaithActive) total += 2;
   return total;
+}
+function acBreakdownText(){
+  const dex = abilityMod(state.abilityScores.DEX);
+  const int = abilityMod(state.abilityScores.INT);
+  const configured = state.customBaseAc === null || state.customBaseAc === "" ? 10 + dex : Number(state.customBaseAc) || 0;
+  const mage = 13 + dex;
+  const base = getBaseAc();
+  const lines = [
+    `Normal base: ${state.customBaseAc === null || state.customBaseAc === "" ? `10 + DEX (${dex}) = ${10 + dex}` : `custom ${configured}`}`
+  ];
+  if (state.armourLongPressBonus) lines.push(`Base adjustment: ${fmtMod(Number(state.armourLongPressBonus))}`);
+  if (state.mageArmorActive){
+    lines.push(isUnarmoured() ? `Mage Armor calculation: 13 + DEX (${dex}) = ${mage}` : "Mage Armor: no effect while wearing armor");
+  }
+  lines.push(`Chosen base AC: ${base}`);
+  if (acBonusFromItems()) lines.push(`Cloak of Protection: +${acBonusFromItems()}`);
+  if (state.bladesongActive){
+    lines.push(`Bladesong: INT ${fmtMod(int)}`);
+  }
+  if (state.shieldActive) lines.push("Shield spell: +5");
+  if (state.hasteActive) lines.push("Haste: +2");
+  if (state.shieldOfFaithActive) lines.push("Shield of Faith: +2");
+  lines.push(`Total AC: ${currentAc()}`);
+  return lines.join("\n");
 }
 function currentInit(){
   return abilityMod(state.abilityScores.DEX) + Number(state.initBonus || 0);
@@ -2781,7 +2929,7 @@ function renderStatsPage(){
   document.getElementById("eqText").textContent = `Eq ${(((state.coins.cp || 0) / 100) + ((state.coins.sp || 0) / 10) + (state.coins.gp || 0)).toFixed(2)} gp`;
   document.getElementById("topChips").innerHTML = `
     <div class="chip green"><span>HP</span><b>${state.hpCurrent}/${maxHp()}</b></div>
-    <div class="chip blue"><span>AC</span><b>${currentAc()}</b></div>
+    <div class="chip blue" id="statsAcChip" role="button" tabindex="0"><span>AC</span><b>${currentAc()}</b></div>
     <div class="chip"><span>Init</span><b>${fmtMod(currentInit())}</b></div>
     <div class="chip"><span>Speed</span><b>${currentSpeed()}</b></div>
     <div class="chip gold"><span>Prof</span><b>${fmtMod(profBonus())}</b></div>
@@ -2838,7 +2986,7 @@ function renderCombatPage(){
   document.getElementById("combatTop").innerHTML = `
     <div class="combat-chip" id="hpChip"><span>HP</span><b>${state.hpCurrent}/${maxHp()}</b></div>
     <div class="combat-chip" id="thpChip"><span>THP</span><b>${state.thp}</b></div>
-    <div class="combat-chip"><span>AC</span><b>${currentAc()}</b></div>
+    <div class="combat-chip" id="combatAcChip" role="button" tabindex="0"><span>AC</span><b>${currentAc()}</b></div>
     <div class="combat-chip"><span>Init</span><b>${fmtMod(currentInit())}</b></div>
     <button class="action-btn blue" id="initRollBtn">INIT Roll</button>
   `;
@@ -2878,7 +3026,9 @@ function renderCombatPage(){
   renderSlots("slotGrid");
   renderSlots("slotGridBook");
   renderWeaponRows();
+  renderAmmunitionStrip();
   renderCantripRows();
+  renderConsumableRows();
   renderHistory();
 }
 function renderSpellbookPage(){
@@ -3397,6 +3547,39 @@ function renderWeaponRows(){
     host.appendChild(row);
   });
 }
+function renderAmmunitionStrip(){
+  const host = document.getElementById("ammoStrip");
+  if (!host) return;
+  host.innerHTML = `
+    <button class="icon-btn" id="ammoInfoBtn">i</button>
+    ${AMMUNITION_TYPES.map(ammo => `
+      <button class="mode-btn ammo-toggle ${state.activeAmmunition === ammo.id ? "active" : "inactive"}" data-ammo-toggle="${escapeAttr(ammo.id)}">${escapeHtml(ammo.label)}</button>
+    `).join("")}
+    ${AMMUNITION_TYPES.map(ammo => `
+      <div class="compact-counter" title="${escapeAttr(ammo.label)} ammunition">
+        <button data-ammo-adjust="${escapeAttr(ammo.id)}" data-delta="-1" aria-label="Remove one ${escapeAttr(ammo.label)} ammunition">-</button>
+        <b>${state.ammunition[ammo.id] || 0}</b>
+        <button data-ammo-adjust="${escapeAttr(ammo.id)}" data-delta="1" aria-label="Add one ${escapeAttr(ammo.label)} ammunition">+</button>
+      </div>
+    `).join("")}
+  `;
+}
+function renderConsumableRows(){
+  const host = document.getElementById("consumableRows");
+  if (!host) return;
+  host.innerHTML = Object.entries(POTION_TYPES).map(([id, potion]) => `
+    <div class="consumable-row">
+      <div class="consumable-name">${escapeHtml(potion.name)}<span>${escapeHtml(potion.dice)}+${potion.modifier}</span></div>
+      <div class="compact-counter">
+        <button data-consumable-adjust="${escapeAttr(id)}" data-delta="-1" aria-label="Remove one ${escapeAttr(potion.name)}">-</button>
+        <b>${state.consumables[id] || 0}</b>
+        <button data-consumable-adjust="${escapeAttr(id)}" data-delta="1" aria-label="Add one ${escapeAttr(potion.name)}">+</button>
+      </div>
+      <button class="action-btn blue" data-potion-use="${escapeAttr(id)}" data-use-mode="bonus">Bonus Action</button>
+      <button class="action-btn green" data-potion-use="${escapeAttr(id)}" data-use-mode="action">Action Max</button>
+    </div>
+  `).join("");
+}
 function renderCantripRows(){
   const host = document.getElementById("cantripRows");
   host.innerHTML = "";
@@ -3487,7 +3670,18 @@ function bindButtons(){
   document.getElementById("levelUpBtn").onclick = levelUp;
   document.getElementById("levelDownBtn").onclick = levelDown;
   document.getElementById("initRollBtn").onclick = rollInitiative;
-  document.getElementById("bladesongInfoBtn").onclick = () => openResult("Bladesong", "Bonus action.\nAdds INT mod to AC.\nSpeed +10 ft.\nAdvantage on Acrobatics checks.\nAdd INT mod to concentration saves.");
+  ["statsAcChip","combatAcChip"].forEach(id => {
+    const chip = document.getElementById(id);
+    if (!chip) return;
+    chip.onclick = () => openResult("AC Breakdown", acBreakdownText());
+    chip.onkeydown = event => {
+      if (event.key === "Enter" || event.key === " "){
+        event.preventDefault();
+        openResult("AC Breakdown", acBreakdownText());
+      }
+    };
+  });
+  document.getElementById("bladesongInfoBtn").onclick = () => openResult("Bladesong", "Bonus action. While not wearing medium or heavy armor or using a shield, add your INT modifier to AC, gain +10 ft speed, gain advantage on Acrobatics checks, and add your INT modifier to concentration saves.");
   document.getElementById("bladesongBtn").onclick = toggleBladesong;
   document.getElementById("concentrationCheckBtn").onclick = runConcentrationCheck;
   document.getElementById("concentrationActiveBtn").onclick = () => {
@@ -3514,6 +3708,20 @@ function bindButtons(){
   document.getElementById("damageBtn").onclick = () => applyAmountAction("damage");
   document.getElementById("healBtn").onclick = () => applyAmountAction("heal");
   document.getElementById("thpBtn").onclick = () => applyAmountAction("thp");
+  const ammoInfoBtn = document.getElementById("ammoInfoBtn");
+  if (ammoInfoBtn) ammoInfoBtn.onclick = openAmmunitionInfo;
+  document.querySelectorAll("[data-ammo-toggle]").forEach(button => {
+    button.onclick = () => toggleAmmunition(button.dataset.ammoToggle);
+  });
+  document.querySelectorAll("[data-ammo-adjust]").forEach(button => {
+    button.onclick = () => adjustAmmunition(button.dataset.ammoAdjust, Number(button.dataset.delta));
+  });
+  document.querySelectorAll("[data-consumable-adjust]").forEach(button => {
+    button.onclick = () => adjustConsumable(button.dataset.consumableAdjust, Number(button.dataset.delta));
+  });
+  document.querySelectorAll("[data-potion-use]").forEach(button => {
+    button.onclick = () => usePotion(button.dataset.potionUse, button.dataset.useMode);
+  });
   document.getElementById("clearHistoryBtn").onclick = () => { state.history = []; saveState(); };
   document.getElementById("editKnownBtn").onclick = openKnownEditor;
   const editBonusSpellsBtn = document.getElementById("editBonusSpellsBtn");
@@ -3738,6 +3946,58 @@ function flashDelta(id, text, kind){
   host.appendChild(node);
   setTimeout(() => node.remove(), 900);
 }
+function openAmmunitionInfo(){
+  const details = AMMUNITION_TYPES.map(ammo => `${ammo.label}: ${ammo.details}`).join("\n\n");
+  openResult("Special Ammunition", `${details}\n\nCost: 25 gp for 20 pieces. Toggle one type to apply it to the next Hand Crossbow or Bonus Crossbow roll. The selected ammunition is consumed and switched off when fired.`);
+}
+function adjustAmmunition(id, delta){
+  if (!Object.prototype.hasOwnProperty.call(state.ammunition, id)) return;
+  state.ammunition[id] = Math.max(0, Math.floor(Number(state.ammunition[id] || 0) + delta));
+  if (!state.ammunition[id] && state.activeAmmunition === id) state.activeAmmunition = "";
+  saveState();
+}
+function toggleAmmunition(id){
+  if (!Object.prototype.hasOwnProperty.call(state.ammunition, id)) return;
+  if (state.activeAmmunition === id){
+    state.activeAmmunition = "";
+    saveState();
+    return;
+  }
+  if (!state.ammunition[id]){
+    openResult("Special Ammunition", `No ${AMMUNITION_TYPES.find(ammo => ammo.id === id)?.label || id} ammunition remaining.`);
+    return;
+  }
+  state.activeAmmunition = id;
+  saveState();
+}
+function adjustConsumable(id, delta){
+  if (!Object.prototype.hasOwnProperty.call(state.consumables, id)) return;
+  state.consumables[id] = Math.max(0, Math.floor(Number(state.consumables[id] || 0) + delta));
+  saveState();
+}
+function usePotion(id, mode){
+  const potion = POTION_TYPES[id];
+  if (!potion) return;
+  if (!state.consumables[id]){
+    openResult(potion.name, "None remaining.");
+    return;
+  }
+  const dice = parseDiceSpec(potion.dice);
+  const result = mode === "action"
+    ? { rolls:Array.from({ length:dice.count }, () => dice.die), total:dice.count * dice.die }
+    : rollSpec(potion.dice);
+  const rolledHealing = result.total + potion.modifier;
+  const before = state.hpCurrent;
+  state.hpCurrent = clamp(state.hpCurrent + rolledHealing, 0, maxHp());
+  const gained = state.hpCurrent - before;
+  state.consumables[id] -= 1;
+  const useLabel = mode === "action" ? "Action (maximum)" : "Bonus Action";
+  const text = `${useLabel}\nHealing: ${potion.dice.toUpperCase()}+${potion.modifier} -> ${result.rolls.join(" + ")}+${potion.modifier} = ${rolledHealing}\nHP +${gained} -> ${state.hpCurrent}/${maxHp()}\nRemaining: ${state.consumables[id]}`;
+  saveState();
+  openResult(potion.name, text);
+  flashDelta("hpChip", `+${gained}`, "gain");
+  pushHistory(`${potion.name} (${useLabel}): ${text.replace(/\n/g, " | ")}`);
+}
 function applyAmountAction(type){
   const input = document.getElementById("amountInput");
   const amount = Math.max(0, Number(input.value) || 0);
@@ -3809,6 +4069,19 @@ function rollWeapon(id){
   const critApplied = mode.crit || attack.isCrit;
   const critBonus = critApplied ? damage.max : 0;
   const baseTotal = damage.total + damageMod + critBonus;
+  const ammoId = state.activeAmmunition && state.ammunition[state.activeAmmunition] > 0 ? state.activeAmmunition : "";
+  const ammo = AMMUNITION_TYPES.find(item => item.id === ammoId);
+  let ammoDamage = 0;
+  let ammoText = "";
+  if (ammoId === "explosive"){
+    const explosive = rollSpec("1d6");
+    ammoDamage = explosive.total;
+    ammoText = `\nExplosive: 1d6 -> ${explosive.rolls.join(" + ")} = ${ammoDamage} Fire; explodes on impact`;
+  }else if (ammoId === "walloping"){
+    ammoText = "\nWalloping: DC 10 Strength save or the target is knocked Prone";
+  }else if (ammoId === "poison"){
+    ammoText = "\nPoison: target gains the Poisoned condition (disadvantage on attack rolls and ability checks)";
+  }
   let cmeTotal = 0;
   let cmeText = "";
   let text = `1d20${hitMod >= 0 ? "+" : ""}${hitMod} - ${attack.text}${hitMod >= 0 ? "+" : ""}${hitMod} = ${toHit}\n`;
@@ -3819,10 +4092,15 @@ function rollWeapon(id){
     cmeTotal = cme.total;
     cmeText = `\n+ 2d8 within 15 ft - ${cme.rolls.join(" + ")} = ${cme.total} Acid/Cold/Fire/Lightning`;
   }
-  text += `${cmeText}\nDamage: ${baseTotal} Piercing${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
+  text += `${cmeText}${ammoText}\nDamage: ${baseTotal} Piercing${ammoDamage ? ` + ${ammoDamage} Fire` : ""}${cmeTotal ? ` + ${cmeTotal} Acid/Cold/Fire/Lightning` : ""}`;
   const title = id === "bonusCrossbow" ? "Bonus Crossbow" : "Hand Crossbow";
+  if (ammo){
+    state.ammunition[ammo.id] = Math.max(0, state.ammunition[ammo.id] - 1);
+    state.activeAmmunition = "";
+  }
   openResult(title, text);
   pushHistory(`${title}: ${text.replace(/\n/g, " | ")}`);
+  saveState();
 }
 function castFindFamiliar(spell){
   openModal(`
@@ -4016,6 +4294,10 @@ function castMageArmor(spell){
     openResult(spell.name, "Mage Armor toggled off.");
     pushHistory("Mage Armor toggled off.");
     saveState();
+    return;
+  }
+  if (!isUnarmoured()){
+    openResult(spell.name, "Mage Armor has no effect while you are wearing armor.");
     return;
   }
   if (!spendSlotForSpell(1, spell)) return saveState();
@@ -4313,7 +4595,7 @@ function rollInitiative(){
   pushHistory(`Initiative: ${text}`);
 }
 function runConcentrationCheck(){
-  const bonus = saveMod("CON") + (state.bladesongActive ? Math.max(1, abilityMod(state.abilityScores.INT)) : 0);
+  const bonus = saveMod("CON") + (state.bladesongActive ? abilityMod(state.abilityScores.INT) : 0);
   const roll = rollD20(state.concentrationMode);
   const total = roll.chosen + bonus;
   const text = total >= 10
@@ -4335,7 +4617,7 @@ function toggleBladesong(){
   }
   state.bladesongActive = true;
   state.bladesongUsesSpent += 1;
-  openResult("Bladesong Active", `AC +${Math.max(1, abilityMod(state.abilityScores.INT))}\nSpeed +10 ft\nAdvantage on Acrobatics checks\nAdd INT mod to concentration saves`);
+  openResult("Bladesong Active", `AC ${fmtMod(abilityMod(state.abilityScores.INT))}\nSpeed +10 ft\nAdvantage on Acrobatics checks\nAdd INT mod to concentration saves`);
   pushHistory("Bladesong activated.");
   saveState();
 }
@@ -4545,7 +4827,7 @@ function openTopEditor(){
     fields:[
       { name:"name", label:"Name", type:"text", value:state.name },
       { name:"hpCurrent", label:"Current HP", type:"number", value:state.hpCurrent },
-      { name:"baseAc", label:"Base AC", type:"number", value:state.customBaseAc == null ? getBaseAc() : state.customBaseAc },
+      { name:"baseAc", label:"Base AC before temporary effects", type:"number", value:state.customBaseAc == null ? 10 + abilityMod(state.abilityScores.DEX) : state.customBaseAc },
       { name:"initBonus", label:"Init Bonus", type:"number", value:state.initBonus },
       { name:"speed", label:"Speed", type:"number", value:state.speed },
       { name:"prof", label:"Proficiency Bonus", type:"number", value:profBonus() }
@@ -5052,7 +5334,7 @@ function parseNumberOrNull(value){
 
 render();
 if ("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20260926animateadv").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=20261011alaric1").catch(() => {});
 }
 </script>
 </body>
