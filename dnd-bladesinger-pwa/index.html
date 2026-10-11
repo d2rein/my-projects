@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=430, initial-scale=1, viewport-fit=cover">
 <title>DND - Alaric</title>
 <link rel="icon" href="./icon-192.png">
-<link rel="manifest" href="./manifest.webmanifest?v=20261011alaric1">
+<link rel="manifest" href="./manifest.webmanifest?v=20261011alaric2">
 <meta name="theme-color" content="#09111a">
 <style>
   :root{
@@ -851,6 +851,60 @@
     box-shadow:0 26px 70px rgba(0,0,0,.45);
     padding:12px;
   }
+  .damage-summary-grid{
+    display:grid;
+    grid-template-columns:1.25fr .7fr 1fr;
+    gap:5px;
+    margin-bottom:7px;
+  }
+  .damage-summary-cell{
+    min-width:0;
+    padding:6px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:#0b121a;
+    text-align:center;
+  }
+  .damage-summary-cell span{
+    display:block;
+    color:var(--muted);
+    font-size:8px;
+    font-weight:800;
+    text-transform:uppercase;
+  }
+  .damage-summary-cell b{
+    display:block;
+    margin-top:2px;
+    font-size:11px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .damage-reactions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+  .damage-reaction-btn{
+    min-height:48px;
+    padding:5px;
+    display:flex;
+    flex-direction:column;
+    line-height:1.15;
+    font-size:10px;
+  }
+  .damage-reaction-btn small{font-size:8px;color:var(--muted)}
+  .damage-reaction-btn.active small{color:#fff3c8}
+  .song-defense-control{
+    display:grid;
+    grid-template-columns:1fr 48px;
+    gap:4px;
+  }
+  .song-defense-control select{min-width:0;padding:4px;font-size:10px}
+  .damage-preview{
+    margin-top:7px;
+    padding:7px 8px;
+    border:1px solid var(--line2);
+    border-radius:9px;
+    background:#101923;
+    font-size:11px;
+    text-align:center;
+  }
   .modal-head{
     display:flex;
     justify-content:space-between;
@@ -1569,7 +1623,7 @@
 </div>
 <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none">
 
-<script src="./spell-data.js?v=20261011alaric1"></script>
+<script src="./spell-data.js?v=20261011alaric2"></script>
 <script>
 const STORAGE_KEY = "bladesinger_alaric_pwa_v2";
 const CLOUD_SYNC_KEY = `${STORAGE_KEY}_cloud_sync`;
@@ -3998,29 +4052,170 @@ function usePotion(id, mode){
   flashDelta("hpChip", `+${gained}`, "gain");
   pushHistory(`${potion.name} (${useLabel}): ${text.replace(/\n/g, " | ")}`);
 }
+function concentrationSaveBonus(){
+  return saveMod("CON") + (state.bladesongActive ? abilityMod(state.abilityScores.INT) : 0);
+}
+function concentrationDcForDamage(damage){
+  return damage > 0 ? Math.max(10, Math.floor(damage / 2)) : 0;
+}
+function d20SuccessChance(dc, bonus, mode = "-"){
+  if (!dc) return 1;
+  const minimumRoll = dc - bonus;
+  const successes = minimumRoll <= 1 ? 20 : minimumRoll > 20 ? 0 : 21 - minimumRoll;
+  const normal = successes / 20;
+  if (mode === "adv") return 1 - ((1 - normal) ** 2);
+  if (mode === "dis") return normal ** 2;
+  return normal;
+}
+function formatChance(chance){
+  const percent = chance * 100;
+  return `${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`;
+}
+function lowestAvailableSpellSlot(minimum = 1){
+  for (let level = minimum; level <= 9; level++){
+    if ((state.slotCur[level] || 0) > 0) return level;
+  }
+  return 0;
+}
+function damageAfterReaction(draft){
+  if (draft.reaction === "shield") return 0;
+  if (draft.reaction === "song") return Math.max(0, draft.damage - (5 * draft.songLevel));
+  if (draft.reaction === "absorb") return Math.floor(draft.damage / 2);
+  return draft.damage;
+}
+function openDamageReactionSheet(damage){
+  const draft = {
+    damage,
+    reaction:"none",
+    songLevel:lowestAvailableSpellSlot(1) || 1
+  };
+  renderDamageReactionSheet(draft);
+}
+function renderDamageReactionSheet(draft){
+  const finalDamage = damageAfterReaction(draft);
+  const concentrationOn = Boolean(state.concentrationActive);
+  const dc = concentrationOn ? concentrationDcForDamage(finalDamage) : 0;
+  const bonus = concentrationSaveBonus();
+  const neededRoll = dc ? dc - bonus : 0;
+  const neededLabel = neededRoll <= 1 ? "1+" : neededRoll > 20 ? "Impossible" : `${neededRoll}+`;
+  const chance = concentrationOn && dc ? formatChance(d20SuccessChance(dc, bonus, state.concentrationMode)) : "No roll";
+  const modeLabel = state.concentrationMode === "adv" ? "ADV" : state.concentrationMode === "dis" ? "DIS" : "Normal";
+  const shieldSlot = state.shieldActive ? 0 : lowestAvailableSpellSlot(1);
+  const absorbSlot = lowestAvailableSpellSlot(1);
+  const songAvailable = state.bladesongActive && (state.slotCur[draft.songLevel] || 0) > 0;
+  const songOptions = Array.from({ length:9 }, (_, index) => index + 1)
+    .filter(level => (state.slotCur[level] || 0) > 0)
+    .map(level => `<option value="${level}" ${level === draft.songLevel ? "selected" : ""}>L${level}</option>`)
+    .join("");
+  openModal(`
+    <div class="modal-head">
+      <div class="modal-title">Incoming Damage: ${draft.damage}</div>
+      <button class="small-btn" data-close>Cancel</button>
+    </div>
+    <div class="damage-summary-grid">
+      <div class="damage-summary-cell"><span>Concentration</span><b>${escapeHtml(state.concentrationActive || "None")}</b></div>
+      <div class="damage-summary-cell"><span>Required</span><b>${dc ? `DC ${dc} / ${neededLabel}` : "-"}</b></div>
+      <div class="damage-summary-cell"><span>Your Roll</span><b>${dc ? `1d20${fmtMod(bonus)} ${modeLabel}` : "-"}</b></div>
+    </div>
+    <div class="damage-reactions">
+      <button class="mode-btn damage-reaction-btn ${draft.reaction === "shield" ? "active" : "inactive"}" id="damageShieldBtn" ${shieldSlot || state.shieldActive ? "" : "disabled"}>
+        Shield: AC ${state.shieldActive ? currentAc() : currentAc() + 5}
+        <small>${state.shieldActive ? "Already active" : shieldSlot ? `Uses L${shieldSlot}` : "No slot"}</small>
+      </button>
+      <div class="song-defense-control">
+        <button class="mode-btn damage-reaction-btn ${draft.reaction === "song" ? "active" : "inactive"}" id="damageSongBtn" ${songAvailable ? "" : "disabled"}>
+          Song -${5 * draft.songLevel}
+          <small>${state.bladesongActive ? (songAvailable ? `Uses L${draft.songLevel}` : "No selected slot") : "Requires Bladesong"}</small>
+        </button>
+        <select id="damageSongLevel" aria-label="Song of Defense spell level" ${songOptions ? "" : "disabled"}>${songOptions || `<option>L-</option>`}</select>
+      </div>
+      <button class="mode-btn damage-reaction-btn ${draft.reaction === "absorb" ? "active" : "inactive"}" id="damageAbsorbBtn" ${absorbSlot ? "" : "disabled"}>
+        Absorb Elements
+        <small>Acid / Cold / Fire / Lightning / Thunder${absorbSlot ? ` - L${absorbSlot}` : " - No slot"}</small>
+      </button>
+    </div>
+    <div class="damage-preview">Final damage: <b>${finalDamage}</b>${concentrationOn ? ` &nbsp; Concentration: <b>${dc ? `DC ${dc}, ${chance} success` : "no roll"}</b>` : " &nbsp; No concentration active"}</div>
+    <div class="modal-actions">
+      <button class="action-btn red" id="confirmDamageBtn">Apply ${finalDamage} Damage</button>
+      <button class="action-btn gold" data-close>Cancel</button>
+    </div>
+  `);
+  const shieldButton = document.getElementById("damageShieldBtn");
+  if (shieldButton) shieldButton.onclick = () => {
+    draft.reaction = draft.reaction === "shield" ? "none" : "shield";
+    renderDamageReactionSheet(draft);
+  };
+  const songButton = document.getElementById("damageSongBtn");
+  if (songButton) songButton.onclick = () => {
+    draft.reaction = draft.reaction === "song" ? "none" : "song";
+    renderDamageReactionSheet(draft);
+  };
+  const songLevel = document.getElementById("damageSongLevel");
+  if (songLevel) songLevel.onchange = () => {
+    draft.songLevel = Number(songLevel.value) || draft.songLevel;
+    if (state.bladesongActive) draft.reaction = "song";
+    renderDamageReactionSheet(draft);
+  };
+  const absorbButton = document.getElementById("damageAbsorbBtn");
+  if (absorbButton) absorbButton.onclick = () => {
+    draft.reaction = draft.reaction === "absorb" ? "none" : "absorb";
+    renderDamageReactionSheet(draft);
+  };
+  document.getElementById("confirmDamageBtn").onclick = () => commitIncomingDamage(draft);
+}
+function commitIncomingDamage(draft){
+  const finalDamage = damageAfterReaction(draft);
+  let slotLevel = 0;
+  let reactionText = "No reaction";
+  if (draft.reaction === "shield"){
+    if (!state.shieldActive){
+      slotLevel = lowestAvailableSpellSlot(1);
+      if (!slotLevel) return renderDamageReactionSheet(draft);
+      state.slotCur[slotLevel] -= 1;
+      state.shieldActive = true;
+    }
+    reactionText = `Shield${slotLevel ? ` (L${slotLevel})` : " already active"}: AC ${currentAc()}, damage prevented`;
+  }else if (draft.reaction === "song"){
+    slotLevel = draft.songLevel;
+    if (!state.bladesongActive || (state.slotCur[slotLevel] || 0) <= 0) return renderDamageReactionSheet(draft);
+    state.slotCur[slotLevel] -= 1;
+    reactionText = `Song of Defense (L${slotLevel}): reduced damage by ${Math.min(draft.damage, 5 * slotLevel)}`;
+  }else if (draft.reaction === "absorb"){
+    slotLevel = lowestAvailableSpellSlot(1);
+    if (!slotLevel) return renderDamageReactionSheet(draft);
+    state.slotCur[slotLevel] -= 1;
+    reactionText = `Absorb Elements (L${slotLevel}): applicable elemental damage halved`;
+  }
+  let remaining = finalDamage;
+  const absorbedThp = Math.min(state.thp, remaining);
+  state.thp -= absorbedThp;
+  remaining -= absorbedThp;
+  state.hpCurrent = clamp(state.hpCurrent - remaining, 0, maxHp());
+  const concentrationResult = runDamageConcentrationCheck(finalDamage);
+  const text = `${reactionText}\nDamage: ${draft.damage} -> ${finalDamage}\n-${absorbedThp} THP, -${remaining} HP\nHP ${state.hpCurrent}/${maxHp()}, THP ${state.thp}${concentrationResult ? `\n${concentrationResult}` : ""}`;
+  closeModal();
+  saveState();
+  openResult("Damage Applied", text);
+  pushHistory(`Damage: ${text.replace(/\n/g, " | ")}`);
+}
+function runDamageConcentrationCheck(damage){
+  if (!state.concentrationActive || damage <= 0) return "";
+  const spellName = state.concentrationActive;
+  const dc = concentrationDcForDamage(damage);
+  const bonus = concentrationSaveBonus();
+  const roll = rollD20(state.concentrationMode);
+  const total = roll.chosen + bonus;
+  const success = total >= dc;
+  if (!success) setConcentrationState("");
+  return `Concentration (${spellName}): ${roll.text}${fmtMod(bonus)} = ${total} vs DC ${dc} - ${success ? "SUCCESS" : "FAIL; concentration ended"}`;
+}
 function applyAmountAction(type){
   const input = document.getElementById("amountInput");
   const amount = Math.max(0, Number(input.value) || 0);
   input.value = "";
   if (!amount) return;
   if (type === "damage"){
-    let remaining = amount;
-    const absorbed = Math.min(state.thp, remaining);
-    if (absorbed){
-      state.thp -= absorbed;
-      remaining -= absorbed;
-      flashDelta("thpChip", `-${absorbed}`, "loss");
-    }
-    if (remaining){
-      state.hpCurrent = clamp(state.hpCurrent - remaining, 0, maxHp());
-    }
-    saveState();
-    if (absorbed) flashDelta("thpChip", `-${absorbed}`, "loss");
-    if (remaining) flashDelta("hpChip", `-${remaining}`, "loss");
-    pushHistory(`Damage: -${absorbed} THP, -${remaining} HP -> ${state.hpCurrent}/${maxHp()} HP, ${state.thp} THP`);
-    if (state.concentrationActive){
-      runConcentrationCheck();
-    }
+    openDamageReactionSheet(amount);
     return;
   }
   if (type === "heal"){
@@ -5334,7 +5529,7 @@ function parseNumberOrNull(value){
 
 render();
 if ("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js?v=20261011alaric1").catch(() => {});
+  navigator.serviceWorker.register("./sw.js?v=20261011alaric2").catch(() => {});
 }
 </script>
 </body>
