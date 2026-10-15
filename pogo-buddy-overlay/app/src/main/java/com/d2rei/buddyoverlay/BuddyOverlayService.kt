@@ -59,6 +59,8 @@ class BuddyOverlayService : LifecycleService() {
             if (isSnapMode()) ensureSnapBubble()
             if (intent?.action == PostcardCaptureService.ACTION_CAPTURED) return
             val success = intent?.getBooleanExtra(PostcardCaptureService.EXTRA_SUCCESS, false) == true
+            refreshSnapLabel()
+            if (success) animateSnapReceipt()
             val message = intent?.getStringExtra(PostcardCaptureService.EXTRA_MESSAGE)
                 ?: if (success) "Postcard sent" else "Postcard capture failed"
             Toast.makeText(this@BuddyOverlayService, message, Toast.LENGTH_LONG).show()
@@ -129,6 +131,7 @@ class BuddyOverlayService : LifecycleService() {
         tickJob = lifecycleScope.launch {
             while (true) {
                 refreshState()
+                refreshSnapLabel()
                 delay(1_000L)
             }
         }
@@ -237,7 +240,7 @@ class BuddyOverlayService : LifecycleService() {
             y = rawY.coerceIn(0, (resources.displayMetrics.heightPixels - size).coerceAtLeast(0))
         }
         val snap = TextView(this).apply {
-            text = "SNAP"
+            text = RecentSnapTracker.label(RecentSnapTracker.count(this@BuddyOverlayService))
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             textSize = 11f
@@ -254,6 +257,24 @@ class BuddyOverlayService : LifecycleService() {
         windowManager.addView(snap, params)
         snapView = snap
         bubbleParams = params
+    }
+
+    private fun refreshSnapLabel() {
+        val snap = snapView ?: return
+        val count = RecentSnapTracker.count(this)
+        snap.text = RecentSnapTracker.label(count)
+        snap.contentDescription = if (count > 0) {
+            "$count postcard snaps received by the desktop in the last hour. Tap to capture another."
+        } else {
+            "Capture postcard. Long press to return to buddy tracker."
+        }
+    }
+
+    private fun animateSnapReceipt() {
+        val snap = snapView ?: return
+        snap.animate().scaleX(1.14f).scaleY(1.14f).setDuration(110L).withEndAction {
+            snap.animate().scaleX(1f).scaleY(1f).setDuration(170L).start()
+        }.start()
     }
 
     private fun ensureExpanded(uiState: OverlayUiState) {

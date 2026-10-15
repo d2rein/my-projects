@@ -212,6 +212,7 @@ class PostcardCaptureService : Service() {
                 val response = (if (code in 200..299) connection.inputStream else connection.errorStream)
                     ?.bufferedReader()?.use { it.readText() }.orEmpty()
                 if (code !in 200..299) error("Receiver returned HTTP $code${if (response.isBlank()) "" else ": $response"}")
+                RecentSnapTracker.record(this)
                 broadcastResult(this, true, if (response.isBlank()) "Postcard sent" else response)
                 return true
             } finally {

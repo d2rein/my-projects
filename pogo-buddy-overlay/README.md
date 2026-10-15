@@ -28,6 +28,8 @@ The camera button in the expanded overlay switches to a red **SNAP** bubble. Tap
 
 The screenshot is encoded without entering the phone gallery. It is held temporarily in app-private storage until the desktop acknowledges it, then deleted. Failed uploads remain queued and are retried when the capture service next starts or another postcard is captured. SNAP returns as soon as the screenshot is captured; desktop OCR and geocoding continue asynchronously. **Return to buddy layout** in Settings is the recovery control if the SNAP bubble is unavailable.
 
+After the desktop acknowledges a capture, the SNAP label becomes the number of captures received during the last hour. The count is persisted across service restarts, updates immediately after an acknowledgement, and returns to SNAP when no acknowledgements remain in the one-hour window. It confirms receipt and safe queueing only; OCR, duplicate detection, and geocoding may still be running on the desktop.
+
 Desktop setup is documented in `../postcard-receiver/README.md`. Successful captures feed the clustered map in `../postcards/`.
 
 ## Notes
