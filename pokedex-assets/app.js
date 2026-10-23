@@ -302,6 +302,7 @@ function initialize() {
     ? window.POKEDEX_SEED_CSV
     : (window.POKEDEX_SEED_CSV?.value || "");
   rawRows = parseCsv(csv).map(buildRawEntry).filter(Boolean);
+  applyFormCatalog();
   buildCollections();
   migrateLegacyEntryIds();
   seedStateFromData();
@@ -395,6 +396,56 @@ function buildRawEntry(parts, index) {
     releasedDateNote: /\d/.test(note) && !/regional|unreleased|not in pokedex/i.test(note) ? note : "",
     spriteHint: buildSpriteHint(rawName, formName)
   };
+}
+
+function applyFormCatalog() {
+  for (const group of window.POKEDEX_FORM_CATALOG || []) {
+    const rows = rawRows.filter(row => row.dex === group.dex && !row.isMega);
+    const base = rows[0];
+    if (!base) continue;
+    const correctedNames = { 669: "Flab\u00e9b\u00e9", 892: "Urshifu", 931: "Squawkabilly" };
+    if (correctedNames[group.dex]) {
+      base.baseName = correctedNames[group.dex];
+      base.rawName = correctedNames[group.dex];
+    }
+    if (group.types && !base.type1) [base.type1, base.type2] = group.types;
+
+    (group.existing || []).forEach((form, index) => {
+      const row = rows[index + 1];
+      if (!row) return;
+      const spec = typeof form === "string" ? { name: form } : form;
+      row.catalogFormName = spec.name;
+      row.catalogSpriteSlug = spec.sprite || "";
+      row.catalogOrder = index;
+      if (row.rawName === base.rawName && row.type1 === base.type1 && row.type2 === base.type2) {
+        row.rawName = `${base.baseName}#${spec.name}`;
+        row.formName = spec.name;
+      }
+    });
+
+    (group.add || []).forEach((form, index) => {
+      const spec = typeof form === "string" ? { name: form } : form;
+      const [type1, type2] = spec.types || [base.type1, base.type2];
+      rawRows.push({
+        ...base,
+        id: `raw::${group.dex}::${base.baseName}#${spec.name}::${type1 || "-"}::${type2 || "-"}`,
+        rawName: `${base.baseName}#${spec.name}`,
+        formName: spec.name,
+        type1: type1 || "",
+        type2: type2 || "",
+        note: spec.unreleased ? "Unreleased" : "",
+        rawCode: "9",
+        seedStatus: "missing",
+        isUnreleased: !!spec.unreleased,
+        isRegional: false,
+        isCatalogAddition: true,
+        catalogFormName: spec.name,
+        catalogSpriteSlug: spec.sprite || "",
+        catalogOrder: (group.existing || []).length + index,
+        spriteHint: spec.name
+      });
+    });
+  }
 }
 
 function normalizeType(value) {
@@ -553,7 +604,9 @@ function buildSpeciesCollections(canonicalSelector) {
   }
 
   builtCanonicalEntries.sort((a, b) => a.dex - b.dex);
-  builtAltEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
+  builtAltEntries.sort((a, b) => a.dex - b.dex ||
+    (a.catalogOrder != null && b.catalogOrder != null ? a.catalogOrder - b.catalogOrder : 0) ||
+    cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
   builtMegaEntries.sort((a, b) => a.dex - b.dex || cleanDisplayName(a).localeCompare(cleanDisplayName(b)));
 
   return {
@@ -676,7 +729,7 @@ function toCanonicalEntry(row, groupRows) {
     region: row.region,
     note: row.note,
     isRegional: groupRows.some(item => item.isRegional),
-    isUnreleased: groupRows.some(item => item.isUnreleased),
+    isUnreleased: row.isUnreleased,
     spriteHint: "",
     familyGroup: row.region,
     importedBaseStatus: aggregateCanonicalStatus(groupRows)
@@ -684,7 +737,7 @@ function toCanonicalEntry(row, groupRows) {
 }
 
 function toAltEntry(row, canonicalEntry, idx) {
-  const fallbackFormName = row.formName || buildAltLabel(row, canonicalEntry);
+  const fallbackFormName = row.catalogFormName || row.formName || buildAltLabel(row, canonicalEntry);
   return {
     id: `alt::${row.dex}::${idx}::${row.rawName}::${row.type1 || "-"}::${row.type2 || "-"}`,
     dex: row.dex,
@@ -692,6 +745,10 @@ function toAltEntry(row, canonicalEntry, idx) {
     rawName: row.rawName,
     baseName: row.baseName,
     formName: fallbackFormName,
+    catalogFormName: row.catalogFormName || "",
+    catalogSpriteSlug: row.catalogSpriteSlug || "",
+    catalogOrder: row.catalogOrder,
+    isCatalogAddition: !!row.isCatalogAddition,
     type1: row.type1,
     type2: row.type2,
     region: row.region,
@@ -1538,7 +1595,7 @@ function getDirectEvolutionTargets(entry) {
     if (predecessor !== entry.dex) continue;
     const dex = Number(dexText);
     const requiredFamily = REGIONAL_ONLY_EVOLUTIONS[dex];
-    if (requiredFamily && sourceFamily !== requiredFamily && !(dex === 902 && !entry.isAltForm)) continue;
+    if (requiredFamily && sourceFamily !== requiredFamily) continue;
     const forms = speciesEntriesByDex.get(dex) || [];
     const ordinary = forms.find(candidate => !candidate.isAltForm);
     const matching = forms.find(candidate => getFormFamilyKey(candidate) === sourceFamily && candidate.isAltForm);
@@ -1560,6 +1617,7 @@ function getDirectEvolutionTargets(entry) {
 }
 
 function getFormFamilyKey(entry) {
+  if (entry.dex === 550 && /white-striped/i.test(entry.formName)) return "white-striped";
   const slug = getSpecialSpriteSlug(entry, "pokemon");
   if (!slug) return "";
   if (slug.includes("-alolan")) return "alolan";
@@ -2160,7 +2218,7 @@ function handleDexSpriteError(img) {
 
 function getSpecialSpriteSlug(entry, mode) {
   if (entry.isAltForm) {
-    return ALT_FORM_SPRITE_SLUGS[entry.id] || getHeuristicAltSpriteSlug(entry);
+    return ALT_FORM_SPRITE_SLUGS[entry.id] || entry.catalogSpriteSlug || (entry.isCatalogAddition ? "" : getHeuristicAltSpriteSlug(entry));
   }
   if (mode === "gmax") {
     return `${slugify(entry.baseName)}-gmax`;
@@ -2203,6 +2261,9 @@ function slugify(value) {
 }
 
 function cleanDisplayName(entry) {
+  if (entry.isAltForm && entry.catalogFormName && !entry.rawName.includes("#")) {
+    return `${entry.baseName} ${entry.catalogFormName}`;
+  }
   return entry.rawName.replaceAll("#", " ");
 }
 
