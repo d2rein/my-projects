@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Midterm 2026 — Forecast Board</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .market-strip{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-top:1px solid var(--line);margin-top:20px;padding-top:12px}.market-strip>div{display:flex;flex-direction:column;gap:2px}.market-strip span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}.market-strip strong{font-size:1.2rem}.market-strip svg{width:100%;height:56px}.market-strip a,.trend-row a{color:var(--gold);font-size:.65rem;text-decoration:none}.trend-row small{color:#777c82;font-size:.61rem}.chart-grid{stroke:#34383d;stroke-width:1;vector-effect:non-scaling-stroke}.chart-grid.reference{stroke:#f3f0e999;stroke-dasharray:4 4}.chart-axis{fill:#8f949a;font:9px Inter,system-ui,sans-serif}.drawer-section{border-top:1px solid var(--line);margin-top:20px;padding-top:17px}.drawer-section h3{margin:2px 0 0;font-family:Georgia,serif;font-size:1.25rem;font-weight:500}.drawer-section-head{display:flex;align-items:end;justify-content:space-between;gap:16px}.drawer-chart{width:100%;height:132px;margin-top:8px}.mini-history{display:flex;flex-direction:column;margin-top:8px}.mini-history a{display:grid;grid-template-columns:58px 1fr;gap:8px;color:var(--ink);text-decoration:none;border-top:1px solid var(--line);padding:8px 0;font-size:.75rem}.mini-history time{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">2026 US midterms · House and Senate</p>
+      <h1>The line of control</h1>
+    </div>
+    <div class="freshness"><span class="status-dot"></span><span id="as-of">Loading cached data…</span></div>
+  </header>
+
+  <main>
+    <section class="topline" aria-label="Forecast headline">
+      <div class="headline-copy">
+        <div class="switcher" role="tablist" aria-label="Chamber">
+          <button class="tab active" data-chamber="house" role="tab">House <span>435</span></button>
+          <button class="tab" data-chamber="senate" role="tab">Senate <span>100</span></button>
+        </div>
+        <p class="kicker" id="headline-source">Headline forecast</p>
+        <div class="big-number"><span id="control-odds">—</span><small id="control-label">chance of Democratic control</small></div>
+        <div class="market-strip">
+          <div><span>Polymarket · Dem control</span><strong id="market-odds">—</strong></div>
+          <svg id="market-chart" viewBox="0 0 420 72" role="img" aria-label="Polymarket Democratic chamber-control price trend"></svg>
+          <a id="market-link" href="https://polymarket.com/" target="_blank" rel="noreferrer">market ↗</a>
+        </div>
+      </div>
+      <div class="balance-card">
+        <div class="balance-label"><span>Democratic</span><strong id="projected-seats">—</strong><span>Republican</span></div>
+        <div class="balance-track"><div id="balance-dem"></div><i id="balance-threshold"></i></div>
+        <p id="majority-note">218 seats for a House majority</p>
+      </div>
+    </section>
+
+    <section class="board-section">
+      <div class="section-head">
+        <div><p class="kicker">Every seat, continuously ranked</p><h2 id="board-title">House seats</h2></div>
+        <div class="legend" aria-label="Forecast rating legend">
+          <span class="safe">Safe</span><span class="likely">Likely</span><span class="lean">Lean</span><span class="toss">Toss-up</span><span class="pickup">Pickup</span>
+        </div>
+      </div>
+      <div id="seat-board" class="seat-board" aria-live="polite"></div>
+      <p class="board-note">Tiles are ordered by Democratic win probability. Stripes mark projected pickups. Select a seat for polling, ratings and source detail.</p>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel trend-panel">
+        <div class="section-head"><div><p class="kicker">National climate</p><h2>Polling trends</h2></div></div>
+        <div class="trend-row"><div><strong>Generic ballot average</strong><span id="generic-now">—</span><small>30–70% scale · 50% line</small><a href="https://fiftyplusone.news/polls/generic-ballot/generic-ballot" target="_blank" rel="noreferrer">FiftyPlusOne ↗</a></div><svg id="generic-chart" viewBox="0 0 560 140" role="img" aria-label="FiftyPlusOne generic ballot polling average"></svg></div>
+        <div class="trend-row"><div><strong>Presidential approval average</strong><span id="approval-now">—</span><small>30–70% scale · 50% line</small><a href="https://fiftyplusone.news/polls/approval/president" target="_blank" rel="noreferrer">FiftyPlusOne ↗</a></div><svg id="approval-chart" viewBox="0 0 560 140" role="img" aria-label="FiftyPlusOne presidential approval average"></svg></div>
+      </article>
+      <article class="panel feed-panel">
+        <div class="section-head"><div><p class="kicker">Chronology</p><h2>What changed</h2></div><button id="competitive-only" class="quiet-button">Competitive only</button></div>
+        <div id="change-feed" class="change-feed"></div>
+      </article>
+    </section>
+
+    <section class="panel methodology">
+      <p class="kicker">Source ledger</p>
+      <h2>What this board is—and isn’t</h2>
+      <p>The displayed forecast and probabilities come from one named source, not an average of incompatible models. Cook, RCP and Inside Elections ratings, Polling Forecast metadata, and Polymarket prices are shown as separate comparisons. A missing rating or market means “not available”, never “no chance”.</p>
+      <div id="source-ledger" class="source-ledger"></div>
+    </section>
+  </main>
+
+  <dialog id="race-dialog">
+    <div class="drawer-head"><div><p class="kicker" id="drawer-kind"></p><h2 id="drawer-title"></h2></div><button id="drawer-close" aria-label="Close">×</button></div>
+    <div id="drawer-content"></div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

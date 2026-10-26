@@ -1,0 +1,9 @@
+{
+  "headlineOverride": null,
+  "raceRatings": {},
+  "notes": [
+    "Optional local-only overrides live in this file.",
+    "headlineOverride may contain source, sourceUrl, asOf, houseDemControl, senateDemControl, houseDemSeats and senateDemSeats.",
+    "raceRatings keys use race IDs such as PA-07 or AZ. Each value may contain Cook, Sabato, RCP, Inside Elections or another named source."
+  ]
+}

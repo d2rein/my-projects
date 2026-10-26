@@ -1,0 +1,9 @@
+{
+  "name": "midterm26-offline-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "refresh": "node scripts/refresh-data.mjs",
+    "start": "node scripts/serve.mjs"
+  }
+}
