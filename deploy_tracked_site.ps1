@@ -25,7 +25,11 @@ try {
   Write-Host "Creating tracked-files-only deploy bundle from HEAD..."
   # The meme library is a separately deployed Pages app, so exclude it before
   # creating the archive rather than copying its large assets only to delete them.
-  & git -C $repoRoot archive --format=tar -o $tarPath HEAD -- . ':(exclude)memes_v2'
+  & git -C $repoRoot archive --format=tar -o $tarPath HEAD -- . `
+    ':(exclude)memes_v2' `
+    ':(exclude)personal-alerts' `
+    ':(exclude)garage-door-monitor' `
+    ':(exclude)garage-door-overlay'
   if ($LASTEXITCODE -ne 0) {
     throw "git archive failed"
   }

@@ -23,6 +23,7 @@ node_modules/
 # environment variables
 .env
 .env.*
+.dev.vars
 
 # wrangler local state
 .wrangler/

@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+data/
+logs/
+references/
+
+
+vendor/
+__pycache__/

@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Drein Alerts</string>
+    <string name="device_admin_description">Allows the garage alert to switch the display off once the door is confirmed closed.</string>
+    <string name="widget_description">Compact garage door status</string>
+    <string name="widget_name">Garage Door status</string>
+</resources>

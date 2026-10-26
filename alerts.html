@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Drein Alerts</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#172033;--line:#334155;--muted:#94a3b8;--accent:#38bdf8}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f8fafc;font:15px/1.45 system-ui,sans-serif}
+    main{width:min(980px,calc(100% - 28px));margin:28px auto}h1,h2{margin:.2rem 0 1rem}p{color:var(--muted)}
+    section{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}
+    button,input{font:inherit;border-radius:9px;border:1px solid var(--line);padding:9px 12px}button{background:#1d4ed8;color:white;cursor:pointer}button.danger{background:#7f1d1d}input{background:#0f172a;color:white}
+    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}th:not(:first-child),td:not(:first-child){text-align:center}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.muted{color:var(--muted)}.hidden{display:none}.pair{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}.code{font:700 2rem ui-monospace;letter-spacing:.18em}
+    #qr canvas{background:white;padding:8px;border-radius:8px}@media(max-width:650px){.pair{grid-template-columns:1fr}table{font-size:12px}th,td{padding:7px 3px}}
+  </style>
+</head>
+<body><main>
+  <h1>Drein Alerts</h1><p>Pair phones and choose which alert categories each one receives.</p>
+  <div class="row"><button id="testButton">Send test alert</button><span id="testStatus" class="muted"></span></div>
+  <section><h2>Add a phone</h2><div class="row"><input id="pairName" placeholder="Phone name"><button id="pairButton">Create pairing link</button></div><div id="pairResult" class="pair hidden"><div id="qr"></div><div><div class="muted">Six-digit fallback code</div><div id="pairCode" class="code"></div><p>Expires at <span id="pairExpiry"></span>. Scan the QR with the phone camera, or open the link on that phone.</p><a id="pairLink" href="#">Open pairing link</a></div></div></section>
+  <section><h2>Phones</h2><div id="status" class="muted">Loading…</div><div style="overflow:auto"><table><thead><tr><th>Phone</th><th>Enabled</th><th>Garage</th><th>NRL</th><th>NRLW</th><th>Pokémon</th><th>System</th><th></th></tr></thead><tbody id="devices"></tbody></table></div></section>
+  <section><h2>Recent alerts</h2><div id="alerts" class="muted">Loading…</div></section>
+</main><script>
+const categories=["garage","nrl","nrlw","pogo","system"];
+const api=(options={})=>fetch("/api/alerts-admin"+(options.query||""),{credentials:"same-origin",method:options.method||"GET",headers:options.body?{"Content-Type":"application/json"}:undefined,body:options.body?JSON.stringify(options.body):undefined}).then(async response=>{const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data});
+async function load(){try{const [{devices=[]},{alerts=[]}]=await Promise.all([api({query:"?action=devices"}),api({query:"?action=alerts"})]);document.querySelector("#status").textContent=devices.length?`${devices.length} paired phone${devices.length===1?"":"s"}`:"No phones paired yet.";document.querySelector("#devices").innerHTML=devices.map(device=>`<tr data-id="${escapeHtml(device.id)}"><td><input class="name" value="${escapeHtml(device.name)}" size="14"><div class="muted">${escapeHtml(device.lastSeenAt||"")}</div></td><td><input class="enabled" type="checkbox" ${device.enabled?"checked":""}></td>${categories.map(category=>`<td><input data-category="${category}" type="checkbox" ${device.subscriptions?.[category]?"checked":""}></td>`).join("")}<td><button class="save">Save</button> <button class="remove danger">Remove</button></td></tr>`).join("");document.querySelectorAll("tr[data-id]").forEach(bindRow);document.querySelector("#alerts").innerHTML=alerts.length?alerts.slice(0,20).map(alert=>`<div><b>${escapeHtml(alert.title)}</b> · ${escapeHtml(alert.category)} · ${escapeHtml(alert.state)}<div class="muted">${escapeHtml(alert.updatedAt||"")}</div></div>`).join(""):"No alerts yet."}catch(error){document.querySelector("#status").textContent=error.message;document.querySelector("#alerts").textContent="Sign into the site account first, then reload this page."}}
+function bindRow(row){row.querySelector(".save").onclick=async()=>{await api({method:"POST",body:{action:"updateDevice",deviceId:row.dataset.id,name:row.querySelector(".name").value,enabled:row.querySelector(".enabled").checked,subscriptions:Object.fromEntries(categories.map(category=>[category,row.querySelector(`[data-category='${category}']`).checked]))}});await load()};row.querySelector(".remove").onclick=async()=>{if(!confirm("Remove this phone?"))return;await api({method:"POST",body:{action:"removeDevice",deviceId:row.dataset.id}});await load()}}
+document.querySelector("#pairButton").onclick=async()=>{try{const subscriptions=Object.fromEntries(categories.map(category=>[category,true]));const result=await api({method:"POST",body:{action:"createPairing",name:document.querySelector("#pairName").value,subscriptions}});document.querySelector("#pairCode").textContent=result.code;document.querySelector("#pairExpiry").textContent=new Date(result.expiresAt).toLocaleString();document.querySelector("#pairLink").href=result.pairingUrl;document.querySelector("#pairResult").classList.remove("hidden");document.querySelector("#qr").innerHTML="";QRCode.toCanvas(result.pairingUrl,{width:190,margin:1},(error,canvas)=>{if(!error)document.querySelector("#qr").appendChild(canvas)})}catch(error){alert(error.message)}};
+document.querySelector("#testButton").onclick=async()=>{const status=document.querySelector("#testStatus");status.textContent="Sending…";try{const result=await api({method:"POST",body:{action:"sendTest"}});status.textContent=`Queued for ${result.targetedDevices} phone${result.targetedDevices===1?"":"s"}.`;await load()}catch(error){status.textContent=error.message}};
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char])}load();
+</script></body></html>

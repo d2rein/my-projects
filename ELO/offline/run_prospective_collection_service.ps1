@@ -9,8 +9,10 @@ $ErrorActionPreference = 'Stop'
 # Remote writes are confined to append-only team-list, market and forecast
 # evidence tables. Model parameters and match results are never mutated.
 $python = 'C:\Users\d2rei\AppData\Local\Programs\Python\Python311\python.exe'
+$node = 'C:\Program Files\nodejs\node.exe'
 $collector = 'C:\Users\d2rei\My_Site\ELO\offline\prospective_signal_collector.py'
 $forecast = 'C:\Users\d2rei\My_Site\ELO\offline\forecast_published_finals.py'
+$tipAlerts = 'C:\Users\d2rei\My_Site\ELO\offline\publish_tip_alerts.mjs'
 $archiveRoot = 'C:\Users\d2rei\My_Site\ELO\offline\experiments\EXP-2026-021-prospective-signal-archive\data'
 $serviceState = Join-Path $archiveRoot 'service'
 $heartbeat = Join-Path $serviceState 'heartbeat.json'
@@ -18,6 +20,8 @@ $logPath = Join-Path $serviceState 'service.log'
 $scheduleState = Join-Path $serviceState 'schedule_state.json'
 $teamListApiUrl = 'https://nrl-elo-api.d2-rein.workers.dev'
 $teamListTokenFile = Join-Path $serviceState 'team_list_upload_token.txt'
+$alertBrokerKeyFile = Join-Path $serviceState 'alert_broker_key.txt'
+$alertBrokerUrl = 'https://personal-alerts.d2-rein.workers.dev'
 $mutex = [Threading.Mutex]::new($false, 'Local\NRLEloProspectiveSignals')
 $hasMutex = $false
 
@@ -124,6 +128,18 @@ try {
         if ($forecastExitCode -ne 0) {
             Write-Heartbeat 'forecast_failed' $effectiveMode $forecastExitCode 'Collection succeeded but forecast refresh failed.'
             exit $forecastExitCode
+        }
+        if ((Test-Path -LiteralPath $node) -and ((Test-Path -LiteralPath $alertBrokerKeyFile) -or $env:ALERT_NRL_KEY)) {
+            $alertArgs = @($tipAlerts, '--season', $season, '--api-url', $teamListApiUrl,
+                '--broker-url', $alertBrokerUrl, '--state-file', (Join-Path $serviceState 'tip_alert_state.json'))
+            if (Test-Path -LiteralPath $alertBrokerKeyFile) { $alertArgs += @('--broker-key-file', $alertBrokerKeyFile) }
+            $alertOutput = & $node @alertArgs 2>&1 | Out-String
+            $alertExitCode = $LASTEXITCODE
+            Add-Content -LiteralPath $logPath -Encoding UTF8 -Value ("[{0}] tip-alerts season={1} exit={2}`r`n{3}" -f [datetime]::UtcNow.ToString('o'),$season,$alertExitCode,$alertOutput.Trim())
+            if ($alertExitCode -ne 0) {
+                Write-Heartbeat 'alert_failed' $effectiveMode $alertExitCode 'Forecast refreshed, but tip-alert publication failed and will retry on the next service run.'
+                exit $alertExitCode
+            }
         }
     }
     if ($effectiveMode -ne 'pregame') {

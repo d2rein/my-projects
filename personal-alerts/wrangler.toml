@@ -1,0 +1,25 @@
+name = "personal-alerts"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "ALERTS_DB"
+database_name = "personal-alerts"
+database_id = "d5e93cb0-6cef-49fc-99ac-3fe25dd29b54"
+
+[[kv_namespaces]]
+binding = "POGO_TRACKER_KV"
+id = "59af78bb943d4dfe9f0eac05de80fd06"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Secrets configured at deployment time:
+#   ALERT_ADMIN_KEY
+#   ALERT_PRODUCER_KEYS       JSON object, e.g. {"garage":"...","nrl-elo":"...","pogo":"..."}
+#   FIREBASE_PROJECT_ID
+#   FIREBASE_CLIENT_EMAIL
+#   FIREBASE_PRIVATE_KEY
+# Optional:
+#   PUBLIC_BASE_URL           e.g. https://personal-alerts.example.workers.dev
+#   POGO_FEED_URL             defaults to https://drein.net/api/pogo-release-feed

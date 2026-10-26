@@ -1,0 +1,24 @@
+{
+  "sampleIntervalSeconds": 60,
+  "fastSampleIntervalSeconds": 10,
+  "requiredConsecutive": 3,
+  "minimumSimilarity": 0.52,
+  "minimumMargin": 0.07,
+  "roiVoteMargin": 0.04,
+  "rois": [
+    {
+      "name": "upper-door",
+      "x": 0.27,
+      "y": 0.08,
+      "width": 0.45,
+      "height": 0.25
+    },
+    {
+      "name": "middle-door",
+      "x": 0.55,
+      "y": 0.26,
+      "width": 0.17,
+      "height": 0.17
+    }
+  ]
+}

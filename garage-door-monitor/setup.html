@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Garage Door Monitor Setup</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background:#111827; color:#e5e7eb; }
+    body { max-width:900px; margin:0 auto; padding:20px; }
+    h1 { margin-bottom:6px; } .muted { color:#9ca3af; }
+    .card { background:#1f2937; border:1px solid #374151; border-radius:12px; padding:16px; margin:14px 0; }
+    .state { font-size:2rem; font-weight:700; } .OPEN { color:#4ade80; } .CLOSED { color:#60a5fa; } .UNKNOWN { color:#fbbf24; }
+    canvas { display:block; width:100%; height:auto; background:#030712; border-radius:8px; cursor:crosshair; }
+    button { margin:6px 6px 6px 0; padding:9px 13px; border:0; border-radius:7px; background:#2563eb; color:white; cursor:pointer; }
+    button.warn { background:#b45309; } button.danger { background:#b91c1c; }
+    button:disabled { opacity:.55; cursor:wait; }
+    code { color:#bfdbfe; } #message { min-height:1.4em; } ul { padding-left:20px; }
+  </style>
+</head>
+<body>
+  <h1>Garage Door Monitor</h1>
+  <div class="muted">Local structural calibration and diagnostics</div>
+
+  <section class="card">
+    <div id="state" class="state UNKNOWN">UNKNOWN</div>
+    <div id="detail">Loading status…</div>
+    <button id="sample">Confirm current state</button>
+    <span id="message"></span>
+  </section>
+
+  <section class="card">
+    <h2>Detection regions</h2>
+    <p>Drag on the image to add structural regions. Keep them on the door or doorway and away from the timestamp, vehicles, and movable clutter. Double-click a region to remove it.</p>
+    <canvas id="frame" width="640" height="360"></canvas>
+    <button id="saveRois">Save regions</button>
+    <button id="resetDraft" class="warn">Reload saved regions</button>
+    <span id="roiCount"></span>
+  </section>
+
+  <section class="card">
+    <h2>Reference images</h2>
+    <p>Capture multiple examples of each state under different lighting. Confirm the physical door state before clicking.</p>
+    <button data-capture="CLOSED">Capture CLOSED</button>
+    <button data-capture="OPEN">Capture OPEN</button>
+    <div id="referenceCounts"></div>
+    <button data-clear="CLOSED" class="danger">Clear CLOSED</button>
+    <button data-clear="OPEN" class="danger">Clear OPEN</button>
+    <button data-clear="ALL" class="danger">Clear all</button>
+  </section>
+
+  <section class="card">
+    <h2>Camera relocation</h2>
+    <ol>
+      <li>Move the camera and leave pan/tilt tracking disabled.</li>
+      <li>Clear all old references.</li>
+      <li>Draw and save new regions on stable door structure.</li>
+      <li>Capture several CLOSED and OPEN references.</li>
+      <li>Use <em>Confirm current state</em> in both states and check that the scores have a clear margin.</li>
+    </ol>
+    <p>The public status API is <code>GET /status</code>; the annotated debug frame is <code>GET /snapshot</code>.</p>
+  </section>
+
+  <section class="card">
+    <h2>Phone app connection</h2>
+    <p>This information is visible only on the monitor PC. Enter it in the Android app after private-LAN access is enabled.</p>
+    <div>Server: <code id="clientUrl">loading…</code></div>
+    <div>Access token: <code id="clientToken">loading…</code></div>
+  </section>
+
+  <section class="card">
+    <h2>State history</h2>
+    <p class="muted">Confirmed transitions only; newest first. The complete CSV is retained locally.</p>
+    <div id="history">No transitions recorded yet.</div>
+    <button id="refreshHistory">Refresh history</button>
+  </section>
+
+<section class="card">
+    <h2>Motion recordings</h2>
+    <p class="muted">Temporary clips expire after 3 days or when they exceed 20 GB. Keep protects a clip permanently.</p>
+    <div id="recorderStatus">Loading recorder...</div>
+    <video id="clipPlayer" controls preload="none" style="width:100%;max-height:400px;margin-top:12px" hidden></video>
+    <div id="clips"></div>
+    <button id="refreshClips">Refresh clips</button>
+  </section>
+<script>
+const canvas = document.querySelector('#frame');
+const context = canvas.getContext('2d');
+const image = new Image();
+let rois = [], start = null, busy = false;
+
+function message(text, error=false) {
+  const element = document.querySelector('#message');
+  element.textContent = text;
+  element.style.color = error ? '#fca5a5' : '#86efac';
+}
+async function api(path, options={}) {
+  const response = await fetch(path, {cache:'no-store', ...options});
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.error || `HTTP ${response.status}`);
+  return value;
+}
+function draw() {
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  if (image.complete && image.naturalWidth) context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  context.lineWidth = 2;
+  context.font = '14px system-ui';
+  rois.forEach((roi, index) => {
+    const x=roi.x*canvas.width, y=roi.y*canvas.height, w=roi.width*canvas.width, h=roi.height*canvas.height;
+    context.strokeStyle='#22d3ee'; context.fillStyle='rgba(34,211,238,.12)';
+    context.fillRect(x,y,w,h); context.strokeRect(x,y,w,h);
+    context.fillStyle='#fff'; context.fillText(String(index+1), x+5, y+17);
+  });
+  document.querySelector('#roiCount').textContent = `${rois.length} region${rois.length===1?'':'s'}`;
+}
+function refreshImage() {
+  image.onload = () => { canvas.width=image.naturalWidth; canvas.height=image.naturalHeight; draw(); };
+  image.src = `/snapshot?raw=1&t=${Date.now()}`;
+}
+async function refreshStatus() {
+  try {
+    const status = await api('/status');
+    const state = document.querySelector('#state');
+    state.textContent=status.state; state.className=`state ${status.state}`;
+    document.querySelector('#detail').textContent = `${status.reason} · confidence ${Number(status.confidence).toFixed(3)} · last frame ${status.lastFrame || 'never'}`;
+    document.querySelector('#referenceCounts').textContent = `CLOSED: ${status.referenceCounts.CLOSED || 0} · OPEN: ${status.referenceCounts.OPEN || 0}`;
+  } catch (error) { message(error.message, true); }
+}
+async function loadSettings() {
+  const value = await api('/api/settings'); rois = value.settings.rois.map(roi => ({...roi})); draw();
+}
+async function action(work) {
+  if (busy) return; busy=true;
+  document.querySelectorAll('button').forEach(button => button.disabled=true);
+  try { await work(); } catch(error) { message(error.message, true); }
+  finally { busy=false; document.querySelectorAll('button').forEach(button => button.disabled=false); }
+}
+canvas.addEventListener('pointerdown', event => {
+  const rect=canvas.getBoundingClientRect();
+  start={x:(event.clientX-rect.left)/rect.width, y:(event.clientY-rect.top)/rect.height};
+  canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener('pointerup', event => {
+  if (!start) return;
+  const rect=canvas.getBoundingClientRect(), end={x:(event.clientX-rect.left)/rect.width,y:(event.clientY-rect.top)/rect.height};
+  const x=Math.max(0,Math.min(start.x,end.x)), y=Math.max(0,Math.min(start.y,end.y));
+  const width=Math.min(1,Math.max(start.x,end.x))-x, height=Math.min(1,Math.max(start.y,end.y))-y;
+  start=null;
+  if (width>.03 && height>.03 && rois.length<8) { rois.push({name:`region-${rois.length+1}`,x,y,width,height}); draw(); }
+});
+canvas.addEventListener('dblclick', event => {
+  const rect=canvas.getBoundingClientRect(), x=(event.clientX-rect.left)/rect.width, y=(event.clientY-rect.top)/rect.height;
+  const index=rois.findIndex(roi => x>=roi.x && x<=roi.x+roi.width && y>=roi.y && y<=roi.y+roi.height);
+  if(index>=0){ rois.splice(index,1); draw(); }
+});
+document.querySelector('#sample').onclick=()=>action(async()=>{ message('Capturing confirmation frames…'); const result=await api('/api/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); refreshImage(); await refreshStatus(); message(`Confirmed with ${result.confirmationSamples} fresh sample${result.confirmationSamples===1?'':'s'}`); });
+document.querySelector('#saveRois').onclick=()=>action(async()=>{ await api('/api/rois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rois})}); message('Regions saved. Recapture both reference classes.'); await refreshStatus(); });
+document.querySelector('#resetDraft').onclick=()=>action(async()=>{ await loadSettings(); message('Saved regions reloaded'); });
+document.querySelectorAll('[data-capture]').forEach(button => button.onclick=()=>action(async()=>{ const label=button.dataset.capture; message(`Capturing ${label}…`); await api('/api/references/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label})}); refreshImage(); await refreshStatus(); message(`${label} reference saved`); }));
+document.querySelectorAll('[data-clear]').forEach(button => button.onclick=()=>action(async()=>{ const label=button.dataset.clear; if(!confirm(`Delete ${label} reference images?`)) return; await api('/api/references/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label})}); await refreshStatus(); message(`${label} references cleared`); }));
+
+async function loadClientConfig() {
+  const value=await api('/api/client-config');
+  document.querySelector('#clientUrl').textContent=value.serverUrl;
+  document.querySelector('#clientToken').textContent=value.apiToken;
+}
+async function loadHistory() {
+  const value=await api('/api/history?limit=50');
+  const target=document.querySelector('#history');
+  if(!value.events.length){ target.textContent='No transitions recorded yet.'; return; }
+  target.innerHTML='<ul>'+value.events.map(event=>`<li><strong>${event.state}</strong> · ${event.timestamp} · confidence ${event.confidence}</li>`).join('')+'</ul>';
+}
+async function loadClips() {
+  const value=await api('/api/clips');
+  document.querySelector('#recorderStatus').textContent=(value.running?'Recording monitor active':'Recorder paused: '+(value.error||'starting'))+' ? '+value.directory;
+  const target=document.querySelector('#clips'); target.replaceChildren();
+  if(!value.clips.length) {target.textContent='No motion clips yet.';return;}
+  for(const clip of value.clips) {
+    const row=document.createElement('div');
+    const label=document.createElement('span');label.textContent=new Date(clip.timestamp*1000).toLocaleString()+' ? '+(clip.bytes/1024/1024).toFixed(1)+' MB ';
+    const play=document.createElement('button');play.textContent='Play';
+    play.onclick=()=>{const video=document.querySelector('#clipPlayer');video.hidden=false;video.src='/api/clips/video?id='+encodeURIComponent(clip.id);video.play().catch(()=>{});};
+    const keep=document.createElement('button');keep.textContent=clip.kept?'Kept':'Keep';keep.disabled=clip.kept;
+    keep.onclick=()=>action(async()=>{await api('/api/clips/keep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:clip.id})});await loadClips();});
+    const download=document.createElement('a');download.textContent='Download';download.href='/api/clips/video?id='+encodeURIComponent(clip.id);download.download=clip.id;
+    row.append(label,play,keep,download);target.append(row);
+  }
+}
+document.querySelector('#refreshClips').onclick=()=>action(loadClips);
+loadClips().catch(error=>message(error.message,true));
+setInterval(()=>loadClips().catch(()=>{}),15000);
+document.querySelector('#refreshHistory').onclick=()=>action(async()=>{await loadHistory();message('History refreshed');});
+Promise.all([loadSettings(), refreshStatus(), loadClientConfig(), loadHistory()]).then(refreshImage).catch(error=>message(error.message,true));
+setInterval(refreshStatus, 15000);
+</script>
+</body>
+</html>
