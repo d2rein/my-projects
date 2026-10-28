@@ -20,7 +20,11 @@ Open `http://127.0.0.1:4176`.
 - Polymarket's public Gamma and CLOB endpoints for current chamber/race prices and price histories. Current prices are cached for every confidently matched market; histories are filled in small daily batches, while local snapshots extend every race's series.
 - The public-domain UnitedStates/congress-legislators dataset for Senate seats not up in 2026.
 
-The updater writes a current cache and a dated snapshot. Re-running it daily builds the local chronological feed and fills more market histories. A temporary optional-source failure preserves the prior cache rather than erasing it.
+The updater writes a current cache, one full Brisbane-dated snapshot per day, and `data/snapshots/index.json`. Re-running it on the same Brisbane date replaces that day's snapshot; earlier days remain full records for the chronological feed, seat movement markers, and market histories. A temporary optional-source failure preserves the prior cache rather than erasing it.
+
+## Daily update
+
+The GitHub Actions workflow `.github/workflows/midterms-daily.yml` runs at 10:15am Australia/Brisbane time (`00:15 UTC`) and can also be run manually. It refreshes the cache, validates the output, commits that day's snapshot, and pushes to `main`. The existing Cloudflare Pages Git integration then deploys the commit automatically.
 
 Optional hand-entered ratings can still be recorded in `data/manual-sources.json`. They remain separate from the primary model and automated public-source cache.
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,6 +22,12 @@ const stateNames = {
 };
 const stateCodes = Object.fromEntries(Object.entries(stateNames).map(([code, name]) => [name.toLowerCase(), code]));
 const senateKey = code => code === "FL" || code === "OH" ? `${code}-S` : code;
+const brisbaneDate = value => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Brisbane", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(value).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
 
 async function fetchJson(url) {
   const response = await fetch(url, { headers: { "user-agent": "midterm26-personal-dashboard/0.1" } });
@@ -455,6 +461,7 @@ if (holds.length !== 65) throw new Error(`Expected 65 Senate holds, got ${holds.
 const payload = {
   schemaVersion: 1,
   fetchedAt: new Date().toISOString(),
+  snapshotDate: brisbaneDate(new Date()),
   asOf: modelDate,
   headline,
   house: houseRows,
@@ -483,9 +490,17 @@ const payload = {
   }
 };
 
-if (previous?.asOf && previous.asOf !== payload.asOf) {
-  await writeFile(path.join(snapshotsDir, `${previous.asOf}.json`), `${JSON.stringify(previous, null, 2)}\n`);
+if (previous?.fetchedAt) {
+  const previousSnapshotDate = previous.snapshotDate || brisbaneDate(new Date(previous.fetchedAt));
+  if (previousSnapshotDate !== payload.snapshotDate) {
+    await writeFile(path.join(snapshotsDir, `${previousSnapshotDate}.json`), `${JSON.stringify(previous, null, 2)}\n`);
+  }
 }
 await writeFile(currentPath, `${JSON.stringify(payload, null, 2)}\n`);
-await writeFile(path.join(snapshotsDir, `${payload.asOf}.json`), `${JSON.stringify(payload, null, 2)}\n`);
-console.log(`Saved ${payload.asOf}: 435 House, 35 Senate races, 65 Senate holds, ${Object.keys(ratings.raceRatings).length} rated seats, ${Object.keys(polymarket.races).length} matched markets.`);
+await writeFile(path.join(snapshotsDir, `${payload.snapshotDate}.json`), `${JSON.stringify(payload, null, 2)}\n`);
+const snapshotDates = (await readdir(snapshotsDir))
+  .filter(name => /^\d{4}-\d{2}-\d{2}\.json$/.test(name))
+  .map(name => name.slice(0, 10))
+  .sort();
+await writeFile(path.join(snapshotsDir, "index.json"), `${JSON.stringify({ updatedAt: payload.fetchedAt, dates: snapshotDates }, null, 2)}\n`);
+console.log(`Saved daily snapshot ${payload.snapshotDate} (model ${payload.asOf}): 435 House, 35 Senate races, 65 Senate holds, ${Object.keys(ratings.raceRatings).length} rated seats, ${Object.keys(polymarket.races).length} matched markets.`);

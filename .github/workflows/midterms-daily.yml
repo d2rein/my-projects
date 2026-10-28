@@ -1,0 +1,52 @@
+name: Refresh midterm dashboard
+
+on:
+  schedule:
+    # 10:15am Australia/Brisbane (UTC+10, no daylight saving).
+    - cron: "15 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: midterms-daily-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refresh public data
+        working-directory: midterms
+        run: npm run refresh
+
+      - name: Validate archive
+        run: |
+          node --check midterms/app.js
+          node --check midterms/scripts/refresh-data.mjs
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('midterms/data/current.json'));const i=JSON.parse(fs.readFileSync('midterms/data/snapshots/index.json'));if(d.house.length!==435||d.senate.length!==35||!i.dates.includes(d.snapshotDate))process.exit(1);"
+
+      - name: Commit daily snapshot
+        run: |
+          git config user.name "midterms-update-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -- midterms/data/current.json midterms/data/snapshots
+          if git diff --cached --quiet; then
+            echo "No data changes to commit."
+            exit 0
+          fi
+          SNAPSHOT_DATE=$(node -p "require('./midterms/data/current.json').snapshotDate")
+          git commit -m "Update midterm dashboard data for ${SNAPSHOT_DATE}"
+          git push origin HEAD:main

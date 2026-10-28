@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Midterm 2026 — Forecast Board</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261029-1">
   <style>
     .market-strip{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border-top:1px solid var(--line);margin-top:20px;padding-top:12px}.market-strip>div{display:flex;flex-direction:column;gap:2px}.market-strip span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}.market-strip strong{font-size:1.2rem}.market-strip svg{width:100%;height:56px}.market-strip a,.trend-row a{color:var(--gold);font-size:.65rem;text-decoration:none}.trend-row small{color:#777c82;font-size:.61rem}.chart-grid{stroke:#34383d;stroke-width:1;vector-effect:non-scaling-stroke}.chart-grid.reference{stroke:#f3f0e999;stroke-dasharray:4 4}.chart-axis{fill:#8f949a;font:9px Inter,system-ui,sans-serif}.drawer-section{border-top:1px solid var(--line);margin-top:20px;padding-top:17px}.drawer-section h3{margin:2px 0 0;font-family:Georgia,serif;font-size:1.25rem;font-weight:500}.drawer-section-head{display:flex;align-items:end;justify-content:space-between;gap:16px}.drawer-chart{width:100%;height:132px;margin-top:8px}.mini-history{display:flex;flex-direction:column;margin-top:8px}.mini-history a{display:grid;grid-template-columns:58px 1fr;gap:8px;color:var(--ink);text-decoration:none;border-top:1px solid var(--line);padding:8px 0;font-size:.75rem}.mini-history time{color:var(--muted)}
   </style>
@@ -49,7 +49,7 @@
         </div>
       </div>
       <div id="seat-board" class="seat-board" aria-live="polite"></div>
-      <p class="board-note">Tiles are ordered by Democratic win probability. Stripes mark projected pickups. Select a seat for polling, ratings and source detail.</p>
+      <p class="board-note">Tiles are ordered by Democratic win probability. Stripes mark projected pickups. ↗/↘ shows the change in Democratic win probability since the previous daily snapshot. Select a seat for polling, ratings and source detail.</p>
     </section>
 
     <section class="lower-grid">
@@ -77,6 +77,6 @@
     <div id="drawer-content"></div>
   </dialog>
 
-  <script type="module" src="app.js?v=20261028-1"></script>
+  <script type="module" src="app.js?v=20261029-1"></script>
 </body>
 </html>

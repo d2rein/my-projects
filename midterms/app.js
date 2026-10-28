@@ -6,6 +6,7 @@ const els = {
   marketOdds: $("#market-odds"), marketLink: $("#market-link"), genericNow: $("#generic-now"), approvalNow: $("#approval-now"), feed: $("#change-feed"), ledger: $("#source-ledger"), dialog: $("#race-dialog")
 };
 let data, manual, chamber = "house", snapshots = [];
+const snapshotDay = snapshot => snapshot.snapshotDate || snapshot.asOf;
 
 const pct = value => `${Math.round(value * 100)}%`;
 const lastName = name => (name || "—").trim().split(/\s+/).at(-1);
@@ -36,9 +37,15 @@ async function load() {
 }
 
 async function discoverSnapshots() {
-  const candidates = [data.asOf];
-  const date = new Date(`${data.asOf}T12:00:00Z`);
-  for (let i = 1; i <= 14; i++) { const d = new Date(date); d.setUTCDate(d.getUTCDate() - i); candidates.push(d.toISOString().slice(0,10)); }
+  let candidates = [];
+  try {
+    const index = await fetchJson("data/snapshots/index.json");
+    candidates = index.dates.slice(-15);
+  } catch {
+    const date = new Date(`${snapshotDay(data)}T12:00:00Z`);
+    candidates.push(snapshotDay(data));
+    for (let i = 1; i <= 14; i++) { const d = new Date(date); d.setUTCDate(d.getUTCDate() - i); candidates.push(d.toISOString().slice(0,10)); }
+  }
   const found = await Promise.all(candidates.map(async day => {
     try {
       const response = await fetch(new URL(`data/snapshots/${day}.json`, APP_BASE), { cache: "no-store" });
@@ -49,7 +56,17 @@ async function discoverSnapshots() {
       return null;
     }
   }));
-  return found.filter(Boolean).sort((a,b) => a.asOf.localeCompare(b.asOf));
+  return found.filter(Boolean).sort((a,b) => snapshotDay(a).localeCompare(snapshotDay(b)));
+}
+
+function raceMovement(race) {
+  if (race.notUp) return null;
+  const currentDay = snapshotDay(data);
+  const prior = [...snapshots].reverse().find(snapshot => snapshotDay(snapshot) < currentDay && snapshot.headline?.source === data.headline?.source);
+  const previousRace = prior?.[chamber]?.find(row => row.key === race.key);
+  if (!previousRace) return null;
+  const delta = (race.chance - previousRace.chance_left) * 100;
+  return Math.abs(delta) < .05 ? null : { delta, day: snapshotDay(prior) };
 }
 
 function bind() {
@@ -104,8 +121,10 @@ function renderBoard() {
     button.className = `seat ${s} ${ratingClass(race.chance)} ${pickup ? "pickup" : ""} ${race.notUp ? "locked" : ""}`;
     const favorite = s === "d" ? race.left_candidate : race.rep_candidate;
     const underdog = s === "d" ? race.rep_candidate : race.left_candidate;
-    button.innerHTML = `<span class="seat-top"><span>${race.displayKey}</span><span class="seat-prob">${race.notUp ? "HOLD" : pct(Math.max(race.chance,1-race.chance))}</span></span><span class="seat-names">${lastName(favorite)} · ${lastName(underdog)}</span><span class="seat-rating">${race.notUp ? race.party : race.rating}</span>`;
-    button.title = `${race.name}: ${race.notUp ? `${race.senator}, not up` : `${race.left_candidate} vs ${race.rep_candidate}; ${pct(race.chance)} D`}`;
+    const movement = raceMovement(race);
+    const movementLabel = movement ? `${movement.delta > 0 ? "↗" : "↘"}${Math.abs(movement.delta).toFixed(Math.abs(movement.delta) < 1 ? 1 : 0)}` : "";
+    button.innerHTML = `<span class="seat-top"><span>${race.displayKey}</span><span class="seat-prob"><span>${race.notUp ? "HOLD" : pct(Math.max(race.chance,1-race.chance))}</span>${movement ? `<span class="seat-move ${movement.delta > 0 ? "up" : "down"}">${movementLabel}</span>` : ""}</span></span><span class="seat-names">${lastName(favorite)} · ${lastName(underdog)}</span><span class="seat-rating">${race.notUp ? race.party : race.rating}</span>`;
+    button.title = `${race.name}: ${race.notUp ? `${race.senator}, not up` : `${race.left_candidate} vs ${race.rep_candidate}; ${pct(race.chance)} D${movement ? `; D chance ${movement.delta > 0 ? "+" : ""}${movement.delta.toFixed(1)} points since ${movement.day}` : ""}`}`;
     button.addEventListener("click", () => openRace(race));
     els.board.append(button);
     if (index + 1 === thresholdAfter) {
@@ -144,8 +163,8 @@ function openRace(race) {
 function marketSeries(market, raceKey) {
   const byDay = new Map();
   (market?.history || []).forEach(row => byDay.set(new Date(row.t*1000).toISOString().slice(0,10), { date:new Date(row.t*1000).toISOString().slice(0,10), v:row.p }));
-  if (raceKey) snapshots.forEach(snapshot => { const value=snapshot.polymarket?.races?.[raceKey]?.currentDem; if(value!=null) byDay.set(snapshot.asOf,{date:snapshot.asOf,v:value}); });
-  if (market?.currentDem != null) byDay.set(data.asOf,{date:data.asOf,v:market.currentDem});
+  if (raceKey) snapshots.forEach(snapshot => { const value=snapshot.polymarket?.races?.[raceKey]?.currentDem, date=snapshotDay(snapshot); if(value!=null) byDay.set(date,{date,v:value}); });
+  if (market?.currentDem != null) byDay.set(snapshotDay(data),{date:snapshotDay(data),v:market.currentDem});
   return [...byDay.values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
 
@@ -196,7 +215,7 @@ function changesBetween(before, after) {
   const out=[];
   for (const ch of ["house","senate"]) {
     const old=new Map(before[ch].map(r=>[r.key,r]));
-    after[ch].forEach(r=>{ const p=old.get(r.key); if (!p) return; const delta=Math.round((r.chance_left-p.chance_left)*100); if (p.rating!==r.rating || Math.abs(delta)>=2) out.push({date:after.asOf,key:r.key,competitive:Math.max(r.chance_left,1-r.chance_left)<.8,text:p.rating!==r.rating?`${p.rating} → ${r.rating}`:`Democratic chance ${delta>0?"+":""}${delta} pts`,delta}); });
+    after[ch].forEach(r=>{ const p=old.get(r.key); if (!p) return; const delta=Math.round((r.chance_left-p.chance_left)*100); if (p.rating!==r.rating || Math.abs(delta)>=2) out.push({date:snapshotDay(after),key:r.key,competitive:Math.max(r.chance_left,1-r.chance_left)<.8,text:p.rating!==r.rating?`${p.rating} → ${r.rating}`:`Democratic chance ${delta>0?"+":""}${delta} pts`,delta}); });
   }
   return out.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
 }
