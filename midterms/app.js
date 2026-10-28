@@ -14,14 +14,23 @@ const side = chance => chance >= .5 ? "d" : "r";
 const link = (href, label) => `<a class="source-link" href="${href}" target="_blank" rel="noreferrer">${label} ↗</a>`;
 const money = value => value == null ? "—" : new Intl.NumberFormat("en-US", { notation:"compact", style:"currency", currency:"USD", maximumFractionDigits:1 }).format(value);
 
+async function fetchJson(url) {
+  const response = await fetch(url);
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.ok || !contentType.includes("application/json")) {
+    throw new Error(`Expected JSON from ${url}, received ${response.status} ${contentType || "unknown content type"}`);
+  }
+  return response.json();
+}
+
 async function load() {
   try {
-    [data, manual] = await Promise.all([fetch("data/current.json").then(r => r.json()), fetch("data/manual-sources.json").then(r => r.json())]);
+    [data, manual] = await Promise.all([fetchJson("data/current.json"), fetchJson("data/manual-sources.json")]);
     snapshots = await discoverSnapshots();
     els.asOf.textContent = `Forecast ${data.asOf} · cached ${new Date(data.fetchedAt).toLocaleString()}`;
     bind(); renderAll();
   } catch (error) {
-    document.body.innerHTML = `<div class="error"><h2>Cached data is missing</h2><p>Run <code>npm run refresh</code>, then start the local server with <code>npm start</code>.</p><pre>${error.message}</pre></div>`;
+    document.body.innerHTML = `<div class="error"><h2>Dashboard data is unavailable</h2><p>Please reload the page. If the problem persists, the cached data may need to be refreshed.</p><pre>${error.message}</pre></div>`;
   }
 }
 
@@ -29,7 +38,16 @@ async function discoverSnapshots() {
   const candidates = [data.asOf];
   const date = new Date(`${data.asOf}T12:00:00Z`);
   for (let i = 1; i <= 14; i++) { const d = new Date(date); d.setUTCDate(d.getUTCDate() - i); candidates.push(d.toISOString().slice(0,10)); }
-  const found = await Promise.all(candidates.map(async day => { try { const r = await fetch(`data/snapshots/${day}.json`); return r.ok ? r.json() : null; } catch { return null; } }));
+  const found = await Promise.all(candidates.map(async day => {
+    try {
+      const response = await fetch(`data/snapshots/${day}.json`);
+      const contentType = response.headers.get("content-type") || "";
+      if (!response.ok || !contentType.includes("application/json")) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }));
   return found.filter(Boolean).sort((a,b) => a.asOf.localeCompare(b.asOf));
 }
 
