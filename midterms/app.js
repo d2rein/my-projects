@@ -1,4 +1,5 @@
 const $ = selector => document.querySelector(selector);
+const APP_BASE = new URL(".", import.meta.url);
 const els = {
   asOf: $("#as-of"), board: $("#seat-board"), title: $("#board-title"), odds: $("#control-odds"), label: $("#control-label"),
   source: $("#headline-source"), projected: $("#projected-seats"), balance: $("#balance-dem"), threshold: $("#balance-threshold"), majority: $("#majority-note"),
@@ -15,7 +16,7 @@ const link = (href, label) => `<a class="source-link" href="${href}" target="_bl
 const money = value => value == null ? "—" : new Intl.NumberFormat("en-US", { notation:"compact", style:"currency", currency:"USD", maximumFractionDigits:1 }).format(value);
 
 async function fetchJson(url) {
-  const response = await fetch(url);
+  const response = await fetch(new URL(url, APP_BASE), { cache: "no-store" });
   const contentType = response.headers.get("content-type") || "";
   if (!response.ok || !contentType.includes("application/json")) {
     throw new Error(`Expected JSON from ${url}, received ${response.status} ${contentType || "unknown content type"}`);
@@ -40,7 +41,7 @@ async function discoverSnapshots() {
   for (let i = 1; i <= 14; i++) { const d = new Date(date); d.setUTCDate(d.getUTCDate() - i); candidates.push(d.toISOString().slice(0,10)); }
   const found = await Promise.all(candidates.map(async day => {
     try {
-      const response = await fetch(`data/snapshots/${day}.json`);
+      const response = await fetch(new URL(`data/snapshots/${day}.json`, APP_BASE), { cache: "no-store" });
       const contentType = response.headers.get("content-type") || "";
       if (!response.ok || !contentType.includes("application/json")) return null;
       return await response.json();
