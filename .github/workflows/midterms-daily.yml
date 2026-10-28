@@ -2,8 +2,8 @@ name: Refresh midterm dashboard
 
 on:
   schedule:
-    # 10:15am Australia/Brisbane (UTC+10, no daylight saving).
-    - cron: "15 0 * * *"
+    # 6:00am Australia/Brisbane (20:00 UTC on the preceding date; no daylight saving).
+    - cron: "0 20 * * *"
   workflow_dispatch:
 
 permissions:

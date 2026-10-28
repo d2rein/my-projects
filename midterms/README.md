@@ -24,7 +24,7 @@ The updater writes a current cache, one full Brisbane-dated snapshot per day, an
 
 ## Daily update
 
-The GitHub Actions workflow `.github/workflows/midterms-daily.yml` runs at 10:15am Australia/Brisbane time (`00:15 UTC`) and can also be run manually. It refreshes the cache, validates the output, commits that day's snapshot, and pushes to `main`. The existing Cloudflare Pages Git integration then deploys the commit automatically.
+The GitHub Actions workflow `.github/workflows/midterms-daily.yml` runs at 6:00am Australia/Brisbane time (`20:00 UTC` on the preceding date) and can also be run manually. It refreshes the cache, validates the output, commits that day's snapshot, and pushes to `main`. The existing Cloudflare Pages Git integration then deploys the commit automatically.
 
 Optional hand-entered ratings can still be recorded in `data/manual-sources.json`. They remain separate from the primary model and automated public-source cache.
 
