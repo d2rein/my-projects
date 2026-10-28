@@ -122,7 +122,7 @@ function renderBoard() {
     const favorite = s === "d" ? race.left_candidate : race.rep_candidate;
     const underdog = s === "d" ? race.rep_candidate : race.left_candidate;
     const movement = raceMovement(race);
-    const movementLabel = movement ? `${movement.delta > 0 ? "↗" : "↘"}${Math.abs(movement.delta).toFixed(Math.abs(movement.delta) < 1 ? 1 : 0)}` : "";
+    const movementLabel = movement ? `${movement.delta > 0 ? "+" : "−"}${Math.abs(movement.delta).toFixed(Math.abs(movement.delta) < 1 ? 1 : 0)}` : "";
     button.innerHTML = `<span class="seat-top"><span>${race.displayKey}</span><span class="seat-prob"><span>${race.notUp ? "HOLD" : pct(Math.max(race.chance,1-race.chance))}</span>${movement ? `<span class="seat-move ${movement.delta > 0 ? "up" : "down"}">${movementLabel}</span>` : ""}</span></span><span class="seat-names">${lastName(favorite)} · ${lastName(underdog)}</span><span class="seat-rating">${race.notUp ? race.party : race.rating}</span>`;
     button.title = `${race.name}: ${race.notUp ? `${race.senator}, not up` : `${race.left_candidate} vs ${race.rep_candidate}; ${pct(race.chance)} D${movement ? `; D chance ${movement.delta > 0 ? "+" : ""}${movement.delta.toFixed(1)} points since ${movement.day}` : ""}`}`;
     button.addEventListener("click", () => openRace(race));
