@@ -17,7 +17,9 @@ const link = (href, label) => `<a class="source-link" href="${href}" target="_bl
 const money = value => value == null ? "—" : new Intl.NumberFormat("en-US", { notation:"compact", style:"currency", currency:"USD", maximumFractionDigits:1 }).format(value);
 
 async function fetchJson(url) {
-  const response = await fetch(new URL(url, APP_BASE), { cache: "no-store" });
+  const requestUrl = new URL(url, APP_BASE);
+  requestUrl.searchParams.set("refresh", Date.now().toString());
+  const response = await fetch(requestUrl, { cache: "no-store" });
   const contentType = response.headers.get("content-type") || "";
   if (!response.ok || !contentType.includes("application/json")) {
     throw new Error(`Expected JSON from ${url}, received ${response.status} ${contentType || "unknown content type"}`);
