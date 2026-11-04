@@ -1,4 +1,4 @@
-const API = '/api/midterms-live?office=';
+const API = '/api/election-results-2026?office=';
 const SOURCE = 'https://openamerica.io/elections/api/';
 const FORECAST = 'data/seats.json';
 const state = { chamber: 'house', forecast: null, live: { house: null, senate: null }, errors: {house:null,senate:null}, nextAt: 0, timer: null, countdown: null, selected: null };
