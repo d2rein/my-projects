@@ -1,0 +1,36 @@
+/* The final forecast is the permanent base layer; live results only occupy the lower band. */
+.seat-card.d.safe { background: #1766ae; }
+.seat-card.d.likely { background: #2677bd; }
+.seat-card.d.lean { background: #3e83ba; }
+.seat-card.d.toss { background: #506b7e; }
+.seat-card.r.safe { background: #b92e37; }
+.seat-card.r.likely { background: #be4248; }
+.seat-card.r.lean { background: #a95458; }
+.seat-card.r.toss { background: #775456; }
+.seat-card.hold { opacity: .75; }
+.seat-card.pickup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.11) 0 3px, transparent 3px 8px);
+  pointer-events: none;
+}
+.seat-card > span { position: relative; z-index: 1; }
+.seat-card .result {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 23px;
+  padding: 5px 7px;
+  background: rgba(8,11,13,.44);
+  align-items: center;
+}
+.seat-card.has-votes::after { z-index: 2; }
+.live-margin.dem { color: #a8dcff; }
+.live-margin.rep { color: #ffb3b7; }
+.live-margin.uncovered { color: #d4d7d9; }
+.legend .pickup::before { background: repeating-linear-gradient(135deg,#767b7f 0 3px,#b4b7b9 3px 5px); }
+
+@media (max-width: 520px) {
+  .seat-card .result { left: 0; right: 0; padding-inline: 6px; }
+}

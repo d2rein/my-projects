@@ -1,11 +1,17 @@
-const API = 'https://openamerica.io/elections/results.json?year=2026&office=';
+const API = '/api/midterms-live?office=';
 const SOURCE = 'https://openamerica.io/elections/api/';
 const FORECAST = 'data/seats.json';
-const state = { chamber: 'house', forecast: null, live: { house: null, senate: null }, nextAt: 0, timer: null, countdown: null, selected: null };
+const state = { chamber: 'house', forecast: null, live: { house: null, senate: null }, errors: {house:null,senate:null}, nextAt: 0, timer: null, countdown: null, selected: null };
 
 const $ = (s) => document.querySelector(s);
 const fmt = new Intl.NumberFormat('en-US');
 const partySide = (p) => p === 'D' || p === 'DFL' ? 'D' : p === 'R' ? 'R' : p || '—';
+const forecastSide = (race) => Number(race.chance_left ?? .5) >= .5 ? 'd' : 'r';
+const ratingClass = (race) => {
+  if (race.notUp) return 'safe';
+  const p = Math.max(Number(race.chance_left ?? .5), 1-Number(race.chance_left ?? .5));
+  return p < .55 ? 'toss' : p < .7 ? 'lean' : p < .9 ? 'likely' : 'safe';
+};
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time = (v) => v ? new Date(v).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}) : 'unknown';
 
@@ -47,37 +53,34 @@ function sideClass(result) {
 function allSeats(chamber) {
   if (!state.forecast) return [];
   if (chamber === 'house') return state.forecast.house.map(r => ({...r, notUp:false}));
-  return [...state.forecast.senate.map(r => ({...r, notUp:false})), ...(state.forecast.senateHolds || []).map(r => ({...r,kind:'Senate',held_by:r.caucus || r.party,left_candidate:r.caucus === 'D' ? r.senator : '',rep_candidate:r.caucus === 'R' ? r.senator : '',chance_left:r.caucus === 'D' ? 1 : 0}))];
-}
-function sortScore(race, chamber) {
-  if (race.notUp) return race.chance_left;
-  const result = resultFor(race, chamber);
-  const f = resultFacts(result);
-  if (!f.hasVotes) return Number(race.chance_left ?? .5);
-  const d = f.cands.find(c => partySide(c.p) === 'D')?.pct || 0;
-  const r = f.cands.find(c => partySide(c.p) === 'R')?.pct || 0;
-  return .5 + Math.max(-.49, Math.min(.49, (d-r)/100));
+  return [...state.forecast.senate.map(r => ({...r, notUp:false})), ...(state.forecast.senateHolds || []).map(r => ({...r,kind:'Senate',held_by:r.caucus || r.party,left_candidate:r.caucus === 'D' ? r.senator : '',rep_candidate:r.caucus === 'R' ? r.senator : '',chance_left:r.caucus === 'D' ? 1 : 0,winner:r.caucus}))];
 }
 function card(race, chamber) {
   const result = race.notUp ? null : resultFor(race, chamber);
   const facts = resultFacts(result);
-  const side = race.notUp ? 'hold' : sideClass(result);
+  const side = forecastSide(race);
+  const grade = ratingClass(race);
+  const pickup = !race.notUp && race.winner && race.held_by && race.winner !== race.held_by;
   const key = chamber === 'house' ? race.key : race.state;
   const candidateNames = facts.hasVotes ? facts.cands.slice(0,2).map(c => c.n.split(' ').at(-1)).join(' · ') : [race.left_candidate,race.rep_candidate].filter(Boolean).map(n => n.split(' ').at(-1)).join(' · ') || race.senator || '—';
   const inPct = result?.pct_in == null ? 0 : Math.max(0,Math.min(100,result.pct_in));
+  const liveSide = sideClass(result);
+  const forecastPct = race.notUp ? 'HOLD' : `${Math.round(Math.max(race.chance_left,1-race.chance_left)*100)}%`;
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = `seat-card ${side}${facts.hasVotes ? ' has-votes' : ''}`;
+  button.className = `seat-card ${side} ${grade}${pickup ? ' pickup' : ''}${race.notUp ? ' hold' : ''}${facts.hasVotes ? ' has-votes' : ''}`;
   button.style.setProperty('--in', inPct);
-  button.innerHTML = `<span class="seat-head"><span>${esc(key)}</span><span>${esc(race.notUp ? (race.caucus || race.party) : marginText(result))}</span></span><span class="candidates">${esc(candidateNames)}</span><span class="result"><span>${esc(race.notUp ? 'Not up' : reportingText(result))}</span><span>${facts.hasVotes ? fmt.format(result.total) : ''}</span></span>`;
+  const resultLeft = race.notUp ? 'Not up' : facts.hasVotes ? marginText(result) : result ? 'No votes yet' : 'No live feed';
+  const resultRight = race.notUp ? (race.caucus || race.party) : result ? reportingText(result) : (race.rating || 'Forecast');
+  button.innerHTML = `<span class="seat-head"><span>${esc(key)}</span><span>${esc(forecastPct)}</span></span><span class="candidates">${esc(candidateNames)}</span><span class="result"><span class="live-margin ${liveSide}">${esc(resultLeft)}</span><span>${esc(resultRight)}</span></span>`;
   button.setAttribute('aria-label', `${race.name || key}: ${race.notUp ? 'not up' : `${marginText(result)}, ${reportingText(result)}`}`);
   button.addEventListener('click', () => openRace(race, chamber));
   return button;
 }
 function renderBoard() {
   const chamber = state.chamber;
-  const seats = allSeats(chamber).sort((a,b) => sortScore(b,chamber)-sortScore(a,chamber));
-  const threshold = chamber === 'house' ? 218 : 51;
+  const seats = allSeats(chamber).sort((a,b) => Number(b.chance_left ?? .5)-Number(a.chance_left ?? .5) || (a.key || a.state).localeCompare(b.key || b.state));
+  const threshold = chamber === 'house' ? 218 : 50;
   const board = $('#seat-board');
   board.replaceChildren();
   seats.forEach((race,i) => {
@@ -85,7 +88,7 @@ function renderBoard() {
     if (i === threshold-1) {
       const line = document.createElement('div');
       line.className = 'majority-line';
-      line.textContent = `${threshold}-seat majority line`;
+      line.textContent = chamber === 'house' ? '218-seat majority line' : '50 seats · next seat gives outright control';
       board.append(line);
     }
   });
@@ -103,11 +106,12 @@ function renderSummary() {
   $('#dem-leading').textContent = d;
   $('#rep-leading').textContent = r;
   $('#feed-coverage').textContent = `${entries.length} races`;
-  const status = payload?.stale ? 'Feed stale' : payload?.live || payload?.counting ? 'Live counting' : payload ? 'Results feed' : 'Connecting';
+  const failed = state.errors[chamber];
+  const status = payload?.stale ? 'Feed stale' : payload?.live || payload?.counting ? 'Live counting' : payload ? 'Results feed' : failed ? 'Feed unavailable' : 'Connecting';
   $('#feed-state').textContent = status;
-  $('#feed-state').className = `live-pill ${payload?.stale ? 'stale' : payload ? 'live' : ''}`;
-  $('#status-dot').className = payload?.stale ? 'stale' : payload ? 'live' : '';
-  $('#as-of').textContent = payload ? `State data as of ${time(payload.as_of)}` : 'Connecting to results…';
+  $('#feed-state').className = `live-pill ${payload?.stale || failed ? 'stale' : payload ? 'live' : ''}`;
+  $('#status-dot').className = payload?.stale || failed ? 'stale' : payload ? 'live' : '';
+  $('#as-of').textContent = payload ? `State data as of ${time(payload.as_of)}` : failed ? `Final forecast locked · live feed retrying` : 'Loading live results…';
 }
 function openRace(race, chamber) {
   state.selected = {race,chamber};
@@ -138,11 +142,18 @@ async function fetchJson(url) {
 async function update() {
   $('#refresh-now').disabled = true;
   try {
-    if (!state.forecast) state.forecast = await fetchJson(FORECAST);
-    const [house,senate] = await Promise.all([fetchJson(API+'House'),fetchJson(API+'Senate')]);
-    state.live = {house,senate};
+    if (!state.forecast) {
+      state.forecast = await fetchJson(FORECAST);
+      renderBoard();
+      $('#as-of').textContent = `Final forecast ${state.forecast.asOf || state.forecast.snapshotDate || ''} · loading live results…`;
+    }
+    const [houseResult,senateResult] = await Promise.allSettled([fetchJson(API+'House'),fetchJson(API+'Senate')]);
+    if (houseResult.status === 'fulfilled') { state.live.house = houseResult.value; state.errors.house = null; }
+    else state.errors.house = houseResult.reason;
+    if (senateResult.status === 'fulfilled') { state.live.senate = senateResult.value; state.errors.senate = null; }
+    else state.errors.senate = senateResult.reason;
     $('#last-checked').textContent = `Last checked ${new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})}`;
-    const active = [house,senate].some(p => (p.live || p.counting) && !p.final);
+    const active = Object.values(state.live).some(p => p && (p.live || p.counting) && !p.final);
     schedule(active ? 60000 : 600000);
     renderBoard();
     if (state.selected) openRace(state.selected.race,state.selected.chamber);
@@ -151,7 +162,7 @@ async function update() {
     $('#feed-state').textContent = 'Feed unavailable';
     $('#feed-state').className = 'live-pill stale';
     $('#status-dot').className = 'stale';
-    $('#as-of').textContent = 'Live feed unavailable — retrying';
+    $('#as-of').textContent = state.forecast ? 'Final forecast locked · live feed retrying' : 'Dashboard data unavailable — retrying';
     schedule(60000);
     if (state.forecast) renderBoard();
   } finally { $('#refresh-now').disabled = false; }
