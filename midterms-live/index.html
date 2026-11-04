@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111417">
+  <title>Midterms 2026 — Live results</title>
+  <link rel="stylesheet" href="styles.css?v=20261104-1">
+</head>
+<body>
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">2026 US midterms · official vote counts</p>
+      <h1>The live line of control</h1>
+    </div>
+    <div class="freshness"><i id="status-dot"></i><span id="as-of">Connecting to results…</span></div>
+  </header>
+
+  <main>
+    <section class="topline" aria-labelledby="live-title">
+      <div>
+        <div class="switcher" role="tablist" aria-label="Chamber">
+          <button class="tab active" data-chamber="house" role="tab" aria-selected="true">House <span>435</span></button>
+          <button class="tab" data-chamber="senate" role="tab" aria-selected="false">Senate <span>100</span></button>
+        </div>
+        <p class="kicker">Unofficial results · no race calls</p>
+        <h2 id="live-title"><span id="reporting-count">—</span> races reporting</h2>
+        <p class="dek">Official state election returns aggregated by Open America. “Leading” is a snapshot of counted votes, not a projection.</p>
+      </div>
+      <div class="leader-card" aria-live="polite">
+        <div><span>Democrats leading</span><strong id="dem-leading">—</strong></div>
+        <div><span>Republicans leading</span><strong id="rep-leading">—</strong></div>
+        <div><span>Feed coverage</span><strong id="feed-coverage">—</strong></div>
+      </div>
+    </section>
+
+    <section class="status-strip" aria-label="Live update status">
+      <span id="feed-state" class="live-pill">Connecting</span>
+      <span id="last-checked">Last checked —</span>
+      <span id="next-update">Next update —</span>
+      <button id="refresh-now" type="button">Refresh now</button>
+      <a href="https://openamerica.io/elections/api/" target="_blank" rel="noreferrer">source &amp; methodology ↗</a>
+    </section>
+
+    <section class="board-section">
+      <div class="section-head">
+        <div><p class="kicker">Every seat · ranked by current result, then forecast</p><h2 id="board-title">House seats</h2></div>
+        <div class="legend"><span class="dem">D leading</span><span class="rep">R leading</span><span class="waiting">waiting / uncovered</span></div>
+      </div>
+      <div id="seat-board" class="seat-board" aria-live="polite"></div>
+      <p class="board-note">Tiles with votes are ordered by the current Democratic margin; seats without returns retain their pre-election FiftyPlusOne order. The gold line marks the chamber majority threshold. Select a seat for candidates, vote totals and source detail.</p>
+    </section>
+
+    <section class="notes">
+      <div><p class="kicker">Coverage</p><h2>What “live” means here</h2></div>
+      <p>Open America republishes official state-election-office results, normally updating its election-night feed every minute. Its 2026 feed does not cover every state and does not call races. Uncovered seats are clearly marked; the page never turns missing data into zero votes or a result.</p>
+      <p>The forecast shown only as context comes from the final cached <a href="../midterms/">forecast board</a>. Live results always take precedence once votes appear.</p>
+    </section>
+  </main>
+
+  <dialog id="race-dialog">
+    <div class="drawer-head"><div><p class="kicker" id="drawer-kind"></p><h2 id="drawer-title"></h2></div><button id="drawer-close" aria-label="Close">×</button></div>
+    <div id="drawer-content"></div>
+  </dialog>
+
+  <script type="module" src="app.js?v=20261104-1"></script>
+</body>
+</html>
