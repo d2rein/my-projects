@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-12T01:46:58.038Z",
-  "snapshotDate": "2026-11-12",
+  "fetchedAt": "2026-11-13T00:51:49.788Z",
+  "snapshotDate": "2026-11-13",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -14888,19 +14888,19 @@
       "pres2024_margin": -1.4,
       "lean": -0.4,
       "fundamentals_margin": 8,
-      "polls_used": 63,
-      "poll_average": 6.6,
+      "polls_used": 64,
+      "poll_average": 6.3,
       "poll_weight": 0.917,
-      "best_bet_margin": 6.7,
-      "range80_low": -0.8,
-      "range80_high": 14.2,
+      "best_bet_margin": 6.5,
+      "range80_low": -1,
+      "range80_high": 14,
       "chance_left": 0.7842,
       "rating": "Likely D",
       "winner": "D",
       "as_of": "2026-11-02T00:00:00",
       "page": "/us/senate/mi",
       "licence": "CC BY 4.0",
-      "polling_forecast_chance": 0.874,
+      "polling_forecast_chance": 0.865,
       "model_source": "FiftyPlusOne",
       "model_source_url": "https://fiftyplusone.news/forecast/senate",
       "fpo_race_id": "16100",
@@ -15194,19 +15194,19 @@
       "pres2024_margin": -11.2,
       "lean": -10.4,
       "fundamentals_margin": -10,
-      "polls_used": 46,
-      "poll_average": 4.3,
+      "polls_used": 47,
+      "poll_average": 4.1,
       "poll_weight": 0.916,
-      "best_bet_margin": 3.1,
-      "range80_low": -4.7,
-      "range80_high": 10.8,
+      "best_bet_margin": 2.9,
+      "range80_low": -4.9,
+      "range80_high": 10.6,
       "chance_left": 0.661,
       "rating": "Lean D",
       "winner": "D",
       "as_of": "2026-11-02T00:00:00",
       "page": "/us/senate/oh-s",
       "licence": "CC BY 4.0",
-      "polling_forecast_chance": 0.694,
+      "polling_forecast_chance": 0.684,
       "model_source": "FiftyPlusOne",
       "model_source_url": "https://fiftyplusone.news/forecast/senate",
       "fpo_race_id": "16441",
@@ -15432,19 +15432,19 @@
       "pres2024_margin": -13.7,
       "lean": -11.7,
       "fundamentals_margin": -1.4,
-      "polls_used": 73,
-      "poll_average": 4.5,
+      "polls_used": 74,
+      "poll_average": 4.6,
       "poll_weight": 0.918,
-      "best_bet_margin": 4,
-      "range80_low": -5.5,
-      "range80_high": 13.1,
+      "best_bet_margin": 4.1,
+      "range80_low": -5.4,
+      "range80_high": 13.2,
       "chance_left": 0.6516,
       "rating": "Lean D",
       "winner": "D",
       "as_of": "2026-11-02T00:00:00",
       "page": "/us/senate/tx",
       "licence": "CC BY 4.0",
-      "polling_forecast_chance": 0.702,
+      "polling_forecast_chance": 0.704,
       "model_source": "FiftyPlusOne",
       "model_source_url": "https://fiftyplusone.news/forecast/senate",
       "fpo_race_id": "16115",
@@ -16336,7 +16336,7 @@
     }
   ],
   "ratings": {
-    "fetchedAt": "2026-11-12T01:46:57.156Z",
+    "fetchedAt": "2026-11-13T00:51:45.762Z",
     "sourceUrls": {
       "cookHouse": "https://www.cookpolitical.com/ratings/house-race-ratings",
       "cookSenate": "https://www.cookpolitical.com/ratings/senate-race-ratings",
@@ -21524,11 +21524,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488546"
         },
         {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/colorado/baisley-vs-hickenlooper"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=co&office=ii"
@@ -21539,11 +21534,6 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488551"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
         },
         {
           "source": "Inside Elections",
@@ -21558,11 +21548,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488576"
         },
         {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/polls/senate/democratic-primary/2026/illinois"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=il&office=ii"
@@ -21573,11 +21558,6 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488596"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/massachusetts/deaton-vs-markey"
         },
         {
           "source": "Inside Elections",
@@ -21592,11 +21572,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488641"
         },
         {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-jersey/murphy-vs-booker"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nj&office=ii"
@@ -21607,11 +21582,6 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488646"
-        },
-        {
-          "source": "RCP",
-          "rating": "Likely D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-mexico/marker-vs-lujan"
         },
         {
           "source": "Inside Elections",
@@ -21626,11 +21596,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488661"
         },
         {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=or&office=ii"
@@ -21641,11 +21606,6 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488666"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/rhode-island/mckay-vs-reed"
         },
         {
           "source": "Inside Elections",
@@ -21660,11 +21620,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488691"
         },
         {
-          "source": "RCP",
-          "rating": "Solid D",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=va&office=ii"
@@ -21675,11 +21630,6 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/senate/race/488561"
-        },
-        {
-          "source": "RCP",
-          "rating": "Likely D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
         },
         {
           "source": "Inside Elections",
@@ -21694,11 +21644,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488626"
         },
         {
-          "source": "RCP",
-          "rating": "Likely D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/north-carolina/cooper-vs-whatley"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nc&office=ii"
@@ -21709,11 +21654,6 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/senate/race/488606"
-        },
-        {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/michigan/rogers-vs-el-sayed"
         },
         {
           "source": "Inside Elections",
@@ -21728,11 +21668,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488611"
         },
         {
-          "source": "RCP",
-          "rating": "Lean D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=mn&office=ii"
@@ -21743,11 +21678,6 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/senate/race/488636"
-        },
-        {
-          "source": "RCP",
-          "rating": "Lean D",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
         },
         {
           "source": "Inside Elections",
@@ -21762,11 +21692,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488531"
         },
         {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/alaska/sullivan-vs-peltola"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ak&office=ii"
@@ -21777,11 +21702,6 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/senate/race/488566"
-        },
-        {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/iowa/turek-vs-hinson"
         },
         {
           "source": "Inside Elections",
@@ -21796,11 +21716,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488581"
         },
         {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ks&office=ii"
@@ -21811,11 +21726,6 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/senate/race/488601"
-        },
-        {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/collins-vs-jackson"
         },
         {
           "source": "Inside Elections",
@@ -21830,11 +21740,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488651"
         },
         {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/special-election/2026/ohio/husted-vs-brown"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=oh&office=iii"
@@ -21845,11 +21750,6 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/senate/race/488686"
-        },
-        {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/texas/talarico-vs-paxton"
         },
         {
           "source": "Inside Elections",
@@ -21864,11 +21764,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488631"
         },
         {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Tilt R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ne&office=ii"
@@ -21879,11 +21774,6 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/senate/race/488671"
-        },
-        {
-          "source": "RCP",
-          "rating": "Toss-up",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
         },
         {
           "source": "Inside Elections",
@@ -21898,11 +21788,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488556"
         },
         {
-          "source": "RCP",
-          "rating": "Lean R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=fl&office=iii"
@@ -21913,11 +21798,6 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/senate/race/488616"
-        },
-        {
-          "source": "RCP",
-          "rating": "Likely R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/mississippi/hyde-smith-vs-colom"
         },
         {
           "source": "Inside Elections",
@@ -21932,11 +21812,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488536"
         },
         {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/alabama/moore-vs-wess"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=al&office=ii"
@@ -21947,11 +21822,6 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488541"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/arkansas/cotton-vs-shoffner-vs-wadlin"
         },
         {
           "source": "Inside Elections",
@@ -21966,11 +21836,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488571"
         },
         {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=id&office=ii"
@@ -21981,11 +21846,6 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488586"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/polls/senate/democratic-primary/2026/kentucky"
         },
         {
           "source": "Inside Elections",
@@ -22000,11 +21860,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488591"
         },
         {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/louisiana/letlow-vs-davis"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=la&office=ii"
@@ -22015,11 +21870,6 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488621"
-        },
-        {
-          "source": "RCP",
-          "rating": "Likely R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/montana/alme-vs-bankhead-vs-bodnar-vs-austin"
         },
         {
           "source": "Inside Elections",
@@ -22034,11 +21884,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488656"
         },
         {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ok&office=ii"
@@ -22049,11 +21894,6 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488676"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-dakota/rounds-vs-bengs"
         },
         {
           "source": "Inside Elections",
@@ -22068,11 +21908,6 @@
           "url": "https://www.cookpolitical.com/senate/race/488681"
         },
         {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/polls/senate/general/2026/tennessee/hagerty-vs-bradshaw"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tn&office=ii"
@@ -22083,11 +21918,6 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488696"
-        },
-        {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
         },
         {
           "source": "Inside Elections",
@@ -22102,279 +21932,13 @@
           "url": "https://www.cookpolitical.com/senate/race/488701"
         },
         {
-          "source": "RCP",
-          "rating": "Solid R",
-          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
-        },
-        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=wy&office=ii"
         }
       ]
     },
-    "rcpSenateChanges": [
-      {
-        "date": "2026-11-02",
-        "key": "NE",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 47,
-        "tossup": 9,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-31",
-        "key": "NE",
-        "previous": "Toss Up",
-        "rating": "Leans GOP",
-        "dem": 47,
-        "tossup": 8,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-28",
-        "key": "MN",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 9,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-      },
-      {
-        "date": "2026-10-25",
-        "key": "GA",
-        "previous": "Leans Dem",
-        "rating": "Likely Dem",
-        "dem": 46,
-        "tossup": 10,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
-      },
-      {
-        "date": "2026-10-25",
-        "key": "SC",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 10,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
-      },
-      {
-        "date": "2026-10-25",
-        "key": "NE",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 10,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-24",
-        "key": "MS",
-        "previous": "Safe GOP",
-        "rating": "Likely GOP",
-        "dem": 46,
-        "tossup": 8,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/mississippi/hyde-smith-vs-colom"
-      },
-      {
-        "date": "2026-10-12",
-        "key": "NE",
-        "previous": "Toss Up",
-        "rating": "Leans GOP",
-        "dem": 46,
-        "tossup": 8,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-05",
-        "key": "NC",
-        "previous": "Leans Dem",
-        "rating": "Likely Dem",
-        "dem": 46,
-        "tossup": 9,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/north-carolina/cooper-vs-whatley"
-      },
-      {
-        "date": "2026-09-24",
-        "key": "NH",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 46,
-        "tossup": 9,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-09-23",
-        "key": "NE",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 9,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-09-18",
-        "key": "KS",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 45,
-        "tossup": 9,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-      },
-      {
-        "date": "2026-09-17",
-        "key": "FL-S",
-        "previous": "Likely GOP",
-        "rating": "Leans GOP",
-        "dem": 45,
-        "tossup": 9,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
-      },
-      {
-        "date": "2026-09-16",
-        "key": "MN",
-        "previous": "Leans Dem",
-        "rating": "Toss Up",
-        "dem": 45,
-        "tossup": 8,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-      },
-      {
-        "date": "2026-09-15",
-        "key": "NH",
-        "previous": "Leans Dem",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-09-13",
-        "key": "NH",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-09-10",
-        "key": "SC",
-        "previous": "Likely GOP",
-        "rating": "Leans GOP",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
-      },
-      {
-        "date": "2026-09-03",
-        "key": "MT",
-        "previous": "Leans GOP",
-        "rating": "Likely GOP",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/montana/alme-vs-bankhead-vs-bodnar-vs-austin"
-      },
-      {
-        "date": "2026-09-03",
-        "key": "KS",
-        "previous": "Likely GOP",
-        "rating": "Leans GOP",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-      },
-      {
-        "date": "2026-08-27",
-        "key": "NH",
-        "previous": "Leans Dem",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-08-18",
-        "key": "FL-S",
-        "previous": "Safe GOP",
-        "rating": "Likely GOP",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
-      },
-      {
-        "date": "2026-08-12",
-        "key": "MN",
-        "previous": "Likely Dem",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-      },
-      {
-        "date": "2026-08-11",
-        "key": "GA",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
-      },
-      {
-        "date": "2026-08-11",
-        "key": "NH",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-08-05",
-        "key": "KS",
-        "previous": "Safe GOP",
-        "rating": "Likely GOP",
-        "dem": 45,
-        "tossup": 8,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-      },
-      {
-        "date": "2026-06-04",
-        "key": "NM",
-        "previous": "Safe Dem",
-        "rating": "Likely Dem",
-        "dem": 45,
-        "tossup": 8,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-mexico/marker-vs-lujan"
-      }
-    ]
+    "rcpSenateChanges": []
   },
   "polymarket": {
     "fetchedAt": "2026-11-04T00:19:59.025Z",
@@ -428013,6 +427577,18 @@
         "disapprove_estimate": 61.7,
         "disapprove_hi": 62.9,
         "disapprove_lo": 60.6
+      },
+      {
+        "end_date": "2026-11-12",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.8,
+        "approve_hi": 35.9,
+        "approve_lo": 33.6,
+        "disapprove_estimate": 61.9,
+        "disapprove_hi": 63.1,
+        "disapprove_lo": 60.8
       }
     ]
   },
