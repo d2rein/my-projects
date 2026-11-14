@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-14T00:37:59.122Z",
-  "snapshotDate": "2026-11-14",
+  "fetchedAt": "2026-11-14T23:35:44.105Z",
+  "snapshotDate": "2026-11-15",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -16336,7 +16336,7 @@
     }
   ],
   "ratings": {
-    "fetchedAt": "2026-11-14T00:37:22.922Z",
+    "fetchedAt": "2026-11-14T23:35:36.135Z",
     "sourceUrls": {
       "cookHouse": "https://www.cookpolitical.com/ratings/house-race-ratings",
       "cookSenate": "https://www.cookpolitical.com/ratings/senate-race-ratings",
@@ -428472,6 +428472,18 @@
         "disapprove_estimate": 61.8,
         "disapprove_hi": 63.1,
         "disapprove_lo": 60.8
+      },
+      {
+        "end_date": "2026-11-14",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.9,
+        "approve_hi": 35.9,
+        "approve_lo": 33.6,
+        "disapprove_estimate": 61.8,
+        "disapprove_hi": 63,
+        "disapprove_lo": 60.7
       }
     ]
   },
