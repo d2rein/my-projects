@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-13T00:51:49.788Z",
-  "snapshotDate": "2026-11-13",
+  "fetchedAt": "2026-11-14T00:37:59.122Z",
+  "snapshotDate": "2026-11-14",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -16336,7 +16336,7 @@
     }
   ],
   "ratings": {
-    "fetchedAt": "2026-11-13T00:51:45.762Z",
+    "fetchedAt": "2026-11-14T00:37:22.922Z",
     "sourceUrls": {
       "cookHouse": "https://www.cookpolitical.com/ratings/house-race-ratings",
       "cookSenate": "https://www.cookpolitical.com/ratings/senate-race-ratings",
@@ -16443,6 +16443,11 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/house/race/481846"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/california/district-6/pan-vs-kiley"
         }
       ],
       "CA-07": [
@@ -18566,6 +18571,11 @@
           "url": "https://www.cookpolitical.com/house/race/481881"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/california/district-13/lincoln-vs-gray"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=ca-13&office=house"
@@ -18588,6 +18598,11 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/house/race/483041"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/indiana/district-1/regnitz-vs-mrvan"
         },
         {
           "source": "Inside Elections",
@@ -18614,6 +18629,11 @@
           "url": "https://www.cookpolitical.com/house/race/483351"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/minnesota/district-2/pratt-vs-little"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely D",
           "url": "https://insideelections.com/election-year/2026/?state-district=mn-02&office=house"
@@ -18626,6 +18646,11 @@
           "url": "https://www.cookpolitical.com/house/race/483461"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/nebraska/district-2/harding-vs-powell"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=ne-02&office=house"
@@ -18636,6 +18661,11 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/house/race/483491"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-hampshire/district-1/shaheen-vs-dilorenzo"
         },
         {
           "source": "Inside Elections",
@@ -18662,6 +18692,11 @@
           "url": "https://www.cookpolitical.com/house/race/483471"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/nevada/district-1/buck-vs-titus"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nv-01&office=house"
@@ -18672,6 +18707,11 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/house/race/483481"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/nevada/district-3/odonnell-vs-lee"
         },
         {
           "source": "Inside Elections",
@@ -18686,6 +18726,11 @@
           "url": "https://www.cookpolitical.com/house/race/483486"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/nevada/district-4/whipple-vs-horsford"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nv-04&office=house"
@@ -18696,6 +18741,11 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/house/race/483586"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-york/district-3/lipetri-vs-suozzi"
         },
         {
           "source": "Inside Elections",
@@ -18734,6 +18784,11 @@
           "url": "https://www.cookpolitical.com/house/race/483781"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/ohio/district-1/conroy-vs-landsman"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=oh-01&office=house"
@@ -18756,6 +18811,11 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/house/race/485356"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-28/tijerina-vs-cuellar"
         },
         {
           "source": "Inside Elections",
@@ -18782,6 +18842,11 @@
           "url": "https://www.cookpolitical.com/house/race/481756"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/arizona/district-1/open"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=az-01&office=house"
@@ -18792,6 +18857,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/481781"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/arizona/district-6/ciscomani-vs-mendoza"
         },
         {
           "source": "Inside Elections",
@@ -18806,6 +18876,11 @@
           "url": "https://www.cookpolitical.com/house/race/482056"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/california/district-48/desmond-vs-vonwilpert"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=ca-48&office=house"
@@ -18818,6 +18893,11 @@
           "url": "https://www.cookpolitical.com/house/race/482481"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/colorado/district-8/evans-vs-rutinel"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=co-08&office=house"
@@ -18828,6 +18908,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/482636"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-25/singer-vs-moskowitz"
         }
       ],
       "IA-01": [
@@ -18835,6 +18920,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/483086"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/iowa/district-1/millermeeks-vs-bohannan"
         },
         {
           "source": "Inside Elections",
@@ -18849,6 +18939,11 @@
           "url": "https://www.cookpolitical.com/house/race/483096"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/iowa/district-3/nunn-vs-garriott"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=ia-03&office=house"
@@ -18859,6 +18954,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/483756"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-11/ager-vs-balkcom"
         },
         {
           "source": "Inside Elections",
@@ -18873,6 +18973,11 @@
           "url": "https://www.cookpolitical.com/house/race/483531"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-jersey/district-7/kean-vs-democrat"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nj-07&office=house"
@@ -18883,6 +18988,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/483566"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-mexico/district-2/cunningham-vs-vasquez"
         },
         {
           "source": "Inside Elections",
@@ -18897,6 +19007,11 @@
           "url": "https://www.cookpolitical.com/house/race/483821"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/ohio/district-9/merrin-vs-kaptur"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=oh-09&office=house"
@@ -18907,6 +19022,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/483941"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/pennsylvania/district-7/brooks-vs-mackenzie"
         },
         {
           "source": "Inside Elections",
@@ -18921,6 +19041,11 @@
           "url": "https://www.cookpolitical.com/house/race/483946"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/pennsylvania/district-8/cognetti-vs-bresnahan"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=pa-08&office=house"
@@ -18931,6 +19056,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/483956"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/pennsylvania/district-10/stelson-vs-perry"
         },
         {
           "source": "Inside Elections",
@@ -18945,6 +19075,11 @@
           "url": "https://www.cookpolitical.com/house/race/485386"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-34/flores-vs-gonzalez"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=tx-34&office=house"
@@ -18955,6 +19090,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/485441"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/virginia/district-2/luria-vs-kiggans"
         },
         {
           "source": "Inside Elections",
@@ -18969,6 +19109,11 @@
           "url": "https://www.cookpolitical.com/house/race/485501"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/washington/district-3/braun-vs-gluesenkamp-perez"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=wa-03&office=house"
@@ -18979,6 +19124,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/house/race/485561"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/wisconsin/district-3/van_orden-vs-cooke"
         },
         {
           "source": "Inside Elections",
@@ -18993,6 +19143,11 @@
           "url": "https://www.cookpolitical.com/house/race/481926"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/california/district-22/villegas-vs-valadao"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ca-22&office=house"
@@ -19003,6 +19158,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/482466"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/colorado/district-5/crank-vs-killin"
         },
         {
           "source": "Inside Elections",
@@ -19017,6 +19177,11 @@
           "url": "https://www.cookpolitical.com/house/race/482581"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-14/beltran-vs-castor"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=fl-14&office=house"
@@ -19027,6 +19192,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/482621"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-22/askar-vs-dandiya"
         }
       ],
       "IA-02": [
@@ -19034,6 +19204,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/483091"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/iowa/district-2/james-vs-mitchell"
         },
         {
           "source": "Inside Elections",
@@ -19048,6 +19223,11 @@
           "url": "https://www.cookpolitical.com/house/race/483151"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/kentucky/district-6/alvarado-vs-dembo"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ky-06&office=house"
@@ -19058,6 +19238,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/483296"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/michigan/district-4/huizenga-vs-mccann"
         },
         {
           "source": "Inside Elections",
@@ -19072,6 +19257,11 @@
           "url": "https://www.cookpolitical.com/house/race/483311"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/michigan/district-7/lawrence-vs-barrett"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=mi-07&office=house"
@@ -19082,6 +19272,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/483326"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/michigan/district-10/bouchard-vs-hies"
         },
         {
           "source": "Inside Elections",
@@ -19096,6 +19291,11 @@
           "url": "https://www.cookpolitical.com/house/race/483446"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/montana/district-1/forstag-vs-flint"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=mt-01&office=house"
@@ -19106,6 +19306,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/483706"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-1/buckhout-vs-davis"
         },
         {
           "source": "Inside Elections",
@@ -19120,6 +19325,11 @@
           "url": "https://www.cookpolitical.com/house/race/483656"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-york/district-17/conley-vs-lawler"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ny-17&office=house"
@@ -19130,6 +19340,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/483811"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/ohio/district-7/miller-vs-poindexter"
         },
         {
           "source": "Inside Elections",
@@ -19144,6 +19359,11 @@
           "url": "https://www.cookpolitical.com/house/race/483911"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/pennsylvania/district-1/harvie-vs-fitzpatrick"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=pa-01&office=house"
@@ -19154,6 +19374,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/485136"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/south-carolina/district-1/honeycutt-vs-lacore"
         },
         {
           "source": "Inside Elections",
@@ -19168,6 +19393,11 @@
           "url": "https://www.cookpolitical.com/house/race/485391"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-35/cruz-vs-garcia"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=tx-35&office=house"
@@ -19178,6 +19408,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/house/race/485291"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-15/delacruz-vs-pulido"
         },
         {
           "source": "Inside Elections",
@@ -19192,6 +19427,11 @@
           "url": "https://www.cookpolitical.com/house/race/485436"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/virginia/district-1/taylor-vs-wittman"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt R",
           "url": "https://insideelections.com/election-year/2026/?state-district=va-01&office=house"
@@ -19202,6 +19442,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/481751"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/alaska/at-large/begich-vs-hill"
         },
         {
           "source": "Inside Elections",
@@ -19216,6 +19461,11 @@
           "url": "https://www.cookpolitical.com/house/race/481721"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/alabama/district-2/marques-vs-figures"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt R",
           "url": "https://insideelections.com/election-year/2026/?state-district=al-02&office=house"
@@ -19226,6 +19476,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/481761"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/arizona/district-2/nez-vs-crane"
         },
         {
           "source": "Inside Elections",
@@ -19240,6 +19495,11 @@
           "url": "https://www.cookpolitical.com/house/race/482461"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/colorado/district-4/boebert-vs-laubacher"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=co-04&office=house"
@@ -19250,6 +19510,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/482546"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-7/elijah-vs-dalton"
         },
         {
           "source": "Inside Elections",
@@ -19264,6 +19529,11 @@
           "url": "https://www.cookpolitical.com/house/race/482556"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-9/green-vs-soto"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=fl-09&office=house"
@@ -19274,6 +19544,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/482576"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-13/paulinaluna-vs-gray"
         },
         {
           "source": "Inside Elections",
@@ -19288,6 +19563,11 @@
           "url": "https://www.cookpolitical.com/house/race/482646"
         },
         {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-27/salazar-vs-rodriguez"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean R",
           "url": "https://insideelections.com/election-year/2026/?state-district=fl-27&office=house"
@@ -19298,6 +19578,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/483061"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/indiana/district-5/spartz-vs-ford"
         },
         {
           "source": "Inside Elections",
@@ -19312,6 +19597,11 @@
           "url": "https://www.cookpolitical.com/house/race/483191"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/maine/district-2/lepage-vs-dunlap"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean R",
           "url": "https://insideelections.com/election-year/2026/?state-district=me-02&office=house"
@@ -19322,6 +19612,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/483346"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/minnesota/district-1/johnson-vs-finstad"
         },
         {
           "source": "Inside Elections",
@@ -19336,6 +19631,11 @@
           "url": "https://www.cookpolitical.com/house/race/483476"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/nevada/district-2/flippo-vs-benitez-thompson"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt R",
           "url": "https://insideelections.com/election-year/2026/?state-district=nv-02&office=house"
@@ -19346,6 +19646,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/483676"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-york/district-21/constantino-vs-gendebien"
         },
         {
           "source": "Inside Elections",
@@ -19360,6 +19665,11 @@
           "url": "https://www.cookpolitical.com/house/race/483826"
         },
         {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/ohio/district-10/turner-vs-knickerbocker"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean R",
           "url": "https://insideelections.com/election-year/2026/?state-district=oh-10&office=house"
@@ -19370,6 +19680,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/483851"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/ohio/district-15/carey-vs-leonard"
         },
         {
           "source": "Inside Elections",
@@ -19384,6 +19699,11 @@
           "url": "https://www.cookpolitical.com/house/race/485331"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-23/herrera-vs-stout"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tx-23&office=house"
@@ -19394,6 +19714,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/house/race/485456"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/virginia/district-5/mcguire-vs-perriello"
         },
         {
           "source": "Inside Elections",
@@ -19408,6 +19733,11 @@
           "url": "https://www.cookpolitical.com/house/race/485551"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/wisconsin/district-1/steil-vs-berman"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean R",
           "url": "https://insideelections.com/election-year/2026/?state-district=wi-01&office=house"
@@ -19420,6 +19750,11 @@
           "url": "https://www.cookpolitical.com/house/race/481806"
         },
         {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/arkansas/district-2/hill-vs-jones"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ar-02&office=house"
@@ -19430,6 +19765,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/house/race/482456"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/colorado/district-3/hurd-vs-romero"
         },
         {
           "source": "Inside Elections",
@@ -19456,6 +19796,11 @@
           "url": "https://www.cookpolitical.com/house/race/482591"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-16/gruters-vs-kirschner"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=fl-16&office=house"
@@ -19480,6 +19825,11 @@
           "url": "https://www.cookpolitical.com/house/race/483411"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/missouri/district-2/wellman-vs-wagner"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=mo-02&office=house"
@@ -19490,6 +19840,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/house/race/483716"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-3/murphy-vs-smith"
         },
         {
           "source": "Inside Elections",
@@ -19504,6 +19859,11 @@
           "url": "https://www.cookpolitical.com/house/race/483726"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-5/foxx-vs-hubbard"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=nc-05&office=house"
@@ -19514,6 +19874,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/house/race/483736"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-7/rouzer-vs-hardy"
         },
         {
           "source": "Inside Elections",
@@ -19528,6 +19893,11 @@
           "url": "https://www.cookpolitical.com/house/race/483746"
         },
         {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-9/hudson-vs-ojeda"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=nc-09&office=house"
@@ -19538,6 +19908,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/house/race/483766"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/north-carolina/district-13/knott-vs-barringer"
         },
         {
           "source": "Inside Elections",
@@ -19564,6 +19939,11 @@
           "url": "https://www.cookpolitical.com/house/race/483456"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/nebraska/district-1/flood-vs-backemeyer"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ne-01&office=house"
@@ -19574,6 +19954,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/house/race/483506"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-jersey/district-2/vandrew-vs-mullock"
         },
         {
           "source": "Inside Elections",
@@ -19588,6 +19973,11 @@
           "url": "https://www.cookpolitical.com/house/race/485216"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/tennessee/district-9/taylor-vs-pearson"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tn-09&office=house"
@@ -19600,6 +19990,11 @@
           "url": "https://www.cookpolitical.com/house/race/485261"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-9/mealer-vs-gutierrez"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tx-09&office=house"
@@ -19610,6 +20005,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/house/race/485511"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/washington/district-5/baumgartner-vs-conroy"
         },
         {
           "source": "Inside Elections",
@@ -19881,6 +20281,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/house/race/482571"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/florida/district-12/bilirakis-vs-overman"
         },
         {
           "source": "Inside Elections",
@@ -20447,6 +20852,11 @@
           "url": "https://www.cookpolitical.com/house/race/483381"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/minnesota/district-8/stauber-vs-swanson"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=mn-08&office=house"
@@ -20639,6 +21049,11 @@
           "url": "https://www.cookpolitical.com/house/race/483576"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-york/district-1/lalota-vs-gallant"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ny-01&office=house"
@@ -20649,6 +21064,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/house/race/483581"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/new-york/district-2/garbarino-vs-halpin"
         },
         {
           "source": "Inside Elections",
@@ -21047,6 +21467,11 @@
           "url": "https://www.cookpolitical.com/house/race/485196"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/tennessee/district-5/hatcher-vs-molder"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tn-05&office=house"
@@ -21287,6 +21712,11 @@
           "url": "https://www.cookpolitical.com/house/race/485336"
         },
         {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-24/vanduyne-vs-burge"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tx-24&office=house"
@@ -21345,6 +21775,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/house/race/485376"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/house/general/2026/texas/district-32/yarbrough-vs-barrios"
         },
         {
           "source": "Inside Elections",
@@ -21524,6 +21959,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488546"
         },
         {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/colorado/baisley-vs-hickenlooper"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=co&office=ii"
@@ -21534,6 +21974,11 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488551"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
         },
         {
           "source": "Inside Elections",
@@ -21548,6 +21993,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488576"
         },
         {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/polls/senate/democratic-primary/2026/illinois"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=il&office=ii"
@@ -21558,6 +22008,11 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488596"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/massachusetts/deaton-vs-markey"
         },
         {
           "source": "Inside Elections",
@@ -21572,6 +22027,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488641"
         },
         {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-jersey/murphy-vs-booker"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nj&office=ii"
@@ -21582,6 +22042,11 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488646"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-mexico/marker-vs-lujan"
         },
         {
           "source": "Inside Elections",
@@ -21596,6 +22061,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488661"
         },
         {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=or&office=ii"
@@ -21606,6 +22076,11 @@
           "source": "Cook",
           "rating": "Solid D",
           "url": "https://www.cookpolitical.com/senate/race/488666"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/rhode-island/mckay-vs-reed"
         },
         {
           "source": "Inside Elections",
@@ -21620,6 +22095,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488691"
         },
         {
+          "source": "RCP",
+          "rating": "Solid D",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid D",
           "url": "https://insideelections.com/election-year/2026/?state-district=va&office=ii"
@@ -21630,6 +22110,11 @@
           "source": "Cook",
           "rating": "Likely D",
           "url": "https://www.cookpolitical.com/senate/race/488561"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
         },
         {
           "source": "Inside Elections",
@@ -21644,6 +22129,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488626"
         },
         {
+          "source": "RCP",
+          "rating": "Likely D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/north-carolina/cooper-vs-whatley"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=nc&office=ii"
@@ -21654,6 +22144,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/senate/race/488606"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/michigan/rogers-vs-el-sayed"
         },
         {
           "source": "Inside Elections",
@@ -21668,6 +22163,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488611"
         },
         {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Lean D",
           "url": "https://insideelections.com/election-year/2026/?state-district=mn&office=ii"
@@ -21678,6 +22178,11 @@
           "source": "Cook",
           "rating": "Lean D",
           "url": "https://www.cookpolitical.com/senate/race/488636"
+        },
+        {
+          "source": "RCP",
+          "rating": "Lean D",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
         },
         {
           "source": "Inside Elections",
@@ -21692,6 +22197,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488531"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/alaska/sullivan-vs-peltola"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ak&office=ii"
@@ -21702,6 +22212,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/senate/race/488566"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/iowa/turek-vs-hinson"
         },
         {
           "source": "Inside Elections",
@@ -21716,6 +22231,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488581"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Toss-up",
           "url": "https://insideelections.com/election-year/2026/?state-district=ks&office=ii"
@@ -21726,6 +22246,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/senate/race/488601"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/collins-vs-jackson"
         },
         {
           "source": "Inside Elections",
@@ -21740,6 +22265,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488651"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/special-election/2026/ohio/husted-vs-brown"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt D",
           "url": "https://insideelections.com/election-year/2026/?state-district=oh&office=iii"
@@ -21750,6 +22280,11 @@
           "source": "Cook",
           "rating": "Toss Up",
           "url": "https://www.cookpolitical.com/senate/race/488686"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/texas/talarico-vs-paxton"
         },
         {
           "source": "Inside Elections",
@@ -21764,6 +22299,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488631"
         },
         {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Tilt R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ne&office=ii"
@@ -21774,6 +22314,11 @@
           "source": "Cook",
           "rating": "Lean R",
           "url": "https://www.cookpolitical.com/senate/race/488671"
+        },
+        {
+          "source": "RCP",
+          "rating": "Toss-up",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
         },
         {
           "source": "Inside Elections",
@@ -21788,6 +22333,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488556"
         },
         {
+          "source": "RCP",
+          "rating": "Lean R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=fl&office=iii"
@@ -21798,6 +22348,11 @@
           "source": "Cook",
           "rating": "Likely R",
           "url": "https://www.cookpolitical.com/senate/race/488616"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/mississippi/hyde-smith-vs-colom"
         },
         {
           "source": "Inside Elections",
@@ -21812,6 +22367,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488536"
         },
         {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/alabama/moore-vs-wess"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=al&office=ii"
@@ -21822,6 +22382,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488541"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/arkansas/cotton-vs-shoffner-vs-wadlin"
         },
         {
           "source": "Inside Elections",
@@ -21836,6 +22401,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488571"
         },
         {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=id&office=ii"
@@ -21846,6 +22416,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488586"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/polls/senate/democratic-primary/2026/kentucky"
         },
         {
           "source": "Inside Elections",
@@ -21860,6 +22435,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488591"
         },
         {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/louisiana/letlow-vs-davis"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Likely R",
           "url": "https://insideelections.com/election-year/2026/?state-district=la&office=ii"
@@ -21870,6 +22450,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488621"
+        },
+        {
+          "source": "RCP",
+          "rating": "Likely R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/montana/alme-vs-bankhead-vs-bodnar-vs-austin"
         },
         {
           "source": "Inside Elections",
@@ -21884,6 +22469,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488656"
         },
         {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=ok&office=ii"
@@ -21894,6 +22484,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488676"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-dakota/rounds-vs-bengs"
         },
         {
           "source": "Inside Elections",
@@ -21908,6 +22503,11 @@
           "url": "https://www.cookpolitical.com/senate/race/488681"
         },
         {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/polls/senate/general/2026/tennessee/hagerty-vs-bradshaw"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=tn&office=ii"
@@ -21918,6 +22518,11 @@
           "source": "Cook",
           "rating": "Solid R",
           "url": "https://www.cookpolitical.com/senate/race/488696"
+        },
+        {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
         },
         {
           "source": "Inside Elections",
@@ -21932,13 +22537,279 @@
           "url": "https://www.cookpolitical.com/senate/race/488701"
         },
         {
+          "source": "RCP",
+          "rating": "Solid R",
+          "url": "https://www.realclearpolling.com/maps/senate/2026/toss-up"
+        },
+        {
           "source": "Inside Elections",
           "rating": "Solid R",
           "url": "https://insideelections.com/election-year/2026/?state-district=wy&office=ii"
         }
       ]
     },
-    "rcpSenateChanges": []
+    "rcpSenateChanges": [
+      {
+        "date": "2026-11-02",
+        "key": "NE",
+        "previous": "Leans GOP",
+        "rating": "Toss Up",
+        "dem": 47,
+        "tossup": 9,
+        "rep": 44,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
+      },
+      {
+        "date": "2026-10-31",
+        "key": "NE",
+        "previous": "Toss Up",
+        "rating": "Leans GOP",
+        "dem": 47,
+        "tossup": 8,
+        "rep": 45,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
+      },
+      {
+        "date": "2026-10-28",
+        "key": "MN",
+        "previous": "Toss Up",
+        "rating": "Leans Dem",
+        "dem": 47,
+        "tossup": 9,
+        "rep": 44,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
+      },
+      {
+        "date": "2026-10-25",
+        "key": "GA",
+        "previous": "Leans Dem",
+        "rating": "Likely Dem",
+        "dem": 46,
+        "tossup": 10,
+        "rep": 44,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
+      },
+      {
+        "date": "2026-10-25",
+        "key": "SC",
+        "previous": "Leans GOP",
+        "rating": "Toss Up",
+        "dem": 46,
+        "tossup": 10,
+        "rep": 44,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
+      },
+      {
+        "date": "2026-10-25",
+        "key": "NE",
+        "previous": "Leans GOP",
+        "rating": "Toss Up",
+        "dem": 46,
+        "tossup": 10,
+        "rep": 44,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
+      },
+      {
+        "date": "2026-10-24",
+        "key": "MS",
+        "previous": "Safe GOP",
+        "rating": "Likely GOP",
+        "dem": 46,
+        "tossup": 8,
+        "rep": 46,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/mississippi/hyde-smith-vs-colom"
+      },
+      {
+        "date": "2026-10-12",
+        "key": "NE",
+        "previous": "Toss Up",
+        "rating": "Leans GOP",
+        "dem": 46,
+        "tossup": 8,
+        "rep": 46,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
+      },
+      {
+        "date": "2026-10-05",
+        "key": "NC",
+        "previous": "Leans Dem",
+        "rating": "Likely Dem",
+        "dem": 46,
+        "tossup": 9,
+        "rep": 45,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/north-carolina/cooper-vs-whatley"
+      },
+      {
+        "date": "2026-09-24",
+        "key": "NH",
+        "previous": "Toss Up",
+        "rating": "Leans Dem",
+        "dem": 46,
+        "tossup": 9,
+        "rep": 45,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
+      },
+      {
+        "date": "2026-09-23",
+        "key": "NE",
+        "previous": "Leans GOP",
+        "rating": "Toss Up",
+        "dem": 46,
+        "tossup": 9,
+        "rep": 45,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
+      },
+      {
+        "date": "2026-09-18",
+        "key": "KS",
+        "previous": "Leans GOP",
+        "rating": "Toss Up",
+        "dem": 45,
+        "tossup": 9,
+        "rep": 46,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
+      },
+      {
+        "date": "2026-09-17",
+        "key": "FL-S",
+        "previous": "Likely GOP",
+        "rating": "Leans GOP",
+        "dem": 45,
+        "tossup": 9,
+        "rep": 46,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
+      },
+      {
+        "date": "2026-09-16",
+        "key": "MN",
+        "previous": "Leans Dem",
+        "rating": "Toss Up",
+        "dem": 45,
+        "tossup": 8,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
+      },
+      {
+        "date": "2026-09-15",
+        "key": "NH",
+        "previous": "Leans Dem",
+        "rating": "Toss Up",
+        "dem": 46,
+        "tossup": 7,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
+      },
+      {
+        "date": "2026-09-13",
+        "key": "NH",
+        "previous": "Toss Up",
+        "rating": "Leans Dem",
+        "dem": 47,
+        "tossup": 6,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
+      },
+      {
+        "date": "2026-09-10",
+        "key": "SC",
+        "previous": "Likely GOP",
+        "rating": "Leans GOP",
+        "dem": 46,
+        "tossup": 7,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
+      },
+      {
+        "date": "2026-09-03",
+        "key": "MT",
+        "previous": "Leans GOP",
+        "rating": "Likely GOP",
+        "dem": 46,
+        "tossup": 7,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/montana/alme-vs-bankhead-vs-bodnar-vs-austin"
+      },
+      {
+        "date": "2026-09-03",
+        "key": "KS",
+        "previous": "Likely GOP",
+        "rating": "Leans GOP",
+        "dem": 46,
+        "tossup": 7,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
+      },
+      {
+        "date": "2026-08-27",
+        "key": "NH",
+        "previous": "Leans Dem",
+        "rating": "Toss Up",
+        "dem": 46,
+        "tossup": 7,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
+      },
+      {
+        "date": "2026-08-18",
+        "key": "FL-S",
+        "previous": "Safe GOP",
+        "rating": "Likely GOP",
+        "dem": 47,
+        "tossup": 6,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
+      },
+      {
+        "date": "2026-08-12",
+        "key": "MN",
+        "previous": "Likely Dem",
+        "rating": "Leans Dem",
+        "dem": 47,
+        "tossup": 6,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
+      },
+      {
+        "date": "2026-08-11",
+        "key": "GA",
+        "previous": "Toss Up",
+        "rating": "Leans Dem",
+        "dem": 47,
+        "tossup": 6,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
+      },
+      {
+        "date": "2026-08-11",
+        "key": "NH",
+        "previous": "Toss Up",
+        "rating": "Leans Dem",
+        "dem": 47,
+        "tossup": 6,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
+      },
+      {
+        "date": "2026-08-05",
+        "key": "KS",
+        "previous": "Safe GOP",
+        "rating": "Likely GOP",
+        "dem": 45,
+        "tossup": 8,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
+      },
+      {
+        "date": "2026-06-04",
+        "key": "NM",
+        "previous": "Safe Dem",
+        "rating": "Likely Dem",
+        "dem": 45,
+        "tossup": 8,
+        "rep": 47,
+        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-mexico/marker-vs-lujan"
+      }
+    ]
   },
   "polymarket": {
     "fetchedAt": "2026-11-04T00:19:59.025Z",
@@ -427589,6 +428460,18 @@
         "disapprove_estimate": 61.9,
         "disapprove_hi": 63.1,
         "disapprove_lo": 60.8
+      },
+      {
+        "end_date": "2026-11-13",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.9,
+        "approve_hi": 35.9,
+        "approve_lo": 33.6,
+        "disapprove_estimate": 61.8,
+        "disapprove_hi": 63.1,
+        "disapprove_lo": 60.8
       }
     ]
   },
@@ -433819,6 +434702,28 @@
         "net_approval": -19
       },
       {
+        "poll_id": 1001448,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "Global Strategy Group",
+        "pollster_code": "GSG",
+        "sponsor": "GBAO, Navigator Research",
+        "partisan": null,
+        "fieldwork_start": "2026-10-28T00:00:00",
+        "fieldwork_end": "2026-11-08T00:00:00",
+        "population": "LV",
+        "sample": 3000,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 37; DISAPPROVE (DISAPPROVE) 63",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://navigatorresearch.org/trump-disapproval-and-regret-fueled-the-blue-wave/",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -26
+      },
+      {
         "poll_id": 1001406,
         "race": "US",
         "kind": "Approval",
@@ -433839,6 +434744,28 @@
         "source_grade": "C",
         "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
         "net_approval": -33
+      },
+      {
+        "poll_id": 1001449,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "YouGov",
+        "pollster_code": "YOUGOV",
+        "sponsor": "The Economist",
+        "partisan": null,
+        "fieldwork_start": "2026-11-09T00:00:00",
+        "fieldwork_end": "2026-11-11T00:00:00",
+        "population": "RV",
+        "sample": 1463,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 32; DISAPPROVE (DISAPPROVE) 63",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://d3nkl3psvxxpe9.cloudfront.net/documents/econtoplines_5o8tkY1.pdf",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -31
       }
     ]
   },
