@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-18T02:01:41.902Z",
-  "snapshotDate": "2026-11-18",
+  "fetchedAt": "2026-11-19T01:38:08.452Z",
+  "snapshotDate": "2026-11-19",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -16336,7 +16336,7 @@
     }
   ],
   "ratings": {
-    "fetchedAt": "2026-11-18T02:00:35.228Z",
+    "fetchedAt": "2026-11-19T01:38:01.592Z",
     "sourceUrls": {
       "cookHouse": "https://www.cookpolitical.com/ratings/house-race-ratings",
       "cookSenate": "https://www.cookpolitical.com/ratings/senate-race-ratings",
@@ -22548,268 +22548,7 @@
         }
       ]
     },
-    "rcpSenateChanges": [
-      {
-        "date": "2026-11-02",
-        "key": "NE",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 47,
-        "tossup": 9,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-31",
-        "key": "NE",
-        "previous": "Toss Up",
-        "rating": "Leans GOP",
-        "dem": 47,
-        "tossup": 8,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-28",
-        "key": "MN",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 9,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-      },
-      {
-        "date": "2026-10-25",
-        "key": "GA",
-        "previous": "Leans Dem",
-        "rating": "Likely Dem",
-        "dem": 46,
-        "tossup": 10,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
-      },
-      {
-        "date": "2026-10-25",
-        "key": "SC",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 10,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
-      },
-      {
-        "date": "2026-10-25",
-        "key": "NE",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 10,
-        "rep": 44,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-24",
-        "key": "MS",
-        "previous": "Safe GOP",
-        "rating": "Likely GOP",
-        "dem": 46,
-        "tossup": 8,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/mississippi/hyde-smith-vs-colom"
-      },
-      {
-        "date": "2026-10-12",
-        "key": "NE",
-        "previous": "Toss Up",
-        "rating": "Leans GOP",
-        "dem": 46,
-        "tossup": 8,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-10-05",
-        "key": "NC",
-        "previous": "Leans Dem",
-        "rating": "Likely Dem",
-        "dem": 46,
-        "tossup": 9,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/north-carolina/cooper-vs-whatley"
-      },
-      {
-        "date": "2026-09-24",
-        "key": "NH",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 46,
-        "tossup": 9,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-09-23",
-        "key": "NE",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 9,
-        "rep": 45,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/nebraska/osborn-vs-ricketts"
-      },
-      {
-        "date": "2026-09-18",
-        "key": "KS",
-        "previous": "Leans GOP",
-        "rating": "Toss Up",
-        "dem": 45,
-        "tossup": 9,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-      },
-      {
-        "date": "2026-09-17",
-        "key": "FL-S",
-        "previous": "Likely GOP",
-        "rating": "Leans GOP",
-        "dem": 45,
-        "tossup": 9,
-        "rep": 46,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
-      },
-      {
-        "date": "2026-09-16",
-        "key": "MN",
-        "previous": "Leans Dem",
-        "rating": "Toss Up",
-        "dem": 45,
-        "tossup": 8,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-      },
-      {
-        "date": "2026-09-15",
-        "key": "NH",
-        "previous": "Leans Dem",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-09-13",
-        "key": "NH",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-09-10",
-        "key": "SC",
-        "previous": "Likely GOP",
-        "rating": "Leans GOP",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/south-carolina/graham-nordone-vs-andrews"
-      },
-      {
-        "date": "2026-09-03",
-        "key": "MT",
-        "previous": "Leans GOP",
-        "rating": "Likely GOP",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/montana/alme-vs-bankhead-vs-bodnar-vs-austin"
-      },
-      {
-        "date": "2026-09-03",
-        "key": "KS",
-        "previous": "Likely GOP",
-        "rating": "Leans GOP",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-      },
-      {
-        "date": "2026-08-27",
-        "key": "NH",
-        "previous": "Leans Dem",
-        "rating": "Toss Up",
-        "dem": 46,
-        "tossup": 7,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-08-18",
-        "key": "FL-S",
-        "previous": "Safe GOP",
-        "rating": "Likely GOP",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/florida/moody-vs-nixon"
-      },
-      {
-        "date": "2026-08-12",
-        "key": "MN",
-        "previous": "Likely Dem",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/minnesota/tafoya-vs-flanagan"
-      },
-      {
-        "date": "2026-08-11",
-        "key": "GA",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/georgia/ossoff-vs-collins"
-      },
-      {
-        "date": "2026-08-11",
-        "key": "NH",
-        "previous": "Toss Up",
-        "rating": "Leans Dem",
-        "dem": 47,
-        "tossup": 6,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-hampshire/pappas-vs-sununu"
-      },
-      {
-        "date": "2026-08-05",
-        "key": "KS",
-        "previous": "Safe GOP",
-        "rating": "Likely GOP",
-        "dem": 45,
-        "tossup": 8,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/kansas/marshall-vs-hamilton"
-      },
-      {
-        "date": "2026-06-04",
-        "key": "NM",
-        "previous": "Safe Dem",
-        "rating": "Likely Dem",
-        "dem": 45,
-        "tossup": 8,
-        "rep": 47,
-        "url": "https://www.realclearpolling.com/polls/senate/general/2026/new-mexico/marker-vs-lujan"
-      }
-    ]
+    "rcpSenateChanges": []
   },
   "polymarket": {
     "fetchedAt": "2026-11-04T00:19:59.025Z",
@@ -428520,6 +428259,18 @@
         "disapprove_estimate": 62.1,
         "disapprove_hi": 63.4,
         "disapprove_lo": 61.1
+      },
+      {
+        "end_date": "2026-11-18",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.4,
+        "approve_hi": 35.5,
+        "approve_lo": 33.2,
+        "disapprove_estimate": 62.2,
+        "disapprove_hi": 63.5,
+        "disapprove_lo": 61.1
       }
     ]
   },
@@ -434706,6 +434457,28 @@
         "net_approval": -12
       },
       {
+        "poll_id": 1001479,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "J.L. Partners",
+        "pollster_code": "JLPARTNERS",
+        "sponsor": null,
+        "partisan": null,
+        "fieldwork_start": "2026-11-03T00:00:00",
+        "fieldwork_end": "2026-11-03T00:00:00",
+        "population": "LV",
+        "sample": 870,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 40; DISAPPROVE (DISAPPROVE) 55",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://static1.squarespace.com/static/663253f0bc87b7070102f41f/t/6afb3f2a920dbc029a9eb07c/1794850602086/Sitting+Out+the+Surf+-+Report+.pdf",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -15
+      },
+      {
         "poll_id": 1001385,
         "race": "US",
         "kind": "Approval",
@@ -434772,6 +434545,28 @@
         "net_approval": -26
       },
       {
+        "poll_id": 1001480,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "Morning Consult",
+        "pollster_code": "MORNINGCONSULT",
+        "sponsor": null,
+        "partisan": null,
+        "fieldwork_start": "2026-11-06T00:00:00",
+        "fieldwork_end": "2026-11-08T00:00:00",
+        "population": "RV",
+        "sample": 2200,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 40; DISAPPROVE (DISAPPROVE) 57",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://eyokley.com/read/outlook-2026-11-09/",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -17
+      },
+      {
         "poll_id": 1001406,
         "race": "US",
         "kind": "Approval",
@@ -434836,6 +434631,28 @@
         "source_grade": "A",
         "licence": "Figures as published by the pollster; cite the source",
         "net_approval": -17
+      },
+      {
+        "poll_id": 1001481,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "Morning Consult",
+        "pollster_code": "MORNINGCONSULT",
+        "sponsor": null,
+        "partisan": null,
+        "fieldwork_start": "2026-11-13T00:00:00",
+        "fieldwork_end": "2026-11-15T00:00:00",
+        "population": "RV",
+        "sample": 2200,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 40; DISAPPROVE (DISAPPROVE) 58",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://eyokley.com/read/outlook-2026-11-16/",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -18
       },
       {
         "poll_id": 1001475,
