@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-21T01:02:31.021Z",
-  "snapshotDate": "2026-11-21",
+  "fetchedAt": "2026-11-22T00:02:36.823Z",
+  "snapshotDate": "2026-11-22",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -428556,6 +428556,18 @@
         "disapprove_estimate": 61.8,
         "disapprove_hi": 62.9,
         "disapprove_lo": 60.7
+      },
+      {
+        "end_date": "2026-11-21",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.6,
+        "approve_hi": 35.7,
+        "approve_lo": 33.5,
+        "disapprove_estimate": 61.7,
+        "disapprove_hi": 62.9,
+        "disapprove_lo": 60.6
       }
     ]
   },
@@ -434896,6 +434908,28 @@
         "net_approval": -31
       },
       {
+        "poll_id": 1001531,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "The Rainey Center",
+        "pollster_code": "THERAINEYCENTER",
+        "sponsor": null,
+        "partisan": null,
+        "fieldwork_start": "2026-11-08T00:00:00",
+        "fieldwork_end": "2026-11-12T00:00:00",
+        "population": "LV",
+        "sample": 1001,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 39; DISAPPROVE (DISAPPROVE) 60",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://cdn.prod.website-files.com/60f9a27c11d0d7449a9c35c4/6afd1b0ba01198a65704694b_Midterm%20Toplines%20-%20RCFP.pdf",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -21
+      },
+      {
         "poll_id": 1001460,
         "race": "US",
         "kind": "Approval",
@@ -435004,6 +435038,50 @@
         "source_grade": "C",
         "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
         "net_approval": -31
+      },
+      {
+        "poll_id": 1001532,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "RMG Research",
+        "pollster_code": "RMG",
+        "sponsor": null,
+        "partisan": null,
+        "fieldwork_start": "2026-11-09T00:00:00",
+        "fieldwork_end": "2026-11-16T00:00:00",
+        "population": "RV",
+        "sample": 2000,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 39; DISAPPROVE (DISAPPROVE) 58",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://napolitannews.org/jobapproval",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -19
+      },
+      {
+        "poll_id": 1001533,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "YouGov",
+        "pollster_code": "YOUGOV",
+        "sponsor": "The Economist",
+        "partisan": null,
+        "fieldwork_start": "2026-11-13T00:00:00",
+        "fieldwork_end": "2026-11-16T00:00:00",
+        "population": "RV",
+        "sample": 1386,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 37; DISAPPROVE (DISAPPROVE) 62",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://yougov.com/en-us/articles/56009-whether-congress-should-investigate-trump-administration-jensen-huang-november-13-16-2026-economist-yougov-poll",
+        "source_grade": "C",
+        "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
+        "net_approval": -25
       }
     ]
   },
