@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-22T00:02:36.823Z",
-  "snapshotDate": "2026-11-22",
+  "fetchedAt": "2026-11-23T00:34:33.852Z",
+  "snapshotDate": "2026-11-23",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -428568,6 +428568,18 @@
         "disapprove_estimate": 61.7,
         "disapprove_hi": 62.9,
         "disapprove_lo": 60.6
+      },
+      {
+        "end_date": "2026-11-22",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.6,
+        "approve_hi": 35.8,
+        "approve_lo": 33.4,
+        "disapprove_estimate": 61.7,
+        "disapprove_hi": 62.9,
+        "disapprove_lo": 60.7
       }
     ]
   },
