@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "fetchedAt": "2026-11-23T00:34:33.852Z",
-  "snapshotDate": "2026-11-23",
+  "fetchedAt": "2026-11-24T04:34:03.987Z",
+  "snapshotDate": "2026-11-24",
   "asOf": "2026-11-03",
   "headline": {
     "source": "FiftyPlusOne",
@@ -16336,7 +16336,7 @@
     }
   ],
   "ratings": {
-    "fetchedAt": "2026-11-21T01:02:22.414Z",
+    "fetchedAt": "2026-11-24T04:33:52.446Z",
     "sourceUrls": {
       "cookHouse": "https://www.cookpolitical.com/ratings/house-race-ratings",
       "cookSenate": "https://www.cookpolitical.com/ratings/senate-race-ratings",
@@ -428580,6 +428580,18 @@
         "disapprove_estimate": 61.7,
         "disapprove_hi": 62.9,
         "disapprove_lo": 60.7
+      },
+      {
+        "end_date": "2026-11-23",
+        "politician": "Donald Trump",
+        "polltype": "potus-approve",
+        "subgroup": "All polls",
+        "approve_estimate": 34.2,
+        "approve_hi": 35.4,
+        "approve_lo": 32.9,
+        "disapprove_estimate": 62.1,
+        "disapprove_hi": 63.4,
+        "disapprove_lo": 60.9
       }
     ]
   },
@@ -435094,6 +435106,28 @@
         "source_grade": "C",
         "licence": "CC BY-SA 4.0 (figures from Wikipedia)",
         "net_approval": -25
+      },
+      {
+        "poll_id": 1001560,
+        "race": "US",
+        "kind": "Approval",
+        "stage": "approval",
+        "pollster": "Rasmussen Reports",
+        "pollster_code": "RASMUSSEN",
+        "sponsor": null,
+        "partisan": null,
+        "fieldwork_start": "2026-11-18T00:00:00",
+        "fieldwork_end": "2026-11-22T00:00:00",
+        "population": "LV",
+        "sample": 1750,
+        "question": "Donald Trump job approval",
+        "figures": "APPROVE (APPROVE) 42; DISAPPROVE (DISAPPROVE) 57",
+        "margin": null,
+        "adjusted_margin": null,
+        "source_url": "https://www.rasmussenreports.com/public_content/politics/trump_administration_second_term/prez_track_nov23",
+        "source_grade": "A",
+        "licence": "Figures as published by the pollster; cite the source",
+        "net_approval": -15
       }
     ]
   },
